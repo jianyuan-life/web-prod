@@ -331,14 +331,32 @@ function escapeHtml(text: string): string {
 
 // 將純文字 markdown 段落轉 HTML（不含 ### 處理）
 function renderInlineMarkdown(text: string): string {
+  // ── 分數殘留清理 ──
+  let cleaned = text
+    // 移除「N/100」格式的評分（如「85/100」「90/100」），但不影響「4/9」等章節編號
+    .replace(/\d{1,3}\/100/g, '')
+    // 移除評分相關文字（綜合評分、整體評分、總評分等）
+    .replace(/[（(]?\s*(?:綜合|整體|總|系統|本系統)?評分[：:]\s*\d*\s*[）)]?/g, '')
+    .replace(/(?:綜合|整體|總)評分\s*(?:為|是|：|:)?\s*\d*/g, '')
+    // 移除獨立的「評分」行
+    .replace(/^\s*評分\s*[:：]?\s*\d*\s*$/gm, '')
+
   // 先轉義所有 HTML，再套用安全的 markdown 樣式
-  let html = escapeHtml(text)
+  let html = escapeHtml(cleaned)
     // 清理 Markdown 殘留和 prompt 結構標籤
     .replace(/^---+$/gm, '')
-    .replace(/^\|[-:]+\|[-:| ]*$/gm, '___TABLE_SEP___') // 標記表格分隔線
-    // Markdown 表格 → 正式 HTML table
-    .replace(/^\|(.+)\|$/gm, (_m: string, inner: string) => {
-      const cells = inner.split('|').map(c => c.trim()).filter(Boolean)
+    // ── 加強版 Markdown 表格處理 ──
+    // 1. 標記表格分隔線（各種格式：|---|、| :---: |、|:---|等）
+    .replace(/^\|[\s:]*[-]+[\s:]*(\|[\s:]*[-]+[\s:]*)*\|?\s*$/gm, '___TABLE_SEP___')
+    // 2. 也清理沒有開頭 | 但有分隔線格式的行（如 --- | --- | ---）
+    .replace(/^[\s:]*[-]{3,}[\s:]*(\|[\s:]*[-]{3,}[\s:]*)+$/gm, '___TABLE_SEP___')
+    // 3. Markdown 表格行 → HTML tr（匹配以 | 開頭的行，末尾可有可無 |）
+    .replace(/^\|(.+?)(?:\|)?\s*$/gm, (_m: string, inner: string) => {
+      // 去除末尾多餘的 |（如果 inner 末尾有殘留的 |）
+      const cleanInner = inner.replace(/\|$/, '')
+      const cells = cleanInner.split('|').map(c => c.trim()).filter(c => c.length > 0)
+      // 如果只有一個 cell 且看起來不像表格，跳過
+      if (cells.length < 2) return _m
       const cellsHtml = cells.map(c => {
         const bold = c.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         return `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7">${bold}</td>`
@@ -358,6 +376,15 @@ function renderInlineMarkdown(text: string): string {
       return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:320px;font-size:13px">${headerRow}${bodyRows}</table></div>`
     })
     .replace(/___TABLE_SEP___/g, '')
+    // 安全網：如果上面的表格轉換沒抓到，把殘留的 | 分隔行轉成可讀格式
+    .replace(/^\|(.+)\|?\s*$/gm, (_m: string, inner: string) => {
+      // 還有殘留的 | 開頭行，表格轉換失敗，改用空格分隔顯示
+      const cells = inner.split('|').map(c => c.trim()).filter(c => c.length > 0 && !/^[-:]+$/.test(c))
+      if (cells.length >= 2) {
+        return cells.join('　｜　')
+      }
+      return _m
+    })
     .replace(/^→ 完整分析請繼續閱讀.*$/gm, '')
     // 清理 AI 進度標記（如「4/9」「5/9」等章節編號）
     .replace(/(\d+)\/(\d+)\s*(?=\n|$|「)/gm, '')

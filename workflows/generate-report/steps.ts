@@ -1537,12 +1537,20 @@ export async function generatePDF(
   }
   const planName = planNames[planCode] || '命理分析報告'
 
-  // PDF 專用預處理：清除殘留橫線 + 轉換 Markdown 格式為 PDF 友好格式
+  // PDF 專用預處理：清除殘留橫線 + 分數清理 + 轉換 Markdown 格式為 PDF 友好格式
   const pdfContent = reportContent
     .replace(/^---+$/gm, '')           // 標準 markdown 橫線
     .replace(/^___+$/gm, '')           // 底線型橫線
     .replace(/^\*\*\*+$/gm, '')        // 星號型橫線
     .replace(/^[\s]*[-─—═]+[\s]*$/gm, '') // 全形橫線/裝飾線
+    // ── 分數殘留清理 ──
+    // 移除「N/100」格式的評分（如「85/100」「90/100」），但不影響「4/9」等章節編號
+    .replace(/\d{1,3}\/100/g, '')
+    // 移除評分相關文字（綜合評分、整體評分、總評分等）
+    .replace(/[（(]?\s*(?:綜合|整體|總|系統|本系統)?評分[：:]\s*\d*\s*[）)]?/g, '')
+    .replace(/(?:綜合|整體|總)評分\s*(?:為|是|：|:)?\s*\d*/g, '')
+    // 移除獨立的「評分」行
+    .replace(/^\s*評分\s*[:：]?\s*\d*\s*$/gm, '')
     // 清理 AI 進度標記（如「4/9」「5/9」等章節編號）
     .replace(/(\d+)\/(\d+)\s*(?=\n|$|「)/gm, '')
     // 修正流年被截斷（「流年丙午026」→「流年（2026」）
