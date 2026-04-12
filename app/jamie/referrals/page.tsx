@@ -26,6 +26,34 @@ export default function ReferralsPage() {
   const [grantDesc, setGrantDesc] = useState('')
   const [grantLoading, setGrantLoading] = useState(false)
   const [grantResult, setGrantResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  // 用戶搜尋自動完成
+  const [userSuggestions, setUserSuggestions] = useState<{ email: string; name: string; id: string }[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedUserName, setSelectedUserName] = useState('')
+  const searchTimerRef = { current: null as ReturnType<typeof setTimeout> | null }
+
+  const handleEmailInput = (val: string) => {
+    setGrantEmail(val)
+    setSelectedUserName('')
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    if (val.length < 2) { setUserSuggestions([]); setShowSuggestions(false); return }
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/search-users?key=${adminKey}&q=${encodeURIComponent(val)}`)
+        if (res.ok) {
+          const data = await res.json()
+          setUserSuggestions(data.users || [])
+          setShowSuggestions(true)
+        }
+      } catch { /* ignore */ }
+    }, 300)
+  }
+
+  const selectUser = (user: { email: string; name: string }) => {
+    setGrantEmail(user.email)
+    setSelectedUserName(user.name)
+    setShowSuggestions(false)
+  }
 
   const handleGrantPoints = async () => {
     if (!grantEmail || !grantPoints) return
@@ -87,10 +115,24 @@ export default function ReferralsPage() {
       <div className="bg-[#1a1a1a] rounded-xl border border-amber-500/20 p-4 mb-6">
         <h3 className="text-sm font-semibold text-amber-400 mb-3">手動發放積分</h3>
         <div className="flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-[180px]">
+          <div className="flex-1 min-w-[180px] relative">
             <label className="text-[10px] text-gray-500 block mb-1">用戶 Email</label>
-            <input value={grantEmail} onChange={e => setGrantEmail(e.target.value)} placeholder="user@email.com"
+            <input value={grantEmail} onChange={e => handleEmailInput(e.target.value)} onFocus={() => userSuggestions.length > 0 && setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} placeholder="輸入 Email 或姓名搜尋..."
               className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/40 focus:outline-none" />
+            {selectedUserName && (
+              <p className="text-[10px] text-green-400 mt-0.5">&#10003; {selectedUserName}</p>
+            )}
+            {showSuggestions && userSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-[#222] border border-white/10 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                {userSuggestions.map(u => (
+                  <button key={u.id} type="button" onMouseDown={() => selectUser(u)}
+                    className="w-full text-left px-3 py-2 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0">
+                    <span className="text-sm text-white">{u.name || '(未填姓名)'}</span>
+                    <span className="text-xs text-gray-400 ml-2">{u.email}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="w-24">
             <label className="text-[10px] text-gray-500 block mb-1">點數</label>
