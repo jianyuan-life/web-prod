@@ -37,24 +37,25 @@ function CheckoutForm() {
           planSystems={ctx.plan.systems}
         />
 
-        <CouponInput
-          couponInput={ctx.couponInput}
-          setCouponInput={ctx.setCouponInput}
-          couponApplied={ctx.couponApplied}
-          setCouponApplied={() => ctx.setCouponApplied(null)}
-          couponLoading={ctx.couponLoading}
-          couponError={ctx.couponError}
-          setCouponError={ctx.setCouponError}
-          applyCoupon={ctx.applyCoupon}
-        />
-
-        {/* 積分折抵（與優惠碼互斥） */}
-        <PointsRedeem
-          planCode={ctx.planCode}
-          orderAmount={ctx.totalPrice}
-          couponApplied={ctx.couponApplied}
-          onPointsChange={ctx.handlePointsChange}
-        />
+        {/* 優惠碼 + 積分折抵（左右並排） */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <CouponInput
+            couponInput={ctx.couponInput}
+            setCouponInput={ctx.setCouponInput}
+            couponApplied={ctx.couponApplied}
+            setCouponApplied={() => ctx.setCouponApplied(null)}
+            couponLoading={ctx.couponLoading}
+            couponError={ctx.couponError}
+            setCouponError={ctx.setCouponError}
+            applyCoupon={ctx.applyCoupon}
+          />
+          <PointsRedeem
+            planCode={ctx.planCode}
+            orderAmount={ctx.totalPrice}
+            couponApplied={ctx.couponApplied}
+            onPointsChange={ctx.handlePointsChange}
+          />
+        </div>
 
         {/* R 方案多人表單 */}
         {ctx.isRelationPlan ? (

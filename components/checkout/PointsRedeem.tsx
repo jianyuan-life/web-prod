@@ -103,7 +103,7 @@ export default function PointsRedeem({
   if (!loading && balance <= 0) return null
 
   return (
-    <div className={`glass rounded-xl p-4 mb-4 ${hasCoupon ? 'opacity-30 pointer-events-none' : ''}`}
+    <div className={`glass rounded-xl p-4 ${hasCoupon ? 'opacity-30 pointer-events-none' : ''}`}
       style={{ border: '1px solid rgba(106,176,76,0.2)', background: 'rgba(106,176,76,0.04)' }}>
       {loading ? (
         <p className="text-text-muted text-xs text-center">載入點數...</p>

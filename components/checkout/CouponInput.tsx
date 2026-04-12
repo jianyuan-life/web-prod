@@ -18,7 +18,7 @@ export default function CouponInput({
   applyCoupon,
 }: CouponInputProps) {
   return (
-    <div className="mb-4">
+    <div>
       <div className="flex gap-2">
         <input
           type="text"
