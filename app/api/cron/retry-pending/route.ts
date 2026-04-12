@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     .in('status', ['pending', 'failed'])
     .lt('created_at', fiveMinAgo)
     .order('created_at', { ascending: true })
-    .limit(10)
+    .limit(5)
 
   if (queryErr) {
     console.error('❌ 查詢卡住報告失敗:', queryErr)
@@ -119,16 +119,21 @@ export async function GET(req: NextRequest) {
     // 如果沒有 started_at，fallback 到 created_at（相容舊記錄）
     const startedAt = progress?.started_at || report.created_at
     const startedTime = new Date(startedAt).getTime()
-    const thirtyMinAgo = Date.now() - 30 * 60 * 1000
+    const sixtyMinAgo = Date.now() - 60 * 60 * 1000
 
-    if (startedTime < thirtyMinAgo) {
-      // 真正超時：30 分鐘都沒跑完，直接標記 failed（不重置為 pending！）
+    // 檢查最後活動時間（progress_updated_at），如果最近 15 分鐘有更新就不標超時
+    const lastActivity = progress?.progress_updated_at || progress?.started_at || report.created_at
+    const lastActivityTime = new Date(lastActivity).getTime()
+    const fifteenMinAgo = Date.now() - 15 * 60 * 1000
+
+    if (startedTime < sixtyMinAgo && lastActivityTime < fifteenMinAgo) {
+      // 真正超時：60 分鐘都沒跑完且最近 15 分鐘無活動，標記 failed
       await supabase.from('paid_reports').update({
         status: 'failed',
-        error_message: `生成超時：Workflow 執行超過 30 分鐘未完成（啟動時間: ${startedAt}）`,
+        error_message: `生成超時：Workflow 執行超過 60 分鐘且無活動（啟動: ${startedAt}，最後活動: ${lastActivity}）`,
       }).eq('id', report.id).eq('status', 'generating')
       timedOutCount++
-      console.log(`⏰ 報告 ${report.id} 生成超時（30 分鐘），標記為 failed`)
+      console.log(`⏰ 報告 ${report.id} 生成超時（60 分鐘+無活動），標記為 failed`)
     } else {
       const elapsed = Math.round((Date.now() - startedTime) / 1000)
       console.log(`⏳ 報告 ${report.id} 正在生成中（已 ${elapsed} 秒），不干預`)

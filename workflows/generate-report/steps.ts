@@ -680,10 +680,13 @@ export async function loadReportRecord(reportId: string) {
   // ── 併發控制閘門：限制同時生成的報告數量 ──
   // 防止 1000 人同時付款時 3000 個 Claude 呼叫打爆 API
   const MAX_CONCURRENT_REPORTS = 15 // 最多 15 份報告同時生成（= 45 個 Claude 呼叫）
+  // 排除超過 30 分鐘的殭屍進程，只計算真正在跑的報告
+  const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
   const { count: generatingCount } = await supabase
     .from('paid_reports')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'generating')
+    .gt('updated_at', thirtyMinAgo)
 
   if ((generatingCount || 0) >= MAX_CONCURRENT_REPORTS) {
     // 排隊等候：利用 Workflow 的 RetryableError 機制自動延遲重試
@@ -772,6 +775,15 @@ export async function callPythonCalculate(birthData: BirthData) {
 
   const result: CalcResult = await res.json()
   console.log(`排盤完成: ${result.analyses?.length || 0} 套系統`)
+
+  // 排盤結果完整性驗證：空結果或缺關鍵數據時重試
+  if (!result.analyses?.length) {
+    throw new RetryableError('排盤 API 回傳空結果（analyses 為空陣列）', { retryAfter: '15s' })
+  }
+  if (!result.client_data) {
+    throw new RetryableError('排盤 API 缺少 client_data', { retryAfter: '15s' })
+  }
+
   return result
 }
 callPythonCalculate.maxRetries = 3
@@ -1545,9 +1557,13 @@ export async function generatePDF(
     .replace(/\u{200D}/gu, '')                 // ZWJ 連接符
     .replace(/\n{3,}/g, '\n\n')        // 清理後的連續空行
 
+  // PDF 生成超時控制：90 秒
+  const pdfController = new AbortController()
+  const pdfTimeout = setTimeout(() => pdfController.abort(), 90000)
   const pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: pdfController.signal,
     body: JSON.stringify({
       report_id: reportId,
       plan_code: planCode,
@@ -1562,6 +1578,8 @@ export async function generatePDF(
       analyses_summary: analyses,
     }),
   })
+
+  clearTimeout(pdfTimeout)
 
   if (!pdfRes.ok) {
     console.error('PDF 生成失敗:', await pdfRes.text())

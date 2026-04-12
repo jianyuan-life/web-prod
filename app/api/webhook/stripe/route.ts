@@ -108,13 +108,18 @@ export async function POST(req: NextRequest) {
         status: 'pending',
       }).select('id, access_token').single()
 
-      if (insertErr) console.error('Supabase insert error:', insertErr)
-      else {
-        reportId = insertData?.id || ''
-        accessToken = insertData?.access_token || ''
+      if (insertErr) {
+        console.error('❌ Supabase insert 失敗（嚴重）:', insertErr)
+        // insert 失敗 = 客戶付了錢但報告永遠不會生成，回傳 500 讓 Stripe 重試 webhook
+        return NextResponse.json({ error: 'Supabase insert failed' }, { status: 500 })
       }
+      reportId = insertData?.id || ''
+      accessToken = insertData?.access_token || ''
       console.log('✅ 報告記錄已建立:', reportId)
-    } catch (err) { console.error('Supabase error:', err) }
+    } catch (err) {
+      console.error('❌ Supabase 連線異常（嚴重）:', err)
+      return NextResponse.json({ error: 'Supabase connection error' }, { status: 500 })
+    }
 
     // 呼叫 Fly.io 異步報告生成 Pipeline（無超時限制，完整排盤數據）
     if (birthData && reportId) {

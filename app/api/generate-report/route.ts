@@ -779,8 +779,12 @@ export async function POST(req: NextRequest) {
           year: birthData.year, month: birthData.month, day: birthData.day,
           hour: birthData.hour, minute: birthData.minute || 0,
           gender: birthData.gender,
-          // 真太陽時校正：傳送出生城市座標
-          ...(birthData.cityLat && birthData.cityLng ? { lat: birthData.cityLat, lng: birthData.cityLng } : {}),
+          // 農曆/國曆 + 真太陽時校正（與 Workflow 版本同步）
+          calendar_type: birthData.calendar_type || 'solar',
+          lunar_leap: birthData.lunar_leap || false,
+          time_unknown: birthData.time_unknown || false,
+          time_mode: birthData.time_mode || 'exact',
+          ...(birthData.cityLat && birthData.cityLng ? { latitude: birthData.cityLat, longitude: birthData.cityLng } : {}),
         }),
         signal: controller.signal,
       })
