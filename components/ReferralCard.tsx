@@ -201,6 +201,31 @@ export default function ReferralCard() {
         </div>
       </div>
 
+      {/* 積分概覽 */}
+      {points && (
+        <div className="grid grid-cols-3 gap-2 mt-1">
+          <div className="text-center py-2 rounded-lg" style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.15)' }}>
+            <div className="text-lg font-bold text-gold">{points.balance}</div>
+            <div className="text-[10px] text-text-muted/60">可用點數</div>
+          </div>
+          <div className="text-center py-2 rounded-lg" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.12)' }}>
+            <div className="text-lg font-bold text-green-400">{points.totalEarned}</div>
+            <div className="text-[10px] text-text-muted/60">累計獲得</div>
+          </div>
+          <div className="text-center py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="text-lg font-bold text-text-muted">{points.totalUsed}</div>
+            <div className="text-[10px] text-text-muted/60">已使用</div>
+          </div>
+        </div>
+      )}
+
+      {/* 即將過期提醒 */}
+      {points && points.expiringIn30Days > 0 && (
+        <p className="text-[11px] text-amber-400/80 text-center mt-1">
+          ⚠ {points.expiringIn30Days} 點將在 30 天內到期，下次購買可折抵
+        </p>
+      )}
+
       {referral && referral.totalReferrals > 0 && (
         <p className="text-[11px] text-gold/60 text-center">已幫助 {referral.totalReferrals} 位朋友找到方向</p>
       )}

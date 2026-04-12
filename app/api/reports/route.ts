@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
         .maybeSingle()
       if (report?.customer_email) {
         queryEmail = report.customer_email.toLowerCase()
-        console.log(`✅ Stripe session fallback: ${sessionId} → ${queryEmail}`)
+        console.info(`✅ Stripe session fallback: ${sessionId} → ${queryEmail}`)
       }
     }
   }

@@ -45,16 +45,16 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (report?.status === 'completed') {
-      console.log(`⏭️ 報告 ${reportId} 已完成，跳過重複觸發`)
+      console.info(`⏭️ 報告 ${reportId} 已完成，跳過重複觸發`)
       return NextResponse.json({ success: true, skipped: true, reason: '已完成' })
     }
 
     if (report?.status === 'generating') {
-      console.log(`⏭️ 報告 ${reportId} 正在生成中，跳過重複觸發`)
+      console.info(`⏭️ 報告 ${reportId} 正在生成中，跳過重複觸發`)
       return NextResponse.json({ success: true, skipped: true, reason: '正在生成中' })
     }
 
-    console.log(`啟動報告生成 workflow: ${reportId}`)
+    console.info(`啟動報告生成 workflow: ${reportId}`)
     const run = await start(generateReportWorkflow, [reportId])
 
     return NextResponse.json({

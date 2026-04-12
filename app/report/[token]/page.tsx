@@ -6,6 +6,7 @@ import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
 import ShareCard from '@/components/ShareCard'
 import SectionExpander from '@/components/SectionExpander'
+import CollapsibleSection from '@/components/CollapsibleSection'
 import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
 
 // ============================================================
@@ -371,6 +372,10 @@ function renderInlineMarkdown(text: string): string {
     .replace(/===TOP5_JSON_START===/g, '')
     .replace(/===TOP5_JSON_END===/g, '')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
+    // 斜體（排除已被粗體處理的 **）
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    // 行內程式碼
+    .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:0.9em">$1</code>')
     .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
     .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
     .replace(/🔧/g, '<span style="color:#c9a84c">🔧</span>')
@@ -941,15 +946,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {isChumenji && chumenjiAnalysis.length > 0 && (
           <div className="mb-8">
             {chumenjiAnalysis.map((sec, i) => (
-              <div key={`analysis-${i}`} className="section-card glass" style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}>
-                <div className="flex items-center gap-3 mb-4">
+              <CollapsibleSection
+                key={`analysis-${i}`}
+                title={sec.title}
+                titleColor="var(--color-gold)"
+                icon={
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(197,150,58,0.15)' }}>
                     {report.plan_code === 'E1' ? '⚔' : '📅'}
                   </div>
-                  <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
-                </div>
+                }
+                defaultExpanded={true}
+                className="glass"
+                style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
+              >
                 <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-              </div>
+              </CollapsibleSection>
             ))}
           </div>
         )}
@@ -1062,13 +1073,18 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {isChumenji && chumenjiGuide.length > 0 && (
           <div className="mb-8">
             {chumenjiGuide.map((sec, i) => (
-              <div key={`guide-${i}`} className="section-card" style={{ background: 'rgba(197,150,58,0.06)', border: '1px solid rgba(197,150,58,0.15)' }}>
-                <div className="flex items-center gap-2.5 mb-5">
+              <CollapsibleSection
+                key={`guide-${i}`}
+                title={sec.title}
+                titleColor="var(--color-gold)"
+                icon={
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(197,150,58,0.15)' }}>&#9788;</div>
-                  <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
-                </div>
+                }
+                defaultExpanded={true}
+                style={{ background: 'rgba(197,150,58,0.06)', border: '1px solid rgba(197,150,58,0.15)' }}
+              >
                 <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-              </div>
+              </CollapsibleSection>
             ))}
           </div>
         )}
@@ -1077,29 +1093,38 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {isChumenji && chumenjiWarnings.length > 0 && (
           <div className="mb-8">
             {chumenjiWarnings.map((sec, i) => (
-              <div key={`warn-${i}`} className="section-card" style={{ background: 'rgba(224,150,58,0.06)', border: '1px solid rgba(224,150,58,0.15)' }}>
-                <div className="flex items-center gap-2.5 mb-5">
+              <CollapsibleSection
+                key={`warn-${i}`}
+                title={sec.title}
+                titleColor="#e0963a"
+                icon={
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: 'rgba(224,150,58,0.15)' }}>⚡</div>
-                  <h2 className="text-lg font-semibold" style={{ color: '#e0963a', fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
-                </div>
+                }
+                defaultExpanded={true}
+                style={{ background: 'rgba(224,150,58,0.06)', border: '1px solid rgba(224,150,58,0.15)' }}
+              >
                 <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-              </div>
+              </CollapsibleSection>
             ))}
           </div>
         )}
 
         {/* ──── 出門訣 E1/E2 專屬：其餘章節 ──── */}
         {isChumenji && chumenjiOther.map((sec, i) => (
-          <div key={`other-${i}`} className="glass section-card" style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-xs text-gold/40 font-mono font-bold">{String(i + 1).padStart(2, '0')}</span>
-              <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
-            </div>
+          <CollapsibleSection
+            key={`other-${i}`}
+            title={sec.title}
+            titleColor="var(--color-gold)"
+            chapterLabel={<span className="text-xs text-gold/40 font-mono font-bold">{String(i + 1).padStart(2, '0')}</span>}
+            defaultExpanded={true}
+            className="glass"
+            style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
+          >
             <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-          </div>
+          </CollapsibleSection>
         ))}
 
-        {/* ──── 報告章節（保留原始順序，依類型套用不同視覺）──── */}
+        {/* ──── 報告章節（保留原始順序，依類型套用不同視覺 + 折疊/展開）──── */}
         {sections.map((sec, i) => {
           // 三大核心區塊的視覺配置
           const sectionStyles: Record<string, { bg: string; border: string; iconBg: string; icon: string; titleColor: string }> = {
@@ -1107,36 +1132,46 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             caution: { bg: 'rgba(224, 150, 58, 0.06)', border: '1px solid rgba(224, 150, 58, 0.15)', iconBg: 'rgba(224, 150, 58, 0.15)', icon: '⚡', titleColor: '#e0963a' },
             improvement: { bg: 'rgba(197, 150, 58, 0.06)', border: '1px solid rgba(197, 150, 58, 0.15)', iconBg: 'rgba(197, 150, 58, 0.15)', icon: '🔑', titleColor: 'var(--color-gold)' },
           }
-          const style = sectionStyles[sec.type]
+          const sStyle = sectionStyles[sec.type]
           const chapterNum = i + 1
 
-          if (style) {
+          if (sStyle) {
             // 三大核心區塊：有圖標、有色彩背景
             return (
-              <div id={`sec-${i}`} key={i} className="section-card" style={{ background: style.bg, border: style.border }}>
-                <div className="flex items-center gap-2.5 mb-5">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: style.iconBg }}>{style.icon}</div>
-                  <h2 className="text-lg font-semibold" style={{ color: style.titleColor, fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
-                  <span className="ml-auto text-xs opacity-30 font-mono">{chapterNum}/{sections.length}</span>
-                </div>
+              <CollapsibleSection
+                key={i}
+                id={`sec-${i}`}
+                title={sec.title}
+                titleColor={sStyle.titleColor}
+                icon={
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: sStyle.iconBg }}>{sStyle.icon}</div>
+                }
+                defaultExpanded={true}
+                style={{ background: sStyle.bg, border: sStyle.border }}
+              >
                 <div className="report-p">
                   <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
                 </div>
-              </div>
+              </CollapsibleSection>
             )
           }
 
           // 一般章節：glass card，左側金色豎條
           return (
-            <div id={`sec-${i}`} key={i} className="glass section-card" style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-xs text-gold/40 font-mono font-bold">{String(chapterNum).padStart(2, '0')}</span>
-                <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>{sec.title}</h2>
-              </div>
+            <CollapsibleSection
+              key={i}
+              id={`sec-${i}`}
+              title={sec.title}
+              titleColor="var(--color-gold)"
+              chapterLabel={<span className="text-xs text-gold/40 font-mono font-bold">{String(chapterNum).padStart(2, '0')}</span>}
+              defaultExpanded={true}
+              className="glass"
+              style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
+            >
               <div className="report-p">
                 <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
               </div>
-            </div>
+            </CollapsibleSection>
           )
         })}
 

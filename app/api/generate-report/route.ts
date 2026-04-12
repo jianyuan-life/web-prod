@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import {
   getAgeGroup,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
@@ -707,11 +708,11 @@ export async function POST(req: NextRequest) {
 
     // 防重複生成：已完成或正在生成中的報告直接跳過
     if (existingReport?.status === 'completed') {
-      console.log(`報告 ${reportId} 已完成，跳過 Fallback 重複生成`)
+      console.info(`報告 ${reportId} 已完成，跳過 Fallback 重複生成`)
       return NextResponse.json({ message: '報告已完成' })
     }
     if (existingReport?.status === 'generating') {
-      console.log(`報告 ${reportId} 正在生成中，跳過 Fallback 重複觸發`)
+      console.info(`報告 ${reportId} 正在生成中，跳過 Fallback 重複觸發`)
       return NextResponse.json({ message: '報告正在生成中' })
     }
 
@@ -735,7 +736,7 @@ export async function POST(req: NextRequest) {
 
     // G15 家族藍圖必須走 Workflow，舊版 route 不支援
     if (planCode === 'G15' && (birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports')) {
-      console.log('G15 家族藍圖應走 Workflow，此路由不支援')
+      console.info('G15 家族藍圖應走 Workflow，此路由不支援')
       await markReportFailed(reportId, 'G15 家族藍圖需透過 Workflow 生成，請重試')
       return NextResponse.json({ error: 'G15 需透過 Workflow 生成' }, { status: 400 })
     }
@@ -760,12 +761,12 @@ export async function POST(req: NextRequest) {
       .select('id')
 
     if (claimErr || !claimed?.length) {
-      console.log(`報告 ${reportId} 狀態搶佔失敗，可能已被其他程序處理`)
+      console.info(`報告 ${reportId} 狀態搶佔失敗，可能已被其他程序處理`)
       return NextResponse.json({ message: '報告已被其他程序處理' })
     }
 
     // Step 1: 呼叫 Python API 排盤
-    console.log(`開始生成報告: ${reportId}, 方案${planCode}, 第 ${retryCount + 1} 次嘗試`)
+    console.info(`開始生成報告: ${reportId}, 方案${planCode}, 第 ${retryCount + 1} 次嘗試`)
 
     let calcResult = null
     try {
@@ -906,7 +907,7 @@ ${analyses.length}套系統排盤完整數據：
 
     // ── DeepSeek fallback 呼叫函式 ──
     async function callDeepSeekFallback(systemPrompt: string, userPrompt: string): Promise<string> {
-      console.log('Fallback: 呼叫 DeepSeek 生成報告...')
+      console.info('Fallback: 呼叫 DeepSeek 生成報告...')
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 180000)
       const res = await fetch(DEEPSEEK_API, {
@@ -926,19 +927,18 @@ ${analyses.length}套系統排盤完整數據：
       clearTimeout(timeout)
       const data = await res.json()
       const content = data.choices?.[0]?.message?.content || ''
-      console.log(`DeepSeek 回覆: ${content.length} 字`)
+      console.info(`DeepSeek 回覆: ${content.length} 字`)
       return content
     }
 
-    console.log(`方案 ${planCode}：開始 AI 生成...`)
-    console.log(`CLAUDE_API_KEY 狀態: ${CLAUDE_API_KEY ? '已設定' : '❌ 未設定！'}`)
+    console.info(`方案 ${planCode}：開始 AI 生成...`)
 
     if (planCode === 'C') {
       // ============================================================
       // C 方案 Fallback：單次 Claude 呼叫（受 Vercel 300s 限制）
       // 主流程由 Workflow 處理（4-call 順序），這裡是備援
       // ============================================================
-      console.log('C 方案 Fallback：使用 Claude Opus 4.6 單次呼叫...')
+      console.info('C 方案 Fallback：使用 Claude Opus 4.6 單次呼叫...')
 
       if (CLAUDE_API_KEY) {
         try {
@@ -951,7 +951,7 @@ ${analyses.length}套系統排盤完整數據：
           // Fallback 單次呼叫，清理後直接使用
           reportContent = cleanAIResponse(rawResult)
           aiModelUsed = 'claude-opus-4-6'
-          console.log(`C 方案 Fallback Claude 單次呼叫完成：${reportContent.length} 字`)
+          console.info(`C 方案 Fallback Claude 單次呼叫完成：${reportContent.length} 字`)
         } catch (e) {
           console.error('C 方案 Claude 多步生成失敗，嘗試 DeepSeek fallback:', e)
         }
@@ -965,7 +965,7 @@ ${analyses.length}套系統排盤完整數據：
           const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
           reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt()))
           aiModelUsed = 'deepseek-chat'
-          console.log(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
+          console.info(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
         } catch (e) {
           console.error('C 方案 DeepSeek fallback 也失敗:', e)
           await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
@@ -982,10 +982,10 @@ ${analyses.length}套系統排盤完整數據：
       // 先嘗試 Claude
       if (CLAUDE_API_KEY) {
         try {
-          console.log(`方案 ${planCode}：嘗試 Claude Opus 4.6 單次呼叫...`)
+          console.info(`方案 ${planCode}：嘗試 Claude Opus 4.6 單次呼叫...`)
           reportContent = cleanAIResponse(await callClaudeStreaming(systemPrompt, userPrompt, 32768))
           aiModelUsed = 'claude-opus-4-6'
-          console.log(`方案 ${planCode} Claude 回覆：${reportContent.length} 字`)
+          console.info(`方案 ${planCode} Claude 回覆：${reportContent.length} 字`)
         } catch (e) {
           console.error(`方案 ${planCode} Claude 呼叫失敗，嘗試 DeepSeek fallback:`, e)
         }
@@ -998,7 +998,7 @@ ${analyses.length}套系統排盤完整數據：
         try {
           reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, userPrompt))
           aiModelUsed = 'deepseek-chat'
-          console.log(`方案 ${planCode} DeepSeek fallback 完成：${reportContent.length} 字`)
+          console.info(`方案 ${planCode} DeepSeek fallback 完成：${reportContent.length} 字`)
         } catch (e) {
           console.error(`方案 ${planCode} DeepSeek fallback 也失敗:`, e)
           await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
@@ -1027,7 +1027,7 @@ ${analyses.length}套系統排盤完整數據：
         top5Timings = JSON.parse(top5Match[1])
         // 從正文中移除 JSON 區塊，保持乾淨
         reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
-        console.log(`✅ 解析到 ${top5Timings.length} 筆吉時資料`)
+        console.info(`✅ 解析到 ${top5Timings.length} 筆吉時資料`)
       } catch (e) {
         console.error('Top5 JSON 解析失敗:', e)
         // 解析失敗仍然要移除 JSON 標記，避免原始 JSON 顯示給客戶
@@ -1058,7 +1058,7 @@ ${analyses.length}套系統排盤完整數據：
     let pdfUrl: string | null = null
     if (!['E1', 'E2'].includes(planCode)) {
       try {
-        console.log('呼叫 Python API 生成 PDF...')
+        console.info('呼叫 Python API 生成 PDF...')
         // PDF 專用預處理：轉換 Markdown 格式為 PDF 友好格式
         const pdfContent = reportContent
           .replace(/^---+$/gm, '')           // 標準 markdown 橫線
@@ -1126,7 +1126,7 @@ ${analyses.length}套系統排盤完整數據：
                 .from('reports')
                 .getPublicUrl(storagePath)
               pdfUrl = urlData.publicUrl
-              console.log(`✅ PDF 上傳完成: ${pdfUrl} (${pdfData.file_size_kb}KB)`)
+              console.info(`✅ PDF 上傳完成: ${pdfUrl} (${pdfData.file_size_kb}KB)`)
             }
           }
         } else {
@@ -1243,6 +1243,7 @@ ${analyses.length}套系統排盤完整數據：
     <div style="text-align:center;color:#4b5563;font-size:12px;line-height:1.8;">
       <p>${emailText.footer} <a href="mailto:support@jianyuan.life" style="color:#c9a84c;">support@jianyuan.life</a></p>
       <p style="margin-top:8px;">${emailText.copyright}</p>
+      ${getUnsubscribeHtml(customerEmail)}
     </div>
   </div>
 </body>
@@ -1254,7 +1255,7 @@ ${analyses.length}套系統排盤完整數據：
           .update({ email_sent_at: new Date().toISOString() })
           .eq('id', reportId)
 
-        console.log(`✅ Email 已寄送至 ${customerEmail}`)
+        console.info(`✅ Email 已寄送至 ${customerEmail}`)
       } catch (emailErr) {
         console.error('Email 寄送失敗:', emailErr)
         // 不讓 email 失敗影響整體回傳

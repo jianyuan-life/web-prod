@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '建立推薦關係失敗' }, { status: 500 })
     }
 
-    console.log(`✅ 推薦關係建立：${code} → ${userId}`)
+    console.info(`✅ 推薦關係建立：${code} → ${userId}`)
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })

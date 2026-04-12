@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 
 function getStripe() {
   // @ts-expect-error - Stripe SDK version mismatch
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     const amount = (session.amount_total || 0) / 100
     const customerEmail = (session.customer_details?.email || session.customer_email || '').toLowerCase()
 
-    console.log(`✅ 付款成功！方案${planCode}, $${amount}`)
+    console.info(`✅ 付款成功！方案${planCode}, $${amount}`)
 
     const supabase = getSupabase()
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
 
     if (existingReport) {
-      console.log(`⚠️ Stripe session ${session.id} 已處理過（報告 ${existingReport.id}，狀態 ${existingReport.status}），跳過`)
+      console.info(`⚠️ Stripe session ${session.id} 已處理過（報告 ${existingReport.id}，狀態 ${existingReport.status}），跳過`)
       return NextResponse.json({ received: true, duplicate: true })
     }
 
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
       }
       reportId = insertData?.id || ''
       accessToken = insertData?.access_token || ''
-      console.log('✅ 報告記錄已建立:', reportId)
+      console.info('✅ 報告記錄已建立:', reportId)
     } catch (err) {
       console.error('❌ Supabase 連線異常（嚴重）:', err)
       return NextResponse.json({ error: 'Supabase connection error' }, { status: 500 })
@@ -124,7 +125,7 @@ export async function POST(req: NextRequest) {
     // 呼叫 Fly.io 異步報告生成 Pipeline（無超時限制，完整排盤數據）
     if (birthData && reportId) {
       try {
-        console.log('觸發 Workflow 報告生成...')
+        console.info('觸發 Workflow 報告生成...')
         const additionalData = birthData.additionalPeople ? JSON.parse(birthData.additionalPeople) : undefined
 
         // 注入 locale（報告語言：zh-TW 繁體 / zh-CN 簡體）
@@ -259,10 +260,11 @@ export async function POST(req: NextRequest) {
                 </p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
                 <p style="font-size: 11px; color: #bbb; text-align: center;">鑒源命理 jianyuan.life</p>
+                ${getUnsubscribeHtml(customerEmail)}
               </div>
             `,
           })
-          console.log('✅ 訂單確認信已發送:', customerEmail)
+          console.info('✅ 訂單確認信已發送:', customerEmail)
         } catch (emailErr) {
           console.error('訂單確認信發送失敗（不影響報告生成）:', emailErr)
         }
@@ -284,7 +286,7 @@ export async function POST(req: NextRequest) {
 
           if (workflowRes.ok) {
             workflowTriggered = true
-            console.log('✅ Workflow 觸發成功')
+            console.info('✅ Workflow 觸發成功')
           } else {
             console.error('❌ Workflow 觸發失敗:', await workflowRes.text())
           }
@@ -294,7 +296,7 @@ export async function POST(req: NextRequest) {
 
         // Fallback: 直接呼叫 generate-report
         if (!workflowTriggered) {
-          console.log('⚠️ Workflow 失敗，啟動 Fallback...')
+          console.info('⚠️ Workflow 失敗，啟動 Fallback...')
           try {
             const fallbackController = new AbortController()
             const fallbackTimeout = setTimeout(() => fallbackController.abort(), 8000) // 8 秒超時
@@ -308,7 +310,7 @@ export async function POST(req: NextRequest) {
             clearTimeout(fallbackTimeout)
 
             if (fallbackRes.ok) {
-              console.log('✅ Fallback 觸發成功')
+              console.info('✅ Fallback 觸發成功')
             } else {
               // 兩者都失敗，記錄到 Supabase
               const errText = await fallbackRes.text().catch(() => 'unknown')
@@ -329,18 +331,53 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // === 點數折抵扣除（付款成功才真正扣） ===
+    // === 點數折抵扣除（付款成功才真正扣）— 原子操作版 ===
     try {
       const pointsUsed = parseInt(session.metadata?.points_used || '0')
       const pointsUserId = session.metadata?.points_user_id || ''
       if (pointsUsed > 0 && pointsUserId) {
-        const { data: pts } = await supabase.from('user_points').select('balance, total_used').eq('user_id', pointsUserId).single()
-        if (pts && pts.balance >= pointsUsed) {
-          const newBalance = pts.balance - pointsUsed
-          await supabase.from('user_points').update({
-            balance: newBalance,
-            total_used: (pts.total_used || 0) + pointsUsed,
-          }).eq('user_id', pointsUserId)
+        // 原子操作：用 .gte('balance', pointsUsed) 確保餘額足夠才扣除，防止併發導致負數
+        const { data: updated, error: deductErr } = await supabase.rpc('deduct_points', {
+          p_user_id: pointsUserId,
+          p_amount: pointsUsed,
+        })
+
+        // 如果 RPC 不存在，fallback 為帶條件的 update（仍比 read-then-write 安全）
+        if (deductErr?.message?.includes('function') || deductErr?.code === '42883') {
+          console.warn('⚠️ deduct_points RPC 不存在，使用 fallback 帶條件更新')
+          const { data: pts } = await supabase
+            .from('user_points')
+            .select('balance, total_used')
+            .eq('user_id', pointsUserId)
+            .gte('balance', pointsUsed)
+            .single()
+
+          if (pts) {
+            const newBalance = pts.balance - pointsUsed
+            const { error: updateErr } = await supabase
+              .from('user_points')
+              .update({
+                balance: newBalance,
+                total_used: (pts.total_used || 0) + pointsUsed,
+              })
+              .eq('user_id', pointsUserId)
+              .gte('balance', pointsUsed) // 二次確認：防止在 select 和 update 之間被其他請求修改
+
+            if (!updateErr) {
+              await supabase.from('point_transactions').insert({
+                user_id: pointsUserId,
+                type: 'use_checkout',
+                amount: -pointsUsed,
+                balance_after: newBalance,
+                description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
+                reference_id: session.id,
+              })
+              console.info(`✅ 點數扣除（fallback）：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)
+            }
+          }
+        } else if (!deductErr && updated !== null) {
+          // RPC 成功，updated 為新餘額
+          const newBalance = typeof updated === 'number' ? updated : 0
           await supabase.from('point_transactions').insert({
             user_id: pointsUserId,
             type: 'use_checkout',
@@ -349,7 +386,7 @@ export async function POST(req: NextRequest) {
             description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
             reference_id: session.id,
           })
-          console.log(`✅ 點數扣除：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)
+          console.info(`✅ 點數扣除（RPC）：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)
         }
       }
     } catch (ptsErr) {
@@ -417,67 +454,48 @@ export async function POST(req: NextRequest) {
                 })
                 .eq('id', referral.id)
 
-              // 推薦人加點數（upsert）
-              const { data: referrerPoints } = await supabase
-                .from('user_points')
-                .select('id, balance, total_earned')
-                .eq('user_id', referrerId)
-                .maybeSingle()
+              // 推薦人加點數 — 安全加值（先查後更新，不存在則新建）
+              // 注意：推薦碼獎勵有冪等保護（referrals.status 已更新為 purchased），所以併發風險低
+              async function addPointsSafe(targetUserId: string, points: number): Promise<number> {
+                const { data: existing } = await supabase
+                  .from('user_points')
+                  .select('balance, total_earned')
+                  .eq('user_id', targetUserId)
+                  .maybeSingle()
 
-              if (referrerPoints) {
-                await supabase
-                  .from('user_points')
-                  .update({
-                    balance: (referrerPoints.balance || 0) + REFERRER_POINTS,
-                    total_earned: (referrerPoints.total_earned || 0) + REFERRER_POINTS,
-                  })
-                  .eq('user_id', referrerId)
-              } else {
-                await supabase
-                  .from('user_points')
-                  .insert({
-                    user_id: referrerId,
-                    balance: REFERRER_POINTS,
-                    total_earned: REFERRER_POINTS,
-                    total_used: 0,
-                  })
+                if (existing) {
+                  const newBal = (existing.balance || 0) + points
+                  await supabase
+                    .from('user_points')
+                    .update({
+                      balance: newBal,
+                      total_earned: (existing.total_earned || 0) + points,
+                    })
+                    .eq('user_id', targetUserId)
+                  return newBal
+                } else {
+                  await supabase
+                    .from('user_points')
+                    .insert({
+                      user_id: targetUserId,
+                      balance: points,
+                      total_earned: points,
+                      total_used: 0,
+                    })
+                  return points
+                }
               }
 
-              // 被推薦人加點數（upsert）
-              const { data: referredPoints } = await supabase
-                .from('user_points')
-                .select('id, balance, total_earned')
-                .eq('user_id', userId)
-                .maybeSingle()
-
-              if (referredPoints) {
-                await supabase
-                  .from('user_points')
-                  .update({
-                    balance: (referredPoints.balance || 0) + REFERRED_POINTS,
-                    total_earned: (referredPoints.total_earned || 0) + REFERRED_POINTS,
-                  })
-                  .eq('user_id', userId)
-              } else {
-                await supabase
-                  .from('user_points')
-                  .insert({
-                    user_id: userId,
-                    balance: REFERRED_POINTS,
-                    total_earned: REFERRED_POINTS,
-                    total_used: 0,
-                  })
-              }
+              const referrerFinalBalance = await addPointsSafe(referrerId, REFERRER_POINTS)
+              const referredFinalBalance = await addPointsSafe(userId, REFERRED_POINTS)
 
               // 寫入 point_transactions（含 balance_after）
-              const referrerNewBalance = (referrerPoints?.balance || 0) + REFERRER_POINTS
-              const referredNewBalance = (referredPoints?.balance || 0) + REFERRED_POINTS
               await supabase.from('point_transactions').insert([
                 {
                   user_id: referrerId,
                   type: 'earn_referral',
                   amount: REFERRER_POINTS,
-                  balance_after: referrerNewBalance,
+                  balance_after: referrerFinalBalance,
                   description: `推薦用戶首次購買獎勵`,
                   reference_id: referral.id,
                   expires_at: expiresAt,
@@ -486,14 +504,14 @@ export async function POST(req: NextRequest) {
                   user_id: userId,
                   type: 'earn_referral',
                   amount: REFERRED_POINTS,
-                  balance_after: referredNewBalance,
+                  balance_after: referredFinalBalance,
                   description: '透過推薦碼註冊並首次購買獎勵',
                   reference_id: referral.id,
                   expires_at: expiresAt,
                 },
               ])
 
-              // 更新 referral_codes.total_referrals
+              // 更新 referral_codes.total_referrals（帶條件更新）
               if (referral.referral_code) {
                 const { data: codeRow } = await supabase
                   .from('referral_codes')
@@ -509,9 +527,9 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              console.log(`✅ 推薦碼點數發放完成：推薦人 ${referrerId} +${REFERRER_POINTS}點，被推薦人 ${userId} +${REFERRED_POINTS}點`)
+              console.info(`✅ 推薦碼點數發放完成：推薦人 ${referrerId} +${REFERRER_POINTS}點，被推薦人 ${userId} +${REFERRED_POINTS}點`)
             } else {
-              console.log('ℹ️ 非首次購買，跳過推薦碼點數發放')
+              console.info('ℹ️ 非首次購買，跳過推薦碼點數發放')
             }
           }
         }

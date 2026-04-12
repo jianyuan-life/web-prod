@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import crypto from 'crypto'
+import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 
 function getSupabase() {
   return createClient(
@@ -264,6 +265,7 @@ export async function POST(req: NextRequest) {
                 </p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
                 <p style="font-size: 12px; color: #999;">鑒源命理 jianyuan.life</p>
+                ${getUnsubscribeHtml(customerEmail)}
               </div>
             `,
           })

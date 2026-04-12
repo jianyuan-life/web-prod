@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 
 // Vercel Cron 最長執行時間 60 秒
 export const maxDuration = 60
@@ -78,6 +79,17 @@ export async function GET(req: NextRequest) {
       continue
     }
 
+    // 排除已退訂的 email
+    const { data: unsub } = await supabase
+      .from('email_unsubscribes')
+      .select('email')
+      .eq('email', report.customer_email.toLowerCase())
+      .maybeSingle()
+    if (unsub) {
+      skippedCount++
+      continue
+    }
+
     // 發送反饋郵件
     try {
       const reportUrl = `https://jianyuan.life/report/${report.access_token}`
@@ -98,6 +110,7 @@ export async function GET(req: NextRequest) {
         reportUrl,
         emailFont,
         isCN,
+        customerEmail: report.customer_email,
       })
 
       await resend.emails.send({
@@ -118,7 +131,7 @@ export async function GET(req: NextRequest) {
       }).eq('id', report.id)
 
       sentCount++
-      console.log(`✅ 反饋郵件已寄送至 ${report.customer_email}（報告 ${report.id}）`)
+      console.info(`✅ 反饋郵件已寄送至 ${report.customer_email}（報告 ${report.id}）`)
     } catch (err) {
       console.error(`❌ 反饋郵件寄送失敗（報告 ${report.id}）:`, err)
     }
@@ -150,8 +163,9 @@ function buildFeedbackEmailHtml(params: {
   reportUrl: string
   emailFont: string
   isCN: boolean
+  customerEmail: string
 }): string {
-  const { clientName, reportUrl, emailFont, isCN } = params
+  const { clientName, reportUrl, emailFont, isCN, customerEmail } = params
 
   const text = {
     brand: isCN ? '鉴 源' : '鑒 源',
@@ -215,6 +229,7 @@ function buildFeedbackEmailHtml(params: {
     <div style="text-align:center;color:#4b5563;font-size:12px;line-height:1.8;">
       <p>${text.footer} <a href="mailto:support@jianyuan.life" style="color:#c9a84c;">support@jianyuan.life</a></p>
       <p style="margin-top:8px;">${text.copyright}</p>
+      ${getUnsubscribeHtml(customerEmail)}
     </div>
   </div>
 </body>

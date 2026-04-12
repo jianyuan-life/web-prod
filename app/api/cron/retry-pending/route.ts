@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
           status: 'failed',
           error_message: `重試 ${currentRetry} 次仍失敗，請人工介入`,
         }).eq('id', report.id)
-        console.log(`⚠️ 報告 ${report.id} 超過重試上限，標記為 failed`)
+        console.info(`⚠️ 報告 ${report.id} 超過重試上限，標記為 failed`)
       }
       continue
     }
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
       .select('id')
 
     if (grabErr || !grabbed?.length) {
-      console.log(`⏭️ 報告 ${report.id} 已被其他程序處理，跳過`)
+      console.info(`⏭️ 報告 ${report.id} 已被其他程序處理，跳過`)
       continue
     }
 
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
       clearTimeout(timeout)
 
       retriedCount++
-      console.log(`✅ 重試報告 ${report.id}（第${currentRetry + 1}次）`)
+      console.info(`✅ 重試報告 ${report.id}（第${currentRetry + 1}次）`)
     } catch (err) {
       console.error(`❌ 重試報告 ${report.id} 失敗:`, err)
     }
@@ -133,10 +133,10 @@ export async function GET(req: NextRequest) {
         error_message: `生成超時：Workflow 執行超過 60 分鐘且無活動（啟動: ${startedAt}，最後活動: ${lastActivity}）`,
       }).eq('id', report.id).eq('status', 'generating')
       timedOutCount++
-      console.log(`⏰ 報告 ${report.id} 生成超時（60 分鐘+無活動），標記為 failed`)
+      console.info(`⏰ 報告 ${report.id} 生成超時（60 分鐘+無活動），標記為 failed`)
     } else {
       const elapsed = Math.round((Date.now() - startedTime) / 1000)
-      console.log(`⏳ 報告 ${report.id} 正在生成中（已 ${elapsed} 秒），不干預`)
+      console.info(`⏳ 報告 ${report.id} 正在生成中（已 ${elapsed} 秒），不干預`)
     }
   }
 

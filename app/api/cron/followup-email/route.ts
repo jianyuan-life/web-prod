@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 
 export const maxDuration = 60
 
@@ -145,6 +146,17 @@ export async function GET(req: NextRequest) {
       continue
     }
 
+    // 排除已退訂的 email
+    const { data: unsub } = await supabase
+      .from('email_unsubscribes')
+      .select('email')
+      .eq('email', report.customer_email.toLowerCase())
+      .maybeSingle()
+    if (unsub) {
+      skippedCount++
+      continue
+    }
+
     // 出門訣報告不發跟進信（已含出門訣引導 CTA，改為引導其他方案）
     const planCode = report.plan_code || 'C'
     const planName = PLAN_NAMES[planCode] || '命理分析'
@@ -211,7 +223,8 @@ export async function GET(req: NextRequest) {
             </div>
 
             <hr style="border: none; border-top: 1px solid #eee; margin: 28px 0;" />
-            <p style="font-size: 11px; color: #bbb; text-align: center;">鑒源命理 jianyuan.life<br/>如不想收到此類郵件，請回覆此信告知。</p>
+            <p style="font-size: 11px; color: #bbb; text-align: center;">鑒源命理 jianyuan.life</p>
+            ${getUnsubscribeHtml(report.customer_email)}
           </div>
         `,
       })
@@ -227,7 +240,7 @@ export async function GET(req: NextRequest) {
       }).eq('id', report.id)
 
       sentCount++
-      console.log(`✅ 跟進信已發送: ${report.customer_email} (${planName})`)
+      console.info(`✅ 跟進信已發送: ${report.customer_email} (${planName})`)
     } catch (emailErr) {
       console.error(`❌ 跟進信發送失敗 ${report.id}:`, emailErr)
     }

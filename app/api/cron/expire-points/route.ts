@@ -67,7 +67,6 @@ export async function GET(req: NextRequest) {
 
     if (actualDeduct <= 0) {
       // 餘額已經是 0，只需要標記交易為已過期
-      // 把原始交易的 amount 設為 0 表示已處理
       for (const txId of txIds) {
         await supabase
           .from('point_transactions')
@@ -79,14 +78,21 @@ export async function GET(req: NextRequest) {
 
     const newBalance = currentBalance - actualDeduct
 
-    // 更新用戶餘額
-    const { error: updateErr } = await supabase
+    // 原子更新用戶餘額：帶 .gte('balance', actualDeduct) 條件防止併發扣成負數
+    const { error: updateErr, count: updateCount } = await supabase
       .from('user_points')
       .update({ balance: newBalance })
       .eq('user_id', userId)
+      .gte('balance', actualDeduct) // 確保餘額足夠才扣除
 
     if (updateErr) {
       console.error(`❌ 更新用戶 ${userId} 餘額失敗:`, updateErr)
+      continue
+    }
+
+    // 如果 .gte 條件不滿足（餘額在查詢後被其他操作扣減），count 會是 0
+    if (updateCount === 0) {
+      console.warn(`⚠️ 用戶 ${userId} 餘額不足以扣除 ${actualDeduct} 點（可能併發操作），跳過`)
       continue
     }
 
@@ -109,7 +115,7 @@ export async function GET(req: NextRequest) {
 
     expiredUsersCount++
     totalExpiredPoints += actualDeduct
-    console.log(`✅ 用戶 ${userId} 過期 ${actualDeduct} 點，餘額 ${currentBalance} → ${newBalance}`)
+    console.info(`✅ 用戶 ${userId} 過期 ${actualDeduct} 點，餘額 ${currentBalance} → ${newBalance}`)
   }
 
   return NextResponse.json({

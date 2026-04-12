@@ -7,6 +7,7 @@ import { getWritable } from 'workflow'
 import { FatalError, RetryableError } from 'workflow'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import {
   getAgeGroup,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
@@ -1595,6 +1596,10 @@ export async function generatePDF(
       ai_content: pdfContent,
       locale: birthData.locale || 'zh-TW',
       analyses_summary: analyses,
+      // PDF 版面增強：品牌頁首頁尾 + 目錄頁 + 緊湊封面
+      show_header_footer: true,  // 每頁顯示品牌 logo + 頁碼 + 客戶名
+      show_toc_page: true,       // 第 2 頁加目錄
+      cover_style: 'compact',    // 封面不要太多空白
     }),
   })
 
@@ -2108,6 +2113,7 @@ export async function sendReportEmail(
     <div style="text-align:center;color:#4b5563;font-size:12px;line-height:1.8;">
       <p>${emailText.footer} <a href="mailto:support@jianyuan.life" style="color:#c9a84c;">support@jianyuan.life</a></p>
       <p style="margin-top:8px;">${emailText.copyright}</p>
+      ${getUnsubscribeHtml(customerEmail)}
     </div>
   </div>
 </body>

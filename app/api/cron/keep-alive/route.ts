@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const status = res.status
     const body = await res.text().catch(() => '')
 
-    console.log(`Fly.io 保活 ping: ${status} (${body.slice(0, 100)})`)
+    console.info(`Fly.io 保活 ping: ${status} (${body.slice(0, 100)})`)
 
     return NextResponse.json({
       ok: res.ok,
