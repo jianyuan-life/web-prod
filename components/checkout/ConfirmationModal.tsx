@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { SHICHEN } from './types'
 
 const TIME_BLOCK_NAMES = [
@@ -14,8 +15,11 @@ interface ConfirmationModalProps {
   onConfirm: () => void
   planCode: string
   finalPrice?: number
+  totalPrice?: number
   pointsUsed?: number
   pointsDiscount?: number
+  onPointsChange?: (pts: number, discount: number) => void
+  couponApplied?: { code: string; discountAmount: number } | null
   form: {
     name: string
     year: string
@@ -38,7 +42,7 @@ interface ConfirmationModalProps {
 export default function ConfirmationModal({
   show, onClose, onConfirm, planCode, form, timeMode, loading,
   e1StartDate, e1EndDate, eSelectedBlocks, customerNote,
-  finalPrice, pointsUsed, pointsDiscount,
+  finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied,
 }: ConfirmationModalProps) {
   if (!show) return null
 
@@ -130,22 +134,21 @@ export default function ConfirmationModal({
           </p>
         </div>
 
-        {/* 積分折抵顯示 */}
-        {(pointsUsed || 0) > 0 && (
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 mb-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-green-300">積分折抵</span>
-              <span className="text-sm font-bold text-green-400">-${pointsDiscount || 0}</span>
-            </div>
-            <p className="text-[10px] text-green-400/60 mt-1">使用 {pointsUsed} 點積分</p>
-          </div>
-        )}
+        {/* 積分折抵（嵌入彈窗內） */}
+        <ModalPointsRedeem
+          totalPrice={totalPrice || finalPrice || 0}
+          pointsUsed={pointsUsed || 0}
+          pointsDiscount={pointsDiscount || 0}
+          onPointsChange={onPointsChange}
+          hasCoupon={!!couponApplied}
+          planCode={planCode}
+        />
 
         {/* 應付金額 */}
         {finalPrice !== undefined && (
-          <div className="flex justify-between items-center mb-4 px-1">
+          <div className="flex justify-between items-center mb-4 px-2 py-2 rounded-lg" style={{ background: 'rgba(201,168,76,0.08)' }}>
             <span className="text-sm text-text-muted">應付金額</span>
-            <span className="text-lg font-bold text-gold">${finalPrice}</span>
+            <span className="text-xl font-bold text-gold">${finalPrice}</span>
           </div>
         )}
 
@@ -169,6 +172,72 @@ export default function ConfirmationModal({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// 嵌入確認彈窗的積分折抵元件
+function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsChange, hasCoupon, planCode }: {
+  totalPrice: number; pointsUsed: number; pointsDiscount: number;
+  onPointsChange?: (pts: number, discount: number) => void; hasCoupon: boolean; planCode: string;
+}) {
+  const [balance, setBalance] = useState(0)
+  const [loadingPts, setLoadingPts] = useState(true)
+  const [inputVal, setInputVal] = useState(pointsUsed > 0 ? String(pointsUsed) : '')
+
+  useEffect(() => {
+    fetch('/api/points/balance').then(r => r.json()).then(d => setBalance(d.balance || 0)).catch(() => {}).finally(() => setLoadingPts(false))
+  }, [])
+
+  if (loadingPts) return null
+  if (balance <= 0 && pointsUsed <= 0) return null
+  if (hasCoupon) return null
+
+  const maxPoints = Math.min(balance, totalPrice)
+
+  const applyPoints = async () => {
+    const pts = parseInt(inputVal)
+    if (!pts || pts <= 0 || pts > maxPoints) return
+    try {
+      const res = await fetch('/api/points/use', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pointsToUse: pts, planCode, orderAmount: totalPrice }),
+      })
+      const data = await res.json()
+      if (data.success && onPointsChange) {
+        onPointsChange(data.pointsUsed, data.discountAmount)
+      }
+    } catch { /* ignore */ }
+  }
+
+  const removePoints = () => {
+    setInputVal('')
+    if (onPointsChange) onPointsChange(0, 0)
+  }
+
+  return (
+    <div className="mb-4 rounded-xl p-3" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.15)' }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-green-300">積分折抵</span>
+        <span className="text-[10px] text-green-400/60">可用 {balance} 點（1點=$1）</span>
+      </div>
+      {pointsUsed > 0 ? (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-green-400">已折抵 <strong>{pointsUsed} 點（-${pointsDiscount}）</strong></span>
+          <button onClick={removePoints} className="text-[10px] text-red-400 hover:text-red-300">取消</button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <input value={inputVal} onChange={e => setInputVal(e.target.value.replace(/\D/g, ''))}
+            placeholder={`最多 ${maxPoints} 點`}
+            className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-green-500/40 focus:outline-none" />
+          <button onClick={applyPoints} disabled={!inputVal}
+            className="px-3 py-1.5 bg-green-500/80 text-white text-xs font-semibold rounded-lg hover:bg-green-500 disabled:opacity-40 transition-colors">
+            折抵
+          </button>
+        </div>
+      )}
     </div>
   )
 }

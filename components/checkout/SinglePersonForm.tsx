@@ -41,8 +41,11 @@ interface SinglePersonFormProps {
   loading: boolean
   error: string
   finalPrice: number
+  totalPrice?: number
   pointsUsed?: number
   pointsDiscount?: number
+  onPointsChange?: (pts: number, discount: number) => void
+  couponApplied?: { code: string; discountAmount: number } | null
   isFormValid: boolean
   onSubmit: (e: React.FormEvent) => void
   // 確認彈窗
@@ -59,7 +62,7 @@ export default function SinglePersonForm({
   e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
   eSelectedBlocks, setESelectedBlocks,
   customerNote, setCustomerNote,
-  loading, error, finalPrice, pointsUsed, pointsDiscount, isFormValid, onSubmit,
+  loading, error, finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied, isFormValid, onSubmit,
   showConfirmModal, onCloseConfirmModal, onConfirmCheckout,
 }: SinglePersonFormProps) {
   return (
@@ -248,8 +251,11 @@ export default function SinglePersonForm({
         eSelectedBlocks={eSelectedBlocks}
         customerNote={customerNote}
         finalPrice={finalPrice}
+        totalPrice={totalPrice}
         pointsUsed={pointsUsed}
         pointsDiscount={pointsDiscount}
+        onPointsChange={onPointsChange}
+        couponApplied={couponApplied}
       />
     </form>
   )
