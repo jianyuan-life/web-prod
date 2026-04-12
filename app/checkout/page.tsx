@@ -8,6 +8,7 @@ import SinglePersonForm from '@/components/checkout/SinglePersonForm'
 import RMemberForm from '@/components/checkout/RMemberForm'
 import FamilyMemberField from '@/components/checkout/FamilyMemberField'
 import CustomerNote from '@/components/checkout/CustomerNote'
+import PointsRedeem from '@/components/checkout/PointsRedeem'
 
 function CheckoutForm() {
   const ctx = useCheckoutForm()
@@ -45,6 +46,14 @@ function CheckoutForm() {
           couponError={ctx.couponError}
           setCouponError={ctx.setCouponError}
           applyCoupon={ctx.applyCoupon}
+        />
+
+        {/* 積分折抵（與優惠碼互斥） */}
+        <PointsRedeem
+          planCode={ctx.planCode}
+          orderAmount={ctx.totalPrice}
+          couponApplied={ctx.couponApplied}
+          onPointsChange={() => {}}
         />
 
         {/* R 方案多人表單 */}

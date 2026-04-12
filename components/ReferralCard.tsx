@@ -133,9 +133,11 @@ export default function ReferralCard() {
     fetchData()
   }, [fetchData])
 
-  const shareUrl = referral?.code
-    ? `https://jianyuan.life/auth/signup?ref=${referral.code}`
-    : 'https://jianyuan.life'
+  // 沒有推薦碼就不顯示分享按鈕（避免無法追蹤的推薦）
+  const hasCode = !!(referral?.code && referral.code !== '---')
+  const shareUrl = hasCode
+    ? `https://jianyuan.life/auth/signup?ref=${referral!.code}`
+    : ''
 
   const shareText = '如果你也正在尋找方向，這個平台用十五套命理系統幫你看清自己。免費體驗30秒出結果'
 
