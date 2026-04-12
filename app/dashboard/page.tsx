@@ -212,6 +212,8 @@ function DashboardContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentSuccess])
 
+  const [finalConfirmId, setFinalConfirmId] = useState<string | null>(null)
+
   const handleDelete = async (id: string) => {
     setDeletingId(id)
     setDeletedIds(prev => new Set(prev).add(id))
@@ -228,6 +230,7 @@ function DashboardContent() {
     } finally {
       setDeletingId(null)
       setConfirmId(null)
+      setFinalConfirmId(null)
     }
   }
 
@@ -604,18 +607,27 @@ function DashboardContent() {
                     </div>
                     <div className="flex justify-end gap-2">
                       <button
-                        onClick={() => setConfirmId(null)}
+                        onClick={() => { setConfirmId(null); setFinalConfirmId(null) }}
                         className="px-4 py-1.5 text-xs text-text-muted border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
                       >
                         取消
                       </button>
-                      <button
-                        onClick={() => handleDelete(r.id)}
-                        disabled={deletingId === r.id}
-                        className="px-4 py-1.5 text-xs text-white bg-red-500/80 rounded-lg hover:bg-red-500 transition-colors disabled:opacity-50"
-                      >
-                        {deletingId === r.id ? '刪除中...' : '確認永久刪除'}
-                      </button>
+                      {finalConfirmId === r.id ? (
+                        <button
+                          onClick={() => handleDelete(r.id)}
+                          disabled={deletingId === r.id}
+                          className="px-4 py-1.5 text-xs text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 animate-pulse"
+                        >
+                          {deletingId === r.id ? '刪除中...' : '最終確認：永久刪除'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setFinalConfirmId(r.id)}
+                          className="px-4 py-1.5 text-xs text-white bg-red-500/80 rounded-lg hover:bg-red-500 transition-colors"
+                        >
+                          確認永久刪除
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

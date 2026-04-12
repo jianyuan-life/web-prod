@@ -289,6 +289,8 @@ function CheckoutForm() {
             loading={ctx.loading}
             error={ctx.error}
             finalPrice={ctx.finalPrice}
+            pointsUsed={ctx.pointsUsed}
+            pointsDiscount={ctx.pointsDiscount}
             isFormValid={ctx.isFormValid}
             onSubmit={ctx.handleCheckout}
             showConfirmModal={ctx.showConfirmModal}

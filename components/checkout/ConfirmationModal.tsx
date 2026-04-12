@@ -13,6 +13,9 @@ interface ConfirmationModalProps {
   onClose: () => void
   onConfirm: () => void
   planCode: string
+  finalPrice?: number
+  pointsUsed?: number
+  pointsDiscount?: number
   form: {
     name: string
     year: string
@@ -35,6 +38,7 @@ interface ConfirmationModalProps {
 export default function ConfirmationModal({
   show, onClose, onConfirm, planCode, form, timeMode, loading,
   e1StartDate, e1EndDate, eSelectedBlocks, customerNote,
+  finalPrice, pointsUsed, pointsDiscount,
 }: ConfirmationModalProps) {
   if (!show) return null
 
@@ -125,6 +129,25 @@ export default function ConfirmationModal({
             出生資料一旦提交將用於排盤計算，請務必確認正確。
           </p>
         </div>
+
+        {/* 積分折抵顯示 */}
+        {(pointsUsed || 0) > 0 && (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 mb-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-green-300">積分折抵</span>
+              <span className="text-sm font-bold text-green-400">-${pointsDiscount || 0}</span>
+            </div>
+            <p className="text-[10px] text-green-400/60 mt-1">使用 {pointsUsed} 點積分</p>
+          </div>
+        )}
+
+        {/* 應付金額 */}
+        {finalPrice !== undefined && (
+          <div className="flex justify-between items-center mb-4 px-1">
+            <span className="text-sm text-text-muted">應付金額</span>
+            <span className="text-lg font-bold text-gold">${finalPrice}</span>
+          </div>
+        )}
 
         {/* 按鈕 */}
         <div className="flex gap-3">
