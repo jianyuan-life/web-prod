@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="g" x1="0.3" y1="0" x2="1" y2="0.8">
+      <stop offset="0%" stop-color="#f0d78c"/>
+      <stop offset="50%" stop-color="#e8c97a"/>
+      <stop offset="100%" stop-color="#b8922e"/>
+    </linearGradient>
+    <clipPath id="c"><circle cx="100" cy="100" r="96"/></clipPath>
+  </defs>
+  <g clip-path="url(#c)">
+    <!-- 金色光芒 -->
+    <circle cx="100" cy="100" r="96" fill="url(#g)"/>
+    <!-- 人的側面：用基本形狀組合，不用複雜曲線 -->
+    <g fill="#0a0e1a">
+      <!-- 左邊背景填滿 -->
+      <rect x="0" y="0" width="52" height="200"/>
+      <!-- 頭（圓形） -->
+      <circle cx="62" cy="68" r="48"/>
+      <!-- 鼻子（三角形突出到右邊） -->
+      <polygon points="95,62 120,80 95,88"/>
+      <!-- 下巴到脖子 -->
+      <polygon points="70,110 100,108 95,125 80,140 65,160 55,180 45,200 0,200 0,110"/>
+      <!-- 嘴巴區域（連接鼻子和下巴） -->
+      <polygon points="95,88 105,92 100,100 100,108 70,110 75,100 80,92"/>
+    </g>
+  </g>
+  <circle cx="100" cy="100" r="96" stroke="#c9a84c" stroke-width="1.5" fill="none" opacity="0.4"/>
+</svg>
