@@ -102,6 +102,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </>
         )}
+        {/* 原始碼保護：DevTools 版權警告 + 禁止右鍵 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                // DevTools 開啟時顯示版權警告
+                var w='%c⚠️ 鑒源 JianYuan — 版權所有','color:#c9a84c;font-size:16px;font-weight:bold';
+                var m='本網站所有原始碼、演算法、命理規則引擎均受智慧財產權保護。\\n未經授權複製、修改或散佈將依法追究。\\n\\n© 2026 鑒源 JianYuan. All rights reserved.\\nhttps://jianyuan.life';
+                console.log(w,m);
+                // 禁止右鍵選單（報告頁）
+                document.addEventListener('contextmenu',function(e){
+                  if(e.target&&e.target.closest&&e.target.closest('main')){e.preventDefault()}
+                });
+              })();
+            `,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

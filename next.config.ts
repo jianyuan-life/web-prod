@@ -2,6 +2,8 @@ import { withWorkflow } from 'workflow/next'
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // 生產環境不暴露 Source Maps（防止原始碼被查看）
+  productionBrowserSourceMaps: false,
   // 舊路由 301 重導
   async redirects() {
     return [

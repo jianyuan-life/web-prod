@@ -21,9 +21,8 @@ interface ShareCardProps {
 export default function ShareCard({ planCode }: ShareCardProps) {
   const [copied, setCopied] = useState(false)
 
-  const tagline = PLAN_TAGLINES[planCode] || '探索你的命格密碼'
   const siteUrl = 'https://jianyuan.life'
-  const shareText = `我剛在鑒源做了一份命理分析，覺得很準！推薦你也試試，免費體驗 30 秒出結果 👉 ${siteUrl}`
+  const shareText = `我最近用了一個命理分析平台，覺得蠻準的，推薦你也試試看！免費體驗 30 秒就有結果 ${siteUrl}`
 
   const handleCopyLink = async () => {
     try {

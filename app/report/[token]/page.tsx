@@ -6,6 +6,7 @@ import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
 import ShareCard from '@/components/ShareCard'
 import SectionExpander from '@/components/SectionExpander'
+import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -353,7 +354,7 @@ function renderInlineMarkdown(text: string): string {
       const firstRow = trList[0] || ''
       const headerRow = firstRow.replace(/<td/g, '<th').replace(/<\/td>/g, '</th>').replace(/style="[^"]*"/g, 'style="padding:10px 14px;border-bottom:2px solid rgba(201,168,76,0.3);font-size:12px;font-weight:600;color:rgba(201,168,76,0.8);text-align:left;white-space:nowrap"')
       const bodyRows = trList.slice(1).join('')
-      return `<div style="overflow-x:auto;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse">${headerRow}${bodyRows}</table></div>`
+      return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:320px;font-size:13px">${headerRow}${bodyRows}</table></div>`
     })
     .replace(/___TABLE_SEP___/g, '')
     .replace(/^→ 完整分析請繼續閱讀.*$/gm, '')
@@ -386,7 +387,9 @@ function renderInlineMarkdown(text: string): string {
     .replace(/^&gt;\s*(.+)$/gm, '<blockquote style="border-left:3px solid rgba(197,150,58,0.6);padding:8px 16px;margin:12px 0;background:rgba(197,150,58,0.06);border-radius:0 8px 8px 0;font-style:normal;color:var(--color-gold);">$1</blockquote>')
     // 📌 本章重點 → 特殊樣式
     .replace(/^📌\s*(.+)$/gm, '<div style="background:rgba(197,150,58,0.08);border:1px solid rgba(197,150,58,0.2);border-radius:8px;padding:10px 14px;margin:10px 0;font-weight:600;color:var(--color-gold);font-size:0.85rem;">📌 $1</div>')
-    // → 行動建議 → 突出顯示
+    // → 善用指南 → 醒目金色框
+    .replace(/^→\s*善用指南[：:]\s*(.+)$/gm, '<div style="padding:12px 16px;border-left:3px solid rgba(201,168,76,0.7);background:rgba(201,168,76,0.08);border-radius:0 10px 10px 0;margin:10px 0;font-size:0.88rem;color:var(--color-gold)"><strong style="color:#c9a84c">&#9733; 善用指南：</strong><br/>$1</div>')
+    // → 其他行動建議 → 綠色左邊框
     .replace(/^→\s*(.+)$/gm, '<div style="padding:4px 0 4px 16px;border-left:2px solid rgba(106,176,76,0.4);margin:4px 0;font-size:0.88rem;">→ $1</div>')
     .replace(/^[•·]\s*(.+)$/gm, '<li class="report-li">$1</li>')
     .replace(/^- (.+)$/gm, '<li class="report-li">$1</li>')
@@ -695,18 +698,28 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .report-p { color: var(--color-text-muted); line-height: 1.9; margin-bottom: 0.85rem; font-size: 0.9rem; }
         .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; }
         @media print {
-          body { background: white !important; color: #333 !important; }
-          .no-print { display: none !important; }
-          .section-card { border: 1px solid #ddd; page-break-inside: avoid; }
-          .report-h3 { color: #1a2a4a; }
-          .report-bold { color: #333; }
-          .report-li, .report-li-num, .report-p { color: #555; }
-
+          body, html { background: white !important; color: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          nav, footer, .no-print { display: none !important; }
+          .section-card { border: 1px solid #ddd; page-break-inside: avoid; padding: 16px !important; margin-bottom: 12px !important; box-shadow: none !important; }
+          .glass { background: white !important; border: 1px solid #eee !important; box-shadow: none !important; }
+          .report-h3 { color: #1a2a4a !important; font-size: 1rem !important; }
+          .report-bold { color: #333 !important; }
+          .report-li, .report-li-num, .report-p { color: #555 !important; font-size: 0.85rem !important; line-height: 1.7 !important; }
+          h1 { color: #1a2a4a !important; font-size: 1.5rem !important; }
+          a { color: #333 !important; text-decoration: none !important; }
+          table { font-size: 11px !important; }
+          blockquote { border-left-color: #c9a84c !important; background: #f5f0e8 !important; color: #333 !important; }
+          @page { margin: 1.5cm; }
         }
       `}</style>
 
       {/* 瀏覽追蹤（Client Component，不影響 SSR） */}
       <ReportTracker reportId={report.id} planCode={report.plan_code} token={token} />
+
+      {/* #11 閱讀進度條 */}
+      <ReadingProgressBar />
+      {/* #13 回到頂部浮動按鈕 */}
+      <BackToTopButton />
 
       <div className="max-w-3xl mx-auto px-6 pt-12">
 
@@ -725,8 +738,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               ? (report.birth_data.member_names as string[]).filter(Boolean).join('、') + ' 家族'
               : report.client_name}
           </h1>
-          <div className="text-text-muted/40 text-xs mt-2">
-            {new Date(report.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
+          <div className="text-text-muted/40 text-xs mt-2 flex items-center justify-center gap-3">
+            <span>{new Date(report.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <span className="text-text-muted/20">|</span>
+            <ReadingTime textLength={report.report_result?.ai_content?.length || 0} />
           </div>
 
           {/* R 方案專屬：相容度文字描述（不顯示分數） */}
@@ -904,7 +919,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <a key={i} href={`#sec-${i}`}
                     className="flex items-center gap-2 text-sm text-text-muted hover:text-gold transition-colors py-1.5 px-3 rounded-lg hover:bg-white/5">
                     <span className="text-xs text-gold/50" dangerouslySetInnerHTML={{ __html: typeIcons[sec.type] || '&#9672;' }} />
-                    <span className="line-clamp-2">{sec.title}</span>
+                    <span>{sec.title}</span>
                   </a>
                 )
               })}

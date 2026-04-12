@@ -311,6 +311,9 @@ export default function ReportFeedback({ reportId, planCode, customerEmail }: Re
         >
           {submitting ? '提交中...' : isEditing ? '更新反饋' : '提交反饋'}
         </button>
+        {rating === 0 && !submitting && (
+          <p className="text-xs text-text-muted/50 mt-2">請先點選星星評分</p>
+        )}
         {isEditing && (
           <button
             onClick={() => setIsEditing(false)}
