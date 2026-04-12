@@ -6,7 +6,9 @@ import { supabase } from '@/lib/supabase'
 
 export default function SignupPage() {
   const params = useSearchParams()
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [refCode, setRefCode] = useState(params.get('ref') || '')
   const [refValid, setRefValid] = useState<string | null>(null) // 推薦人名字
   const [loading, setLoading] = useState(false)
@@ -41,6 +43,12 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    if (form.password !== form.confirmPassword) {
+      setError('兩次輸入的密碼不一致')
+      setLoading(false)
+      return
+    }
 
     const { data: signUpData, error } = await supabase.auth.signUp({
       email: form.email,
@@ -103,23 +111,55 @@ export default function SignupPage() {
 
         <form onSubmit={handleSignup} className="glass rounded-2xl p-6 space-y-4">
           <div>
-            <label className="block text-xs text-text-muted mb-1">姓名</label>
+            <label className="block text-xs text-text-muted mb-1">姓名 <span className="text-red-400">*</span></label>
             <input type="text" required placeholder="你的姓名"
               value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none" />
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">Email</label>
+            <label className="block text-xs text-text-muted mb-1">Email <span className="text-red-400">*</span></label>
             <input type="email" required placeholder="your@email.com"
               value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none" />
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">密碼</label>
-            <input type="password" required placeholder="至少 8 個字元" minLength={8}
-              value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none" />
+            <label className="block text-xs text-text-muted mb-1">密碼 <span className="text-red-400">*</span></label>
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} required placeholder="至少 8 個字元" minLength={8}
+                value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 pr-10 text-cream focus:border-gold/40 focus:outline-none" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted/50 hover:text-gold transition-colors" tabIndex={-1}>
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
+              </button>
+            </div>
             <p className="text-[10px] text-text-muted/60 mt-1">密碼至少 8 個字元</p>
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">確認密碼 <span className="text-red-400">*</span></label>
+            <div className="relative">
+              <input type={showConfirmPassword ? 'text' : 'password'} required placeholder="再輸入一次密碼" minLength={8}
+                value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                className={`w-full bg-white/5 border rounded-lg px-4 py-2.5 pr-10 text-cream focus:outline-none ${form.confirmPassword && form.confirmPassword !== form.password ? 'border-red-400/50 focus:border-red-400' : 'border-gold/10 focus:border-gold/40'}`} />
+              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted/50 hover:text-gold transition-colors" tabIndex={-1}>
+                {showConfirmPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
+              </button>
+            </div>
+            {form.confirmPassword && form.confirmPassword !== form.password && (
+              <p className="text-[10px] text-red-400 mt-1">密碼不一致</p>
+            )}
+            {form.confirmPassword && form.confirmPassword === form.password && form.confirmPassword.length >= 8 && (
+              <p className="text-[10px] text-green-400 mt-1">&#10003; 密碼一致</p>
+            )}
           </div>
 
           {/* 推薦碼（選填） */}
