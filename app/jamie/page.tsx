@@ -31,7 +31,7 @@ const PAGE_NAMES: Record<string, string> = {
   '/': '首頁', '/pricing': '方案與定價', '/tools/bazi': '免費八字速算',
   '/tools/ziwei': '免費紫微速算', '/tools/name': '免費姓名鑑定',
   '/checkout': '結帳頁', '/auth/login': '登入', '/auth/signup': '註冊',
-  '/dashboard': '用戶儀表板', '/blog': '知識部落格', '/admin': '管理後台',
+  '/dashboard': '用戶儀表板', '/blog': '知識部落格', '/jamie': '管理後台',
 }
 
 const COUNTRY_NAMES: Record<string, string> = {

@@ -24,7 +24,7 @@ export default function ReportsPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/orders?key=${adminKey}`)
+      const res = await fetch(`/api/jamie/orders?key=${adminKey}`)
       if (res.ok) {
         const data = await res.json()
         setReports(data.orders || [])
@@ -49,7 +49,7 @@ export default function ReportsPage() {
     if (failedIds.length === 0) { alert('沒有可重試的報告'); return }
     if (!confirm(`確認重試 ${failedIds.length} 筆失敗報告？`)) return
     for (const id of failedIds) {
-      await fetch('/api/admin/orders', {
+      await fetch('/api/jamie/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, key: adminKey }),
@@ -60,7 +60,7 @@ export default function ReportsPage() {
 
   // 單筆重試（用 admin 直接更新 Supabase）
   const retryOne = async (id: string) => {
-    const res = await fetch('/api/admin/orders', {
+    const res = await fetch('/api/jamie/orders', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, key: adminKey }),

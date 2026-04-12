@@ -59,7 +59,7 @@ export default function AnalyticsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/admin/funnel?key=${encodeURIComponent(adminKey)}&days=${d}`)
+      const res = await fetch(`/api/jamie/funnel?key=${encodeURIComponent(adminKey)}&days=${d}`)
       if (!res.ok) throw new Error('API 錯誤')
       const json = await res.json()
       setData(json)

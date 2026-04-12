@@ -49,7 +49,7 @@ export default function FeedbackPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/feedback?key=${adminKey}`)
+      const res = await fetch(`/api/jamie/feedback?key=${adminKey}`)
       if (res.ok) {
         const data = await res.json()
         setFeedback(data.feedback || [])

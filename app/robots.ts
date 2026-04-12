@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/api/', '/admin/', '/dashboard/', '/auth/'],
+      disallow: ['/api/', '/jamie/', '/dashboard/', '/auth/'],
     },
     sitemap: 'https://jianyuan.life/sitemap.xml',
   }
