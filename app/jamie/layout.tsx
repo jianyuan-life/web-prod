@@ -48,7 +48,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setLoading(true)
     setLoginError('')
     try {
-      const res = await fetch(`/api/jamie?key=${keyInput}&range=7d`)
+      const res = await fetch(`/api/admin?key=${keyInput}&range=7d`)
       if (res.ok) {
         setAdminKey(keyInput)
         setAuthed(true)

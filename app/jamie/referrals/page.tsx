@@ -60,7 +60,7 @@ export default function ReferralsPage() {
     setGrantLoading(true)
     setGrantResult(null)
     try {
-      const res = await fetch('/api/jamie/grant-points', {
+      const res = await fetch('/api/admin/grant-points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: adminKey, email: grantEmail, points: parseInt(grantPoints), description: grantDesc || undefined }),
@@ -80,7 +80,7 @@ export default function ReferralsPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/jamie/referrals?key=${adminKey}`)
+      const res = await fetch(`/api/admin/referrals?key=${adminKey}`)
       if (res.ok) {
         const data = await res.json()
         setRecords(data.records || [])

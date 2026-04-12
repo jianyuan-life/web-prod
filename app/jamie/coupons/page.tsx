@@ -30,7 +30,7 @@ export default function CouponsPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/jamie/coupons?key=${adminKey}`)
+      const res = await fetch(`/api/admin/coupons?key=${adminKey}`)
       if (res.ok) {
         const data = await res.json()
         setCoupons(data.coupons || [])
@@ -43,7 +43,7 @@ export default function CouponsPage() {
   const createCoupon = async () => {
     setFormError('')
     if (!form.code.trim()) { setFormError('優惠碼不能為空'); return }
-    const res = await fetch(`/api/jamie/coupons?key=${adminKey}`, {
+    const res = await fetch(`/api/admin/coupons?key=${adminKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -65,7 +65,7 @@ export default function CouponsPage() {
   }
 
   const toggleCoupon = async (id: string) => {
-    await fetch(`/api/jamie/coupons?key=${adminKey}`, {
+    await fetch(`/api/admin/coupons?key=${adminKey}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'toggle' }),
@@ -75,7 +75,7 @@ export default function CouponsPage() {
 
   const deleteCoupon = async (id: string) => {
     if (!confirm('確認刪除此優惠碼？')) return
-    await fetch(`/api/jamie/coupons?key=${adminKey}`, {
+    await fetch(`/api/admin/coupons?key=${adminKey}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'delete' }),

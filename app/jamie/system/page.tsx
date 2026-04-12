@@ -23,7 +23,7 @@ export default function SystemPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/jamie/system?key=${adminKey}`)
+      const res = await fetch(`/api/admin/system?key=${adminKey}`)
       if (res.ok) setData(await res.json())
     } finally { setLoading(false) }
   }, [adminKey])

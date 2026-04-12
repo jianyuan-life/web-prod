@@ -31,7 +31,7 @@ export default function PromotionsPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/jamie/promotions?key=${adminKey}`)
+      const res = await fetch(`/api/admin/promotions?key=${adminKey}`)
       if (res.ok) {
         const data = await res.json()
         setPromotions(data.promotions || [])
@@ -49,7 +49,7 @@ export default function PromotionsPage() {
     if (!form.start_at || !form.end_at) { setFormError('必須設定開始與結束時間'); return }
     if (new Date(form.end_at) <= new Date(form.start_at)) { setFormError('結束時間必須晚於開始時間'); return }
 
-    const res = await fetch(`/api/jamie/promotions?key=${adminKey}`, {
+    const res = await fetch(`/api/admin/promotions?key=${adminKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -71,7 +71,7 @@ export default function PromotionsPage() {
   }
 
   const togglePromotion = async (id: string) => {
-    await fetch(`/api/jamie/promotions?key=${adminKey}`, {
+    await fetch(`/api/admin/promotions?key=${adminKey}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'toggle' }),
@@ -81,7 +81,7 @@ export default function PromotionsPage() {
 
   const deletePromotion = async (id: string) => {
     if (!confirm('確認刪除此促銷活動？')) return
-    await fetch(`/api/jamie/promotions?key=${adminKey}`, {
+    await fetch(`/api/admin/promotions?key=${adminKey}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'delete' }),

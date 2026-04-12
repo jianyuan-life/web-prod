@@ -35,7 +35,7 @@ export default function OrdersPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/jamie?key=${adminKey}&range=90d`)
+      const res = await fetch(`/api/admin?key=${adminKey}&range=90d`)
       if (res.ok) {
         const data = await res.json()
         setOrders(data.recent_orders || [])
@@ -48,7 +48,7 @@ export default function OrdersPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/jamie/orders?key=${adminKey}`)
+      const res = await fetch(`/api/admin/orders?key=${adminKey}`)
       if (res.ok) {
         const data = await res.json()
         setOrders(data.orders || [])
@@ -81,7 +81,7 @@ export default function OrdersPage() {
 
   // 重試失敗報告
   const retryOrder = async (id: string) => {
-    const res = await fetch('/api/jamie/orders', {
+    const res = await fetch('/api/admin/orders', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, key: adminKey }),

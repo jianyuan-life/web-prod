@@ -33,7 +33,7 @@ export default function UsersPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/jamie/users?key=${adminKey}&sort=${sort}&order=${order}`)
+      const res = await fetch(`/api/admin/users?key=${adminKey}&sort=${sort}&order=${order}`)
       if (res.ok) {
         const data = await res.json()
         setUsers(data.users || [])
