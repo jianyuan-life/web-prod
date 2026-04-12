@@ -39,9 +39,7 @@ export default function Navbar() {
     <nav className="fixed top-0 w-full z-50 border-b border-gold/10" style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full overflow-hidden" style={{ background: '#0a0e1a', border: '1px solid rgba(201,168,76,0.3)' }}>
-            <img src="/logo-new.png" alt="鑒源" className="h-full w-full object-cover" style={{ mixBlendMode: 'lighten' }} />
-          </div>
+          <img src="/logo-transparent.png" alt="鑒源" className="h-9 w-9 rounded-full object-cover" />
           <span className="text-gold font-serif text-lg font-semibold tracking-[3px]">鑒源</span>
         </a>
         <div className="hidden md:flex items-center gap-8 text-sm">

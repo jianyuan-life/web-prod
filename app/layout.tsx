@@ -136,7 +136,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-6xl mx-auto px-6 py-16">
             {/* 古典分隔裝飾 */}
             <div className="text-center mb-10">
-              <Image src="/logo-footer.svg" alt="鑒源" width={200} height={100} className="mx-auto mb-3" />
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="h-12 w-12 rounded-full overflow-hidden" style={{ background: '#0a0e1a', border: '1px solid rgba(201,168,76,0.3)' }}>
+                  <img src="/logo-transparent.png" alt="鑒源" className="h-full w-full object-cover" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-gold font-serif text-xl font-semibold tracking-[4px]">鑒源</span>
+                  <span className="text-gold/40 text-[9px] tracking-[3px]">JIANYUAN</span>
+                </div>
+              </div>
               <p className="text-base text-text-muted font-medium tracking-wider">回到源頭 &middot; 看清本質</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
