@@ -24,7 +24,7 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { planCode, birthData, totalPrice, locale, couponCode, couponDiscount, userEmail } = body
+    const { planCode, birthData, totalPrice, locale, couponCode, couponDiscount, userEmail, pointsToUse } = body
 
     const plan = PRICE_MAP[planCode]
     if (!plan) {
@@ -149,6 +149,40 @@ export async function POST(req: NextRequest) {
       }
       // 取較低金額（= 較高折扣）
       finalAmount = Math.min(promoAmount, couponAmount)
+    }
+
+    // 4. 點數折抵（與優惠碼互斥，前端控制；後端再驗證）
+    let verifiedPointsToUse = 0
+    let pointsUserId = ''
+    if (pointsToUse && pointsToUse > 0 && !verifiedCouponCode && finalAmount > 0) {
+      const supabase = getSupabase()
+      // 取得用戶 ID
+      let userId = ''
+      try {
+        const cookies = req.headers.get('cookie') || ''
+        const tokenMatch = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
+        if (tokenMatch) {
+          const tokenData = JSON.parse(decodeURIComponent(tokenMatch[1]))
+          const token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
+          if (typeof token === 'string' && token.length > 20) {
+            const { data } = await supabase.auth.getUser(token)
+            if (data?.user?.id) userId = data.user.id
+          }
+        }
+      } catch {}
+
+      if (userId) {
+        pointsUserId = userId
+        // 驗證餘額
+        const { data: pts } = await supabase.from('user_points').select('balance').eq('user_id', userId).single()
+        const balance = pts?.balance || 0
+        // 最多用到餘額，且不超過訂單50%
+        const maxPoints = Math.floor(finalAmount / 100 / 2) // 50% 上限，單位美元
+        verifiedPointsToUse = Math.min(pointsToUse, balance, maxPoints)
+        if (verifiedPointsToUse > 0) {
+          finalAmount = Math.max(0, finalAmount - verifiedPointsToUse * 100)
+        }
+      }
     }
 
     // 免費方案：跳過 Stripe，直接建立訂單
@@ -290,6 +324,10 @@ export async function POST(req: NextRequest) {
     params.set('metadata[plan_code]', planCode)
     if (verifiedCouponCode) params.set('metadata[coupon_code]', verifiedCouponCode)
     if (promoName) params.set('metadata[promotion]', promoName)
+    if (verifiedPointsToUse > 0) {
+      params.set('metadata[points_used]', verifiedPointsToUse.toString())
+      params.set('metadata[points_user_id]', pointsUserId)
+    }
     // locale 單獨存，不佔 birth_data 500 字元額度
     if (locale) {
       params.set('metadata[locale]', locale)

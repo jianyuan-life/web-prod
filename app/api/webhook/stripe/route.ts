@@ -324,6 +324,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // === 點數折抵扣除（付款成功才真正扣） ===
+    try {
+      const pointsUsed = parseInt(session.metadata?.points_used || '0')
+      const pointsUserId = session.metadata?.points_user_id || ''
+      if (pointsUsed > 0 && pointsUserId) {
+        const { data: pts } = await supabase.from('user_points').select('balance, total_used').eq('user_id', pointsUserId).single()
+        if (pts && pts.balance >= pointsUsed) {
+          const newBalance = pts.balance - pointsUsed
+          await supabase.from('user_points').update({
+            balance: newBalance,
+            total_used: (pts.total_used || 0) + pointsUsed,
+          }).eq('user_id', pointsUserId)
+          await supabase.from('point_transactions').insert({
+            user_id: pointsUserId,
+            type: 'use_checkout',
+            amount: -pointsUsed,
+            balance_after: newBalance,
+            description: `${PLAN_NAMES[planCode] || planCode} 訂單折抵`,
+            reference_id: session.id,
+          })
+          console.log(`✅ 點數扣除：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)
+        }
+      }
+    } catch (ptsErr) {
+      console.error('⚠️ 點數扣除失敗（不影響報告生成）:', ptsErr)
+    }
+
     // === 推薦碼首次購買點數發放 ===
     try {
       if (customerEmail) {
