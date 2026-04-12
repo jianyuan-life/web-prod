@@ -28,7 +28,7 @@ export default function PointsRedeem({
   // 載入點數餘額
   useEffect(() => {
     setLoading(true)
-    fetch('/api/points/balance')
+    fetch('/api/points/balance', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         setBalance(data.balance || 0)

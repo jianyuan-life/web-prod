@@ -186,7 +186,7 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
   const [inputVal, setInputVal] = useState(pointsUsed > 0 ? String(pointsUsed) : '')
 
   useEffect(() => {
-    fetch('/api/points/balance').then(r => r.json()).then(d => setBalance(d.balance || 0)).catch(() => {}).finally(() => setLoadingPts(false))
+    fetch('/api/points/balance', { credentials: 'include' }).then(r => r.json()).then(d => setBalance(d.balance || 0)).catch(() => {}).finally(() => setLoadingPts(false))
   }, [])
 
   if (loadingPts) return null
@@ -202,6 +202,7 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
       const res = await fetch('/api/points/use', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ pointsToUse: pts, planCode, orderAmount: totalPrice }),
       })
       const data = await res.json()
