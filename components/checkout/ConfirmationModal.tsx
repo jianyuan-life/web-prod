@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 import { SHICHEN } from './types'
 
 const TIME_BLOCK_NAMES = [
@@ -186,7 +187,17 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
   const [inputVal, setInputVal] = useState(pointsUsed > 0 ? String(pointsUsed) : '')
 
   useEffect(() => {
-    fetch('/api/points/balance', { credentials: 'include' }).then(r => r.json()).then(d => setBalance(d.balance || 0)).catch(() => {}).finally(() => setLoadingPts(false))
+    async function loadBalance() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) { setLoadingPts(false); return }
+        const res = await fetch('/api/points/balance', { headers: { Authorization: `Bearer ${token}` } })
+        const d = await res.json()
+        setBalance(d.balance || 0)
+      } catch {} finally { setLoadingPts(false) }
+    }
+    loadBalance()
   }, [])
 
   if (loadingPts) return null
@@ -199,10 +210,11 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
     const pts = parseInt(inputVal)
     if (!pts || pts <= 0 || pts > maxPoints) return
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       const res = await fetch('/api/points/use', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ pointsToUse: pts, planCode, orderAmount: totalPrice }),
       })
       const data = await res.json()
