@@ -60,10 +60,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '方案代碼無效' }, { status: 400 })
     }
 
-    // 折抵金額不超過訂單 50%
-    const maxDiscount = Math.floor(orderAmount * 0.5)
+    // 折抵金額不超過訂單 100%（可全額積分支付）
+    const maxDiscount = Math.floor(orderAmount)
     if (pointsToUse > maxDiscount) {
-      return NextResponse.json({ error: `最多折抵訂單金額 50%（${maxDiscount} 點）` }, { status: 400 })
+      return NextResponse.json({ error: `最多折抵 ${maxDiscount} 點` }, { status: 400 })
     }
 
     const supabase = getSupabase()
