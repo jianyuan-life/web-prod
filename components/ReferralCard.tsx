@@ -149,7 +149,7 @@ export default function ReferralCard() {
     ? `https://jianyuan.life/auth/signup?ref=${referral!.code}`
     : ''
 
-  const shareText = '如果你也正在尋找方向，這個平台用十五套命理系統幫你看清自己。免費體驗30秒出結果'
+  const shareText = '我最近用了一個命理分析平台，覺得蠻準的，推薦你也試試看！用我的連結註冊，我們都能拿獎勵點數'
 
   const handleCopy = async () => {
     try {
