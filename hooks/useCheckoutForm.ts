@@ -462,6 +462,7 @@ export function useCheckoutForm() {
           locale: userLocale,
           couponCode: couponApplied?.code || undefined,
           couponDiscount: couponApplied?.discountAmount || undefined,
+          pointsToUse: pointsUsed > 0 ? pointsUsed : undefined,
           userEmail: authEmail || sessionStorage.getItem('jianyuan_email') || undefined,
         }),
       })
