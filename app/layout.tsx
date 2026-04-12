@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import pkg from '../package.json'
 import { Noto_Serif_TC, Noto_Sans_TC, Noto_Serif_SC, Noto_Sans_SC } from 'next/font/google'
+import Link from 'next/link'
 import Image from 'next/image'
 import Navbar from '@/components/Navbar'
 import LocaleContent from '@/components/LocaleContent'
@@ -29,11 +30,13 @@ export const metadata: Metadata = {
     siteName: '鑒源 JianYuan',
     type: 'website',
     locale: 'zh_TW',
+    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: '鑒源 JianYuan — 十五大命理系統精準分析' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: '鑒源 JianYuan — 十五大命理系統精準分析',
     description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
+    images: ['/og-default.png'],
   },
   robots: {
     index: true,
@@ -104,25 +107,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               '@context': 'https://schema.org',
-              '@type': 'WebApplication',
-              name: '鑒源 JianYuan',
-              url: 'https://jianyuan.life',
-              description: '整合東西方十五大命理系統精準交叉驗證的命格分析平台',
-              applicationCategory: 'LifestyleApplication',
-              operatingSystem: 'Web',
-              offers: {
-                '@type': 'AggregateOffer',
-                lowPrice: '39',
-                highPrice: '119',
-                priceCurrency: 'USD',
-                offerCount: '6',
-              },
-              creator: {
-                '@type': 'Organization',
-                name: '鑒源 JianYuan',
-                url: 'https://jianyuan.life',
-                email: 'support@jianyuan.life',
-              },
+              '@graph': [
+                {
+                  '@type': 'WebApplication',
+                  name: '鑒源 JianYuan',
+                  url: 'https://jianyuan.life',
+                  description: '整合東西方十五大命理系統精準交叉驗證的命格分析平台',
+                  applicationCategory: 'LifestyleApplication',
+                  operatingSystem: 'Web',
+                  offers: {
+                    '@type': 'AggregateOffer',
+                    lowPrice: '39',
+                    highPrice: '119',
+                    priceCurrency: 'USD',
+                    offerCount: '6',
+                  },
+                },
+                {
+                  '@type': 'Organization',
+                  name: '鑒源 JianYuan',
+                  url: 'https://jianyuan.life',
+                  email: 'support@jianyuan.life',
+                  logo: 'https://jianyuan.life/logo-jianyuan.svg',
+                  sameAs: [],
+                },
+              ],
             }),
           }}
         />
@@ -153,23 +162,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">命理服務</h4>
                 <div className="space-y-2 text-text-muted">
-                  <a href="/tools/bazi" className="block hover:text-gold transition-colors">免費命理速算</a>
-                  <a href="/pricing" className="block hover:text-gold transition-colors">方案與定價</a>
+                  <Link href="/tools/bazi" className="block hover:text-gold transition-colors">免費命理速算</Link>
+                  <Link href="/pricing" className="block hover:text-gold transition-colors">方案與定價</Link>
                 </div>
               </div>
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">了解更多</h4>
                 <div className="space-y-2 text-text-muted">
-                  <a href="/#systems" className="block hover:text-gold transition-colors">十五大系統</a>
-                  <a href="/#how" className="block hover:text-gold transition-colors">分析流程</a>
-                  <a href="/blog" className="block hover:text-gold transition-colors">命理知識</a>
+                  <Link href="/#systems" className="block hover:text-gold transition-colors">十五大系統</Link>
+                  <Link href="/#how" className="block hover:text-gold transition-colors">分析流程</Link>
+                  <Link href="/blog" className="block hover:text-gold transition-colors">命理知識</Link>
                 </div>
               </div>
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">法律條款</h4>
                 <div className="space-y-2 text-text-muted">
-                  <a href="/privacy" className="block hover:text-gold transition-colors">隱私政策</a>
-                  <a href="/terms" className="block hover:text-gold transition-colors">使用條款</a>
+                  <Link href="/privacy" className="block hover:text-gold transition-colors">隱私政策</Link>
+                  <Link href="/terms" className="block hover:text-gold transition-colors">使用條款</Link>
                 </div>
               </div>
               <div>
@@ -179,7 +188,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
               <p>本服務融合傳統命理學與現代科技，分析結果僅供參考，不構成任何醫療、投資或法律建議。</p>
-              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. All rights reserved. &middot; v{pkg.version}</p>
+              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. 版權所有 &middot; v{pkg.version}</p>
             </div>
           </div>
         </footer>

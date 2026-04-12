@@ -57,7 +57,7 @@ export default function UpdatePasswordPage() {
             <div>
               <label className="block text-xs text-text-muted mb-1">新密碼</label>
               <input
-                type="password" required placeholder="至少 6 個字元"
+                type="password" required placeholder="至少 8 個字元"
                 value={password} onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
               />

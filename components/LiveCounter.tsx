@@ -10,7 +10,7 @@ export default function LiveCounter() {
     fetch('/api/stats')
       .then(r => r.json())
       .then(d => setTarget(d.count ?? 0))
-      .catch(() => setTarget(1012))
+      .catch(() => setTarget(0))
   }, [])
 
   // 動態遞增動畫：約 2 秒從 0 到 target

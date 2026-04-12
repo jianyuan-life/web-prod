@@ -27,6 +27,12 @@ export default function Tracker() {
 
     const track = () => {
       if (pathname.startsWith('/admin')) return // 不追蹤管理後台
+
+      // GA4 路由變化追蹤（SPA 需手動觸發）
+      if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).gtag) {
+        ;(window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'page_view', { page_path: pathname })
+      }
+
       fetch('/api/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

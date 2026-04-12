@@ -33,7 +33,6 @@ export async function GET(req: NextRequest) {
       plan_code: (r.plan_code || '').split(/\s/)[0],
       // 移除 birth_data 中的敏感個資（只保留摘要欄位供後台排查）
       birth_data: r.birth_data ? {
-        name: (r.birth_data as Record<string, unknown>)?.name,
         plan: (r.birth_data as Record<string, unknown>)?.plan,
         plan_type: (r.birth_data as Record<string, unknown>)?.plan_type,
         locale: (r.birth_data as Record<string, unknown>)?.locale,

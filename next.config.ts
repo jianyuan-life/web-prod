@@ -2,6 +2,16 @@ import { withWorkflow } from 'workflow/next'
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // 舊路由 301 重導
+  async redirects() {
+    return [
+      { source: '/free-tools', destination: '/tools/bazi', permanent: true },
+      { source: '/login', destination: '/auth/login', permanent: true },
+      { source: '/register', destination: '/auth/signup', permanent: true },
+      { source: '/about', destination: '/#about', permanent: false },
+    ]
+  },
+
   // Python API 代理
   async rewrites() {
     return [
@@ -24,7 +34,7 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://connect.facebook.net https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.stripe.com https://*.fly.dev https://www.google-analytics.com https://www.facebook.com; frame-src https://js.stripe.com https://hooks.stripe.com;" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net https://www.google-analytics.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.stripe.com https://*.fly.dev https://www.google-analytics.com https://www.google.com https://www.facebook.com https://static.cloudflareinsights.com; frame-src https://js.stripe.com https://hooks.stripe.com;" },
         ],
       },
     ]

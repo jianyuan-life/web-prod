@@ -98,18 +98,32 @@ export async function GET(req: NextRequest) {
   const seventyHoursAgo = new Date(now - 70 * 60 * 60 * 1000).toISOString()
   const seventyFourHoursAgo = new Date(now - 74 * 60 * 60 * 1000).toISOString()
 
-  const { data: reports, error: queryErr } = await supabase
-    .from('paid_reports')
-    .select('id, client_name, plan_code, customer_email, access_token, report_result, generation_progress, birth_data')
-    .eq('status', 'completed')
-    .lt('updated_at', seventyHoursAgo)
-    .gt('updated_at', seventyFourHoursAgo)
-    .order('updated_at', { ascending: true })
-    .limit(50)
+  let reports: typeof rawReports = []
+  type RawReport = {
+    id: string; client_name: string; plan_code: string; customer_email: string;
+    access_token: string; report_result: unknown; generation_progress: unknown; birth_data: unknown;
+  }
+  let rawReports: RawReport[] | null = null
 
-  if (queryErr) {
-    console.error('❌ 查詢跟進信報告失敗:', queryErr)
-    return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
+  try {
+    const { data, error: queryErr } = await supabase
+      .from('paid_reports')
+      .select('id, client_name, plan_code, customer_email, access_token, report_result, generation_progress, birth_data')
+      .eq('status', 'completed')
+      .lt('updated_at', seventyHoursAgo)
+      .gt('updated_at', seventyFourHoursAgo)
+      .order('updated_at', { ascending: true })
+      .limit(50)
+
+    if (queryErr) {
+      console.error('❌ 查詢跟進信報告失敗:', JSON.stringify(queryErr))
+      return NextResponse.json({ error: '查詢失敗', detail: queryErr.message }, { status: 500 })
+    }
+    rawReports = data as RawReport[]
+    reports = rawReports || []
+  } catch (err) {
+    console.error('❌ 跟進信查詢例外:', err)
+    return NextResponse.json({ error: '查詢例外' }, { status: 500 })
   }
 
   let sentCount = 0
@@ -117,7 +131,7 @@ export async function GET(req: NextRequest) {
 
   const resend = new Resend(process.env.RESEND_API_KEY || '')
 
-  for (const report of (reports || [])) {
+  for (const report of reports) {
     // 排除已發過跟進信的
     const progress = report.generation_progress as Record<string, unknown> | null
     if (progress?.followup_sent) {

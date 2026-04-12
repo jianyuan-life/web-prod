@@ -12,10 +12,35 @@ function getSupabase() {
 // 寫入 referrals 表，status='registered'，等首次購買時觸發點數發放
 export async function POST(req: NextRequest) {
   try {
+    // 認證：從 cookie 或 header 取得使用者身份
+    const { createClient: createBrowserClient } = await import('@supabase/supabase-js')
+    const authHeader = req.headers.get('authorization')
+    const cookieToken = req.cookies.get('sb-access-token')?.value
+    const token = authHeader?.replace('Bearer ', '') || cookieToken
+
+    if (!token) {
+      return NextResponse.json({ error: '請先登入' }, { status: 401 })
+    }
+
+    // 用 anon key 驗證 token，取得真實 user id
+    const authClient = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    )
+    const { data: { user }, error: authErr } = await authClient.auth.getUser(token)
+    if (authErr || !user) {
+      return NextResponse.json({ error: '認證失敗' }, { status: 401 })
+    }
+
     const { referralCode, userId, email } = await req.json()
 
     if (!referralCode || !userId) {
       return NextResponse.json({ error: '缺少必要欄位' }, { status: 400 })
+    }
+
+    // 防止偽造：request body 的 userId 必須與認證的 user.id 一致
+    if (userId !== user.id) {
+      return NextResponse.json({ error: '身份驗證不一致' }, { status: 403 })
     }
 
     // 格式驗證

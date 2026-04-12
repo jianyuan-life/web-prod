@@ -1501,10 +1501,7 @@ export async function generatePDF(
   reportContent: string, analyses: Array<{ system: string; score: number }>,
 ) {
   "use step";
-  if (['E1', 'E2'].includes(planCode)) {
-    console.log('出門訣方案不生成 PDF')
-    return null
-  }
+  // E1/E2 出門訣也生成 PDF（客戶付費產品應有 PDF 下載）
 
   await emitProgress({ step: '生成PDF', progress: 80, message: '正在生成精美報告 PDF...' })
 
@@ -1542,8 +1539,10 @@ export async function generatePDF(
     .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')   // 補充符號
     .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')   // 棋牌符號
     .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')   // 擴展符號
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')     // 雜項符號（太陽、雨傘等）
     .replace(/[\u{2702}-\u{27B0}]/gu, '')     // 裝飾符號
     .replace(/[\u{FE00}-\u{FE0F}]/gu, '')     // 變體選擇器
+    .replace(/\u{200D}/gu, '')                 // ZWJ 連接符
     .replace(/\n{3,}/g, '\n\n')        // 清理後的連續空行
 
   const pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
@@ -1651,7 +1650,7 @@ export async function qualityGate(
   // 2c. E1/E2 出門訣必要章節檢查
   if (planCode === 'E1' || planCode === 'E2') {
     const e1e2Required = [
-      { pattern: /事件吉凶|事件命理|本月運勢|本月命理/, name: planCode === 'E1' ? '事件吉凶分析' : '本月運勢概覽' },
+      { pattern: /事件吉凶|事件命理|本月運勢|本月命理|你的事件|本月出行能量/, name: planCode === 'E1' ? '事件吉凶分析' : '本月運勢概覽' },
       { pattern: /好的地方|優勢|有利/, name: '好的地方' },
       { pattern: /需要注意|注意|風險/, name: '需要注意的地方' },
       { pattern: /改善|建議|行動/, name: '改善建議' },
@@ -1821,14 +1820,14 @@ export async function aiReviewReport(reportContent: string, planCode: string): P
         max_tokens: 2000,
         messages: [{
           role: 'user',
-          content: `你是一個花了 $89 買命理報告的客戶。你剛讀完整份報告。請從客戶角度評分。
+          content: `你是一個花了真金白銀買命理報告的客戶。你剛讀完整份報告。請從客戶角度評分。
 
 評分標準（每項 20 分，總分 100）：
-1. **一針見血**（20分）：讀第一段就有「靠，這也太準了」的衝擊感嗎？每章開頭的結論夠犀利嗎？
-2. **重點清晰**（20分）：只看粗體就能抓到 80% 重點嗎？三段式總結（好的/注意/改善）齊全嗎？
+1. **一���見血**（20分）：讀第一段就有「靠，這也太準了」的衝擊感嗎？每章開頭的結論夠犀利嗎？
+2. **重點清晰**（20分）：只看粗體就能抓到 80% 重點嗎？三段式���結（好的/注意/改善）齊全嗎？
 3. **具體可行**（20分）：改善建議夠具體嗎？有「做什麼、什麼時候做」嗎？不是泛泛的「注意健康」？
 4. **命理依據**（20分）：每個結論都有標明來自哪個系統嗎？多系統交叉驗證有做到嗎？
-5. **物超所值**（20分）：整體讀完覺得值 $89 嗎？會推薦給朋友嗎？
+5. **物超所值**（20分）：整體讀完覺得物超所值嗎？會推薦給朋友嗎？
 
 只回 JSON：{"score":85,"issues":["具體問題1","具體問題2"],"highlights":["做得好的1","做得好的2"]}
 

@@ -688,8 +688,8 @@ async function markReportFailed(reportId: string, errorMessage: string) {
 export async function POST(req: NextRequest) {
   // 認證檢查：只允許內部呼叫（Workflow fallback / cron）
   const internalSecret = req.headers.get('x-internal-secret')
-  const cronSecret = process.env.CRON_SECRET || ''
-  if (!internalSecret || (cronSecret && internalSecret !== cronSecret)) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret || !internalSecret || internalSecret !== cronSecret) {
     return NextResponse.json({ error: '未授權' }, { status: 401 })
   }
 

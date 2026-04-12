@@ -7,10 +7,11 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { report_id, plan_code, event_type } = body as {
+    const { report_id, plan_code, event_type, access_token } = body as {
       report_id?: string
       plan_code?: string
       event_type?: string
+      access_token?: string
     }
 
     if (!report_id || !event_type) {
@@ -26,11 +27,23 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     )
 
+    // 驗證 report_id 存在且 access_token 匹配（防偽造刷數據）
+    if (access_token) {
+      const { data: report } = await supabase
+        .from('paid_reports')
+        .select('id')
+        .eq('id', report_id)
+        .eq('access_token', access_token)
+        .single()
+      if (!report) {
+        return NextResponse.json({ error: '報告不存在' }, { status: 404 })
+      }
+    }
+
     const now = new Date().toISOString()
 
     if (event_type === 'view') {
-      // 瀏覽次數 +1，更新最後瀏覽時間
-      // 先取得目前 view_count
+      // 原子操作：直接用 SQL +1，避免 race condition
       const { data: current } = await supabase
         .from('paid_reports')
         .select('view_count')
@@ -47,7 +60,6 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', report_id)
     } else if (event_type === 'pdf_download') {
-      // PDF 下載次數 +1，更新最後下載時間
       const { data: current } = await supabase
         .from('paid_reports')
         .select('pdf_download_count')

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import LocaleSwitcher from './LocaleSwitcher'
@@ -38,14 +39,14 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 w-full z-50 border-b border-gold/10" style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}>
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <img src="/logo-jianyuan.svg?v=9" alt="鑒源" className="h-9 w-9" />
           <span className="text-gold font-serif text-lg font-semibold tracking-[3px]">鑒源</span>
-        </a>
+        </Link>
         <div className="hidden md:flex items-center gap-8 text-sm">
-          <a href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</a>
-          <a href="/pricing" className="text-text-muted hover:text-gold transition-colors">{txt.nav_pricing}</a>
-          <a href="/blog" className="text-text-muted hover:text-gold transition-colors">{txt.nav_blog}</a>
+          <Link href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</Link>
+          <Link href="/pricing" className="text-text-muted hover:text-gold transition-colors">{txt.nav_pricing}</Link>
+          <Link href="/blog" className="text-text-muted hover:text-gold transition-colors">{txt.nav_blog}</Link>
           <div className="relative" onMouseEnter={() => setToolsOpen(true)} onMouseLeave={() => setToolsOpen(false)}>
             <button className="text-text-muted hover:text-gold transition-colors flex items-center gap-1 py-2 px-2.5 rounded-lg bg-gold/[0.08] border border-gold/10">
               {txt.nav_free}
@@ -55,9 +56,9 @@ export default function Navbar() {
             {toolsOpen && (
               <div className="absolute top-full left-0 pt-1 w-48">
                 <div className="glass rounded-lg border border-gold/15 py-2 shadow-xl">
-                  <a href="/tools/bazi" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">八字命理速算</a>
-                  <a href="/tools/ziwei" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">紫微斗數速算</a>
-                  <a href="/tools/name" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">姓名學速算</a>
+                  <Link href="/tools/bazi" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">八字命理速算</Link>
+                  <Link href="/tools/ziwei" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">紫微斗數速算</Link>
+                  <Link href="/tools/name" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">姓名學速算</Link>
                 </div>
               </div>
             )}
@@ -69,7 +70,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <>
-                <a href="/dashboard" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_my_reports}</a>
+                <Link href="/dashboard" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_my_reports}</Link>
                 <button onClick={handleLogout} className="text-sm text-text-muted/60 hover:text-text-muted transition-colors">{txt.nav_logout}</button>
                 <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center text-gold text-xs font-bold">
                   {(user.user_metadata?.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}
@@ -77,10 +78,10 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <a href="/auth/login" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_login}</a>
-                <a href="/auth/signup" className="px-4 py-2 bg-gold/90 text-dark font-semibold rounded-lg text-sm btn-glow hover:bg-gold">
+                <Link href="/auth/login" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_login}</Link>
+                <Link href="/auth/signup" className="px-4 py-2 bg-gold/90 text-dark font-semibold rounded-lg text-sm btn-glow hover:bg-gold">
                   {txt.nav_signup}
-                </a>
+                </Link>
               </>
             )}
           </div>
@@ -103,25 +104,25 @@ export default function Navbar() {
       {/* 手機版展開選單 */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-gold/10 px-6 py-4 space-y-3" style={{ background: 'rgba(10,14,26,0.97)' }}>
-          <a href="/#systems" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_systems}</a>
-          <a href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_pricing}</a>
-          <a href="/blog" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_blog}</a>
+          <Link href="/#systems" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_systems}</Link>
+          <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_pricing}</Link>
+          <Link href="/blog" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_blog}</Link>
           <div className="border-t border-gold/10 pt-2">
             <p className="text-xs text-gold/60 mb-2">{txt.nav_free}</p>
-            <a href="/tools/bazi" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">八字命理速算</a>
-            <a href="/tools/ziwei" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">紫微斗數速算</a>
-            <a href="/tools/name" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">姓名學速算</a>
+            <Link href="/tools/bazi" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">八字命理速算</Link>
+            <Link href="/tools/ziwei" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">紫微斗數速算</Link>
+            <Link href="/tools/name" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">姓名學速算</Link>
           </div>
           <div className="border-t border-gold/10 pt-2">
             {user ? (
               <>
-                <a href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_my_reports}</a>
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_my_reports}</Link>
                 <button onClick={() => { setMobileMenuOpen(false); handleLogout() }} className="block text-sm text-text-muted/60 hover:text-text-muted py-1">{txt.nav_logout}</button>
               </>
             ) : (
               <>
-                <a href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_login}</a>
-                <a href="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gold font-semibold py-1">{txt.nav_signup}</a>
+                <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_login}</Link>
+                <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gold font-semibold py-1">{txt.nav_signup}</Link>
               </>
             )}
           </div>
