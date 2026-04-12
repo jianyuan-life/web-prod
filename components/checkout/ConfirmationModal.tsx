@@ -2,7 +2,11 @@
 
 import { SHICHEN } from './types'
 
-const TIME_BLOCK_NAMES = ['子時', '丑時', '寅時', '卯時', '辰時', '巳時', '午時', '未時', '申時', '酉時', '戌時', '亥時']
+const TIME_BLOCK_NAMES = [
+  '子時 (23:00-01:00)', '丑時 (01:00-03:00)', '寅時 (03:00-05:00)', '卯時 (05:00-07:00)',
+  '辰時 (07:00-09:00)', '巳時 (09:00-11:00)', '午時 (11:00-13:00)', '未時 (13:00-15:00)',
+  '申時 (15:00-17:00)', '酉時 (17:00-19:00)', '戌時 (19:00-21:00)', '亥時 (21:00-23:00)',
+]
 
 interface ConfirmationModalProps {
   show: boolean
@@ -95,7 +99,7 @@ export default function ConfirmationModal({
               )}
               {eSelectedBlocks && eSelectedBlocks.some(b => b) && (
                 <div className="py-2 border-b border-white/10">
-                  <span className="text-text-muted text-sm block mb-1">可配合出行時辰</span>
+                  <span className="text-text-muted text-sm block mb-1">可配合出行時間</span>
                   <div className="flex flex-wrap gap-1">
                     {eSelectedBlocks.map((checked, i) => checked && (
                       <span key={i} className="px-2 py-0.5 rounded text-xs bg-gold/20 text-gold border border-gold/30">

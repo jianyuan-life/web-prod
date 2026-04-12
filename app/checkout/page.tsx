@@ -53,7 +53,7 @@ function CheckoutForm() {
           planCode={ctx.planCode}
           orderAmount={ctx.totalPrice}
           couponApplied={ctx.couponApplied}
-          onPointsChange={() => {}}
+          onPointsChange={ctx.handlePointsChange}
         />
 
         {/* R 方案多人表單 */}

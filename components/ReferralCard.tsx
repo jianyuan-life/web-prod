@@ -169,8 +169,18 @@ export default function ReferralCard() {
       </div>
 
       <p className="text-xs text-text-muted/70 text-center">
-        朋友透過連結註冊並購買，您獲得 10 點（$10），朋友獲得 5 點（$5）
+        朋友註冊您得 3 點，朋友首購您再得 10 點，之後每次回購您得 5 點
       </p>
+
+      {/* 推薦碼顯示 */}
+      {hasCode && (
+        <div className="flex items-center justify-center gap-2 py-2">
+          <span className="text-xs text-text-muted/60">推薦碼：</span>
+          <span className="text-sm font-mono font-bold text-gold tracking-wider bg-gold/10 px-3 py-1 rounded-lg border border-gold/20">
+            {referral!.code}
+          </span>
+        </div>
+      )}
 
       {/* 一鍵推薦 */}
       <div>

@@ -23,7 +23,7 @@ export default function PointsRedeem({
   const [validating, setValidating] = useState(false)
 
   const hasCoupon = !!couponApplied
-  const maxPoints = Math.min(balance, Math.floor(orderAmount * 0.5))
+  const maxPoints = Math.min(balance, Math.floor(orderAmount))
 
   // 載入點數餘額
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function PointsRedeem({
       return
     }
     if (pts > maxPoints) {
-      setError(`最多可使用 ${maxPoints} 點（訂單金額 50%）`)
+      setError(`最多可使用 ${maxPoints} 點`)
       return
     }
 

@@ -45,6 +45,9 @@ export function useCheckoutForm() {
   // 優惠碼
   const [couponInput, setCouponInput] = useState('')
   const [couponApplied, setCouponApplied] = useState<{ code: string; discountAmount: number; message: string } | null>(null)
+  // 積分折抵
+  const [pointsDiscount, setPointsDiscount] = useState(0)
+  const [pointsUsed, setPointsUsed] = useState(0)
   const [couponLoading, setCouponLoading] = useState(false)
   const [couponError, setCouponError] = useState('')
 
@@ -94,7 +97,8 @@ export function useCheckoutForm() {
   const totalPrice = planCode === 'R'
     ? plan.price + rExtraCount * 19
     : plan.price
-  const finalPrice = couponApplied ? Math.max(0, totalPrice - couponApplied.discountAmount) : totalPrice
+  const priceAfterCoupon = couponApplied ? Math.max(0, totalPrice - couponApplied.discountAmount) : totalPrice
+  const finalPrice = Math.max(0, priceAfterCoupon - pointsDiscount)
 
   const isFamilyPlan = false  // G3 已移除
   const isG15Plan = planCode === 'G15'
@@ -496,6 +500,9 @@ export function useCheckoutForm() {
     // 優惠碼
     couponInput, setCouponInput, couponApplied, setCouponApplied,
     couponLoading, couponError, setCouponError, applyCoupon,
+    // 積分折抵
+    pointsUsed, pointsDiscount,
+    handlePointsChange: (pts: number, discount: number) => { setPointsUsed(pts); setPointsDiscount(discount) },
     // 備注
     customerNote, setCustomerNote,
     // D 方案
