@@ -73,7 +73,6 @@ export async function POST(req: NextRequest) {
       .insert({
         referrer_user_id: referralCodeRow.user_id,
         referred_user_id: userId,
-        referred_email: (email || '').toLowerCase(),
         referral_code: code,
         status: 'registered',
       })
