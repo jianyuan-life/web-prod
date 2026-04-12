@@ -138,7 +138,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="text-center mb-10">
               <div className="flex items-center justify-center gap-3 mb-3">
                 <div className="h-12 w-12 rounded-full overflow-hidden" style={{ background: '#0a0e1a', border: '1px solid rgba(201,168,76,0.3)' }}>
-                  <img src="/logo-jianyuan.svg?v=8" alt="鑒源" className="h-full w-full" />
+                  <img src="/logo-jianyuan.svg?v=9" alt="鑒源" className="h-full w-full" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-gold font-serif text-xl font-semibold tracking-[4px]">鑒源</span>
