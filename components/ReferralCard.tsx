@@ -166,67 +166,22 @@ export default function ReferralCard() {
   if (loading) return <LoadingSkeleton />
 
   return (
-    <div className="glass rounded-2xl p-5 space-y-4">
-      <h3 className="text-sm font-semibold text-gold flex items-center gap-2">
-        <span>&#9733;</span> 推薦朋友，雙方都獲獎勵
-      </h3>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* 推薦碼 */}
-        <div className="bg-white/5 rounded-xl p-4 space-y-2">
-          <p className="text-xs text-text-muted">您的專屬推薦碼</p>
-          {error ? (
-            <div className="space-y-2">
-              <p className="text-sm text-red-400">{error}</p>
-              <button
-                onClick={() => { setLoading(true); fetchData() }}
-                className="text-xs text-gold underline underline-offset-2 hover:text-gold/80 transition-colors"
-              >
-                重新載入
-              </button>
-            </div>
-          ) : (
-            <>
-              <span className="text-2xl font-bold text-gold tracking-widest font-mono">
-                {referral?.code || '---'}
-              </span>
-              {referral && referral.totalReferrals > 0 ? (
-                <p className="text-[11px] text-gold/80">
-                  已幫助 {referral.totalReferrals} 位朋友找到方向
-                  <span className="text-gold ml-1">+{referral.totalReferrals * 10} 點</span>
-                </p>
-              ) : (
-                <p className="text-[11px] text-text-muted/60">
-                  分享給朋友，開始累積獎勵
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* 點數 */}
-        <div className="bg-white/5 rounded-xl p-4 space-y-2">
-          <p className="text-xs text-text-muted">我的獎勵點數</p>
-          <p className="text-lg font-bold text-gold">{points?.balance || 0} <span className="text-sm font-normal text-text-muted">點</span></p>
-          <p className="text-[11px] text-text-muted/60">
-            1 點 = $1，結帳時可折抵
-            {points && points.expiringIn30Days > 0 && (
-              <span className="text-red-400 ml-1">{points.expiringIn30Days} 點即將到期</span>
-            )}
-          </p>
-        </div>
+    <div className="glass rounded-2xl p-5 space-y-3 mt-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gold flex items-center gap-2">
+          <span>&#9733;</span> 推薦朋友，雙方都獲獎勵
+        </h3>
+        {(points?.balance || 0) > 0 && (
+          <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full">{points?.balance} 點可用</span>
+        )}
       </div>
 
-      {/* 分享教學提示 */}
-      <div className="bg-gold/5 border border-gold/15 rounded-xl px-4 py-3 text-center">
-        <p className="text-xs text-gold/90">
-          朋友透過連結註冊並購買任一方案，雙方自動獲得獎勵點數
-        </p>
-      </div>
+      <p className="text-xs text-text-muted/70 text-center">
+        朋友透過連結註冊並購買，您獲得 10 點（$10），朋友獲得 5 點（$5）
+      </p>
 
-      {/* 一鍵推薦按鈕 */}
+      {/* 一鍵推薦 */}
       <div>
-        <p className="text-xs text-text-muted mb-2 text-center">一鍵推薦給朋友</p>
         <div className="flex flex-wrap justify-center gap-2">
           <button onClick={handleCopy}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all hover:scale-105"
@@ -269,9 +224,9 @@ export default function ReferralCard() {
         </div>
       </div>
 
-      <p className="text-[11px] text-text-muted/50 text-center">
-        朋友透過您的連結註冊並首次購買，您獲得 10 點，朋友獲得 5 點
-      </p>
+      {referral && referral.totalReferrals > 0 && (
+        <p className="text-[11px] text-gold/60 text-center">已幫助 {referral.totalReferrals} 位朋友找到方向</p>
+      )}
     </div>
   )
 }
