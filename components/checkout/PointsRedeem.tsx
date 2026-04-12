@@ -103,42 +103,33 @@ export default function PointsRedeem({
   if (!loading && balance <= 0) return null
 
   return (
-    <div className={`glass rounded-xl p-4 ${hasCoupon ? 'opacity-30 pointer-events-none' : ''}`}
-      style={{ border: '1px solid rgba(106,176,76,0.2)', background: 'rgba(106,176,76,0.04)' }}>
+    <div className={`${hasCoupon ? 'opacity-30 pointer-events-none' : ''}`}>
       {loading ? (
-        <p className="text-text-muted text-xs text-center">載入點數...</p>
+        <p className="text-text-muted text-xs">載入點數...</p>
       ) : pointsUsed > 0 ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-green-400 text-sm">&#10003;</span>
-            <span className="text-sm text-green-300">已折抵 <strong>{pointsUsed} 點（-${pointsUsed}）</strong></span>
-          </div>
-          <button type="button" onClick={removePoints} className="text-xs text-text-muted/50 hover:text-red-400 transition-colors">取消</button>
+        <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2">
+          <span className="text-green-400 text-sm">✓ 已折抵 {pointsUsed} 點（-${pointsUsed}）</span>
+          <button type="button" onClick={removePoints} className="text-xs text-text-muted/50 hover:text-red-400 transition-colors ml-2">取消</button>
         </div>
       ) : (
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-green-400">&#9733;</span>
-            <span className="text-sm text-cream">積分折抵</span>
-          </div>
-          <div className="flex-1 flex items-center gap-2">
+        <>
+          <div className="flex gap-2">
             <input
               type="number" min={1} max={maxPoints}
-              placeholder={`可用 ${balance} 點（1點=$1）`}
+              placeholder={`積分折抵（${balance}點可用）`}
               value={pointsInput}
               onChange={(e) => { setPointsInput(e.target.value); setError('') }}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyPoints())}
-              className="flex-1 bg-white/5 border border-green-500/20 rounded-lg px-3 py-2 text-cream text-sm focus:border-green-500/40 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-4 py-2 text-cream text-sm focus:border-green-500/40 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <button type="button" onClick={applyPoints} disabled={validating || !pointsInput.trim()}
-              className="px-4 py-2 bg-green-500/20 border border-green-500/30 text-green-400 text-sm rounded-lg hover:bg-green-500/30 disabled:opacity-40 whitespace-nowrap transition-colors">
+              className="px-4 py-2 bg-gold/20 border border-gold/30 text-gold text-sm rounded-lg hover:bg-gold/30 disabled:opacity-40 whitespace-nowrap">
               {validating ? '...' : '折抵'}
             </button>
           </div>
-        </div>
+          {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+        </>
       )}
-      {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
-      {hasCoupon && <p className="text-text-muted/40 text-[10px] mt-1 text-center">不可與優惠碼同時使用</p>}
     </div>
   )
 }
