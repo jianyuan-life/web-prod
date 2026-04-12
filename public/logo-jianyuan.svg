@@ -4,59 +4,48 @@
       <stop offset="0%" stop-color="#e8c87a"/>
       <stop offset="100%" stop-color="#a07830"/>
     </linearGradient>
-    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="0.5">
-      <stop offset="0%" stop-color="#0a0e1a"/>
-      <stop offset="45%" stop-color="#1a2040"/>
-      <stop offset="100%" stop-color="#c9a84c"/>
-    </linearGradient>
     <clipPath id="circle">
       <circle cx="100" cy="100" r="90"/>
     </clipPath>
+    <radialGradient id="glow" cx="0.8" cy="0.35" r="0.65">
+      <stop offset="0%" stop-color="#e8c87a" stop-opacity="1"/>
+      <stop offset="35%" stop-color="#c9a84c" stop-opacity="0.8"/>
+      <stop offset="70%" stop-color="#a07830" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#0a0e1a" stop-opacity="0"/>
+    </radialGradient>
   </defs>
 
   <!-- 金色外圈 -->
-  <circle cx="100" cy="100" r="94" fill="none" stroke="url(#goldRing)" stroke-width="2.5"/>
+  <circle cx="100" cy="100" r="94" fill="none" stroke="url(#goldRing)" stroke-width="2"/>
 
-  <!-- 漸層背景：左深右亮（光明在右方） -->
-  <circle cx="100" cy="100" r="90" fill="url(#bgGrad)"/>
+  <!-- 深色背景 -->
+  <circle cx="100" cy="100" r="90" fill="#0a0e1a"/>
 
-  <!-- 右側強烈金色光源 -->
-  <ellipse cx="170" cy="70" rx="70" ry="80" fill="#c9a84c" opacity="0.6" clip-path="url(#circle)"/>
-  <ellipse cx="160" cy="80" rx="45" ry="55" fill="#e8c87a" opacity="0.5" clip-path="url(#circle)"/>
+  <!-- 右側金色光芒（大面積放射） -->
+  <circle cx="100" cy="100" r="90" fill="url(#glow)" clip-path="url(#circle)"/>
 
-  <!-- 人臉側面剪影（深色，朝右看向光芒） -->
-  <!-- 清晰的：頭頂→額頭→眉弓→鼻樑→鼻尖→人中→上唇→下唇→下巴→脖子 -->
+  <!-- 沉思者剪影 — 極簡粗線條，只有頭+肩 -->
+  <!-- 策略：用大色塊不用細線，36px 也清楚 -->
   <path clip-path="url(#circle)" fill="#0a0e1a" d="
-    M 40,190
-    L 40,160
-    C 42,150 48,142 52,136
-    C 56,130 58,126 58,120
-    L 58,115
-    C 52,110 48,104 46,96
-    C 44,88 44,78 48,68
-    C 52,58 58,50 66,44
-    C 72,38 78,34 82,30
-    C 86,26 92,24 100,24
-    C 108,24 114,28 118,34
-    C 122,40 124,48 124,56
-    C 124,60 123,64 121,68
-    C 119,72 118,76 118,78
-    C 118,80 120,82 123,84
-    C 126,86 128,88 128,91
-    C 128,94 126,96 123,97
-    C 120,98 118,100 117,103
-    C 116,106 117,108 119,110
-    C 121,112 120,114 118,116
-    C 116,118 113,119 110,118
-    C 107,118 105,120 104,124
-    C 103,130 100,138 94,146
-    C 88,154 82,162 78,172
-    L 72,190
+    M 15,195
+    C 15,170 25,155 40,148
+    C 50,143 58,140 62,136
+    L 62,125
+    C 55,118 50,108 48,96
+    C 46,84 48,72 54,62
+    C 60,52 68,44 78,38
+    C 84,34 90,32 98,32
+    C 106,32 112,36 116,42
+    C 120,48 122,56 122,64
+    C 122,70 120,76 116,80
+    C 114,82 114,86 118,90
+    C 120,92 120,96 116,98
+    C 114,100 112,104 114,110
+    C 115,114 112,116 108,116
+    C 105,117 103,120 102,126
+    C 100,136 94,146 86,155
+    C 78,164 72,174 68,186
+    L 65,195
     Z
   "/>
-
-  <!-- 光線條 -->
-  <line x1="150" y1="42" x2="168" y2="32" stroke="#e8c87a" stroke-width="2" stroke-linecap="round" opacity="0.5" clip-path="url(#circle)"/>
-  <line x1="158" y1="58" x2="178" y2="54" stroke="#e8c87a" stroke-width="2" stroke-linecap="round" opacity="0.45" clip-path="url(#circle)"/>
-  <line x1="160" y1="76" x2="180" y2="78" stroke="#e8c87a" stroke-width="1.5" stroke-linecap="round" opacity="0.35" clip-path="url(#circle)"/>
 </svg>
