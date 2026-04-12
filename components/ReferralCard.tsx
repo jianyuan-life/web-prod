@@ -85,6 +85,39 @@ export default function ReferralCard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // 贈與積分
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [transferEmail, setTransferEmail] = useState('')
+  const [transferPoints, setTransferPoints] = useState('')
+  const [transferMsg, setTransferMsg] = useState('')
+  const [transferLoading, setTransferLoading] = useState(false)
+  const [transferResult, setTransferResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const handleTransfer = async () => {
+    if (!transferEmail || !transferPoints) return
+    setTransferLoading(true)
+    setTransferResult(null)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      const res = await fetch('/api/points/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ recipientEmail: transferEmail, points: parseInt(transferPoints), message: transferMsg || undefined }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setTransferResult({ ok: true, msg: `已贈與 ${data.pointsTransferred} 點，餘額 ${data.senderNewBalance}` })
+        setTransferEmail(''); setTransferPoints(''); setTransferMsg('')
+        // 刷新積分
+        fetchData()
+      } else {
+        setTransferResult({ ok: false, msg: data.error })
+      }
+    } catch { setTransferResult({ ok: false, msg: '網路錯誤' }) }
+    finally { setTransferLoading(false) }
+  }
+
   const fetchData = useCallback(async (isRetry = false) => {
     try {
       setError(null)
@@ -238,6 +271,41 @@ export default function ReferralCard() {
 
       {referral && referral.totalReferrals > 0 && (
         <p className="text-[11px] text-gold/60 text-center">已幫助 {referral.totalReferrals} 位朋友找到方向</p>
+      )}
+
+      {/* 贈與積分 */}
+      {points && points.balance > 0 && (
+        <div className="pt-2 border-t border-white/5">
+          {!showTransfer ? (
+            <button onClick={() => setShowTransfer(true)} className="w-full text-center text-[11px] text-text-muted/50 hover:text-gold transition-colors py-1">
+              贈與積分給朋友
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input value={transferEmail} onChange={e => setTransferEmail(e.target.value)} placeholder="朋友的 Email"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-cream focus:border-gold/40 focus:outline-none" />
+                <input value={transferPoints} onChange={e => setTransferPoints(e.target.value.replace(/\D/g, ''))} placeholder="點數" type="text"
+                  className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-cream text-center focus:border-gold/40 focus:outline-none" />
+              </div>
+              <div className="flex gap-2">
+                <input value={transferMsg} onChange={e => setTransferMsg(e.target.value)} placeholder="附言（選填）"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-cream focus:border-gold/40 focus:outline-none" />
+                <button onClick={handleTransfer} disabled={transferLoading || !transferEmail || !transferPoints}
+                  className="px-3 py-1.5 bg-gold/80 text-dark text-xs font-semibold rounded-lg hover:bg-gold disabled:opacity-40 transition-colors">
+                  {transferLoading ? '...' : '贈與'}
+                </button>
+                <button onClick={() => { setShowTransfer(false); setTransferResult(null) }}
+                  className="px-2 py-1.5 text-xs text-text-muted/60 hover:text-text-muted transition-colors">
+                  取消
+                </button>
+              </div>
+              {transferResult && (
+                <p className={`text-[11px] ${transferResult.ok ? 'text-green-400' : 'text-red-400'}`}>{transferResult.msg}</p>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

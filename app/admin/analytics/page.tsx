@@ -133,7 +133,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <KPICard label="總訪客" value={data.funnel.visitors.toLocaleString()} />
             <KPICard label="總營收" value={`$${Object.values(data.byPlan).reduce((s, p) => s + p.revenue, 0).toFixed(2)}`} />
-            <KPICard label="ARPU" value={`$${data.arpu.toFixed(2)}`} sub="平均每付費用戶收入" />
+            <KPICard label="平均客單價" value={`$${data.arpu.toFixed(2)}`} sub="平均每付費用戶收入" />
             <KPICard label="平均生成時間" value={`${data.avgGenerationMinutes} 分鐘`} />
           </div>
 
@@ -196,7 +196,7 @@ export default function AnalyticsPage() {
                   <tr className="border-b border-white/10">
                     <th className="text-left py-3 px-4 text-gray-400 font-medium">方案</th>
                     <th className="text-right py-3 px-4 text-gray-400 font-medium">付款數</th>
-                    <th className="text-right py-3 px-4 text-gray-400 font-medium">營收 (USD)</th>
+                    <th className="text-right py-3 px-4 text-gray-400 font-medium">營收（美元）</th>
                     <th className="text-right py-3 px-4 text-gray-400 font-medium">佔比</th>
                   </tr>
                 </thead>

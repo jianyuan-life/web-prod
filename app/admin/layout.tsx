@@ -2,6 +2,7 @@
 
 import { useState, useEffect, createContext, useContext } from 'react'
 import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 
 // 全域 Admin 認證 Context
 const AdminAuthContext = createContext<{ authed: boolean; adminKey: string; setAuthed: (v: boolean) => void; setAdminKey: (k: string) => void }>({
@@ -30,6 +31,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [adminKey, setAdminKey] = useState('')
   const [keyInput, setKeyInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loginError, setLoginError] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const pathname = usePathname()
 
@@ -44,6 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogin = async () => {
     setLoading(true)
+    setLoginError('')
     try {
       const res = await fetch(`/api/admin?key=${keyInput}&range=7d`)
       if (res.ok) {
@@ -51,9 +54,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         setAuthed(true)
         sessionStorage.setItem('admin_key', keyInput)
       } else {
-        alert('密碼錯誤')
+        setLoginError('密碼錯誤')
       }
-    } catch { alert('連線失敗') }
+    } catch { setLoginError('連線失敗') }
     finally { setLoading(false) }
   }
 
@@ -64,9 +67,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h1 className="text-xl font-bold text-white mb-2">鑒源管理後台</h1>
           <p className="text-sm text-gray-400 mb-6">請輸入管理密碼</p>
           <input type="password" placeholder="密碼" value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
+            onChange={(e) => { setKeyInput(e.target.value); setLoginError('') }}
             onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white mb-4 focus:border-amber-500 focus:outline-none" />
+          {loginError && <p className="text-red-400 text-sm mb-3">{loginError}</p>}
           <button onClick={handleLogin} disabled={loading}
             className="w-full py-3 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-500 disabled:opacity-50">
             {loading ? '驗證中...' : '進入後台'}
@@ -94,7 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {NAV_ITEMS.map(item => {
               const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
               return (
-                <a key={item.href} href={item.href}
+                <Link key={item.href} href={item.href}
                   className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-all ${
                     active ? 'text-amber-400 bg-amber-500/10 border-r-2 border-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}>
@@ -102,7 +106,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <path d={item.icon} />
                   </svg>
                   {!sidebarCollapsed && <span>{item.label}</span>}
-                </a>
+                </Link>
               )
             })}
           </nav>
@@ -119,20 +123,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
 
-        {/* 手機版底部導航 */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#141414] border-t border-white/10 flex justify-around py-2 z-50">
-          {NAV_ITEMS.slice(0, 5).map(item => {
-            const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
-            return (
-              <a key={item.href} href={item.href}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] ${active ? 'text-amber-400' : 'text-gray-500'}`}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={item.icon} />
-                </svg>
-                {item.label}
-              </a>
-            )
-          })}
+        {/* 手機版底部導航（可橫向滾動） */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#141414] border-t border-white/10 z-50">
+          <div className="flex overflow-x-auto py-2 px-1 gap-1 scrollbar-hide">
+            {NAV_ITEMS.map(item => {
+              const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+              return (
+                <Link key={item.href} href={item.href}
+                  className={`flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] shrink-0 ${active ? 'text-amber-400' : 'text-gray-500'}`}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={item.icon} />
+                  </svg>
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
         </nav>
       </div>
     </AdminAuthContext.Provider>

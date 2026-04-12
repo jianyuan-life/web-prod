@@ -95,6 +95,7 @@ export default function UsersPage() {
 
       {/* 用戶列表 */}
       <div className="bg-[#1a1a1a] rounded-xl border border-white/5 overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/5">
@@ -160,6 +161,7 @@ export default function UsersPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

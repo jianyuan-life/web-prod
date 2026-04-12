@@ -429,33 +429,44 @@ export async function POST(req: NextRequest) {
             .maybeSingle()
 
           if (referral) {
-            // 3. 確認是首次付費購買（paid_reports 中該 email 只有 1 筆）
-            const { count: reportCount } = await supabase
-              .from('paid_reports')
-              .select('id', { count: 'exact', head: true })
-              .eq('customer_email', customerEmail)
-              .in('status', ['completed', 'generating', 'pending'])
+            // 防重複發放：用 stripe session_id 當 reference_id，若已存在則跳過
+            const { data: existingTx } = await supabase
+              .from('point_transactions')
+              .select('id')
+              .eq('reference_id', session.id)
+              .eq('type', 'earn_referral')
+              .maybeSingle()
 
-            if (reportCount !== null && reportCount <= 1) {
+            if (existingTx) {
+              console.info(`ℹ️ 此筆交易 ${session.id} 已發放過推薦積分，跳過`)
+            } else {
+              // 3. 查購買次數，首購 10 點、回購 5 點
+              const { count: reportCount } = await supabase
+                .from('paid_reports')
+                .select('id', { count: 'exact', head: true })
+                .eq('customer_email', customerEmail)
+                .in('status', ['completed', 'generating', 'pending'])
+
+              const isFirstPurchase = reportCount !== null && reportCount <= 1
+              const REFERRER_POINTS = isFirstPurchase ? 10 : 5
               const now = new Date().toISOString()
               const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
               const referrerId = referral.referrer_user_id
-              const REFERRER_POINTS = 10
-              const REFERRED_POINTS = 5
 
-              // 更新 referrals 狀態
-              await supabase
-                .from('referrals')
-                .update({
-                  status: 'purchased',
-                  purchased_at: now,
-                  referrer_points_awarded: REFERRER_POINTS,
-                  referred_points_awarded: REFERRED_POINTS,
-                })
-                .eq('id', referral.id)
+              // 首購時更新 referrals 狀態
+              if (isFirstPurchase) {
+                await supabase
+                  .from('referrals')
+                  .update({
+                    status: 'purchased',
+                    purchased_at: now,
+                    referrer_points_awarded: REFERRER_POINTS,
+                    referred_points_awarded: 0, // 被推薦人已在註冊時得到積分
+                  })
+                  .eq('id', referral.id)
+              }
 
               // 推薦人加點數 — 安全加值（先查後更新，不存在則新建）
-              // 注意：推薦碼獎勵有冪等保護（referrals.status 已更新為 purchased），所以併發風險低
               async function addPointsSafe(targetUserId: string, points: number): Promise<number> {
                 const { data: existing } = await supabase
                   .from('user_points')
@@ -486,33 +497,22 @@ export async function POST(req: NextRequest) {
                 }
               }
 
+              // 只發放推薦人積分（被推薦人已在註冊時得到積分）
               const referrerFinalBalance = await addPointsSafe(referrerId, REFERRER_POINTS)
-              const referredFinalBalance = await addPointsSafe(userId, REFERRED_POINTS)
 
-              // 寫入 point_transactions（含 balance_after）
-              await supabase.from('point_transactions').insert([
-                {
-                  user_id: referrerId,
-                  type: 'earn_referral',
-                  amount: REFERRER_POINTS,
-                  balance_after: referrerFinalBalance,
-                  description: `推薦用戶首次購買獎勵`,
-                  reference_id: referral.id,
-                  expires_at: expiresAt,
-                },
-                {
-                  user_id: userId,
-                  type: 'earn_referral',
-                  amount: REFERRED_POINTS,
-                  balance_after: referredFinalBalance,
-                  description: '透過推薦碼註冊並首次購買獎勵',
-                  reference_id: referral.id,
-                  expires_at: expiresAt,
-                },
-              ])
+              // 寫入 point_transactions（用 session.id 作為 reference_id 防重複）
+              await supabase.from('point_transactions').insert({
+                user_id: referrerId,
+                type: 'earn_referral',
+                amount: REFERRER_POINTS,
+                balance_after: referrerFinalBalance,
+                description: isFirstPurchase ? '推薦用戶首次購買獎勵' : '推薦用戶回購獎勵',
+                reference_id: session.id,
+                expires_at: expiresAt,
+              })
 
-              // 更新 referral_codes.total_referrals（帶條件更新）
-              if (referral.referral_code) {
+              // 首購時更新 referral_codes.total_referrals
+              if (isFirstPurchase && referral.referral_code) {
                 const { data: codeRow } = await supabase
                   .from('referral_codes')
                   .select('total_referrals')
@@ -527,9 +527,7 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              console.info(`✅ 推薦碼點數發放完成：推薦人 ${referrerId} +${REFERRER_POINTS}點，被推薦人 ${userId} +${REFERRED_POINTS}點`)
-            } else {
-              console.info('ℹ️ 非首次購買，跳過推薦碼點數發放')
+              console.info(`✅ 推薦碼點數發放完成：推薦人 ${referrerId} +${REFERRER_POINTS}點（${isFirstPurchase ? '首購' : '回購'}）`)
             }
           }
         }

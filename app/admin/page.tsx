@@ -92,7 +92,7 @@ export default function AdminOverview() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-white">總覽</h1>
-          <p className="text-xs text-gray-500">JianYuan Admin Dashboard</p>
+          <p className="text-xs text-gray-500">鑒源後台管理</p>
         </div>
         <div className="flex gap-2">
           {['7d', '30d', '90d'].map(r => (
@@ -115,7 +115,7 @@ export default function AdminOverview() {
           { label: '免費速算', value: o.free_tool_usage, color: 'text-purple-400' },
           { label: '訂單數', value: o.total_orders, color: 'text-green-400' },
           { label: '完成報告', value: o.completed_reports, color: 'text-emerald-400' },
-          { label: '營收 USD', value: `$${o.total_revenue_usd}`, color: 'text-amber-400' },
+          { label: '營收（美元）', value: `$${o.total_revenue_usd}`, color: 'text-amber-400' },
           { label: '轉化率', value: `${o.conversion_rate_pct}%`, color: 'text-rose-400' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-[#1a1a1a] rounded-xl p-4 border border-white/5">

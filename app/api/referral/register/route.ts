@@ -103,7 +103,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '建立推薦關係失敗' }, { status: 500 })
     }
 
-    console.info(`✅ 推薦關係建立：${code} → ${userId}`)
+    // 註冊獎勵：推薦人 3 點 + 被推薦人 5 點
+    const REGISTER_REFERRER_POINTS = 3
+    const REGISTER_REFERRED_POINTS = 5
+
+    // 發放推薦人積分
+    const { data: refPts } = await supabase.from('user_points').select('balance, total_earned').eq('user_id', referralCodeRow.user_id).maybeSingle()
+    if (refPts) {
+      await supabase.from('user_points').update({ balance: refPts.balance + REGISTER_REFERRER_POINTS, total_earned: refPts.total_earned + REGISTER_REFERRER_POINTS }).eq('user_id', referralCodeRow.user_id)
+    } else {
+      await supabase.from('user_points').insert({ user_id: referralCodeRow.user_id, balance: REGISTER_REFERRER_POINTS, total_earned: REGISTER_REFERRER_POINTS, total_used: 0 })
+    }
+    await supabase.from('point_transactions').insert({ user_id: referralCodeRow.user_id, type: 'earn_referral_register', amount: REGISTER_REFERRER_POINTS, balance_after: (refPts?.balance || 0) + REGISTER_REFERRER_POINTS, description: '推薦朋友完成註冊獎勵', reference_id: `register_${userId}` })
+
+    // 發放被推薦人積分
+    const { data: newPts } = await supabase.from('user_points').select('balance, total_earned').eq('user_id', userId).maybeSingle()
+    if (newPts) {
+      await supabase.from('user_points').update({ balance: newPts.balance + REGISTER_REFERRED_POINTS, total_earned: newPts.total_earned + REGISTER_REFERRED_POINTS }).eq('user_id', userId)
+    } else {
+      await supabase.from('user_points').insert({ user_id: userId, balance: REGISTER_REFERRED_POINTS, total_earned: REGISTER_REFERRED_POINTS, total_used: 0 })
+    }
+    await supabase.from('point_transactions').insert({ user_id: userId, type: 'earn_welcome', amount: REGISTER_REFERRED_POINTS, balance_after: (newPts?.balance || 0) + REGISTER_REFERRED_POINTS, description: '透過推薦碼註冊歡迎獎勵', reference_id: `register_${userId}` })
+
+    console.info(`✅ 推薦關係建立：${code} → ${userId}，已發放積分（推薦人 +${REGISTER_REFERRER_POINTS}，被推薦人 +${REGISTER_REFERRED_POINTS}）`)
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })

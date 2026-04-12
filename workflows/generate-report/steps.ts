@@ -1690,16 +1690,16 @@ export async function qualityGate(
   }
 
   // 2c. E1/E2 出門訣必要章節檢查
-  if (planCode === 'E1' || planCode === 'E2') {
-    const e1e2Required = [
-      { pattern: /事件吉凶|事件命理|本月運勢|本月命理|你的事件|本月出行能量/, name: planCode === 'E1' ? '事件吉凶分析' : '本月運勢概覽' },
+  if (planCode === 'E1') {
+    const e1Required = [
+      { pattern: /事件吉凶|事件命理|你的事件|本月出行能量/, name: '事件吉凶分析' },
       { pattern: /好的地方|優勢|有利/, name: '好的地方' },
       { pattern: /需要注意|注意|風險/, name: '需要注意的地方' },
       { pattern: /改善|建議|行動/, name: '改善建議' },
       { pattern: /補運|操作指南/, name: '補運操作指南' },
       { pattern: /忌方|忌日|注意事項/, name: '忌方忌日' },
     ]
-    for (const sec of e1e2Required) {
+    for (const sec of e1Required) {
       if (!sec.pattern.test(reportContent)) {
         warnings.push(`出門訣缺少必要章節: ${sec.name}`)
       }
@@ -1711,6 +1711,37 @@ export async function qualityGate(
     // 內容長度檢查
     if (reportContent.length < 3000) {
       warnings.push(`出門訣內容偏短: ${reportContent.length} 字（期望 > 3,000 字）`)
+    }
+  }
+
+  // 2c-2. E2 月盤出門訣必要章節檢查（每週 Top5 格式）
+  if (planCode === 'E2') {
+    const e2Required = [
+      { pattern: /本月出行能量總覽|本月出行能量概覽/, name: '本月出行能量總覽' },
+      { pattern: /第一週/, name: '第一週' },
+      { pattern: /第二週/, name: '第二週' },
+      { pattern: /第三週/, name: '第三週' },
+      { pattern: /第四週/, name: '第四週' },
+      { pattern: /坐盤補運|補運指南/, name: '坐盤補運指南' },
+      { pattern: /忌方|忌日/, name: '忌方忌日' },
+      { pattern: /補運操作指南|操作指南/, name: '補運操作指南' },
+      { pattern: /月度總結/, name: '月度總結' },
+    ]
+    for (const sec of e2Required) {
+      if (!sec.pattern.test(reportContent)) {
+        warnings.push(`月盤出門訣缺少必要章節: ${sec.name}`)
+      }
+    }
+    // E2 應有四個 Top5 JSON 區塊（每週一個）
+    const top5Matches = reportContent.match(/===TOP5_JSON_START===/g)
+    if (!top5Matches) {
+      warnings.push('月盤出門訣缺少 Top5 吉時 JSON 區塊')
+    } else if (top5Matches.length < 4) {
+      warnings.push(`月盤出門訣 Top5 JSON 區塊不足: 找到 ${top5Matches.length} 個（期望 4 個，每週一個）`)
+    }
+    // 內容長度檢查（四週格式預期更長）
+    if (reportContent.length < 5000) {
+      warnings.push(`月盤出門訣內容偏短: ${reportContent.length} 字（期望 > 5,000 字）`)
     }
   }
 

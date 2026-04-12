@@ -20,6 +20,34 @@ export default function ReferralsPage() {
   const [stats, setStats] = useState<Stats>({ totalReferrals: 0, purchasedCount: 0, totalPointsAwarded: 0 })
   const [loading, setLoading] = useState(false)
 
+  // 手動發放積分
+  const [grantEmail, setGrantEmail] = useState('')
+  const [grantPoints, setGrantPoints] = useState('')
+  const [grantDesc, setGrantDesc] = useState('')
+  const [grantLoading, setGrantLoading] = useState(false)
+  const [grantResult, setGrantResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const handleGrantPoints = async () => {
+    if (!grantEmail || !grantPoints) return
+    setGrantLoading(true)
+    setGrantResult(null)
+    try {
+      const res = await fetch('/api/admin/grant-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: adminKey, email: grantEmail, points: parseInt(grantPoints), description: grantDesc || undefined }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setGrantResult({ ok: true, msg: `已發放 ${data.pointsGranted} 點給 ${data.email}，餘額 ${data.newBalance}` })
+        setGrantEmail(''); setGrantPoints(''); setGrantDesc('')
+      } else {
+        setGrantResult({ ok: false, msg: data.error })
+      }
+    } catch { setGrantResult({ ok: false, msg: '網路錯誤' }) }
+    finally { setGrantLoading(false) }
+  }
+
   const fetchData = useCallback(async () => {
     if (!adminKey) return
     setLoading(true)
@@ -55,8 +83,37 @@ export default function ReferralsPage() {
         </button>
       </div>
 
+      {/* 手動發放積分 */}
+      <div className="bg-[#1a1a1a] rounded-xl border border-amber-500/20 p-4 mb-6">
+        <h3 className="text-sm font-semibold text-amber-400 mb-3">手動發放積分</h3>
+        <div className="flex flex-wrap gap-2 items-end">
+          <div className="flex-1 min-w-[180px]">
+            <label className="text-[10px] text-gray-500 block mb-1">用戶 Email</label>
+            <input value={grantEmail} onChange={e => setGrantEmail(e.target.value)} placeholder="user@email.com"
+              className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/40 focus:outline-none" />
+          </div>
+          <div className="w-24">
+            <label className="text-[10px] text-gray-500 block mb-1">點數</label>
+            <input value={grantPoints} onChange={e => setGrantPoints(e.target.value.replace(/\D/g, ''))} placeholder="100" type="text"
+              className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/40 focus:outline-none" />
+          </div>
+          <div className="flex-1 min-w-[120px]">
+            <label className="text-[10px] text-gray-500 block mb-1">說明（選填）</label>
+            <input value={grantDesc} onChange={e => setGrantDesc(e.target.value)} placeholder="活動獎勵"
+              className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500/40 focus:outline-none" />
+          </div>
+          <button onClick={handleGrantPoints} disabled={grantLoading || !grantEmail || !grantPoints}
+            className="px-4 py-2 bg-amber-500/80 text-black font-semibold rounded-lg text-sm hover:bg-amber-500 disabled:opacity-40 transition-colors">
+            {grantLoading ? '發放中...' : '發放'}
+          </button>
+        </div>
+        {grantResult && (
+          <p className={`text-xs mt-2 ${grantResult.ok ? 'text-green-400' : 'text-red-400'}`}>{grantResult.msg}</p>
+        )}
+      </div>
+
       {/* 頂部統計 */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-[#1a1a1a] rounded-xl border border-white/5 p-4">
           <p className="text-[10px] text-gray-500 mb-1">總推薦數</p>
           <p className="text-2xl font-bold text-white">{stats.totalReferrals}</p>

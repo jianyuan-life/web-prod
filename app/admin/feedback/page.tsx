@@ -95,7 +95,7 @@ export default function FeedbackPage() {
           <div className="text-[10px] text-gray-500 mt-1">滿分 5 星</div>
         </div>
         <div className="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <div className="text-[10px] text-gray-500 mb-1">推薦比例 (NPS)</div>
+          <div className="text-[10px] text-gray-500 mb-1">推薦比例（淨推薦值）</div>
           <div className="text-2xl font-bold text-green-400">{recommendAnswered > 0 ? `${npsPct}%` : '—'}</div>
           <div className="text-[10px] text-gray-500 mt-1">{recommendCount} / {recommendAnswered} 人推薦</div>
         </div>

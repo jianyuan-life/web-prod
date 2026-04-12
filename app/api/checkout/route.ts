@@ -177,8 +177,8 @@ export async function POST(req: NextRequest) {
         // 驗證餘額
         const { data: pts } = await supabase.from('user_points').select('balance').eq('user_id', userId).single()
         const balance = pts?.balance || 0
-        // 最多用到餘額，且不超過訂單50%
-        const maxPoints = Math.floor(finalAmount / 100 / 2) // 50% 上限，單位美元
+        // 最多用到餘額，且不超過訂單金額（100% 可折抵）
+        const maxPoints = Math.floor(finalAmount / 100) // 100% 上限，單位美元
         verifiedPointsToUse = Math.min(pointsToUse, balance, maxPoints)
         if (verifiedPointsToUse > 0) {
           finalAmount = Math.max(0, finalAmount - verifiedPointsToUse * 100)
@@ -186,8 +186,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 免費方案：跳過 Stripe，直接建立訂單
-    if (finalAmount === 0 && verifiedCouponCode) {
+    // 免費方案（優惠碼或積分全額折抵）：跳過 Stripe，直接建立訂單
+    if (finalAmount === 0 && (verifiedCouponCode || verifiedPointsToUse > 0)) {
       const supabase = getSupabase()
       const draftRes = await supabase.from('checkout_drafts').insert({
         plan_code: planCode, birth_data: birthData, locale: locale || 'zh-TW',
@@ -232,14 +232,51 @@ export async function POST(req: NextRequest) {
       const reportId = reportData?.id || ''
 
       // 記錄優惠碼使用
-      const { data: couponRow } = await supabase.from('coupons').select('id, used_count').eq('code', verifiedCouponCode).single()
-      if (couponRow) {
-        await supabase.from('coupons').update({ used_count: (couponRow.used_count || 0) + 1 }).eq('id', couponRow.id)
-        await supabase.from('coupon_uses').insert({
-          coupon_id: couponRow.id, coupon_code: verifiedCouponCode,
-          order_id: fakeSessionId, customer_email: customerEmail,
-          plan_code: planCode, original_amount: baseAmount / 100, discount_applied: baseAmount / 100,
-        })
+      if (verifiedCouponCode) {
+        const { data: couponRow } = await supabase.from('coupons').select('id, used_count').eq('code', verifiedCouponCode).single()
+        if (couponRow) {
+          await supabase.from('coupons').update({ used_count: (couponRow.used_count || 0) + 1 }).eq('id', couponRow.id)
+          await supabase.from('coupon_uses').insert({
+            coupon_id: couponRow.id, coupon_code: verifiedCouponCode,
+            order_id: fakeSessionId, customer_email: customerEmail,
+            plan_code: planCode, original_amount: baseAmount / 100, discount_applied: baseAmount / 100,
+          })
+        }
+      }
+
+      // 積分全額折抵：直接扣除積分（不經過 Stripe webhook）
+      if (verifiedPointsToUse > 0 && pointsUserId) {
+        const { data: pts } = await supabase
+          .from('user_points')
+          .select('balance, total_used')
+          .eq('user_id', pointsUserId)
+          .gte('balance', verifiedPointsToUse)
+          .single()
+
+        if (pts) {
+          const newBalance = pts.balance - verifiedPointsToUse
+          const { error: updateErr } = await supabase
+            .from('user_points')
+            .update({
+              balance: newBalance,
+              total_used: (pts.total_used || 0) + verifiedPointsToUse,
+            })
+            .eq('user_id', pointsUserId)
+            .gte('balance', verifiedPointsToUse)
+
+          if (!updateErr) {
+            const PLAN_NAMES_PTS: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' }
+            await supabase.from('point_transactions').insert({
+              user_id: pointsUserId,
+              type: 'use_checkout',
+              amount: -verifiedPointsToUse,
+              balance_after: newBalance,
+              description: `${PLAN_NAMES_PTS[planCode] || planCode} 訂單折抵`,
+              reference_id: fakeSessionId,
+            })
+            console.info(`✅ 積分全額折抵扣除：${pointsUserId} -${verifiedPointsToUse}點，餘額 ${newBalance}`)
+          }
+        }
       }
 
       // 免費方案也發訂單確認信
@@ -251,12 +288,17 @@ export async function POST(req: NextRequest) {
           await resend.emails.send({
             from: '鑒源命理 <noreply@jianyuan.life>',
             to: customerEmail,
-            subject: `已收到您的訂單 — ${planName}（優惠碼 ${verifiedCouponCode}）`,
+            subject: verifiedCouponCode
+              ? `已收到您的訂單 — ${planName}（優惠碼 ${verifiedCouponCode}）`
+              : `已收到您的訂單 — ${planName}（積分折抵）`,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
                 <h2 style="color: #1a1a2e; margin-bottom: 16px;">感謝您的購買</h2>
                 <p>您好，</p>
-                <p>您使用優惠碼 <strong>${verifiedCouponCode}</strong> 免費獲得了<strong>「${planName}」</strong>，系統正在啟動分析。</p>
+                <p>${verifiedCouponCode
+                  ? `您使用優惠碼 <strong>${verifiedCouponCode}</strong> 免費獲得了<strong>「${planName}」</strong>，系統正在啟動分析。`
+                  : `您使用積分折抵了<strong>「${planName}」</strong>，系統正在啟動分析。`
+                }</p>
                 <p style="background: #f8f6f0; padding: 16px; border-radius: 8px; border-left: 3px solid #c9a84c;">
                   報告預計 <strong>30-60 分鐘</strong>內完成。完成後會再寄信通知您。
                 </p>

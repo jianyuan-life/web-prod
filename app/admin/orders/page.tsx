@@ -144,6 +144,7 @@ export default function OrdersPage() {
 
       {/* 訂單列表 */}
       <div className="bg-[#1a1a1a] rounded-xl border border-white/5 overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/5">
@@ -208,6 +209,7 @@ export default function OrdersPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* 分頁 */}

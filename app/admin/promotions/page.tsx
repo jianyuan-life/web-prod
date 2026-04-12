@@ -185,7 +185,7 @@ export default function PromotionsPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-white font-bold">{promo.name}</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">
-                      {promo.discount_percent}% off
+                      {promo.discount_percent}% 折扣
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${status.color}`}>
                       {status.label}
