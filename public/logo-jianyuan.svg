@@ -1,49 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-  <!-- 背景圓（深色半邊） -->
-  <clipPath id="circle">
-    <circle cx="100" cy="100" r="96"/>
-  </clipPath>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0d78c"/>
+      <stop offset="40%" stop-color="#e8c97a"/>
+      <stop offset="100%" stop-color="#c9a84c"/>
+    </linearGradient>
+    <clipPath id="c">
+      <circle cx="100" cy="100" r="96"/>
+    </clipPath>
+  </defs>
 
-  <g clip-path="url(#circle)">
-    <!-- 深色背景（左半） -->
-    <rect x="0" y="0" width="200" height="200" fill="#0a0e1a"/>
+  <g clip-path="url(#c)">
+    <!-- 金色光芒背景（整個圓） -->
+    <circle cx="100" cy="100" r="96" fill="url(#gold)"/>
 
-    <!-- 金色半邊（右半，不規則邊界模擬裂縫） -->
-    <path d="M105 0 C102 30, 108 50, 98 70 C92 82, 104 90, 100 100 C96 110, 108 125, 102 145 C98 160, 106 175, 103 200 L200 200 L200 0 Z" fill="url(#goldGrad)"/>
+    <!-- 人頭輪廓剪影（黑色，從左邊延伸，右邊是臉的輪廓線） -->
+    <path d="
+      M0 0
+      L0 200
+      L100 200
+      C95 195, 88 185, 85 175
+      C82 165, 80 155, 82 145
+      C84 138, 90 132, 92 125
+      C94 118, 92 112, 88 108
+      C84 104, 78 100, 76 94
+      C74 88, 76 80, 80 74
+      C84 68, 90 64, 94 58
+      C98 52, 100 44, 98 36
+      C96 28, 92 22, 88 18
+      C84 14, 78 10, 75 5
+      L70 0
+      Z
+    " fill="#0a0e1a"/>
 
-    <!-- 裂縫處的金色光芒 -->
-    <g opacity="0.9">
-      <line x1="100" y1="100" x2="70" y2="85" stroke="#f0d78c" stroke-width="1.5" opacity="0.7"/>
-      <line x1="100" y1="100" x2="65" y2="100" stroke="#f0d78c" stroke-width="1.2" opacity="0.6"/>
-      <line x1="100" y1="100" x2="72" y2="115" stroke="#f0d78c" stroke-width="1.5" opacity="0.7"/>
-      <line x1="100" y1="100" x2="78" y2="75" stroke="#e8c97a" stroke-width="1" opacity="0.5"/>
-      <line x1="100" y1="100" x2="75" y2="130" stroke="#e8c97a" stroke-width="1" opacity="0.5"/>
-      <line x1="100" y1="100" x2="80" y2="65" stroke="#f0d78c" stroke-width="0.8" opacity="0.4"/>
-      <line x1="100" y1="100" x2="68" y2="95" stroke="#f0d78c" stroke-width="0.8" opacity="0.4"/>
+    <!-- 臉部輪廓邊緣微光 -->
+    <path d="
+      M85 175
+      C82 165, 80 155, 82 145
+      C84 138, 90 132, 92 125
+      C94 118, 92 112, 88 108
+      C84 104, 78 100, 76 94
+      C74 88, 76 80, 80 74
+      C84 68, 90 64, 94 58
+      C98 52, 100 44, 98 36
+      C96 28, 92 22, 88 18
+    " stroke="#f0d78c" stroke-width="1.5" fill="none" opacity="0.6"/>
+
+    <!-- 光芒射線（從右邊照向人臉） -->
+    <g opacity="0.3" stroke="#fff" stroke-width="0.8">
+      <line x1="180" y1="60" x2="100" y2="55"/>
+      <line x1="185" y1="90" x2="90" y2="95"/>
+      <line x1="180" y1="120" x2="95" y2="118"/>
+      <line x1="175" y1="150" x2="88" y2="140"/>
     </g>
-
-    <!-- 不完美的人形剪影（深色半邊內） -->
-    <g opacity="0.15" fill="#c9a84c">
-      <!-- 頭 -->
-      <circle cx="65" cy="55" r="14"/>
-      <!-- 身體（不完美、有缺口） -->
-      <path d="M55 72 C55 72, 50 95, 52 120 C53 130, 48 145, 50 160 L58 160 C60 150, 62 135, 60 120 C58 105, 63 95, 65 85 C67 95, 72 105, 70 120 C68 135, 70 150, 72 160 L80 160 C82 145, 77 130, 78 120 C80 95, 75 72, 75 72 Z"/>
-    </g>
-
-    <!-- 裂縫邊緣的質感（微妙的紋理線） -->
-    <path d="M105 0 C102 30, 108 50, 98 70 C92 82, 104 90, 100 100 C96 110, 108 125, 102 145 C98 160, 106 175, 103 200"
-          stroke="#c9a84c" stroke-width="1.5" fill="none" opacity="0.6"/>
   </g>
 
-  <!-- 外圈金色環 -->
-  <circle cx="100" cy="100" r="96" stroke="#c9a84c" stroke-width="2" fill="none" opacity="0.4"/>
-
-  <!-- 漸層定義 -->
-  <defs>
-    <linearGradient id="goldGrad" x1="100" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#e8c97a"/>
-      <stop offset="50%" stop-color="#c9a84c"/>
-      <stop offset="100%" stop-color="#a07830"/>
-    </linearGradient>
-  </defs>
+  <!-- 外圈 -->
+  <circle cx="100" cy="100" r="96" stroke="#c9a84c" stroke-width="1.5" fill="none" opacity="0.5"/>
 </svg>
