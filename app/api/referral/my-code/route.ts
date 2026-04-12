@@ -8,16 +8,28 @@ function getSupabase() {
   )
 }
 
-// 從 cookie 取得已認證的 user_id
+// 從 Authorization header 或 cookie 取得已認證的 user_id
 async function getAuthUserId(req: NextRequest): Promise<string | null> {
-  const cookies = req.headers.get('cookie') || ''
-  const accessTokenMatch = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
-  if (!accessTokenMatch) return null
-
   try {
-    const tokenData = JSON.parse(decodeURIComponent(accessTokenMatch[1]))
-    const token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
-    if (typeof token !== 'string' || token.length <= 20) return null
+    let token: string | null = null
+
+    // 優先用 Authorization header
+    const authHeader = req.headers.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7)
+    }
+
+    // fallback: cookie
+    if (!token) {
+      const cookies = req.headers.get('cookie') || ''
+      const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
+      if (match) {
+        const tokenData = JSON.parse(decodeURIComponent(match[1]))
+        token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
+      }
+    }
+
+    if (!token || typeof token !== 'string' || token.length <= 20) return null
 
     const supabase = getSupabase()
     const { data } = await supabase.auth.getUser(token)

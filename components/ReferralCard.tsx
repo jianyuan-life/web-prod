@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface ReferralData {
   code: string
@@ -101,9 +102,18 @@ export default function ReferralCard() {
   const fetchData = useCallback(async (isRetry = false) => {
     try {
       setError(null)
+
+      // 取得 auth token，帶入 API 請求
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const [refRes, ptsRes] = await Promise.all([
-        fetch('/api/referral/my-code'),
-        fetch('/api/points/balance'),
+        fetch('/api/referral/my-code', { headers }),
+        fetch('/api/points/balance', { headers }),
       ])
 
       if (refRes.ok) {
