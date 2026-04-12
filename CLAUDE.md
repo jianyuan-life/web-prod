@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v4.5.24（2026-04-11）
+**網站版本：** v4.8.6（2026-04-12）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -212,6 +212,11 @@ Resend 寄 Email（含報告連結）
 - 全6方案結帳流程端對端驗證通過
 - 報告頁6方案渲染驗證通過
 - QA 7項全部通過
+
+### v4.8.6（2026-04-12）
+- ✅ 推薦碼 API 認證修復：my-code/balance API 從純 cookie 改為 Authorization header 優先 + cookie fallback
+- ✅ ReferralCard 前端 fetch 帶 Bearer token，修復「複製連結」沒帶推薦網址的問題
+- ✅ 推薦分享文案修正：5 個按鈕（複製/LINE/WhatsApp/Facebook/Instagram）統一改為朋友口吻，移除「十五套」「免費體驗30秒」等不實宣傳語
 
 ### v4.5.24（2026-04-11）
 - ✅ 移除所有評分系統（命不該有分數）：報告頁/Dashboard/OG圖/Prompt/PDF 全面清除
