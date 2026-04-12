@@ -502,13 +502,26 @@ export function validateReportAgainstData(
   // ────────────────────────────────────────────
   // 8. 出生年份 → 生肖檢查
   // ────────────────────────────────────────────
-  if (birthData?.year) {
+  // R 方案（合盤）和 G15（家族）有多人，每個人生肖不同
+  // 不能用單一生肖替換所有提及，否則會把第二個人的正確生肖改錯
+  const planCode = birthData?.plan || ''
+  if (birthData?.year && planCode !== 'R' && planCode !== 'G15') {
     const SHENGXIAO = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬']
     const correctShengxiao = SHENGXIAO[(birthData.year - 4) % 12]
     content = checkAndReplace(content, '生肖', correctShengxiao, [
       /生肖[：:為是屬]\s*([^\n，,。]{1,2})/g,
       /屬\s*([鼠牛虎兔龍蛇馬羊猴雞狗豬])/g,
     ], corrections)
+  } else if (birthData?.year && (planCode === 'R' || planCode === 'G15')) {
+    // 多人方案：只記錄不替換，避免破壞正確的多人生肖分析
+    const SHENGXIAO = ['鼠', '牛', '虎', '兔', '龍', '蛇', '馬', '羊', '猴', '雞', '狗', '豬']
+    const mainShengxiao = SHENGXIAO[(birthData.year - 4) % 12]
+    corrections.push({
+      field: '生肖（多人方案僅記錄）',
+      expected: mainShengxiao,
+      found: '多人各有不同生肖，跳過全局替換',
+      corrected: false,
+    })
   }
 
   // ────────────────────────────────────────────

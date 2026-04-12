@@ -589,23 +589,32 @@ function DashboardContent() {
                 {(r.status === 'pending' || r.status === 'generating') && (
                   <ReportProgress createdAt={r.created_at} planCode={r.plan_code} generationProgress={r.generation_progress} />
                 )}
-                {/* 刪除確認 */}
+                {/* 刪除確認 — 強調不可復原 + 隱私保護 */}
                 {confirmId === r.id && (
-                  <div className="mt-3 flex items-center justify-between bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">
-                    <span className="text-sm text-red-300">確定要刪除這份報告嗎？此操作無法復原。</span>
-                    <div className="flex gap-2 ml-4 shrink-0">
+                  <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl px-5 py-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <span className="text-red-400 text-lg mt-0.5">&#9888;</span>
+                      <div className="space-y-1.5">
+                        <p className="text-sm font-semibold text-red-300">確定要永久刪除這份報告嗎？</p>
+                        <p className="text-xs text-red-300/70 leading-relaxed">
+                          刪除後將<strong className="text-red-300">無法復原</strong>——報告內容、PDF 檔案都會被永久移除。
+                          <br/>我們重視您的隱私，刪除即代表所有相關數據將從伺服器上完全清除。
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
                       <button
                         onClick={() => setConfirmId(null)}
-                        className="px-3 py-1 text-xs text-text-muted border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
+                        className="px-4 py-1.5 text-xs text-text-muted border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
                       >
                         取消
                       </button>
                       <button
                         onClick={() => handleDelete(r.id)}
                         disabled={deletingId === r.id}
-                        className="px-3 py-1 text-xs text-white bg-red-500/80 rounded-lg hover:bg-red-500 transition-colors disabled:opacity-50"
+                        className="px-4 py-1.5 text-xs text-white bg-red-500/80 rounded-lg hover:bg-red-500 transition-colors disabled:opacity-50"
                       >
-                        {deletingId === r.id ? '刪除中...' : '確認刪除'}
+                        {deletingId === r.id ? '刪除中...' : '確認永久刪除'}
                       </button>
                     </div>
                   </div>
