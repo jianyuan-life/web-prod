@@ -341,7 +341,7 @@ export async function POST(req: NextRequest) {
             type: 'use_checkout',
             amount: -pointsUsed,
             balance_after: newBalance,
-            description: `${PLAN_NAMES[planCode] || planCode} 訂單折抵`,
+            description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
             reference_id: session.id,
           })
           console.log(`✅ 點數扣除：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)
