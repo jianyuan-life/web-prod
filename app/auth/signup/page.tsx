@@ -27,6 +27,10 @@ export default function SignupPage() {
   }, [refCode])
 
   const handleGoogleLogin = async () => {
+    // Google OAuth 前先存推薦碼到 localStorage（callback 時寫入 referrals 表）
+    if (refCode && refValid) {
+      localStorage.setItem('pending_referral_code', refCode)
+    }
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -38,7 +42,7 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -57,6 +61,23 @@ export default function SignupPage() {
       setError(zhMsg)
       setLoading(false)
     } else {
+      // 註冊成功後，寫入推薦關係到 referrals 表
+      if (refCode && refValid && signUpData?.user?.id) {
+        try {
+          await fetch('/api/referral/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              referralCode: refCode,
+              userId: signUpData.user.id,
+              email: form.email,
+            }),
+          })
+        } catch {
+          // 推薦碼寫入失敗不影響註冊流程
+          console.error('推薦關係建立失敗')
+        }
+      }
       setSuccess(true)
       setLoading(false)
     }

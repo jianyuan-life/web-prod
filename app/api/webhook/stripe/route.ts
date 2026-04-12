@@ -327,21 +327,27 @@ export async function POST(req: NextRequest) {
     // === 推薦碼首次購買點數發放 ===
     try {
       if (customerEmail) {
-        // 1. 從 auth.users 找 user_id
-        const { data: authUser } = await supabase
-          .from('auth_users_view')
-          .select('id')
-          .eq('email', customerEmail)
+        // 1. 從 referrals 表直接用 referred_email 找（最可靠，不依賴 auth view）
+        let userId: string | undefined
+
+        // 先查 referrals 表是否有此 email 的記錄（register API 已寫入）
+        const { data: refByEmail } = await supabase
+          .from('referrals')
+          .select('referred_user_id')
+          .eq('referred_email', customerEmail)
+          .eq('status', 'registered')
           .maybeSingle()
 
-        // 如果沒有 view，改用 auth.users（需 service role）
-        let userId = authUser?.id
+        userId = refByEmail?.referred_user_id
+
+        // 如果 referrals 沒查到（可能 email 大小寫不同），嘗試 auth view
         if (!userId) {
-          const { data: { users }, error: listErr } = await supabase.auth.admin.listUsers()
-          if (!listErr && users) {
-            const matched = users.find((u: { email?: string }) => u.email?.toLowerCase() === customerEmail)
-            userId = matched?.id
-          }
+          const { data: authUser } = await supabase
+            .from('auth_users_view')
+            .select('id')
+            .eq('email', customerEmail)
+            .maybeSingle()
+          userId = authUser?.id
         }
 
         if (userId) {
