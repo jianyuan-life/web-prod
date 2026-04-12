@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface PointsRedeemProps {
   planCode: string
@@ -28,13 +29,18 @@ export default function PointsRedeem({
   // 載入點數餘額
   useEffect(() => {
     setLoading(true)
-    fetch('/api/points/balance', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
+    async function loadBalance() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) { setBalance(0); setLoading(false); return }
+        const res = await fetch('/api/points/balance', { headers: { Authorization: `Bearer ${token}` } })
+        const data = await res.json()
         setBalance(data.balance || 0)
-      })
-      .catch(() => setBalance(0))
-      .finally(() => setLoading(false))
+      } catch { setBalance(0) }
+      finally { setLoading(false) }
+    }
+    loadBalance()
   }, [])
 
   // 優惠碼啟用時，清除點數折抵
@@ -65,9 +71,11 @@ export default function PointsRedeem({
     setValidating(true)
     setError('')
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       const res = await fetch('/api/points/use', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ pointsToUse: pts, planCode, orderAmount }),
       })
       const data = await res.json()
