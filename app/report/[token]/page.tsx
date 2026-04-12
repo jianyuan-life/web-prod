@@ -357,6 +357,12 @@ function renderInlineMarkdown(text: string): string {
     })
     .replace(/___TABLE_SEP___/g, '')
     .replace(/^→ 完整分析請繼續閱讀.*$/gm, '')
+    // 清理 AI 進度標記（如「4/9」「5/9」等章節編號）
+    .replace(/(\d+)\/(\d+)\s*(?=\n|$|「)/gm, '')
+    // 修正流年被截斷（「流年丙午026」→「流年（2026」）
+    .replace(/流年丙午(\d{3})/g, '流年（20$1')
+    // 清理空的「→ 具體應對：」標題
+    .replace(/→\s*具體應對[：:]\s*(?=\n\n|\n[0-9]|\n[一二三四五])/g, '')
     // 清理所有 H1 標題（# 開頭）— 前端不顯示 H1 原始 markdown
     .replace(/^# .+$/gm, '')
     // 清理出門訣 JSON 標記（正常情況下已在後端移除，這是安全網）
@@ -898,7 +904,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <a key={i} href={`#sec-${i}`}
                     className="flex items-center gap-2 text-sm text-text-muted hover:text-gold transition-colors py-1.5 px-3 rounded-lg hover:bg-white/5">
                     <span className="text-xs text-gold/50" dangerouslySetInnerHTML={{ __html: typeIcons[sec.type] || '&#9672;' }} />
-                    <span className="truncate">{sec.title}</span>
+                    <span className="line-clamp-2">{sec.title}</span>
                   </a>
                 )
               })}
