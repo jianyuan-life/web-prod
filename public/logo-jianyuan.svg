@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- 背景圓（深色半邊） -->
+  <clipPath id="circle">
+    <circle cx="100" cy="100" r="96"/>
+  </clipPath>
+
+  <g clip-path="url(#circle)">
+    <!-- 深色背景（左半） -->
+    <rect x="0" y="0" width="200" height="200" fill="#0a0e1a"/>
+
+    <!-- 金色半邊（右半，不規則邊界模擬裂縫） -->
+    <path d="M105 0 C102 30, 108 50, 98 70 C92 82, 104 90, 100 100 C96 110, 108 125, 102 145 C98 160, 106 175, 103 200 L200 200 L200 0 Z" fill="url(#goldGrad)"/>
+
+    <!-- 裂縫處的金色光芒 -->
+    <g opacity="0.9">
+      <line x1="100" y1="100" x2="70" y2="85" stroke="#f0d78c" stroke-width="1.5" opacity="0.7"/>
+      <line x1="100" y1="100" x2="65" y2="100" stroke="#f0d78c" stroke-width="1.2" opacity="0.6"/>
+      <line x1="100" y1="100" x2="72" y2="115" stroke="#f0d78c" stroke-width="1.5" opacity="0.7"/>
+      <line x1="100" y1="100" x2="78" y2="75" stroke="#e8c97a" stroke-width="1" opacity="0.5"/>
+      <line x1="100" y1="100" x2="75" y2="130" stroke="#e8c97a" stroke-width="1" opacity="0.5"/>
+      <line x1="100" y1="100" x2="80" y2="65" stroke="#f0d78c" stroke-width="0.8" opacity="0.4"/>
+      <line x1="100" y1="100" x2="68" y2="95" stroke="#f0d78c" stroke-width="0.8" opacity="0.4"/>
+    </g>
+
+    <!-- 不完美的人形剪影（深色半邊內） -->
+    <g opacity="0.15" fill="#c9a84c">
+      <!-- 頭 -->
+      <circle cx="65" cy="55" r="14"/>
+      <!-- 身體（不完美、有缺口） -->
+      <path d="M55 72 C55 72, 50 95, 52 120 C53 130, 48 145, 50 160 L58 160 C60 150, 62 135, 60 120 C58 105, 63 95, 65 85 C67 95, 72 105, 70 120 C68 135, 70 150, 72 160 L80 160 C82 145, 77 130, 78 120 C80 95, 75 72, 75 72 Z"/>
+    </g>
+
+    <!-- 裂縫邊緣的質感（微妙的紋理線） -->
+    <path d="M105 0 C102 30, 108 50, 98 70 C92 82, 104 90, 100 100 C96 110, 108 125, 102 145 C98 160, 106 175, 103 200"
+          stroke="#c9a84c" stroke-width="1.5" fill="none" opacity="0.6"/>
+  </g>
+
+  <!-- 外圈金色環 -->
+  <circle cx="100" cy="100" r="96" stroke="#c9a84c" stroke-width="2" fill="none" opacity="0.4"/>
+
+  <!-- 漸層定義 -->
+  <defs>
+    <linearGradient id="goldGrad" x1="100" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#e8c97a"/>
+      <stop offset="50%" stop-color="#c9a84c"/>
+      <stop offset="100%" stop-color="#a07830"/>
+    </linearGradient>
+  </defs>
+</svg>
