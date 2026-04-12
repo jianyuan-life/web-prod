@@ -425,7 +425,7 @@ export async function POST(req: NextRequest) {
             .from('referrals')
             .select('id, referrer_user_id, referral_code')
             .eq('referred_user_id', userId)
-            .eq('status', 'registered')
+            .in('status', ['registered', 'purchased'])
             .maybeSingle()
 
           if (referral) {
