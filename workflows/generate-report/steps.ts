@@ -917,12 +917,17 @@ export async function callChumenjiTop(
   const DIZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
   const birthYearDizhi = DIZHI[(birthData.year - 4) % 12] || ''
 
-  // 合併客戶文字描述
+  // 合併客戶文字描述（嘗試所有可能的欄位名）
+  const bd = birthData as Record<string, unknown>
   const customerText = [
-    birthData.topic || '',
-    birthData.question || '',
-    birthData.customer_note || '',
-  ].filter(Boolean).join(' ')
+    bd.topic || '',
+    bd.question || '',
+    bd.customer_note || '',
+    bd.analysis_topic || '',
+    bd.event_description || '',
+    bd.note || '',
+  ].filter(Boolean).map(String).join(' ')
+  console.log(`[chumenji] customerText (${customerText.length} chars): ${customerText.substring(0, 100)}`)
 
   // AI 事件分類（DeepSeek，主方案；失敗時由後端關鍵字 fallback）
   let eventTypesWeighted: Record<string, number> | null = null
