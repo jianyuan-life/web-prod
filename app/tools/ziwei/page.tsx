@@ -48,21 +48,6 @@ type ZiweiResult = {
   hasAi: boolean
 }
 
-const PALACE_COLORS: Record<string, string> = {
-  '命宮': 'border-gold/30 bg-gold/[0.06]',
-  '財帛宮': 'border-green-500/20 bg-green-500/[0.04]',
-  '事業宮': 'border-blue-500/20 bg-blue-500/[0.04]',
-  '夫妻宮': 'border-pink-500/20 bg-pink-500/[0.04]',
-  '福德宮': 'border-purple-500/20 bg-purple-500/[0.04]',
-  '遷移宮': 'border-cyan-500/20 bg-cyan-500/[0.04]',
-  '子女宮': 'border-orange-500/20 bg-orange-500/[0.04]',
-  '兄弟宮': 'border-teal-500/20 bg-teal-500/[0.04]',
-  '疾厄宮': 'border-red-500/20 bg-red-500/[0.04]',
-  '交友宮': 'border-indigo-500/20 bg-indigo-500/[0.04]',
-  '田宅宮': 'border-amber-500/20 bg-amber-500/[0.04]',
-  '父母宮': 'border-rose-500/20 bg-rose-500/[0.04]',
-}
-
 // 十二宮位說明
 const PALACE_DESC: Record<string, string> = {
   '命宮': '先天性格與命運格局',
@@ -82,6 +67,179 @@ const PALACE_DESC: Record<string, string> = {
 // 十二宮位標準順序
 const PALACE_ORDER = ['命宮', '兄弟宮', '夫妻宮', '子女宮', '財帛宮', '疾厄宮', '遷移宮', '交友宮', '事業宮', '田宅宮', '福德宮', '父母宮']
 
+// ==========================================
+// 傳統紫微方盤佈局：4x4 grid，中間 2x2 合併
+// 地支排列：寅=左下角，逆時針排列
+// ==========================================
+
+// 地支順序（用於確定宮位在方盤上的位置）
+const DIZHI_ORDER = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+
+// 方盤 4x4 grid 中十二宮位的位置（按地支固定位置）
+// row, col 從 0 開始（左上角為 0,0）
+// 巳=左上, 午=上左中, 未=上右中, 申=右上
+// 辰=左上中, 酉=右上中
+// 卯=左下中, 戌=右下中
+// 寅=左下, 丑=下左中, 子=下右中, 亥=右下
+const DIZHI_POSITION: Record<string, { row: number; col: number }> = {
+  '巳': { row: 0, col: 0 },
+  '午': { row: 0, col: 1 },
+  '未': { row: 0, col: 2 },
+  '申': { row: 0, col: 3 },
+  '辰': { row: 1, col: 0 },
+  '酉': { row: 1, col: 3 },
+  '卯': { row: 2, col: 0 },
+  '戌': { row: 2, col: 3 },
+  '寅': { row: 3, col: 0 },
+  '丑': { row: 3, col: 1 },
+  '子': { row: 3, col: 2 },
+  '亥': { row: 3, col: 3 },
+}
+
+// 四化顏色映射
+const SIHUA_COLORS: Record<string, string> = {
+  '祿': 'bg-green-500/20 text-green-400 border border-green-500/30',
+  '權': 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  '科': 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+  '忌': 'bg-red-500/20 text-red-400 border border-red-500/30',
+}
+
+// 從四化字串中判斷某宮是否有四化標記
+function getPalaceSihua(mainStarsStr: string, sihua: string[]): { type: string; label: string }[] {
+  const result: { type: string; label: string }[] = []
+  if (!mainStarsStr || !sihua?.length) return result
+  const stars = mainStarsStr.split(/[、\/]/).map(s => s.trim())
+  for (const sh of sihua) {
+    // 四化格式："廉貞化祿"
+    const huaMatch = sh.match(/(.+)(化[祿權科忌])/)
+    if (huaMatch) {
+      const starName = huaMatch[1]
+      const huaType = huaMatch[2].replace('化', '')
+      if (stars.some(s => s.includes(starName))) {
+        result.push({ type: huaType, label: huaType })
+      }
+    }
+  }
+  return result
+}
+
+// 五行局名稱
+function getWuxingJuName(wuxingju: number): string {
+  const map: Record<number, string> = { 2: '水二局', 3: '木三局', 4: '金四局', 5: '土五局', 6: '火六局' }
+  return map[wuxingju] || `${wuxingju}局`
+}
+
+// 大限年齡範圍（簡易計算：根據五行局數推算）
+function getDaxianRanges(wuxingju: number): { start: number; end: number }[] {
+  const startAge = wuxingju // 五行局數即為起運歲數
+  const ranges: { start: number; end: number }[] = []
+  for (let i = 0; i < 12; i++) {
+    ranges.push({
+      start: startAge + i * 10,
+      end: startAge + (i + 1) * 10 - 1,
+    })
+  }
+  return ranges
+}
+
+// ==========================================
+// 方盤宮格元件
+// ==========================================
+function PalaceCell({
+  palaceName,
+  branch,
+  mainStarsStr,
+  minorStarsStr,
+  sihua,
+  isActive,
+  onClick,
+  daxianRange,
+}: {
+  palaceName: string
+  branch: string
+  mainStarsStr: string
+  minorStarsStr: string
+  sihua: string[]
+  isActive: boolean
+  onClick: () => void
+  daxianRange?: string
+}) {
+  const palaceSihua = getPalaceSihua(mainStarsStr, sihua)
+  // 也檢查輔星的四化
+  const minorSihua = getPalaceSihua(minorStarsStr, sihua)
+  const allSihua = [...palaceSihua, ...minorSihua]
+  const isLifePalace = palaceName === '命宮'
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative text-left p-2 sm:p-3 rounded-lg border transition-all min-h-[100px] sm:min-h-[120px] flex flex-col ${
+        isActive
+          ? 'border-gold/50 bg-gold/[0.08] shadow-[0_0_12px_rgba(201,168,76,0.15)]'
+          : isLifePalace
+            ? 'border-gold/30 bg-gold/[0.04] hover:border-gold/40'
+            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]'
+      }`}
+    >
+      {/* 宮名 + 地支 */}
+      <div className="flex items-center justify-between mb-1">
+        <span className={`text-[10px] sm:text-xs font-bold ${isLifePalace ? 'text-gold' : 'text-cream/80'}`}>
+          {palaceName}
+        </span>
+        <span className="text-[9px] sm:text-[10px] text-text-muted/40">{branch}</span>
+      </div>
+
+      {/* 主星 */}
+      <div className="flex-1">
+        {mainStarsStr ? (
+          <div className="text-[11px] sm:text-sm font-bold text-gold/90 leading-tight mb-0.5">
+            {mainStarsStr.split(/[、\/]/).map((star, i) => (
+              <span key={i}>
+                {i > 0 && <span className="text-text-muted/30"> </span>}
+                {star.trim()}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="text-[10px] sm:text-xs text-text-muted/40 italic">無主星</div>
+        )}
+
+        {/* 輔星（縮小顯示） */}
+        {minorStarsStr && (
+          <div className="text-[9px] sm:text-[10px] text-text-muted/50 leading-tight mt-0.5 line-clamp-2">
+            {minorStarsStr}
+          </div>
+        )}
+      </div>
+
+      {/* 四化標記 */}
+      {allSihua.length > 0 && (
+        <div className="flex gap-1 mt-1 flex-wrap">
+          {allSihua.map((sh, i) => (
+            <span
+              key={i}
+              className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-bold ${SIHUA_COLORS[sh.type] || 'bg-white/10 text-text-muted'}`}
+            >
+              {sh.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* 大限年齡範圍 */}
+      {daxianRange && (
+        <div className="text-[8px] sm:text-[9px] text-text-muted/30 mt-1 text-center border-t border-white/[0.04] pt-0.5">
+          {daxianRange}
+        </div>
+      )}
+    </button>
+  )
+}
+
+// ==========================================
+// 主頁元件
+// ==========================================
 export default function ZiweiToolPage() {
   const [form, setForm] = useState({
     name: '', year: '1990', month: '1', day: '1', hour: '12', gender: 'M',
@@ -97,6 +255,7 @@ export default function ZiweiToolPage() {
   const [error, setError] = useState('')
   const [currentStep, setCurrentStep] = useState(-1)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
+  const [activePalace, setActivePalace] = useState<string | null>(null)
 
   // 從家人選擇後自動填入表單
   const handleFamilySelect = (member: SavedFamilyMember) => {
@@ -159,6 +318,117 @@ export default function ZiweiToolPage() {
       clearInterval(stepInterval)
       setError(err instanceof Error ? err.message : '分析失敗')
     } finally { setLoading(false) }
+  }
+
+  // 建構方盤資料：根據 palaceData 的 branch（地支）決定方盤位置
+  function buildBoardData() {
+    if (!result) return null
+    // 先建立 branch → palaceName 的映射
+    const branchToPalace: Record<string, string> = {}
+    for (const [palaceName, data] of Object.entries(result.palaceData)) {
+      if (data.branch) {
+        // 取地支（可能是 "寅" 或 "寅宮" 格式）
+        const branch = data.branch.replace('宮', '').trim()
+        branchToPalace[branch] = palaceName
+      }
+    }
+    // 計算大限範圍
+    const wuxingju = typeof result.wuxingju === 'number' ? result.wuxingju : 2
+    const daxianRanges = getDaxianRanges(wuxingju)
+
+    // 建構 4x4 格資料
+    const board: (null | {
+      palaceName: string
+      branch: string
+      mainStars: string
+      minorStars: string
+      daxianRange: string
+    })[][] = Array.from({ length: 4 }, () => Array(4).fill(null))
+
+    DIZHI_ORDER.forEach((branch, dizhiIndex) => {
+      const pos = DIZHI_POSITION[branch]
+      if (!pos) return
+      const palaceName = branchToPalace[branch]
+      if (!palaceName) {
+        // 如果沒有映射到宮位，仍顯示空宮
+        board[pos.row][pos.col] = {
+          palaceName: '',
+          branch,
+          mainStars: '',
+          minorStars: '',
+          daxianRange: daxianRanges[dizhiIndex]
+            ? `${daxianRanges[dizhiIndex].start}-${daxianRanges[dizhiIndex].end}`
+            : '',
+        }
+        return
+      }
+      const data = result.palaceData[palaceName]
+      board[pos.row][pos.col] = {
+        palaceName,
+        branch,
+        mainStars: data?.mainStars || '',
+        minorStars: data?.minorStars || '',
+        daxianRange: daxianRanges[dizhiIndex]
+          ? `${daxianRanges[dizhiIndex].start}-${daxianRanges[dizhiIndex].end}`
+          : '',
+      }
+    })
+
+    return board
+  }
+
+  // 如果沒有足夠的 palaceData 有 branch 資訊，使用固定排列 fallback
+  function buildBoardFallback() {
+    if (!result) return null
+    // 預設命宮在寅位，逆時針排列十二宮
+    // 這是最常見的排列方式的 fallback
+    const palaceNames = PALACE_ORDER
+    const wuxingju = typeof result.wuxingju === 'number' ? result.wuxingju : 2
+    const daxianRanges = getDaxianRanges(wuxingju)
+
+    const board: (null | {
+      palaceName: string
+      branch: string
+      mainStars: string
+      minorStars: string
+      daxianRange: string
+    })[][] = Array.from({ length: 4 }, () => Array(4).fill(null))
+
+    // 按地支順序排入方盤，宮名按 PALACE_ORDER 中的順序分配給有資料的宮位
+    DIZHI_ORDER.forEach((branch, dizhiIndex) => {
+      const pos = DIZHI_POSITION[branch]
+      if (!pos) return
+      // 找到這個地支對應的宮位
+      const palaceName = palaceNames.find(p => {
+        const data = result.palaceData[p]
+        return data && data.branch && data.branch.replace('宮', '').trim() === branch
+      })
+      if (palaceName) {
+        const data = result.palaceData[palaceName]
+        board[pos.row][pos.col] = {
+          palaceName,
+          branch,
+          mainStars: data?.mainStars || '',
+          minorStars: data?.minorStars || '',
+          daxianRange: daxianRanges[dizhiIndex]
+            ? `${daxianRanges[dizhiIndex].start}-${daxianRanges[dizhiIndex].end}`
+            : '',
+        }
+      } else {
+        // 分配未匹配的宮位
+        board[pos.row][pos.col] = {
+          palaceName: '',
+          branch,
+          mainStars: '',
+          minorStars: '',
+          daxianRange: daxianRanges[dizhiIndex]
+            ? `${daxianRanges[dizhiIndex].start}-${daxianRanges[dizhiIndex].end}`
+            : '',
+        }
+      }
+    })
+
+    return board
   }
 
   return (
@@ -402,11 +672,11 @@ export default function ZiweiToolPage() {
           </div>
         )}
 
-        {/* 結果 */}
+        {/* ===================== 結果展示區 ===================== */}
         {result && (
           <div className="space-y-8">
             <div className="text-center">
-              <button onClick={() => setResult(null)} className="text-sm text-gold hover:underline">&larr; 重新排盤</button>
+              <button onClick={() => { setResult(null); setActivePalace(null) }} className="text-sm text-gold hover:underline">&larr; 重新排盤</button>
             </div>
 
             {/* 命宮主星 — 人格封號 */}
@@ -419,7 +689,7 @@ export default function ZiweiToolPage() {
                   您是「<span className="text-gradient-gold">{result.starTitle}</span>」型人格
                 </h2>
                 <p className="text-sm text-text-muted">
-                  命宮主星：{result.mainStar}（{result.starNature}）&middot; {result.yearTG}年生 &middot; {['水二局', '木三局', '金四局', '土五局', '火六局'][result.wuxingju - 2] || `${result.wuxingju}局`}
+                  命宮主星：{result.mainStar}（{result.starNature}）&middot; {result.yearTG}年生 &middot; {getWuxingJuName(result.wuxingju)}
                 </p>
               </div>
               <p className="text-base text-text leading-[1.9] mb-6">{result.personality}</p>
@@ -435,7 +705,156 @@ export default function ZiweiToolPage() {
               </div>
             </div>
 
-            {/* 六大維度分析 — 跟八字一樣豐富 */}
+            {/* ===================== 傳統紫微方盤 ===================== */}
+            {Object.keys(result.palaceData).length > 0 && (() => {
+              const board = buildBoardData() || buildBoardFallback()
+              if (!board) return null
+              return (
+                <div className="glass rounded-2xl p-4 sm:p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-gold rounded-full" />
+                    <h2 className="text-lg font-bold text-white">紫微命盤</h2>
+                    <span className="text-xs text-text-muted/50 ml-2">點擊宮位查看詳情</span>
+                  </div>
+
+                  {/* 手機版提示 */}
+                  <p className="text-[10px] text-text-muted/40 text-center mb-3 sm:hidden">左右滑動查看完整命盤</p>
+
+                  {/* 方盤容器 */}
+                  <div className="overflow-x-auto pb-2">
+                    <div className="min-w-[340px] sm:min-w-0">
+                      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                        {board.map((row, rowIdx) =>
+                          row.map((cell, colIdx) => {
+                            // 中間 2x2 區域：個人資料
+                            if (rowIdx >= 1 && rowIdx <= 2 && colIdx >= 1 && colIdx <= 2) {
+                              // 只在 (1,1) 位置渲染合併格
+                              if (rowIdx === 1 && colIdx === 1) {
+                                return (
+                                  <div
+                                    key={`center`}
+                                    className="col-span-2 row-span-2 rounded-lg border border-gold/20 bg-gold/[0.03] p-3 sm:p-4 flex flex-col items-center justify-center text-center"
+                                    style={{ gridColumn: '2 / 4', gridRow: '2 / 4' }}
+                                  >
+                                    <div className="text-lg sm:text-xl font-bold text-gradient-gold mb-2" style={{ fontFamily: 'var(--font-sans)' }}>
+                                      {form.name}
+                                    </div>
+                                    <div className="space-y-1 text-xs sm:text-sm text-text-muted">
+                                      <p>
+                                        <span className="text-cream/70">性別：</span>
+                                        <span className="text-cream">{form.gender === 'M' ? '男' : '女'}</span>
+                                      </p>
+                                      <p>
+                                        <span className="text-cream/70">出生：</span>
+                                        <span className="text-cream">{form.year}年{form.month}月{form.day}日</span>
+                                      </p>
+                                      <p>
+                                        <span className="text-cream/70">命宮主星：</span>
+                                        <span className="text-gold font-bold">{result.mainStar}</span>
+                                      </p>
+                                      <p>
+                                        <span className="text-cream/70">五行局：</span>
+                                        <span className="text-cream">{getWuxingJuName(result.wuxingju)}</span>
+                                      </p>
+                                      <p>
+                                        <span className="text-cream/70">年干：</span>
+                                        <span className="text-cream">{result.yearTG}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              // 其他中間格不渲染（已被 col-span/row-span 覆蓋）
+                              return null
+                            }
+
+                            // 外圈十二宮
+                            if (!cell) {
+                              return (
+                                <div key={`${rowIdx}-${colIdx}`} className="min-h-[100px] sm:min-h-[120px] rounded-lg border border-white/[0.04] bg-white/[0.01] p-2 flex items-center justify-center">
+                                  <span className="text-[10px] text-text-muted/20">空</span>
+                                </div>
+                              )
+                            }
+
+                            return (
+                              <PalaceCell
+                                key={`${rowIdx}-${colIdx}`}
+                                palaceName={cell.palaceName}
+                                branch={cell.branch}
+                                mainStarsStr={cell.mainStars}
+                                minorStarsStr={cell.minorStars}
+                                sihua={result.sihua}
+                                isActive={activePalace === cell.palaceName}
+                                onClick={() => setActivePalace(activePalace === cell.palaceName ? null : cell.palaceName)}
+                                daxianRange={cell.daxianRange}
+                              />
+                            )
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 圖例 */}
+                  <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-white/[0.06]">
+                    <span className="text-[10px] text-text-muted/40">四化：</span>
+                    {[
+                      { label: '祿', desc: '財運亨通', cls: 'bg-green-500/20 text-green-400' },
+                      { label: '權', desc: '權勢掌握', cls: 'bg-blue-500/20 text-blue-400' },
+                      { label: '科', desc: '聲名遠播', cls: 'bg-purple-500/20 text-purple-400' },
+                      { label: '忌', desc: '困頓磨練', cls: 'bg-red-500/20 text-red-400' },
+                    ].map(item => (
+                      <span key={item.label} className="flex items-center gap-1">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${item.cls}`}>{item.label}</span>
+                        <span className="text-[10px] text-text-muted/40">{item.desc}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* 選中宮位的詳情展開 */}
+            {activePalace && result.palaceData[activePalace] && (
+              <div className="glass rounded-2xl p-6 border border-gold/20 animate-[fadeIn_0.3s_ease-out]">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-bold text-gold">{activePalace}</h3>
+                  <button onClick={() => setActivePalace(null)} className="text-xs text-text-muted/50 hover:text-text-muted">收起</button>
+                </div>
+                <p className="text-xs text-text-muted/60 mb-3">{PALACE_DESC[activePalace] || ''}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-text-muted/50 mb-1">主星</p>
+                    <p className="text-sm text-gold font-bold">{result.palaceData[activePalace].mainStars || '無主星'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-muted/50 mb-1">地支</p>
+                    <p className="text-sm text-cream">{result.palaceData[activePalace].branch}</p>
+                  </div>
+                  {result.palaceData[activePalace].minorStars && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-text-muted/50 mb-1">輔星</p>
+                      <p className="text-sm text-text">{result.palaceData[activePalace].minorStars}</p>
+                    </div>
+                  )}
+                  {getPalaceSihua(result.palaceData[activePalace].mainStars, result.sihua).length > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-text-muted/50 mb-1">四化飛星</p>
+                      <div className="flex gap-2">
+                        {getPalaceSihua(result.palaceData[activePalace].mainStars, result.sihua).map((sh, i) => (
+                          <span key={i} className={`text-xs px-2 py-1 rounded-full font-bold ${SIHUA_COLORS[sh.type] || ''}`}>
+                            化{sh.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 六大維度分析 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 { title: '事業方向', text: result.career, icon: '&#128188;', color: 'border-blue-500/20 bg-blue-500/5' },
@@ -482,36 +901,6 @@ export default function ZiweiToolPage() {
                 化祿主財運亨通、化權主權勢掌握、化科主聲名遠播、化忌主困頓磨練
               </p>
             </div>
-
-            {/* 十二宮位星曜 */}
-            {Object.keys(result.palaceData).length > 0 && (
-              <div className="glass rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-gold rounded-full" />
-                  <h2 className="text-lg font-bold text-white">十二宮位星曜</h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {PALACE_ORDER.map(palace => {
-                    const data = result.palaceData[palace]
-                    if (!data) return null
-                    const allStars = [data.mainStars, data.minorStars].filter(Boolean).join('、')
-                    return (
-                      <div key={palace} className={`rounded-xl border p-4 ${PALACE_COLORS[palace] || 'border-white/10 bg-white/[0.02]'}`}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm font-bold text-white">{palace}</span>
-                          <span className="text-[10px] text-text-muted/50">{data.branch}</span>
-                        </div>
-                        <div className="text-sm text-gold mb-1">{data.mainStars || '無主星'}</div>
-                        {data.minorStars && (
-                          <div className="text-xs text-text-muted/70 mb-1.5">{data.minorStars}</div>
-                        )}
-                        <div className="text-[11px] text-text-muted/60">{PALACE_DESC[palace] || ''}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* AI 深度解讀 */}
             {result.hasAi && result.aiAnalysis && (
@@ -583,7 +972,7 @@ export default function ZiweiToolPage() {
                   </div>
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">
                     <span>&#128274; Stripe 安全支付</span>
-                    <span>&#9889; 5 分鐘出報告</span>
+                    <span>&#9889; 約30-60分鐘出報告</span>
                     <span>&#128230; PDF 永久保存</span>
                   </div>
                 </div>

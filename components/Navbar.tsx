@@ -58,6 +58,7 @@ export default function Navbar() {
                 <div className="glass rounded-lg border border-gold/15 py-2 shadow-xl">
                   <Link href="/tools/bazi" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">八字命理速算</Link>
                   <Link href="/tools/ziwei" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">紫微斗數速算</Link>
+                  <Link href="/tools/qimen" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">奇門遁甲排盤</Link>
                   <Link href="/tools/name" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">姓名學速算</Link>
                 </div>
               </div>
@@ -111,6 +112,7 @@ export default function Navbar() {
             <p className="text-xs text-gold/60 mb-2">{txt.nav_free}</p>
             <Link href="/tools/bazi" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">八字命理速算</Link>
             <Link href="/tools/ziwei" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">紫微斗數速算</Link>
+            <Link href="/tools/qimen" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">奇門遁甲排盤</Link>
             <Link href="/tools/name" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">姓名學速算</Link>
           </div>
           <div className="border-t border-gold/10 pt-2">

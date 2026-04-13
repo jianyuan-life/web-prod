@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
 import { searchCities, searchLocations, type City, type LocationSearchResult } from '@/lib/cities'
@@ -16,6 +16,93 @@ const SHICHEN = [
   { label: '戌時 (19:00-21:00)', value: 20 }, { label: '亥時 (21:00-23:00)', value: 22 },
 ]
 const WX_COLORS: Record<string,string> = { 木:'#22c55e', 火:'#ef4444', 土:'#eab308', 金:'#f59e0b', 水:'#3b82f6' }
+
+// ── 前端排盤輔助常量（用於豐富結果展示） ──
+const TG = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
+const DZ = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
+const WX_TG: Record<string,string> = {甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水'}
+const WX_DZ: Record<string,string> = {子:'水',丑:'土',寅:'木',卯:'木',辰:'土',巳:'火',午:'火',未:'土',申:'金',酉:'金',戌:'土',亥:'水'}
+
+// 完整藏干表
+const DZ_CANGGAN: Record<string,string[]> = {
+  子:['癸'], 丑:['己','癸','辛'], 寅:['甲','丙','戊'],
+  卯:['乙'], 辰:['戊','乙','癸'], 巳:['丙','庚','戊'],
+  午:['丁','己','丙'], 未:['己','丁','乙'], 申:['庚','壬','戊'],
+  酉:['辛'], 戌:['戊','辛','丁'], 亥:['壬','甲'],
+}
+
+// 藏干氣名
+const CANGGAN_LABELS = ['本氣','中氣','餘氣']
+
+// 十神計算
+function getShishen(dayMaster: string, other: string): string {
+  const WX = ['木','火','土','金','水']
+  const dmI = WX.indexOf(WX_TG[dayMaster])
+  const otI = WX.indexOf(WX_TG[other])
+  if (dmI < 0 || otI < 0) return ''
+  const same = (TG.indexOf(dayMaster) % 2) === (TG.indexOf(other) % 2)
+  if (WX_TG[dayMaster] === WX_TG[other]) return same ? '比肩' : '劫財'
+  if (WX[(dmI+1)%5] === WX_TG[other]) return same ? '食神' : '傷官'
+  if (WX[(dmI+2)%5] === WX_TG[other]) return same ? '偏財' : '正財'
+  if (WX[(dmI+3)%5] === WX_TG[other]) return same ? '七殺' : '正官'
+  if (WX[(dmI+4)%5] === WX_TG[other]) return same ? '偏印' : '正印'
+  return ''
+}
+
+// 地支六合
+const LIUHE_MAP: Record<string,string> = {子:'丑',丑:'子',寅:'亥',亥:'寅',卯:'戌',戌:'卯',辰:'酉',酉:'辰',巳:'申',申:'巳',午:'未',未:'午'}
+// 地支六沖
+const LIUCHONG_MAP: Record<string,string> = {子:'午',午:'子',丑:'未',未:'丑',寅:'申',申:'寅',卯:'酉',酉:'卯',辰:'戌',戌:'辰',巳:'亥',亥:'巳'}
+
+// 大運計算（前端簡化版）
+function calcDayun(yearPillar: string, monthPillar: string, gender: string, birthYear: number): { age: number; ganzhi: string; wuxing: string; startYear: number; isCurrent: boolean }[] {
+  // 判斷順逆排（陽年男/陰年女=順排，陽年女/陰年男=逆排）
+  const yearTgIdx = TG.indexOf(yearPillar[0])
+  const isYangYear = yearTgIdx % 2 === 0
+  const isMale = gender === 'M'
+  const isForward = (isYangYear && isMale) || (!isYangYear && !isMale)
+
+  const monthTgIdx = TG.indexOf(monthPillar[0])
+  const monthDzIdx = DZ.indexOf(monthPillar[1])
+
+  // 起運年齡（簡化為固定 3 歲起運，實際需要計算節氣）
+  const startAge = 3
+  const currentYear = 2026
+  const currentAge = currentYear - birthYear
+
+  const dayunList: { age: number; ganzhi: string; wuxing: string; startYear: number; isCurrent: boolean }[] = []
+  for (let i = 0; i < 8; i++) {
+    const age = startAge + i * 10
+    const offset = isForward ? i + 1 : -(i + 1)
+    const tgIdx = ((monthTgIdx + offset) % 10 + 10) % 10
+    const dzIdx = ((monthDzIdx + offset) % 12 + 12) % 12
+    const gz = TG[tgIdx] + DZ[dzIdx]
+    const wx = WX_TG[TG[tgIdx]]
+    const startYear = birthYear + age
+    const endYear = startYear + 9
+    const isCurrent = currentAge >= age && currentAge < age + 10
+    dayunList.push({ age, ganzhi: gz, wuxing: wx, startYear, isCurrent })
+  }
+  return dayunList
+}
+
+// 地支關係分析
+function analyzeDzRelations(pillars: string[]): { type: string; desc: string; positions: [number, number] }[] {
+  const relations: { type: string; desc: string; positions: [number, number] }[] = []
+  const dzArr = pillars.map(p => p[1])
+  const PILLAR_NAMES = ['年','月','日','時']
+  for (let i = 0; i < dzArr.length; i++) {
+    for (let j = i + 1; j < dzArr.length; j++) {
+      if (LIUHE_MAP[dzArr[i]] === dzArr[j]) {
+        relations.push({ type: '六合', desc: `${PILLAR_NAMES[i]}支${dzArr[i]}與${PILLAR_NAMES[j]}支${dzArr[j]}相合`, positions: [i, j] })
+      }
+      if (LIUCHONG_MAP[dzArr[i]] === dzArr[j]) {
+        relations.push({ type: '六沖', desc: `${PILLAR_NAMES[i]}支${dzArr[i]}與${PILLAR_NAMES[j]}支${dzArr[j]}相沖`, positions: [i, j] })
+      }
+    }
+  }
+  return relations
+}
 
 type Profile = { title:string; personality:string; strengths:string; challenges:string; career:string; love:string; health:string; lucky:string; year2026:string }
 type Result = {
@@ -45,6 +132,61 @@ const ANALYSIS_STEPS = [
   { text: '啟動 AI 深度分析引擎...', icon: '&#129302;', duration: 1500 },
 ]
 
+// ── 五行 SVG 圓餅圖元件 ──
+function WuxingPieChart({ data }: { data: Record<string,number> }) {
+  const total = Object.values(data).reduce((a,b) => a+b, 0)
+  if (total === 0) return null
+  const entries = Object.entries(data)
+  let cumAngle = -90 // 從頂部開始
+  const radius = 70
+  const cx = 90, cy = 90
+
+  const slices = entries.map(([elem, val]) => {
+    const pct = val / total
+    const angle = pct * 360
+    const startAngle = cumAngle
+    const endAngle = cumAngle + angle
+    cumAngle = endAngle
+
+    // SVG arc 路徑
+    const startRad = (startAngle * Math.PI) / 180
+    const endRad = (endAngle * Math.PI) / 180
+    const x1 = cx + radius * Math.cos(startRad)
+    const y1 = cy + radius * Math.sin(startRad)
+    const x2 = cx + radius * Math.cos(endRad)
+    const y2 = cy + radius * Math.sin(endRad)
+    const largeArc = angle > 180 ? 1 : 0
+
+    // 標籤位置（弧段中點）
+    const midRad = ((startAngle + endAngle) / 2 * Math.PI) / 180
+    const labelR = radius * 0.6
+    const lx = cx + labelR * Math.cos(midRad)
+    const ly = cy + labelR * Math.sin(midRad)
+
+    return { elem, pct, d: `M${cx},${cy} L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z`, color: WX_COLORS[elem], lx, ly }
+  })
+
+  return (
+    <svg viewBox="0 0 180 180" className="w-40 h-40 md:w-48 md:h-48 mx-auto">
+      {slices.map(s => (
+        <g key={s.elem}>
+          <path d={s.d} fill={s.color} stroke="rgba(10,14,26,0.8)" strokeWidth="1.5" />
+          {s.pct > 0.08 && (
+            <text x={s.lx} y={s.ly} textAnchor="middle" dominantBaseline="central"
+              fill="white" fontSize="10" fontWeight="bold">
+              {s.elem}
+            </text>
+          )}
+        </g>
+      ))}
+      {/* 中空效果 */}
+      <circle cx={cx} cy={cy} r={28} fill="rgba(10,14,26,0.9)" />
+      <text x={cx} y={cy-4} textAnchor="middle" fill="#c9a84c" fontSize="9" fontWeight="bold">五行</text>
+      <text x={cx} y={cy+8} textAnchor="middle" fill="#d4d0ca" fontSize="7">比例</text>
+    </svg>
+  )
+}
+
 export default function FreeToolPage() {
   const [form, setForm] = useState({
     name:'', year:'1990', month:'1', day:'1', hour:'12', gender:'M',
@@ -60,7 +202,6 @@ export default function FreeToolPage() {
   const [error, setError] = useState('')
   const [currentStep, setCurrentStep] = useState(-1)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
-  // showAdvanced 已移除：八字所有欄位都是基本需求，不應折疊
 
   // 從家人選擇後自動填入表單
   const handleFamilySelect = (member: SavedFamilyMember) => {
@@ -119,17 +260,14 @@ export default function FreeToolPage() {
         }),
       })
       clearInterval(stepInterval)
-      // 確保所有步驟都顯示完成
       setCompletedSteps(ANALYSIS_STEPS.map((_, i) => i))
       setCurrentStep(ANALYSIS_STEPS.length)
 
       if (!res.ok) throw new Error((await res.json()).detail || '分析失敗')
 
-      // 短暫停留讓用戶看到最後一步完成
       await new Promise(r => setTimeout(r, 500))
       const resultData = await res.json()
       setResult(resultData)
-      // GA4 + Meta Pixel: 免費工具提交 = Lead
       gtag.event('generate_lead', { event_category: 'free_tool', tool: 'bazi' })
       fbpixel.trackEvent('Lead', { content_name: '免費命理速算' })
     } catch (err: unknown) {
@@ -137,6 +275,42 @@ export default function FreeToolPage() {
       setError(err instanceof Error ? err.message : '分析失敗')
     } finally { setLoading(false) }
   }
+
+  // ── 衍生計算（基於 result） ──
+  const derivedData = useMemo(() => {
+    if (!result) return null
+    const pillarsArr = [result.pillars.year, result.pillars.month, result.pillars.day, result.pillars.time]
+
+    // 計算各柱藏干及藏干十神
+    const pillarDetails = (['year','month','day','time'] as const).map((col, idx) => {
+      const pillar = result.pillars[col]
+      const tg = pillar[0]
+      const dz = pillar[1]
+      const canggan = DZ_CANGGAN[dz] || []
+      const cangganShishen = canggan.map(cg => col === 'day' ? (cg === result.day_master ? '比肩' : getShishen(result.day_master, cg)) : getShishen(result.day_master, cg))
+      return {
+        col,
+        label: col === 'year' ? '年柱' : col === 'month' ? '月柱' : col === 'day' ? '日柱' : '時柱',
+        tg,
+        dz,
+        tgWx: WX_TG[tg] || '',
+        dzWx: WX_DZ[dz] || '',
+        shishen: col === 'day' ? '日主' : (result.shishen_gan[col] || getShishen(result.day_master, tg)),
+        canggan,
+        cangganShishen,
+        nayin: result.nayin[col] || '',
+        isDay: col === 'day',
+      }
+    })
+
+    // 大運
+    const dayun = calcDayun(result.pillars.year, result.pillars.month, form.gender, parseInt(form.year))
+
+    // 地支關係
+    const dzRelations = analyzeDzRelations(pillarsArr)
+
+    return { pillarDetails, dayun, dzRelations }
+  }, [result, form.gender, form.year])
 
   return (
     <div className="py-16">
@@ -314,7 +488,6 @@ export default function FreeToolPage() {
                     const val = e.target.value
                     setForm({...form, city:val})
                     if (needCityForCountry) {
-                      // 多時區國家：搜尋城市
                       const cities = searchCities(val).filter(c => c.country === needCityForCountry || c.name.includes(val) || c.name_en.toLowerCase().includes(val.toLowerCase()))
                       setCityResults(cities.map(c => ({ type: 'city' as const, city: c })))
                     } else {
@@ -381,7 +554,7 @@ export default function FreeToolPage() {
           </div>
         )}
 
-        {result && (
+        {result && derivedData && (
           <div className="space-y-8">
             <div className="text-center">
               <button onClick={()=>setResult(null)} className="text-sm text-gold hover:underline">&larr; 重新分析</button>
@@ -415,6 +588,272 @@ export default function FreeToolPage() {
                 )}
               </div>
             )}
+
+            {/* ═══ 傳統四柱排盤 ═══ */}
+            <div className="glass rounded-2xl p-6 md:p-8">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-1 h-6 bg-gold rounded-full" />
+                <h2 className="text-lg font-bold text-white">八字排盤</h2>
+                <span className="text-xs text-text-muted ml-2">（傳統四柱格式）</span>
+              </div>
+
+              {/* 四柱主體 — 桌面從右到左，手機從上到下 */}
+              <div className="hidden md:block overflow-x-auto">
+                <div className="flex flex-row-reverse justify-center gap-3 min-w-[520px]">
+                  {derivedData.pillarDetails.map((p) => (
+                    <div key={p.col} className={`flex-1 max-w-[140px] rounded-xl p-4 text-center transition-all ${
+                      p.isDay ? 'border-2 border-gold/40 bg-gold/[0.06]' : 'glass'
+                    }`}>
+                      {/* 柱名 */}
+                      <div className="text-xs text-text-muted mb-1">{p.label}</div>
+                      {/* 十神 */}
+                      <div className={`text-xs font-semibold mb-2 ${p.isDay ? 'text-gold' : 'text-gold/70'}`}>
+                        {p.shishen}
+                      </div>
+                      {/* 天干 */}
+                      <div className="text-3xl font-bold mb-0.5" style={{ color: WX_COLORS[p.tgWx] || '#d4d0ca' }}>
+                        {p.tg}
+                      </div>
+                      <div className="text-[10px] mb-2" style={{ color: WX_COLORS[p.tgWx] || '#6880a0' }}>
+                        {p.tgWx}
+                      </div>
+                      {/* 分隔線 */}
+                      <div className="border-t border-gold/10 my-2" />
+                      {/* 地支 */}
+                      <div className="text-3xl font-bold mb-0.5" style={{ color: WX_COLORS[p.dzWx] || '#d4d0ca' }}>
+                        {p.dz}
+                      </div>
+                      <div className="text-[10px] mb-2" style={{ color: WX_COLORS[p.dzWx] || '#6880a0' }}>
+                        {p.dzWx}
+                      </div>
+                      {/* 藏干 */}
+                      <div className="border-t border-gold/10 my-2" />
+                      <div className="space-y-0.5">
+                        {p.canggan.map((cg, i) => (
+                          <div key={i} className="flex items-center justify-center gap-1 text-[10px]">
+                            <span className="text-text-muted/50">{CANGGAN_LABELS[i]}</span>
+                            <span style={{ color: WX_COLORS[WX_TG[cg]] || '#6880a0' }}>{cg}</span>
+                            <span className="text-gold/50">{p.cangganShishen[i]}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {/* 納音 */}
+                      <div className="border-t border-gold/10 my-2" />
+                      <div className="text-[10px] text-text-muted/40">{p.nayin}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 手機版 — 從上到下 */}
+              <div className="md:hidden space-y-3">
+                {derivedData.pillarDetails.map((p) => (
+                  <div key={p.col} className={`rounded-xl p-4 transition-all ${
+                    p.isDay ? 'border-2 border-gold/40 bg-gold/[0.06]' : 'glass'
+                  }`}>
+                    <div className="flex items-center gap-4">
+                      {/* 柱名+十神 */}
+                      <div className="w-16 text-center shrink-0">
+                        <div className="text-xs text-text-muted">{p.label}</div>
+                        <div className={`text-xs font-semibold ${p.isDay ? 'text-gold' : 'text-gold/70'}`}>{p.shishen}</div>
+                      </div>
+                      {/* 天干地支 */}
+                      <div className="flex items-center gap-3">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold" style={{ color: WX_COLORS[p.tgWx] }}>{p.tg}</div>
+                          <div className="text-[10px]" style={{ color: WX_COLORS[p.tgWx] }}>{p.tgWx}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold" style={{ color: WX_COLORS[p.dzWx] }}>{p.dz}</div>
+                          <div className="text-[10px]" style={{ color: WX_COLORS[p.dzWx] }}>{p.dzWx}</div>
+                        </div>
+                      </div>
+                      {/* 藏干 */}
+                      <div className="flex-1 text-right">
+                        <div className="text-[10px] text-text-muted/60">
+                          藏干：{p.canggan.map((cg, i) => (
+                            <span key={i} className="inline-block mx-0.5">
+                              <span style={{ color: WX_COLORS[WX_TG[cg]] }}>{cg}</span>
+                              <span className="text-gold/40">({p.cangganShishen[i]})</span>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="text-[10px] text-text-muted/30 mt-0.5">{p.nayin}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 命盤概要 */}
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">
+                {[
+                  {l:'日主',v:`${result.day_master}（${result.day_master_wuxing}）`, highlight: true},
+                  {l:'身強弱',v:result.strength}, {l:'格局',v:result.geju},
+                  {l:'用神',v:result.yongshen, gold:true}, {l:'喜神',v:result.xishen, gold:true},
+                  {l:'生肖',v:result.shengxiao?`${result.shengxiao}（${result.pillars.year}）`:result.pillars.year},
+                ].map(({l,v,gold,highlight})=>(
+                  <div key={l} className={`rounded-lg p-3 ${highlight ? 'bg-gold/10 border border-gold/20' : 'glass'}`}>
+                    <div className="text-[10px] text-text-muted">{l}</div>
+                    <div className={`text-sm font-semibold mt-0.5 ${gold?'text-gold':highlight?'text-gold':'text-white'}`}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ═══ 地支關係 ═══ */}
+            {derivedData.dzRelations.length > 0 && (
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-purple-accent rounded-full" />
+                  <h2 className="text-lg font-bold text-white">地支關係</h2>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {derivedData.dzRelations.map((rel, i) => (
+                    <div key={i} className={`rounded-lg px-4 py-2.5 text-sm ${
+                      rel.type === '六合' ? 'bg-green-500/10 border border-green-500/20 text-green-400' :
+                      rel.type === '六沖' ? 'bg-red-500/10 border border-red-500/20 text-red-400' :
+                      'bg-blue-500/10 border border-blue-500/20 text-blue-400'
+                    }`}>
+                      <span className="font-bold mr-2">{rel.type}</span>
+                      <span className="text-text/80">{rel.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ═══ 五行能量分佈（圓餅圖 + 進度條） ═══ */}
+            <div className="glass rounded-2xl p-6 md:p-8">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-1 h-6 bg-gold rounded-full" />
+                <h2 className="text-lg font-bold text-white">五行能量分佈</h2>
+              </div>
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                {/* 圓餅圖 */}
+                <div className="shrink-0">
+                  <WuxingPieChart data={result.wuxing_count_full || result.wuxing_count} />
+                </div>
+                {/* 進度條 */}
+                <div className="flex-1 w-full space-y-3">
+                  {(()=>{
+                    const wxData = result.wuxing_count_full || result.wuxing_count
+                    const total = Object.values(wxData).reduce((a,b)=>a+b,0)
+                    const missing = Object.entries(wxData).filter(([,v]) => v === 0).map(([k]) => k)
+                    const strongest = Object.entries(wxData).sort((a,b) => b[1] - a[1])[0]?.[0]
+                    return (
+                      <>
+                        {Object.entries(wxData).map(([elem,val])=>{
+                          const pct = total > 0 ? Math.round((val/total)*100) : 0
+                          return (
+                            <div key={elem} className="flex items-center gap-3">
+                              <span className="w-8 text-base font-bold" style={{color:WX_COLORS[elem]}}>{elem}</span>
+                              <div className="flex-1 h-6 bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full flex items-center pl-3 transition-all duration-700" style={{width:`${Math.max(pct,5)}%`,background:WX_COLORS[elem]}}>
+                                  <span className="text-[10px] font-bold text-white">{typeof val==='number'&&val%1!==0?val.toFixed(1):val}</span>
+                                </div>
+                              </div>
+                              <span className="w-12 text-right text-sm text-text-muted">{pct}%</span>
+                              {val===0&&<span className="text-xs text-red-400 font-semibold">缺</span>}
+                              {elem === strongest && val > 0 && <span className="text-xs text-gold font-semibold">旺</span>}
+                            </div>
+                          )
+                        })}
+                        {missing.length > 0 && (
+                          <p className="text-xs text-red-400/80 mt-2">
+                            &#9888; 命盤缺 <strong>{missing.join('、')}</strong>，建議透過後天調補強化
+                          </p>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* ═══ 大運時間軸 ═══ */}
+            <div className="glass rounded-2xl p-6 md:p-8">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-1 h-6 bg-gold rounded-full" />
+                <h2 className="text-lg font-bold text-white">大運走勢</h2>
+                <span className="text-xs text-text-muted ml-2">（每十年一運）</span>
+              </div>
+
+              {/* 桌面版：橫向時間軸 */}
+              <div className="hidden md:block overflow-x-auto pb-4">
+                <div className="relative min-w-[600px]">
+                  {/* 時間線 */}
+                  <div className="absolute top-6 left-8 right-8 h-0.5 bg-gold/20" />
+                  <div className="flex justify-between px-4">
+                    {derivedData.dayun.map((dy, i) => {
+                      const isLast = i === derivedData.dayun.length - 1
+                      return (
+                        <div key={i} className={`relative flex flex-col items-center w-[80px] ${isLast ? 'opacity-40' : ''}`}>
+                          {/* 節點 */}
+                          <div className={`w-3 h-3 rounded-full z-10 mb-2 ${
+                            dy.isCurrent ? 'bg-gold ring-4 ring-gold/30 scale-125' : 'bg-white/40'
+                          }`} />
+                          {dy.isCurrent && (
+                            <div className="absolute -top-5 text-[10px] text-gold font-bold">當前</div>
+                          )}
+                          {/* 干支 */}
+                          <div className={`text-base font-bold ${dy.isCurrent ? 'text-gold' : 'text-cream'}`}>
+                            <span style={{ color: WX_COLORS[WX_TG[dy.ganzhi[0]]] }}>{dy.ganzhi[0]}</span>
+                            <span style={{ color: WX_COLORS[WX_DZ[dy.ganzhi[1]]] }}>{dy.ganzhi[1]}</span>
+                          </div>
+                          {/* 年齡 */}
+                          <div className="text-[10px] text-text-muted mt-0.5">{dy.age}歲</div>
+                          {/* 年份 */}
+                          <div className="text-[10px] text-text-muted/50">{dy.startYear}</div>
+                          {/* 鎖定圖標 */}
+                          {isLast && (
+                            <div className="text-xs text-gold/40 mt-1">&#128274;</div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 手機版：垂直時間軸 */}
+              <div className="md:hidden">
+                <div className="relative pl-8">
+                  {/* 垂直線 */}
+                  <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-gold/20" />
+                  <div className="space-y-4">
+                    {derivedData.dayun.map((dy, i) => {
+                      const isLast = i === derivedData.dayun.length - 1
+                      return (
+                        <div key={i} className={`relative flex items-center gap-3 ${isLast ? 'opacity-40' : ''}`}>
+                          {/* 節點 */}
+                          <div className={`absolute -left-5 w-2.5 h-2.5 rounded-full ${
+                            dy.isCurrent ? 'bg-gold ring-3 ring-gold/30' : 'bg-white/40'
+                          }`} />
+                          {/* 內容 */}
+                          <div className={`flex items-center gap-3 flex-1 rounded-lg px-3 py-2 ${
+                            dy.isCurrent ? 'bg-gold/10 border border-gold/20' : ''
+                          }`}>
+                            <span className="font-bold text-base">
+                              <span style={{ color: WX_COLORS[WX_TG[dy.ganzhi[0]]] }}>{dy.ganzhi[0]}</span>
+                              <span style={{ color: WX_COLORS[WX_DZ[dy.ganzhi[1]]] }}>{dy.ganzhi[1]}</span>
+                            </span>
+                            <span className="text-xs text-text-muted">{dy.age}歲起</span>
+                            <span className="text-xs text-text-muted/50">{dy.startYear}年</span>
+                            {dy.isCurrent && <span className="text-[10px] text-gold font-bold ml-auto">當前大運</span>}
+                            {isLast && <span className="text-xs text-gold/40 ml-auto">&#128274;</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-gold/40 mt-4 italic text-center">
+                完整大運分析包含逐運五行變化、事業財運感情詳解、關鍵流年提示...
+              </p>
+            </div>
 
             {/* ═══ 命格概述（核心：讓客戶覺得準） ═══ */}
             <div className="glass rounded-2xl p-8">
@@ -499,7 +938,6 @@ export default function FreeToolPage() {
             {/* ═══ 深度分析 ═══ */}
             {result.has_ai && (
               <>
-                {/* 性格深度剖析（2026運勢已在最上面顯示） */}
                 {result.ai_sections['性格深度剖析'] && (
                   <div className="glass rounded-2xl p-8">
                     <div className="flex items-center gap-2 mb-4">
@@ -510,7 +948,6 @@ export default function FreeToolPage() {
                   </div>
                 )}
 
-                {/* 財運方向 */}
                 {result.ai_sections['財運方向'] && (
                   <div className="glass rounded-2xl p-8 border-l-2 border-green-500/30">
                     <h2 className="text-lg font-bold text-cream mb-4">財運方向</h2>
@@ -518,7 +955,6 @@ export default function FreeToolPage() {
                   </div>
                 )}
 
-                {/* 人際與貴人 */}
                 {result.ai_sections['人際與貴人'] && (
                   <div className="glass rounded-2xl p-8 border-l-2 border-cyan-500/30">
                     <h2 className="text-lg font-bold text-cream mb-4">人際與貴人</h2>
@@ -526,7 +962,6 @@ export default function FreeToolPage() {
                   </div>
                 )}
 
-                {/* 未來機會窗口（轉化鉤子） */}
                 {result.ai_sections['未來機會窗口'] && (
                   <div className="rounded-2xl p-8 border border-gold/20" style={{background:'linear-gradient(135deg, rgba(197,150,58,0.06), rgba(15,22,40,0.3))'}}>
                     <div className="flex items-center gap-2 mb-4">
@@ -538,7 +973,6 @@ export default function FreeToolPage() {
                   </div>
                 )}
 
-                {/* 需要留意 */}
                 {result.ai_sections['需要留意的地方'] && (
                   <div className="glass rounded-2xl p-8 border-l-2 border-orange-500/30">
                     <h2 className="text-lg font-bold text-orange-300/80 mb-4">需要留意的地方</h2>
@@ -548,67 +982,6 @@ export default function FreeToolPage() {
                 )}
               </>
             )}
-
-            {/* ═══ 八字排盤數據 ═══ */}
-            <div className="glass rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-gold rounded-full" />
-                <h2 className="text-lg font-bold text-white">八字排盤數據</h2>
-              </div>
-              <div className="grid grid-cols-4 gap-3 mb-5">
-                {(['year','month','day','time'] as const).map(col=>(
-                  <div key={col} className="glass rounded-xl p-5 text-center">
-                    <div className="text-xs text-text-muted mb-2">{col==='year'?'年柱':col==='month'?'月柱':col==='day'?'日柱（命主）':'時柱'}</div>
-                    <div className="text-3xl font-bold text-gold">{result.pillars[col][0]}</div>
-                    <div className="text-3xl font-bold text-white">{result.pillars[col][1]}</div>
-                    <div className="text-xs text-text-muted mt-3">{result.nayin[col]}</div>
-                    {col!=='day'&&<div className="text-xs text-blue-400 mt-1">{result.shishen_gan[col]}</div>}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {[
-                  {l:'日主',v:`${result.day_master}（${result.day_master_wuxing}）`},
-                  {l:'身強弱',v:result.strength}, {l:'格局',v:result.geju},
-                  {l:'用神',v:result.yongshen,g:true}, {l:'喜神',v:result.xishen,g:true},
-                  {l:'生肖',v:result.shengxiao?`${result.shengxiao}（${result.pillars.year}）`:result.pillars.year},
-                ].map(({l,v,g})=>(
-                  <div key={l} className="glass rounded-lg p-4">
-                    <div className="text-xs text-text-muted">{l}</div>
-                    <div className={`text-base font-semibold mt-1 ${g?'text-gold':'text-white'}`}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ═══ 五行能量 ═══ */}
-            <div className="glass rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1 h-6 bg-gold rounded-full" />
-                <h2 className="text-lg font-bold text-white">五行能量分佈</h2>
-              </div>
-              <div className="space-y-3">
-                {(()=>{
-                  const wxData = result.wuxing_count_full || result.wuxing_count
-                  const total = Object.values(wxData).reduce((a,b)=>a+b,0)
-                  return Object.entries(wxData).map(([elem,val])=>{
-                    const pct = total > 0 ? Math.round((val/total)*100) : 0
-                    return (
-                      <div key={elem} className="flex items-center gap-3">
-                        <span className="w-8 text-base font-bold" style={{color:WX_COLORS[elem]}}>{elem}</span>
-                        <div className="flex-1 h-7 bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full flex items-center pl-3" style={{width:`${Math.max(pct,5)}%`,background:WX_COLORS[elem]}}>
-                            <span className="text-xs font-bold text-white">{typeof val==='number'&&val%1!==0?val.toFixed(1):val}</span>
-                          </div>
-                        </div>
-                        <span className="w-12 text-right text-sm text-text-muted">{pct}%</span>
-                        {val===0&&<span className="text-xs text-red-400 font-semibold">缺</span>}
-                      </div>
-                    )
-                  })
-                })()}
-              </div>
-            </div>
 
             {/* 速算提示 */}
             <p className="text-center text-xs text-text-muted/50 leading-relaxed">
@@ -648,8 +1021,11 @@ export default function FreeToolPage() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
-                    {(['C', 'D'] as const).map((plan, idx) => {
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+                    {([
+                      { plan: 'C', label: '解鎖人生藍圖完整報告 $89', primary: true },
+                      { plan: 'D', label: '聚焦單一困惑深度分析 $39', primary: false },
+                    ] as const).map(({ plan, label, primary }) => {
                       const q = new URLSearchParams({
                         plan,
                         name: form.name,
@@ -662,16 +1038,30 @@ export default function FreeToolPage() {
                         timeMode: form.timeMode,
                         calendarType: form.calendarType,
                       })
-                      const label = idx === 0 ? '解鎖人生藍圖完整報告 $89' : '聚焦單一困惑深度分析 $39'
-                      const cls = idx === 0
+                      const cls = primary
                         ? 'px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow'
                         : 'px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10'
                       return <a key={plan} href={`/checkout?${q}`} className={cls}>{label}</a>
                     })}
                   </div>
+
+                  {/* 出門訣引導 */}
+                  <div className="glass rounded-xl p-5 max-w-md mx-auto mb-6">
+                    <p className="text-sm text-cream mb-2 font-semibold">想知道什麼時候出門最順利？</p>
+                    <p className="text-xs text-text-muted mb-3">奇門遁甲出門訣 — 精準計算吉時吉方，讓每次出門都事半功倍</p>
+                    <div className="flex gap-2 justify-center">
+                      <a href="/checkout?plan=E1" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
+                        事件出門訣 $119
+                      </a>
+                      <a href="/checkout?plan=E2" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
+                        月盤出門訣 $89
+                      </a>
+                    </div>
+                  </div>
+
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">
                     <span>&#128274; Stripe 安全支付</span>
-                    <span>&#9889; 5 分鐘出報告</span>
+                    <span>&#9889; 約30-60分鐘出報告</span>
                     <span>&#128230; PDF 永久保存</span>
                   </div>
                   <p className="text-xs text-text-muted/50">
