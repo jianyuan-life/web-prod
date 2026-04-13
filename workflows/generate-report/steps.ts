@@ -1151,12 +1151,43 @@ function buildGenericUserPrompt(
     return userPrompt
   }
 
-  let userPrompt = `${birthData.name || ''}，${birthData.gender === 'M' ? '男' : '女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
-八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
+  // E1/E2 出門訣：只傳奇門遁甲數據，不傳其他系統（避免 AI 混用）
+  const isChumenji = birthData.plan_code === 'E1' || birthData.plan_code === 'E2'
+
+  let userPrompt = `${birthData.name || ''}，${birthData.gender === 'M' ? '男' : '女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時\n`
+
+  if (isChumenji) {
+    userPrompt += `出生年地支（年命宮依據）：${cd.birth_dizhi || ''}\n`
+    userPrompt += `農曆：${cd.lunar_date || ''}\n`
+    // 只傳奇門遁甲的排盤數據
+    const qimenAnalysis = analyses.find(a => a.system === '奇門遁甲' || a.system?.includes('奇門'))
+    if (qimenAnalysis) {
+      userPrompt += `\n【奇門遁甲排盤數據】\n`
+      if (qimenAnalysis.summary) userPrompt += `摘要：${qimenAnalysis.summary}\n`
+      if (qimenAnalysis.tables?.length) {
+        for (const t of qimenAnalysis.tables) {
+          userPrompt += `\n表格「${t.title}」：\n`
+          if (t.headers) userPrompt += `| ${t.headers.join(' | ')} |\n`
+          if (t.rows) {
+            for (const row of t.rows) userPrompt += `| ${row.join(' | ')} |\n`
+          }
+        }
+      }
+      if (qimenAnalysis.details) {
+        const detail = typeof qimenAnalysis.details === 'string' ? qimenAnalysis.details : JSON.stringify(qimenAnalysis.details)
+        userPrompt += `\n詳細排盤：\n${detail}\n`
+      }
+    }
+    userPrompt += '\n'
+  } else {
+    userPrompt += `八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
 農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
 ${analyses.length}套系統排盤完整數據：
 `
-  for (const a of analyses.slice(0, 15)) {
+  }
+
+  const analysesToInclude = isChumenji ? [] : analyses.slice(0, 15)
+  for (const a of analysesToInclude) {
     userPrompt += `\n【${a.system}】評分：${a.score}分`
     if (a.summary) userPrompt += `\n摘要：${a.summary}`
     if (a.good_points?.length) {
