@@ -145,10 +145,22 @@ function localBazi(year: number, month: number, day: number, hour: number) {
   const score=support*12+(mSupport?15:0)
   const strength=score>=55?'偏旺':score>=45?'中和':'偏弱'
 
-  // 用神
+  // 用神（對齊 Python 引擎的扶抑法邏輯）
+  // WX = ['木','火','土','金','水']
+  // dmI+1 = 食傷（我生者）, dmI+2 = 財星, dmI+3 = 官殺（克我者）, dmI+4 = 印星（生我者）
   let yongshen:string,xishen:string
-  if(strength==='偏旺'){yongshen=WX[(dmI+1)%5];xishen=WX[(dmI+2)%5]}
-  else{yongshen=WX[(dmI+4)%5];xishen=dmWX}
+  if(strength==='偏旺'){
+    // 身強：用財星耗身，喜食傷洩秀（Python 身強邏輯：yongshen=財, xishen=食傷）
+    yongshen=WX[(dmI+2)%5];xishen=WX[(dmI+1)%5]
+  } else if(strength==='偏弱'){
+    // 身弱：用印星生身，喜比劫助力（Python 身弱邏輯：yongshen=印, xishen=比劫）
+    yongshen=WX[(dmI+4)%5];xishen=dmWX
+  } else {
+    // 中和偏強：用食傷洩秀，喜財星耗身
+    if(score>=50){yongshen=WX[(dmI+1)%5];xishen=WX[(dmI+2)%5]}
+    // 中和偏弱：用印星生身，喜比劫助力
+    else{yongshen=WX[(dmI+4)%5];xishen=dmWX}
+  }
 
   // 生肖
   const sxIdx=(y-4)%12
