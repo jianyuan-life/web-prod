@@ -21,10 +21,12 @@ interface Top5Timing {
   time_start: string  // HH:MM
   time_end: string    // HH:MM
   direction: string
+  angle?: string       // 方位角度（如「315°」）
   reason: string
-  confidence?: string     // v3.0 信心指數（如「極高 95%」）
-  shensha_warning?: string // v3.0 神煞警告（如「注意：此方位接近三煞方」）
-  zhishi_info?: string     // v3.0 值使門資訊（如「值使門：開門，利出行」）
+  confidence?: string     // v3.0 信心指數（如「極高」）
+  shensha_warning?: string // v3.0 神煞警告
+  zhishi_info?: string     // v3.0 值使門資訊
+  boost_explanation?: string // 為什麼這個時間能加乘
 }
 
 interface ReportData {
@@ -495,8 +497,15 @@ function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   const startStr = `${dateStr}T${timing.time_start.replace(':', '')}00`
   const endStr = `${dateStr}T${timing.time_end.replace(':', '')}00`
   const title = encodeURIComponent(`鑒源出門訣 - ${clientName} ${timing.title}`)
+  // 清洗 reason 中的技術細節
+  const cleanReason = (timing.reason || '')
+    .replace(/[（(]基礎\d+[\s\S]*?[）)]/g, '')
+    .replace(/[（(][+-]?\d+\.?\d*[）)]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+  const angleStr = timing.angle ? ` ${timing.angle}` : ''
   const details = encodeURIComponent(
-    `建議方位：${timing.direction}\n\n命理依據：\n${timing.reason}\n\n由鑒源命理平台 jianyuan.life 生成`
+    `方位：${timing.direction}${angleStr}\n從住家朝${timing.direction}方向走約500公尺，找定點靜坐40分鐘。\n\n為什麼選這個時間：\n${timing.title}\n${cleanReason}\n\n鑒源命理平台 jianyuan.life`
   )
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&ctz=Asia/Taipei`
 }
@@ -1032,7 +1041,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-text-muted/50">建議方位</div>
-                      <div className="text-gold font-semibold text-sm">{timing.direction}</div>
+                      <div className="text-gold font-semibold text-sm">{timing.direction}{timing.angle ? ` ${timing.angle}` : ''}</div>
                     </div>
                   </div>
 
