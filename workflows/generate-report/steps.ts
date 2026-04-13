@@ -802,6 +802,88 @@ export async function callPythonCalculate(birthData: BirthData) {
 }
 callPythonCalculate.maxRetries = 3
 
+// ── 出門訣引擎 Top 結果（E1=Top3 / E2=每週Top1×4）──
+export interface ChumenjiTopItem {
+  rank: number
+  date: string
+  solar_date: string
+  shichen: string
+  time_range: string
+  direction: string
+  door: string
+  star: string
+  shen: string
+  score: number
+  reason: string
+  confidence: Record<string, unknown>
+  ju: string
+  gong: string
+  kongwang: boolean
+  shensha_warning: string
+  week_number?: number
+  week_label?: string
+  week_range?: string
+}
+
+export interface ChumenjiTopResult {
+  plan_code: string
+  results: ChumenjiTopItem[]
+}
+
+export async function callChumenjiTop(
+  planCode: string,
+  birthData: BirthData,
+): Promise<ChumenjiTopResult | null> {
+  "use step";
+  await emitProgress({ step: '出門訣計算', progress: 15, message: '正在計算最佳出門時辰（奇門遁甲引擎）...' })
+
+  // 從出生年推算地支
+  const DIZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+  const birthYearDizhi = DIZHI[(birthData.year - 4) % 12] || ''
+
+  const body: Record<string, unknown> = {
+    plan_code: planCode,
+    birth_year_dizhi: birthYearDizhi,
+    event_type: (birthData.event_type as string) || '出行',
+  }
+
+  if (planCode === 'E1') {
+    body.event_start_date = birthData.event_start_date || new Date().toISOString().split('T')[0]
+    body.event_end_date = birthData.event_end_date || birthData.event_start_date || ''
+  } else if (planCode === 'E2') {
+    // E2：從今天開始算 4 週（國曆）
+    body.start_date = new Date().toISOString().split('T')[0]
+  }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30000)
+
+  try {
+    const res = await fetch(`${PYTHON_API}/api/chumenji-top`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+
+    if (!res.ok) {
+      const errText = await res.text()
+      console.error(`出門訣 Top 計算失敗: ${res.status} ${errText}`)
+      return null  // 不阻塞主流程，AI 仍可生成報告
+    }
+
+    const result: ChumenjiTopResult = await res.json()
+    console.log(`出門訣引擎 Top 結果: ${result.results?.length || 0} 項`)
+    return result
+  } catch (e) {
+    clearTimeout(timeout)
+    console.error('出門訣 Top 計算異常（不阻塞）:', e)
+    return null
+  }
+}
+callChumenjiTop.maxRetries = 1
+
 // ── 串流存檔：讀取已存的部分內容 ──
 async function loadPartialContent(reportId: string, callLabel: string): Promise<string | null> {
   if (!reportId) return null
@@ -1048,6 +1130,7 @@ function buildGenericUserPrompt(
   topic?: string,
   question?: string,
   additionalPeople?: Array<{ name: string; gender: string; year: number; month: number; day: number; hour: string | number; time_unknown?: boolean }>,
+  chumenjiTop?: ChumenjiTopResult | null,
 ): string {
   // G15 家族方案（舊版 family 模式）安全防護：多人 birthData 不能走單人 prompt
   if (birthData.plan_type === 'family' && Array.isArray(birthData.members)) {
@@ -1129,6 +1212,40 @@ ${analyses.length}套系統排盤完整數據：
   // E1 事件時間範圍
   if (birthData.event_start_date) {
     userPrompt += `\n事件時間範圍：${birthData.event_start_date} 至 ${birthData.event_end_date || birthData.event_start_date}\n`
+  }
+
+  // ── 出門訣引擎 Top 結果強制注入（P0-1 修復）──
+  // AI 必須使用引擎算出的時辰，不能自己猜
+  if (chumenjiTop?.results?.length) {
+    userPrompt += `\n${'='.repeat(60)}\n`
+    userPrompt += `【奇門遁甲排盤引擎計算結果 — 不可更改】\n`
+    userPrompt += `以下是排盤引擎用 25+ 步量化評分體系算出的最佳出門時辰。\n`
+    userPrompt += `你必須使用這些結果，不能更換、不能調整、不能用任何理由否決。\n`
+    userPrompt += `你的工作是用白話文解釋為什麼這些時辰最好，讓客戶看得懂。\n\n`
+
+    for (const item of chumenjiTop.results) {
+      const dir = item.direction || ''
+      const weekInfo = item.week_label ? `【${item.week_label}（${item.week_range}）最佳】` : `【第${item.rank}名】`
+      userPrompt += `${weekInfo}\n`
+      userPrompt += `  日期：${item.date}（${item.solar_date}）\n`
+      userPrompt += `  時辰：${item.shichen}時（${item.time_range}）\n`
+      userPrompt += `  方位：${dir}\n`
+      userPrompt += `  奇門盤：${item.door}+${item.star}+${item.shen}\n`
+      userPrompt += `  局：${item.ju}\n`
+      userPrompt += `  宮位：${item.gong}\n`
+      userPrompt += `  評分：${item.score} 分（該時段所有方位中最高）\n`
+      if (item.kongwang) userPrompt += `  ⚠ 空亡：是（已在評分中扣分）\n`
+      if (item.shensha_warning) userPrompt += `  ⚠ 神煞：${item.shensha_warning}\n`
+      userPrompt += `  評分理由：${item.reason}\n\n`
+    }
+
+    userPrompt += `【強制規則】\n`
+    userPrompt += `1. 以上時辰是奇門遁甲排盤引擎的精確計算結果，你不可更改。\n`
+    userPrompt += `2. JSON 輸出中的 date/time_start/time_end/direction 必須與上方引擎結果完全一致。\n`
+    userPrompt += `3. 不得使用生物節律、西洋占星、八字、風水八宅或任何非奇門遁甲系統來否決或調整這些時辰。\n`
+    userPrompt += `4. 你的任務：(a) 用白話文解釋門+星+神組合的含義 (b) 給出具體的穿著/物品/行為建議 (c) 說明為什麼這個組合對客戶的事件有利。\n`
+    userPrompt += `5. 評分已包含年命宮共振、格局加減分、空亡扣分等所有因素，不需要你重新計算。\n`
+    userPrompt += `${'='.repeat(60)}\n\n`
   }
 
   if (topic) userPrompt += `\n分析方向：${topic}\n`
@@ -1235,9 +1352,10 @@ aiGenerateCall3.maxRetries = 3
 export async function aiGenerateGeneric(
   calcResult: CalcResult, birthData: BirthData, planCode: string,
   systemPrompt: string, topic?: string, question?: string, reportId?: string,
+  chumenjiTop?: ChumenjiTopResult | null,
 ) {
   "use step";
-  const userPrompt = buildGenericUserPrompt(birthData, calcResult.client_data, calcResult.analyses, topic, question)
+  const userPrompt = buildGenericUserPrompt(birthData, calcResult.client_data, calcResult.analyses, topic, question, undefined, chumenjiTop)
   const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
 
   // 付費報告只用 Claude Opus，不降級

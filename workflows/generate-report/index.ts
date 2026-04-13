@@ -6,6 +6,7 @@
 import {
   loadReportRecord,
   callPythonCalculate,
+  callChumenjiTop,
   aiGenerateCall1,
   aiGenerateCall2,
   aiGenerateCall3,
@@ -27,6 +28,7 @@ import {
   setCurrentReportId,
   PLAN_SYSTEM_PROMPT,
   type BirthData,
+  type ChumenjiTopResult,
 } from './steps'
 
 export async function generateReportWorkflow(reportId: string) {
@@ -316,9 +318,22 @@ export async function generateReportWorkflow(reportId: string) {
       // D 方案欄位對應：analysis_topic → topic, customer_note/other_question → question
       const topic = (birthData.topic || birthData.analysis_topic || undefined) as string | undefined
       const question = (birthData.question || birthData.customer_note || birthData.other_question || undefined) as string | undefined
+
+      // E1/E2 出門訣：先呼叫引擎取得 Top 結果，強制注入 Prompt
+      let chumenjiTop: ChumenjiTopResult | null = null
+      if (planCode === 'E1' || planCode === 'E2') {
+        console.log(`${planCode} 出門訣：呼叫引擎計算最佳時辰...`)
+        chumenjiTop = await callChumenjiTop(planCode, birthData)
+        if (chumenjiTop?.results?.length) {
+          console.log(`${planCode} 引擎 Top 結果: ${chumenjiTop.results.map(r => `${r.date} ${r.shichen}時 ${r.direction} ${r.score}分`).join(' | ')}`)
+        } else {
+          console.warn(`${planCode} 引擎 Top 結果為空，AI 將自行判斷（降級模式）`)
+        }
+      }
+
       const result = await aiGenerateGeneric(
         calcResult, birthData, planCode, systemPrompt,
-        topic, question, reportId,
+        topic, question, reportId, chumenjiTop,
       )
       reportContent = result.content
       aiModelUsed = result.model
