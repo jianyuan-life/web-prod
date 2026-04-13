@@ -16,8 +16,8 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
   D: { amount: 3900, name: '心之所惑' },
   G15: { amount: 5900, name: '家族藍圖' },
   R: { amount: 5900, name: '合否？' },
-  E1: { amount: 11900, name: '事件出門訣' },
-  E2: { amount: 8900, name: '月盤出門訣' },
+  E1: { amount: 8900, name: '事件出門訣' },
+  E2: { amount: 9900, name: '月盤出門訣' },
   // 加人附加費（G15 已改為固定 $59，不再加人加價）
   'R-ADD': { amount: 1900, name: '合否？加1人' },
 }

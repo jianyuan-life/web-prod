@@ -42,7 +42,7 @@ const PHASES_CHUMENJI = [
   { label: '奇門排盤',   desc: '以時家奇門遁甲起局，計算天地盤干支' },
   { label: '時辰掃描',   desc: '逐時辰排算八方位吉凶，25 層古籍理論評分' },
   { label: '方位評分',   desc: '三吉門、九遁、天地盤干生剋、神煞過濾' },
-  { label: '生成報告',   desc: '套入個人年命宮驗證，產出 Top5 吉時方位' },
+  { label: '生成報告',   desc: '套入個人年命宮驗證，產出最佳吉時方位' },
 ]
 
 function getPhases(planCode: string) {

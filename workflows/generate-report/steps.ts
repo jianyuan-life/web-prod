@@ -1118,12 +1118,12 @@ ${analyses.length}套系統排盤完整數據：
 
   // 報告生成日期：讓 AI 知道「今天」是哪天，避免推薦過去的日期
   const generationDate = new Date().toISOString().split('T')[0]
-  userPrompt += `\n【報告生成日期】${generationDate}\nTop5 吉時只能推薦此日期之後（含當天）的日期，不可推薦已經過去的日期。\n`
+  userPrompt += `\n【報告生成日期】${generationDate}\n吉時推薦只能推薦此日期之後（含當天）的日期，不可推薦已經過去的日期。\n`
 
   // 出門訣時間限制：客戶選的可配合時段
   if (birthData.available_time_slots && Array.isArray(birthData.available_time_slots) && birthData.available_time_slots.length > 0) {
     const slotsDesc = birthData.available_time_slots.map((s: { start?: string; end?: string }) => `${s.start || ''}~${s.end || ''}`).join('、')
-    userPrompt += `\n【重要】客戶只有以下時段有空出門：${slotsDesc}\nTop5 吉時必須只推薦在這些時段內的時機，不可推薦客戶無法出門的時段。\n`
+    userPrompt += `\n【重要】客戶只有以下時段有空出門：${slotsDesc}\n吉時推薦必須只推薦在這些時段內的時機，不可推薦客戶無法出門的時段。\n`
   }
 
   // E1 事件時間範圍
@@ -1697,32 +1697,31 @@ export async function qualityGate(
     }
   }
 
-  // 2c. E1/E2 出門訣必要章節檢查
+  // 2c. E1 事件出門訣必要章節檢查（Top3 加乘時機）
   if (planCode === 'E1') {
     const e1Required = [
-      { pattern: /事件吉凶|事件命理|你的事件|本月出行能量/, name: '事件吉凶分析' },
-      { pattern: /好的地方|優勢|有利/, name: '好的地方' },
-      { pattern: /需要注意|注意|風險/, name: '需要注意的地方' },
-      { pattern: /改善|建議|行動/, name: '改善建議' },
+      { pattern: /事件判斷|事件吉凶|你的事件/, name: '事件判斷' },
+      { pattern: /Top3|加乘時機|最佳出行/, name: 'Top3 加乘時機' },
+      { pattern: /行動建議|建議|行動/, name: '行動建議' },
       { pattern: /補運|操作指南/, name: '補運操作指南' },
-      { pattern: /忌方|忌日|注意事項/, name: '忌方忌日' },
+      { pattern: /忌方|忌日|注意事項/, name: '注意事項' },
     ]
     for (const sec of e1Required) {
       if (!sec.pattern.test(reportContent)) {
         warnings.push(`出門訣缺少必要章節: ${sec.name}`)
       }
     }
-    // Top5 JSON 檢查
-    if (!/===TOP5_JSON_START===/.test(reportContent)) {
-      warnings.push('出門訣缺少 Top5 吉時 JSON 區塊')
+    // Top3 JSON 檢查（相容舊版 TOP5 標記）
+    if (!/===TOP3_JSON_START===/.test(reportContent) && !/===TOP5_JSON_START===/.test(reportContent)) {
+      warnings.push('出門訣缺少 Top3 吉時 JSON 區塊')
     }
     // 內容長度檢查
-    if (reportContent.length < 3000) {
-      warnings.push(`出門訣內容偏短: ${reportContent.length} 字（期望 > 3,000 字）`)
+    if (reportContent.length < 2500) {
+      warnings.push(`出門訣內容偏短: ${reportContent.length} 字（期望 > 2,500 字）`)
     }
   }
 
-  // 2c-2. E2 月盤出門訣必要章節檢查（每週 Top5 格式）
+  // 2c-2. E2 月盤出門訣必要章節檢查（每週 Top1，共 4 盤）
   if (planCode === 'E2') {
     const e2Required = [
       { pattern: /本月出行能量總覽|本月出行能量概覽/, name: '本月出行能量總覽' },
@@ -1740,12 +1739,14 @@ export async function qualityGate(
         warnings.push(`月盤出門訣缺少必要章節: ${sec.name}`)
       }
     }
-    // E2 應有四個 Top5 JSON 區塊（每週一個）
+    // E2 應有四個 Top1 JSON 區塊（每週一個），相容舊版 TOP5 標記
+    const top1Matches = reportContent.match(/===TOP1_JSON_START===/g)
     const top5Matches = reportContent.match(/===TOP5_JSON_START===/g)
-    if (!top5Matches) {
-      warnings.push('月盤出門訣缺少 Top5 吉時 JSON 區塊')
-    } else if (top5Matches.length < 4) {
-      warnings.push(`月盤出門訣 Top5 JSON 區塊不足: 找到 ${top5Matches.length} 個（期望 4 個，每週一個）`)
+    const totalJsonBlocks = (top1Matches?.length || 0) + (top5Matches?.length || 0)
+    if (totalJsonBlocks === 0) {
+      warnings.push('月盤出門訣缺少吉時 JSON 區塊')
+    } else if (totalJsonBlocks < 4) {
+      warnings.push(`月盤出門訣 JSON 區塊不足: 找到 ${totalJsonBlocks} 個（期望 4 個，每週一個）`)
     }
     // 內容長度檢查（四週格式預期更長）
     if (reportContent.length < 5000) {

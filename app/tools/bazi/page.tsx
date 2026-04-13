@@ -1051,10 +1051,10 @@ export default function FreeToolPage() {
                     <p className="text-xs text-text-muted mb-3">奇門遁甲出門訣 — 精準計算吉時吉方，讓每次出門都事半功倍</p>
                     <div className="flex gap-2 justify-center">
                       <a href="/checkout?plan=E1" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        事件出門訣 $119
+                        事件出門訣 $89
                       </a>
                       <a href="/checkout?plan=E2" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        月盤出門訣 $89
+                        月盤出門訣 $99
                       </a>
                     </div>
                   </div>

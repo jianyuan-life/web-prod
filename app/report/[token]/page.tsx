@@ -696,14 +696,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   if (isChumenji) {
     for (const sec of cleanedSections) {
       const t = sec.title
-      if (/事件吉凶|事件命理|本月運勢|本月命理/.test(t)) {
+      if (/事件吉凶|事件命理|事件判斷|本月運勢|本月命理|本月出行能量/.test(t)) {
         chumenjiAnalysis.push(sec)
       } else if (/補運|操作指南/.test(t)) {
         chumenjiGuide.push(sec)
       } else if (/忌方|忌日|注意事項/.test(t)) {
         chumenjiWarnings.push(sec)
-      } else if (/Top5|最佳出行|最佳出門/.test(t)) {
-        // Top5 已有專屬卡片渲染，跳過
+      } else if (/Top[135]|加乘時機|最佳出行|最佳出門|最佳時機/.test(t)) {
+        // Top 吉時已有專屬卡片渲染，跳過
       } else {
         chumenjiOther.push(sec)
       }
@@ -992,14 +992,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── Top5 吉時卡片（出門訣 E1/E2 專屬）──── */}
+        {/* ──── 吉時卡片（出門訣 E1=Top3 / E2=每週Top1）──── */}
         {isChumenji && top5Timings.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xl" style={{ background: 'rgba(197,150,58,0.15)' }}>🧭</div>
               <div>
                 <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>
-                  {report.plan_code === 'E1' ? '事件最佳出行時機' : '本月 Top5 最佳出行時機'}
+                  {report.plan_code === 'E1' ? 'Top3 加乘時機' : '本月最佳出行時機'}
                 </h2>
                 <p className="text-text-muted/50 text-xs mt-0.5">點擊「加入行事曆」可直接同步到 Google Calendar</p>
               </div>
@@ -1066,9 +1066,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     </div>
                   )}
 
-                  {/* 命理依據 */}
+                  {/* 命理依據 / 加乘理由 */}
                   <div className="mb-4 px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--color-gold)' }}>
-                    <div className="text-text-muted/50 text-xs mb-1">命理依據</div>
+                    <div className="text-text-muted/50 text-xs mb-1">{report.plan_code === 'E1' ? '為什麼這個時間能加乘' : '命理依據'}</div>
                     <p className="text-text-muted text-sm leading-7">{timing.reason}</p>
                   </div>
 
@@ -1222,7 +1222,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     了解出門訣方案
                   </a>
                   <span className="text-xs text-text-muted/60 mt-2 sm:mt-0 sm:self-center">
-                    事件出門訣 $119 / 月盤出門訣 $89
+                    事件出門訣 $89 / 月盤出門訣 $99
                   </span>
                 </div>
               </div>

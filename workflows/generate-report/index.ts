@@ -375,38 +375,56 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('AI 審核失敗（不阻塞）:', e)
   }
 
-  // Step 4: 解析出門訣 Top5 吉時 JSON（E1/E2 方案，非 step function）
+  // Step 4: 解析出門訣吉時 JSON（E1=Top3, E2=每週Top1×4）
+  // 支援三種 JSON 標記：TOP3（E1新版）、TOP1（E2新版）、TOP5（向後相容舊版）
   let top5Timings = null
-  const top5Match = reportContent.match(/===TOP5_JSON_START===\s*([\s\S]*?)\s*===TOP5_JSON_END===/)
-  if (top5Match) {
-    try {
-      // AI 可能在 JSON 外面包 ```json``` 標記，需要清理
-      let jsonStr = top5Match[1].trim()
-      jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '').trim()
-      const parsed = JSON.parse(jsonStr)
+  const jsonPattern = /===(TOP[135]_JSON_START)===\s*([\s\S]*?)\s*===(TOP[135]_JSON_END)===/g
+  const allJsonMatches = [...reportContent.matchAll(jsonPattern)]
 
-      // AI 可能輸出不同結構，統一轉換成前端期望的 Top5Timing 格式
-      const rawTimings = parsed.top5_auspicious_times || parsed.top5 || parsed
-      if (Array.isArray(rawTimings)) {
-        top5Timings = rawTimings.map((t: Record<string, unknown>, i: number) => ({
-          rank: t.rank || i + 1,
-          title: t.title || t.star_door_combo || `第${i + 1}吉時`,
-          date: t.date || '',
-          time_start: (t.time_start || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[0] : '') || '').toString(),
-          time_end: (t.time_end || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[1] : '') || '').toString(),
-          direction: t.direction || '',
-          reason: t.reason || t.analysis || t.detail || '',
-          confidence: t.confidence || '',
-          shensha_warning: t.shensha_warning || '',
-          zhishi_info: t.zhishi_info || '',
-        }))
+  if (allJsonMatches.length > 0) {
+    try {
+      const allTimings: Record<string, unknown>[] = []
+
+      for (const match of allJsonMatches) {
+        let jsonStr = match[2].trim()
+        jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '').trim()
+        const parsed = JSON.parse(jsonStr)
+
+        // 統一處理：陣列或單一物件都轉成陣列
+        const rawTimings = Array.isArray(parsed)
+          ? parsed
+          : (parsed.top5_auspicious_times || parsed.top5 || parsed.top3 || [parsed])
+
+        if (Array.isArray(rawTimings)) {
+          for (const t of rawTimings) {
+            allTimings.push({
+              rank: t.rank || t.week || allTimings.length + 1,
+              title: t.title || t.star_door_combo || `第${allTimings.length + 1}吉時`,
+              date: t.date || '',
+              time_start: (t.time_start || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[0] : '') || '').toString(),
+              time_end: (t.time_end || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[1] : '') || '').toString(),
+              direction: t.direction || '',
+              reason: t.reason || t.analysis || t.detail || '',
+              boost_explanation: t.boost_explanation || '',
+              confidence: t.confidence || '',
+              shensha_warning: t.shensha_warning || '',
+              zhishi_info: t.zhishi_info || '',
+              week: t.week || null,
+            })
+          }
+        }
       }
-      reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
-      console.log(`Top5 吉時解析成功: ${top5Timings?.length || 0} 項`)
+
+      if (allTimings.length > 0) {
+        top5Timings = allTimings
+      }
+
+      // 移除所有 JSON 標記
+      reportContent = reportContent.replace(/===(TOP[135]_JSON_START)===[\s\S]*?===(TOP[135]_JSON_END)===/g, '').trim()
+      console.log(`吉時 JSON 解析成功: ${top5Timings?.length || 0} 項`)
     } catch (e) {
-      console.error('Top5 JSON 解析失敗:', e)
-      // 解析失敗仍然要移除 JSON 標記，避免原始 JSON 顯示給客戶
-      reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
+      console.error('吉時 JSON 解析失敗:', e)
+      reportContent = reportContent.replace(/===(TOP[135]_JSON_START)===[\s\S]*?===(TOP[135]_JSON_END)===/g, '').trim()
     }
   }
 
