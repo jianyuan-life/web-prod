@@ -855,6 +855,13 @@ export async function callChumenjiTop(
     body.start_date = new Date().toISOString().split('T')[0]
   }
 
+  // P0 修復：傳入客戶可用時段，引擎只在這些時段內掃描
+  // available_time_slots 格式：[{start:"09:00",end:"12:00"},{start:"19:00",end:"23:00"}]
+  const timeSlots = birthData.available_time_slots as Array<{start: string, end: string}> | undefined
+  if (timeSlots && timeSlots.length > 0) {
+    body.available_time_slots = timeSlots
+  }
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
 
