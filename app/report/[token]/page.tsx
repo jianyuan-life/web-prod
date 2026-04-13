@@ -1040,14 +1040,25 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {(timing.confidence || timing.zhishi_info) && (
                     <div className="flex gap-3 mb-3">
                       {timing.confidence && (() => {
-                        const cleanConfidence = (timing.confidence || '').replace(/\s*\d+%/, '').trim()
+                        // 支援物件格式（引擎直取）和字串格式（舊版）
+                        let level = ''
+                        let desc = ''
+                        if (typeof timing.confidence === 'object' && timing.confidence !== null) {
+                          const conf = timing.confidence as { value?: number; level?: string; desc?: string }
+                          level = conf.level || '高'
+                          desc = conf.desc || ''
+                        } else {
+                          level = String(timing.confidence).replace(/\s*\d+%/, '').trim()
+                        }
+                        const isHigh = level.includes('極高') || level.includes('高')
+                        const isMid = level.includes('中')
                         return (
                         <div className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{
-                          background: timing.confidence.includes('極高') || timing.confidence.includes('高') ? 'rgba(34,197,94,0.1)' : timing.confidence.includes('中') ? 'rgba(234,179,8,0.1)' : 'rgba(239,68,68,0.1)',
-                          color: timing.confidence.includes('極高') || timing.confidence.includes('高') ? '#22c55e' : timing.confidence.includes('中') ? '#eab308' : '#ef4444',
-                          border: `1px solid ${timing.confidence.includes('極高') || timing.confidence.includes('高') ? 'rgba(34,197,94,0.2)' : timing.confidence.includes('中') ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                          background: isHigh ? 'rgba(34,197,94,0.1)' : isMid ? 'rgba(234,179,8,0.1)' : 'rgba(239,68,68,0.1)',
+                          color: isHigh ? '#22c55e' : isMid ? '#eab308' : '#ef4444',
+                          border: `1px solid ${isHigh ? 'rgba(34,197,94,0.2)' : isMid ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)'}`,
                         }}>
-                          信心指數：{cleanConfidence}
+                          信心指數：{level}{desc ? ` — ${desc}` : ''}
                         </div>
                         )
                       })()}
@@ -1069,7 +1080,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {/* 命理依據 / 加乘理由 */}
                   <div className="mb-4 px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--color-gold)' }}>
                     <div className="text-text-muted/50 text-xs mb-1">{report.plan_code === 'E1' ? '為什麼這個時間能加乘' : '命理依據'}</div>
-                    <p className="text-text-muted text-sm leading-7">{timing.reason}</p>
+                    <p className="text-text-muted text-sm leading-7">{
+                      // 清理引擎技術性評分細節，只保留客戶看得懂的部分
+                      String(timing.reason || '')
+                        .replace(/[（(]基礎\d+[×x][\s\S]*?[）)]/g, '')  // 移除 (基礎30×因0.5=15)
+                        .replace(/[（(][+-]\d+[）)]/g, '')              // 移除 (+12) (-15)
+                        .replace(/；\s*；/g, '；')                       // 清理連續分號
+                        .replace(/\s{2,}/g, ' ')                         // 清理多餘空白
+                        .trim()
+                    }</p>
                   </div>
 
                   {/* Google Calendar 按鈕 */}
