@@ -828,6 +828,82 @@ export interface ChumenjiTopItem {
 export interface ChumenjiTopResult {
   plan_code: string
   results: ChumenjiTopItem[]
+  detected_event_type?: string
+  detected_event_types?: Record<string, number>
+}
+
+/**
+ * AI 事件類型分類（DeepSeek，快速+便宜）
+ * 從客戶描述自動識別事件意圖，返回多類型+信心分數
+ */
+async function aiClassifyEventType(customerText: string): Promise<Record<string, number> | null> {
+  if (!customerText.trim() || !DEEPSEEK_KEY) return null
+
+  const prompt = `你是奇門遁甲事件分類器。根據客戶描述，判斷屬於以下哪些事件類型，給出信心分數（0-1）。
+只回覆 JSON，不要任何解釋。
+
+事件類型清單：面試、求官、求財、簽約、談判、考試、出行、求醫、嫁娶、求學、開業、訴訟、求子、搬遷、置產、感情、化解、討債
+
+分類原則：
+- 跟錢直接相關（薪水/投資/報酬/財運）→ 求財
+- 面試只是場景，如果有談薪目的 → 求財應比面試高
+- 可以同時匹配多個類型
+- 只回覆信心 > 0.2 的類型
+
+客戶描述：「${customerText}」
+
+回覆格式：{"求財": 0.8, "面試": 0.3, "談判": 0.6}`
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000) // 8秒超時
+
+    const res = await fetch(DEEPSEEK_API, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${DEEPSEEK_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        temperature: 0,
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+
+    if (!res.ok) {
+      console.error(`AI 事件分類失敗: ${res.status}`)
+      return null
+    }
+
+    const data = await res.json()
+    const content = data?.choices?.[0]?.message?.content?.trim() || ''
+
+    // 解析 JSON（可能被包在 ```json ``` 裡）
+    const jsonMatch = content.match(/\{[^}]+\}/)
+    if (!jsonMatch) return null
+
+    const parsed = JSON.parse(jsonMatch[0]) as Record<string, number>
+    // 過濾掉信心太低的
+    const filtered: Record<string, number> = {}
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === 'number' && v > 0.1) {
+        filtered[k] = v
+      }
+    }
+
+    if (Object.keys(filtered).length > 0) {
+      console.log(`AI 事件分類結果: ${JSON.stringify(filtered)}`)
+      return filtered
+    }
+    return null
+  } catch (e) {
+    console.error('AI 事件分類異常（不阻塞）:', e)
+    return null
+  }
 }
 
 export async function callChumenjiTop(
@@ -841,10 +917,29 @@ export async function callChumenjiTop(
   const DIZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
   const birthYearDizhi = DIZHI[(birthData.year - 4) % 12] || ''
 
+  // 合併客戶文字描述
+  const customerText = [
+    birthData.topic || '',
+    birthData.question || '',
+    birthData.customer_note || '',
+  ].filter(Boolean).join(' ')
+
+  // AI 事件分類（DeepSeek，主方案；失敗時由後端關鍵字 fallback）
+  let eventTypesWeighted: Record<string, number> | null = null
+  if (customerText.trim()) {
+    eventTypesWeighted = await aiClassifyEventType(customerText)
+  }
+
   const body: Record<string, unknown> = {
     plan_code: planCode,
     birth_year_dizhi: birthYearDizhi,
     event_type: (birthData.event_type as string) || '出行',
+    // 傳入客戶文字描述（後端關鍵字 fallback 用）
+    topic: birthData.topic || '',
+    question: birthData.question || '',
+    customer_note: birthData.customer_note || '',
+    // AI 分類結果（前端 DeepSeek 預分類）
+    event_types_weighted: eventTypesWeighted,
   }
 
   if (planCode === 'E1') {
