@@ -2122,13 +2122,20 @@ export async function saveReportToSupabase(
   "use step";
   await emitProgress({ step: '儲存報告', progress: 90, message: '正在儲存報告...' })
 
+  // 清除 ai_content 中殘留的 JSON 區塊（引擎注入的 top 結果被 AI 原樣複製）
+  let cleanContent = reportContent
+  cleanContent = cleanContent.replace(/\{[\s\S]*?"week"\s*:\s*\d[\s\S]*?\}/g, '')  // 移除 {"week":...} JSON
+  cleanContent = cleanContent.replace(/```json[\s\S]*?```/g, '')  // 移除 ```json``` 區塊
+  cleanContent = cleanContent.replace(/===TOP\d_JSON_START===[\s\S]*?===TOP\d_JSON_END===/g, '')  // 移除標記
+  cleanContent = cleanContent.replace(/\n{3,}/g, '\n\n')  // 清理多餘空行
+
   const reportResult: Record<string, unknown> = {
     report_id: reportId,
     systems_count: analyses.length,
     analyses_summary: analyses,
-    ai_content: reportContent,
+    ai_content: cleanContent,
     ai_model: aiModel,
-    ai_tokens: reportContent.length,
+    ai_tokens: cleanContent.length,
   }
   if (top5Timings) reportResult.top5_timings = top5Timings
 
