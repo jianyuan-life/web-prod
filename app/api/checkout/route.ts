@@ -32,24 +32,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '無效的方案代碼' }, { status: 400 })
     }
 
-    // 從 Supabase Auth 取得用戶真實 email（不依賴前端傳值）
-    let verifiedEmail = ''
-    try {
-      const supabaseAuth = getSupabase()
-      // 嘗試用 cookie 中的 token 驗證用戶
-      const cookies = req.headers.get('cookie') || ''
-      const accessTokenMatch = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
-      if (accessTokenMatch) {
-        try {
+    // 從 Authorization header 或 cookie 取得 Supabase access token
+    // 優先用 Authorization header（因為 Supabase 前端用 localStorage 存 token，不是 cookie）
+    let authAccessToken = ''
+    const authHeader = req.headers.get('authorization') || ''
+    if (authHeader.startsWith('Bearer ') && authHeader.length > 30) {
+      authAccessToken = authHeader.slice(7)
+    }
+    // Fallback: 嘗試從 cookie 取得（某些環境可能有 cookie）
+    if (!authAccessToken) {
+      try {
+        const cookies = req.headers.get('cookie') || ''
+        const accessTokenMatch = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
+        if (accessTokenMatch) {
           const tokenData = JSON.parse(decodeURIComponent(accessTokenMatch[1]))
           const token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
           if (typeof token === 'string' && token.length > 20) {
-            const { data } = await supabaseAuth.auth.getUser(token)
-            if (data?.user?.email) verifiedEmail = data.user.email
+            authAccessToken = token
           }
-        } catch { /* token 解析失敗，用 fallback */ }
-      }
-    } catch { /* auth 驗證失敗，用 fallback */ }
+        }
+      } catch { /* cookie 解析失敗 */ }
+    }
+
+    // 用取得的 token 驗證用戶身份
+    let verifiedEmail = ''
+    let verifiedUserId = ''
+    if (authAccessToken) {
+      try {
+        const supabaseAuth = getSupabase()
+        const { data } = await supabaseAuth.auth.getUser(authAccessToken)
+        if (data?.user?.email) verifiedEmail = data.user.email
+        if (data?.user?.id) verifiedUserId = data.user.id
+      } catch { /* auth 驗證失敗，用 fallback */ }
+    }
     // Fallback: 前端傳來的 email
     const customerEmail = (verifiedEmail || userEmail || birthData?.email || '').toLowerCase()
 
@@ -157,25 +172,11 @@ export async function POST(req: NextRequest) {
     let pointsUserId = ''
     if (pointsToUse && pointsToUse > 0 && !verifiedCouponCode && finalAmount > 0) {
       const supabase = getSupabase()
-      // 取得用戶 ID
-      let userId = ''
-      try {
-        const cookies = req.headers.get('cookie') || ''
-        const tokenMatch = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
-        if (tokenMatch) {
-          const tokenData = JSON.parse(decodeURIComponent(tokenMatch[1]))
-          const token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
-          if (typeof token === 'string' && token.length > 20) {
-            const { data } = await supabase.auth.getUser(token)
-            if (data?.user?.id) userId = data.user.id
-          }
-        }
-      } catch {}
-
-      if (userId) {
-        pointsUserId = userId
+      // 使用前面已驗證的用戶 ID（從 Authorization header 或 cookie 取得）
+      if (verifiedUserId) {
+        pointsUserId = verifiedUserId
         // 驗證餘額
-        const { data: pts } = await supabase.from('user_points').select('balance').eq('user_id', userId).single()
+        const { data: pts } = await supabase.from('user_points').select('balance').eq('user_id', verifiedUserId).single()
         const balance = pts?.balance || 0
         // 最多用到餘額，且不超過訂單金額（100% 可折抵）
         const maxPoints = Math.floor(finalAmount / 100) // 100% 上限，單位美元

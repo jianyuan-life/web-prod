@@ -452,9 +452,19 @@ export function useCheckoutForm() {
 
       const userLocale = (typeof window !== 'undefined' && localStorage.getItem('locale')) || 'zh-TW'
 
+      // 取得 Supabase access token，傳給後端驗證用戶身份（Supabase 用 localStorage 不是 cookie）
+      let authToken = ''
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) authToken = session.access_token
+      } catch { /* 靜默失敗，後端會用 fallback */ }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           planCode,
           totalPrice: ['G15', 'R'].includes(planCode) ? totalPrice : undefined,
