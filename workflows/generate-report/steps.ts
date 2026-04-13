@@ -1910,6 +1910,25 @@ export async function qualityGate(
     }
   }
 
+  // 2c-3. E1/E2 出門訣：非奇門詞彙檢查（嚴重警告）
+  if (planCode === 'E1' || planCode === 'E2') {
+    const nonQimenTerms = [
+      '用神', '喜神', '日主', '八字', '風水', '八宅', '本命卦',
+      '天醫位', '生氣位', '延年位', '生物節律', '臨界日',
+      '紫微', '太陽星座', '西洋占星', '吠陀', '南洋術數',
+      '命宮主星', '人類圖', '姓名學', '數字能量',
+    ]
+    const foundTerms: string[] = []
+    for (const term of nonQimenTerms) {
+      if (reportContent.includes(term)) {
+        foundTerms.push(term)
+      }
+    }
+    if (foundTerms.length > 0) {
+      warnings.push(`出門訣含非奇門詞彙（${foundTerms.length} 種）: ${foundTerms.join('、')}`)
+    }
+  }
+
   // 2d. R 方案「合否？」必要章節檢查
   if (planCode === 'R') {
     const rRequired = [

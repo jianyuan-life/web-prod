@@ -279,6 +279,7 @@ export async function generateReportWorkflow(reportId: string) {
   // Step 2: AI 生成報告內容
   let reportContent = ''
   let aiModelUsed = 'unknown'
+  let chumenjiTop: ChumenjiTopResult | null = null  // 提升到外層，Step 4 直接用引擎結果
 
   try {
     if (planCode === 'C') {
@@ -320,7 +321,6 @@ export async function generateReportWorkflow(reportId: string) {
       const question = (birthData.question || birthData.customer_note || birthData.other_question || undefined) as string | undefined
 
       // E1/E2 出門訣：先呼叫引擎取得 Top 結果，強制注入 Prompt
-      let chumenjiTop: ChumenjiTopResult | null = null
       if (planCode === 'E1' || planCode === 'E2') {
         console.log(`${planCode} 出門訣：呼叫引擎計算最佳時辰...`)
         chumenjiTop = await callChumenjiTop(planCode, birthData)
@@ -390,57 +390,159 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('AI 審核失敗（不阻塞）:', e)
   }
 
-  // Step 4: 解析出門訣吉時 JSON（E1=Top3, E2=每週Top1×4）
-  // 支援三種 JSON 標記：TOP3（E1新版）、TOP1（E2新版）、TOP5（向後相容舊版）
-  let top5Timings = null
-  const jsonPattern = /===(TOP[135]_JSON_START)===\s*([\s\S]*?)\s*===(TOP[135]_JSON_END)===/g
-  const allJsonMatches = [...reportContent.matchAll(jsonPattern)]
+  // Step 3.6: E1/E2 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）
+  if (planCode === 'E1' || planCode === 'E2') {
+    const bannedTerms: [RegExp, string][] = [
+      [/八字[^\n]{0,20}/g, ''],
+      [/日主[^\n]{0,10}/g, ''],
+      [/用神\S{0,4}/g, '年命宮能量'],
+      [/喜神\S{0,4}/g, '吉方能量'],
+      [/風水八宅[^\n]{0,20}/g, ''],
+      [/本命卦[^\n]{0,10}/g, ''],
+      [/天醫位/g, '吉位'],
+      [/生氣位/g, '吉位'],
+      [/延年位/g, '吉位'],
+      [/生物節律[^\n]{0,30}/g, ''],
+      [/臨界日/g, ''],
+      [/紫微[^\n]{0,10}/g, ''],
+      [/太陽星座/g, ''],
+      [/五行喜忌[^\n]{0,20}/g, ''],
+      [/命宮主星[^\n]{0,10}/g, ''],
+      [/吠陀占星[^\n]{0,20}/g, ''],
+      [/南洋術數[^\n]{0,20}/g, ''],
+      [/數字能量[^\n]{0,20}/g, ''],
+      [/人類圖[^\n]{0,10}/g, ''],
+      [/姓名學[^\n]{0,10}/g, ''],
+    ]
+    let bannedCount = 0
+    for (const [pattern, replacement] of bannedTerms) {
+      const matches = reportContent.match(pattern)
+      if (matches) {
+        bannedCount += matches.length
+        reportContent = reportContent.replace(pattern, replacement)
+      }
+    }
+    // 清理替換後可能產生的多餘空行
+    reportContent = reportContent.replace(/\n{3,}/g, '\n\n')
+    if (bannedCount > 0) {
+      console.log(`${planCode} 出門訣：清除 ${bannedCount} 處非奇門詞彙`)
+    }
+  }
 
-  if (allJsonMatches.length > 0) {
-    try {
-      const allTimings: Record<string, unknown>[] = []
+  // Step 4: 取得出門訣吉時數據（E1/E2）
+  // 策略：直接用引擎 chumenjiTop.results（最可靠），AI JSON 解析只作為備用
+  let top5Timings: Record<string, unknown>[] | null = null
 
-      for (const match of allJsonMatches) {
-        let jsonStr = match[2].trim()
-        jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/\s*```\s*$/, '').trim()
-        const parsed = JSON.parse(jsonStr)
+  // 4a. 優先使用引擎計算結果（不依賴 AI 輸出 JSON）
+  if ((planCode === 'E1' || planCode === 'E2') && chumenjiTop?.results?.length) {
+    top5Timings = chumenjiTop.results.map((r, i) => ({
+      rank: r.rank || i + 1,
+      title: `${r.star}${r.door}` || `第${i + 1}吉時`,
+      date: r.date || r.solar_date || '',
+      time_start: (typeof r.time_range === 'string' ? r.time_range.split('-')[0] : '').toString(),
+      time_end: (typeof r.time_range === 'string' ? r.time_range.split('-')[1] : '').toString(),
+      direction: r.direction || '',
+      reason: r.reason || '',
+      boost_explanation: '',
+      confidence: typeof r.confidence === 'object' ? JSON.stringify(r.confidence) : String(r.confidence || ''),
+      shensha_warning: r.shensha_warning || '',
+      zhishi_info: '',
+      week: r.week_number || null,
+      week_label: r.week_label || null,
+      week_range: r.week_range || null,
+      shichen: r.shichen || '',
+      door: r.door || '',
+      star: r.star || '',
+      shen: r.shen || '',
+      score: r.score || 0,
+      ju: r.ju || '',
+      gong: r.gong || '',
+      kongwang: r.kongwang || false,
+    }))
+    console.log(`${planCode} 吉時直接從引擎取得: ${top5Timings.length} 項`)
+  }
 
-        // 統一處理：陣列或單一物件都轉成陣列
-        const rawTimings = Array.isArray(parsed)
-          ? parsed
-          : (parsed.top5_auspicious_times || parsed.top5 || parsed.top3 || [parsed])
+  // 4b. 備用：如果引擎無結果，嘗試從 AI 報告中解析 JSON 標記
+  if (!top5Timings && (planCode === 'E1' || planCode === 'E2')) {
+    const jsonPattern = /===(TOP[135]_JSON_START)===\s*([\s\S]*?)\s*===(TOP[135]_JSON_END)===/g
+    let allJsonMatches: RegExpMatchArray[] = [...reportContent.matchAll(jsonPattern)]
 
-        if (Array.isArray(rawTimings)) {
-          for (const t of rawTimings) {
-            allTimings.push({
-              rank: t.rank || t.week || allTimings.length + 1,
-              title: t.title || t.star_door_combo || `第${allTimings.length + 1}吉時`,
-              date: t.date || '',
-              time_start: (t.time_start || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[0] : '') || '').toString(),
-              time_end: (t.time_end || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[1] : '') || '').toString(),
-              direction: t.direction || '',
-              reason: t.reason || t.analysis || t.detail || '',
-              boost_explanation: t.boost_explanation || '',
-              confidence: t.confidence || '',
-              shensha_warning: t.shensha_warning || '',
-              zhishi_info: t.zhishi_info || '',
-              week: t.week || null,
-            })
+    // 降級：AI 可能用不同的標記格式
+    if (allJsonMatches.length === 0) {
+      const fallback = /[=-]{2,3}\s*TOP[135]_JSON_START\s*[=-]{2,3}\s*([\s\S]*?)\s*[=-]{2,3}\s*TOP[135]_JSON_END\s*[=-]{2,3}/g
+      allJsonMatches = [...reportContent.matchAll(fallback)]
+    }
+
+    // 降級：AI 用 code block 包裹 JSON 陣列（無標記）
+    if (allJsonMatches.length === 0) {
+      const codeBlockPattern = /```json?\s*\n(\[[\s\S]*?\])\n\s*```/g
+      const codeMatches = [...reportContent.matchAll(codeBlockPattern)]
+      for (const cbm of codeMatches) {
+        try {
+          const testParsed = JSON.parse(cbm[1])
+          if (Array.isArray(testParsed) && testParsed.length > 0 && (testParsed[0].date || testParsed[0].direction)) {
+            const fakeMatch = [cbm[0], 'TOP_JSON_START', cbm[1], 'TOP_JSON_END'] as unknown as RegExpMatchArray
+            fakeMatch.index = cbm.index
+            fakeMatch.input = cbm.input
+            allJsonMatches.push(fakeMatch)
+          }
+        } catch { /* 不是合法 JSON，跳過 */ }
+      }
+    }
+
+    if (allJsonMatches.length > 0) {
+      try {
+        const allTimings: Record<string, unknown>[] = []
+        for (const match of allJsonMatches) {
+          let jsonStr = (match[2] || match[1] || '').trim()
+          jsonStr = jsonStr.replace(/^```json?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+          const jsonStart = jsonStr.indexOf('[') !== -1 ? jsonStr.indexOf('[') : jsonStr.indexOf('{')
+          const jsonEnd = Math.max(jsonStr.lastIndexOf(']'), jsonStr.lastIndexOf('}'))
+          if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+            jsonStr = jsonStr.slice(jsonStart, jsonEnd + 1)
+          }
+          const parsed = JSON.parse(jsonStr)
+          const rawTimings = Array.isArray(parsed)
+            ? parsed
+            : (parsed.top5_auspicious_times || parsed.top5 || parsed.top3 || parsed.top1 || [parsed])
+          if (Array.isArray(rawTimings)) {
+            for (const t of rawTimings) {
+              allTimings.push({
+                rank: t.rank || t.week || allTimings.length + 1,
+                title: t.title || t.star_door_combo || `第${allTimings.length + 1}吉時`,
+                date: t.date || '',
+                time_start: (t.time_start || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[0] : '') || '').toString(),
+                time_end: (t.time_end || (typeof t.time_range === 'string' ? (t.time_range as string).split('-')[1] : '') || '').toString(),
+                direction: t.direction || '',
+                reason: t.reason || t.analysis || t.detail || '',
+                boost_explanation: t.boost_explanation || '',
+                confidence: t.confidence || '',
+                shensha_warning: t.shensha_warning || '',
+                zhishi_info: t.zhishi_info || '',
+                week: t.week || null,
+              })
+            }
           }
         }
+        if (allTimings.length > 0) {
+          top5Timings = allTimings
+          console.log(`${planCode} 吉時從 AI JSON 備用解析取得: ${top5Timings.length} 項`)
+        }
+      } catch (e) {
+        console.error('吉時 AI JSON 備用解析失敗:', e)
       }
-
-      if (allTimings.length > 0) {
-        top5Timings = allTimings
-      }
-
-      // 移除所有 JSON 標記
-      reportContent = reportContent.replace(/===(TOP[135]_JSON_START)===[\s\S]*?===(TOP[135]_JSON_END)===/g, '').trim()
-      console.log(`吉時 JSON 解析成功: ${top5Timings?.length || 0} 項`)
-    } catch (e) {
-      console.error('吉時 JSON 解析失敗:', e)
-      reportContent = reportContent.replace(/===(TOP[135]_JSON_START)===[\s\S]*?===(TOP[135]_JSON_END)===/g, '').trim()
     }
+
+    if (!top5Timings) {
+      console.warn(`${planCode} 吉時 0 筆！引擎無結果且 AI 未輸出有效 JSON`)
+    }
+  }
+
+  // 清理報告中的 JSON 標記（不管有沒有成功解析，都不應出現在最終報告中）
+  if (planCode === 'E1' || planCode === 'E2') {
+    reportContent = reportContent.replace(/[=-]{2,3}\s*TOP[135]_JSON_(?:START|END)\s*[=-]{2,3}/g, '').trim()
+    reportContent = reportContent.replace(/```json?\s*\n\[[\s\S]*?"(?:date|direction)"[\s\S]*?\]\n\s*```/g, '').trim()
+    reportContent = reportContent.replace(/\n{3,}/g, '\n\n')
   }
 
   // Step 5: 生成 PDF
