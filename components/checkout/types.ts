@@ -13,12 +13,21 @@ export interface FamilyMember {
   cityLat?: number
   cityLng?: number
   cityTz?: number
+  // v5.2.4 國際化（Sprint 3）：IANA 時區與國家碼
+  timezone?: string       // 'Asia/Taipei' / 'America/New_York' etc.
+  countryCode?: string    // ISO 3166-1 alpha-2
   calendarType?: 'solar' | 'lunar'
   lunarLeap?: boolean
 }
 
 export function newMember(): FamilyMember {
-  return { name: '', year: '1990', month: '1', day: '1', hour: '12', timeMode: 'shichen', minute: '0', gender: 'M', birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8, calendarType: 'solar', lunarLeap: false }
+  return {
+    name: '', year: '1990', month: '1', day: '1', hour: '12',
+    timeMode: 'shichen', minute: '0', gender: 'M',
+    birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,
+    timezone: '', countryCode: '',
+    calendarType: 'solar', lunarLeap: false,
+  }
 }
 
 export const PLANS: Record<string, { name: string; price: number; systems: number }> = {
@@ -97,6 +106,9 @@ export interface CheckoutFormState {
   cityLat: number
   cityLng: number
   cityTz: number
+  // v5.2.4 國際化（Sprint 3）
+  timezone: string       // IANA 如 'Asia/Taipei'，空字串代表舊流程（Nominatim 未帶時區）
+  countryCode: string    // ISO 3166-1 alpha-2
   calendarType: 'solar' | 'lunar'
   lunarLeap: boolean
 }

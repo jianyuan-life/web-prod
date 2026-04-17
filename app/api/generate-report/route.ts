@@ -750,6 +750,12 @@ export async function POST(req: NextRequest) {
           time_unknown: birthData.time_unknown || false,
           time_mode: birthData.time_mode || 'exact',
           ...(birthData.cityLat && birthData.cityLng ? { latitude: birthData.cityLat, longitude: birthData.cityLng } : {}),
+          ...(birthData.latitude && birthData.longitude ? { latitude: birthData.latitude, longitude: birthData.longitude } : {}),
+          // Sprint 4 國際化：把 IANA 時區與地區資訊傳給 Python
+          ...(birthData.timezone_offset !== undefined ? { timezone_offset: birthData.timezone_offset } : {}),
+          ...(birthData.timezone ? { timezone: birthData.timezone } : {}),
+          ...(birthData.birth_city ? { birth_city: birthData.birth_city } : {}),
+          ...(birthData.birth_country ? { birth_country: birthData.birth_country } : {}),
         }),
         signal: controller.signal,
       })

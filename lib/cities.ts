@@ -1,5 +1,15 @@
 // 全球主要城市數據庫（經緯度+時區）
 // 優先覆蓋華人地區，再覆蓋全球主要城市
+//
+// v5.2.4（2026-04-17 國際化 Sprint 3）：
+//   原 60 個城市保留為「華人快速選單」，完整 500+ 城市庫改放 cities-with-tz.ts。
+//   本檔案只提供向後相容的 City / searchCities API，內部會 fallback 到 cities-with-tz。
+
+import {
+  CITIES_WITH_TZ,
+  searchCitiesTz,
+  type CityTz,
+} from './cities-with-tz'
 
 export interface City {
   name: string      // 繁體中文名
@@ -8,8 +18,24 @@ export interface City {
   country: string   // 國家/地區
   lat: number       // 緯度
   lng: number       // 經度
-  tz: number        // UTC 時區偏移（小時）
-  tzName: string    // 時區名稱
+  tz: number        // UTC 標準時偏移（小時；DST 由前端依時刻動態計算）
+  tzName: string    // IANA 時區名稱
+  countryCode?: string  // ISO 3166-1 alpha-2（Sprint 3 新增）
+}
+
+// CityTz → City 適配：保持與舊 API 相容
+function adaptCityTz(c: CityTz): City {
+  return {
+    name: c.name,
+    name_s: c.name, // 簡中別名目前不維護，用繁體
+    name_en: c.name_en,
+    country: c.country,
+    lat: c.lat,
+    lng: c.lng,
+    tz: c.tz,
+    tzName: c.timezone,
+    countryCode: c.countryCode,
+  }
 }
 
 // ══════ 國家/地區優先搜尋 ══════
@@ -200,11 +226,17 @@ export const CITIES: City[] = [
 ]
 
 // 搜尋城市（支援繁體、簡體、英文）
+// v5.2.4：先查原 CITIES（快速選單），不足 8 筆再 fallback 到 500+ 全球庫
 export function searchCities(query: string): City[] {
   if (!query || query.length < 1) return []
   const q = query.toLowerCase().trim()
-  return CITIES.filter(c =>
+  const fromLocal = CITIES.filter(c =>
     c.name.includes(q) || c.name_s.includes(q) ||
     c.name_en.toLowerCase().includes(q) || c.country.includes(q)
-  ).slice(0, 8)
+  )
+  const seen = new Set(fromLocal.map(c => `${c.name_en}|${c.country}`))
+  const fromGlobal = searchCitiesTz(q, 8)
+    .map(adaptCityTz)
+    .filter(c => !seen.has(`${c.name_en}|${c.country}`))
+  return [...fromLocal, ...fromGlobal].slice(0, 10)
 }

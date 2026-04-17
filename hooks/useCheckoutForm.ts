@@ -31,6 +31,8 @@ export function useCheckoutForm() {
     gender: params.get('gender') || 'M',
     address: '', addressLat: 0, addressLng: 0,
     birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,
+    // Sprint 3 國際化：IANA 時區 + ISO 國家碼
+    timezone: '', countryCode: '',
     calendarType: (params.get('calendarType') || 'solar') as 'solar' | 'lunar',
     lunarLeap: false,
   })
@@ -167,7 +169,14 @@ export function useCheckoutForm() {
   }
 
   const selectCity = (c: City) => {
-    setForm(f => ({ ...f, birthCity: `${c.name}（${c.country}）`, cityLat: c.lat, cityLng: c.lng, cityTz: c.tz }))
+    setForm(f => ({
+      ...f,
+      birthCity: `${c.name}（${c.country}）`,
+      cityLat: c.lat, cityLng: c.lng, cityTz: c.tz,
+      // Sprint 3：帶 IANA 時區（tzName）與國家碼
+      timezone: c.tzName || f.timezone,
+      countryCode: c.countryCode || f.countryCode,
+    }))
     setCityResults([])
     setNeedCityForCountry('')
   }
@@ -175,10 +184,41 @@ export function useCheckoutForm() {
   const selectCountry = (country: Country, isMultiTz: boolean) => {
     if (isMultiTz) {
       setNeedCityForCountry(country.name)
-      setForm(f => ({ ...f, birthCity: '' }))
+      setForm(f => ({ ...f, birthCity: '', timezone: '', countryCode: '' }))
       setCityResults([])
     } else {
-      setForm(f => ({ ...f, birthCity: country.name, cityLat: country.lat, cityLng: country.lng, cityTz: country.tz }))
+      // 單時區國家：用 countryTzMap 推測 IANA（台灣=Asia/Taipei 等）
+      const ianaByCountry: Record<string, string> = {
+        '台灣': 'Asia/Taipei',
+        '香港': 'Asia/Hong_Kong',
+        '中國': 'Asia/Shanghai',
+        '新加坡': 'Asia/Singapore',
+        '馬來西亞': 'Asia/Kuala_Lumpur',
+        '日本': 'Asia/Tokyo',
+        '韓國': 'Asia/Seoul',
+        '泰國': 'Asia/Bangkok',
+        '越南': 'Asia/Ho_Chi_Minh',
+        '菲律賓': 'Asia/Manila',
+        '英國': 'Europe/London',
+        '法國': 'Europe/Paris',
+        '德國': 'Europe/Berlin',
+        '印度': 'Asia/Kolkata',
+        '紐西蘭': 'Pacific/Auckland',
+        '澳門': 'Asia/Macau',
+        '阿聯酋': 'Asia/Dubai',
+      }
+      const isoByCountry: Record<string, string> = {
+        '台灣': 'TW', '香港': 'HK', '中國': 'CN', '新加坡': 'SG', '馬來西亞': 'MY',
+        '日本': 'JP', '韓國': 'KR', '泰國': 'TH', '越南': 'VN', '菲律賓': 'PH',
+        '英國': 'GB', '法國': 'FR', '德國': 'DE', '印度': 'IN', '紐西蘭': 'NZ',
+        '澳門': 'MO', '阿聯酋': 'AE',
+      }
+      setForm(f => ({
+        ...f,
+        birthCity: country.name, cityLat: country.lat, cityLng: country.lng, cityTz: country.tz,
+        timezone: ianaByCountry[country.name] || f.timezone,
+        countryCode: isoByCountry[country.name] || f.countryCode,
+      }))
       setCityResults([])
       setNeedCityForCountry('')
     }
@@ -398,6 +438,9 @@ export function useCheckoutForm() {
           latitude: form.cityLat || undefined,
           longitude: form.cityLng || undefined,
           timezone_offset: form.cityTz,
+          // Sprint 3 國際化：傳 IANA 時區 + 國家碼給後端（Python BirthInput 用來算 DST）
+          timezone: form.timezone || undefined,
+          birth_country: form.countryCode || undefined,
           birth_city: form.birthCity || undefined,
           calendar_type: form.calendarType,
           lunar_leap: form.calendarType === 'lunar' ? form.lunarLeap : undefined,
@@ -428,6 +471,9 @@ export function useCheckoutForm() {
               latitude: m.cityLat || undefined,
               longitude: m.cityLng || undefined,
               timezone_offset: m.cityTz ?? 8,
+              // Sprint 3 國際化
+              timezone: m.timezone || undefined,
+              birth_country: m.countryCode || undefined,
               calendar_type: m.calendarType || 'solar',
               lunar_leap: m.calendarType === 'lunar' ? m.lunarLeap : undefined,
             })),

@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
   const supabase = getServiceSupabase()
   const { data, error } = await supabase
     .from('paid_reports')
-    .select('id, plan_code, status, created_at, access_token, customer_email, report_result, pdf_url, retry_count, error_message, client_name, amount_usd, generation_progress')
+    .select('id, plan_code, status, created_at, access_token, customer_email, report_result, pdf_url, retry_count, error_message, client_name, amount_usd, generation_progress, timezone, birth_city, self_update_count')
     .ilike('customer_email', queryEmail)
     .order('created_at', { ascending: false })
     .limit(50)

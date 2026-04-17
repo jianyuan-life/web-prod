@@ -63,6 +63,11 @@ export interface BirthData {
   customer_note?: string
   topic?: string
   question?: string
+  // Sprint 4 國際化
+  timezone?: string        // IANA 時區
+  timezone_offset?: number
+  birth_city?: string
+  birth_country?: string   // ISO 3166-1 alpha-2
   [key: string]: unknown
 }
 
@@ -769,6 +774,10 @@ export async function callPythonCalculate(birthData: BirthData) {
           longitude: birthData.longitude || birthData.cityLng,
           timezone_offset: birthData.timezone_offset || birthData.cityTz || 8,
         } : {}),
+        // Sprint 4 國際化：IANA 時區 + 地區資訊（Python BirthInput 自動算 DST）
+        ...(birthData.timezone ? { timezone: birthData.timezone } : {}),
+        ...(birthData.birth_city ? { birth_city: birthData.birth_city } : {}),
+        ...(birthData.birth_country ? { birth_country: birthData.birth_country } : {}),
       }),
       signal: controller.signal,
     })

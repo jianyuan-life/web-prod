@@ -9,6 +9,7 @@ import * as fbpixel from '@/lib/fbpixel'
 import ReportProgress from '@/components/ReportProgress'
 import FamilyMembersManager from '@/components/FamilyMembersManager'
 import ReferralCard from '@/components/ReferralCard'
+import UpdateBirthLocation from '@/components/UpdateBirthLocation'
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
@@ -38,6 +39,10 @@ type Report = {
     progress_updated_at?: string
     [key: string]: unknown
   } | null
+  // Sprint 5 國際化
+  timezone?: string | null
+  birth_city?: string | null
+  self_update_count?: number | null
 }
 
 // 各方案使用的命理系統數量（0 表示不顯示系統數）
@@ -591,6 +596,18 @@ function DashboardContent() {
                 {/* pending 時顯示進度條 */}
                 {(r.status === 'pending' || r.status === 'generating') && (
                   <ReportProgress createdAt={r.created_at} planCode={r.plan_code} generationProgress={r.generation_progress} />
+                )}
+                {/* Sprint 5 國際化：completed 報告可更新出生地 + 免費重算（最多 2 次） */}
+                {r.status === 'completed' && (r.self_update_count ?? 0) < 2 && (
+                  <div className="mt-2 text-right">
+                    <UpdateBirthLocation
+                      reportId={r.id}
+                      authToken={authToken}
+                      currentTimezone={r.timezone}
+                      currentCity={r.birth_city}
+                      onSuccess={() => fetchReports().then(setReports)}
+                    />
+                  </div>
                 )}
                 {/* 刪除確認 — 強調不可復原 + 隱私保護 */}
                 {confirmId === r.id && (

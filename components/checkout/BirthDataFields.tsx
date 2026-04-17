@@ -1,6 +1,7 @@
 'use client'
 
 import { type City, type LocationSearchResult, type Country } from '@/lib/cities'
+import { displayTzOffset, isDstAt } from '@/lib/cities-with-tz'
 import BirthTimeField from './BirthTimeField'
 import { type CheckoutFormState as FormState } from './types'
 
@@ -157,11 +158,30 @@ export default function BirthDataFields({
           <button type="button" onClick={() => onCancelCountry?.()}
             className="text-xs text-gold/60 hover:text-gold mt-1 underline">取消，重新選擇國家</button>
         )}
-        {form.cityLat !== 0 && (
-          <p className="text-[10px] text-text-muted/50 mt-1">
-            經度 {form.cityLng.toFixed(2)}° | 時區 UTC{form.cityTz >= 0 ? '+' : ''}{form.cityTz} | 將自動校正真太陽時
-          </p>
-        )}
+        {form.cityLat !== 0 && (() => {
+          // 依出生日期動態計算當時的實際時區偏移（含 DST）
+          const year = parseInt(form.year) || 2000
+          const month = parseInt(form.month) || 1
+          const day = parseInt(form.day) || 1
+          let dstHint = ''
+          let effectiveTz = form.cityTz
+          if (form.timezone) {
+            try {
+              const birthAt = new Date(year, month - 1, day, 12, 0, 0)
+              effectiveTz = displayTzOffset(form.timezone, birthAt)
+              const dst = isDstAt(form.timezone, birthAt)
+              if (dst && effectiveTz !== form.cityTz) {
+                dstHint = `（出生時為夏令時 UTC${effectiveTz >= 0 ? '+' : ''}${effectiveTz}）`
+              }
+            } catch {}
+          }
+          return (
+            <p className="text-[10px] text-text-muted/50 mt-1">
+              經度 {form.cityLng.toFixed(2)}° | 時區 UTC{form.cityTz >= 0 ? '+' : ''}{form.cityTz}{dstHint}
+              {form.timezone ? ` | ${form.timezone}` : ''} | 將自動校正真太陽時與 DST
+            </p>
+          )
+        })()}
       </div>
     </>
   )
