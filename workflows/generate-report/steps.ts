@@ -238,7 +238,38 @@ function cleanAIResponse(text: string): string {
   // 8. 品牌名
   cleaned = cleaned.replace(/鑑源/g, '鑒源')
 
-  // 9. 連續空行
+  // 9. P0-2 修復（2026-04-17）：R 方案「026」年份 bug
+  // AI 把「丙午（2026-2028）」輸出成「丙午026-2028」（可能是 AI 把 2 當成上一段的尾數）
+  // 全局修正四種格式，套用到 DB 存的 ai_content（之前只在 renderInlineMarkdown 修）
+  cleaned = cleaned.replace(/丙午\s*026\s*-\s*2028/g, '丙午（2026-2028）')
+  cleaned = cleaned.replace(/(甲子|乙丑|丙寅|丁卯|戊辰|己巳|庚午|辛未|壬申|癸酉|甲戌|乙亥|丙子|丁丑|戊寅|己卯|庚辰|辛巳|壬午|癸未|甲申|乙酉|丙戌|丁亥|戊子|己丑|庚寅|辛卯|壬辰|癸巳|甲午|乙未|丙申|丁酉|戊戌|己亥|庚子|辛丑|壬寅|癸卯|甲辰|乙巳|丙午|丁未|戊申|己酉|庚戌|辛亥|壬子|癸丑|甲寅|乙卯|丙辰|丁巳|戊午|己未|庚申|辛酉|壬戌|癸亥)(\d{3})(?=[-－]\s*\d{4})/g, '$1（2$2')
+  // 同時補上結尾的全形括號（如果已經被補前綴）
+  cleaned = cleaned.replace(/（2(\d{3})-(\d{4})(?![）)])/g, '（2$1-$2）')
+
+  // 10. P0-3 修復（2026-04-17）：清理 AI 在章節開頭寫的 H1（# ...）
+  // 前端 parseStructuredContent 用 ^## 切章節，H1 會混進章節首行被顯示為原始文字
+  // AI prompt 禁用 H1 但偶爾偷用，此處做最終安全網
+  cleaned = cleaned.replace(/^#\s+(.+?)$/gm, '$1')
+  // 清理章節標題內殘留的 # 前綴（parseStructuredContent split 後 title 可能帶 #）
+  cleaned = cleaned.replace(/^(##+)\s*#+\s*(.+?)$/gm, '$1 $2')
+
+  // 11. P0-4 修復（2026-04-17）：分數超過 100 clamp 到 0-100
+  // AI 偶爾輸出「220 分」「200/100」「評分：110」等超範圍數字
+  cleaned = cleaned.replace(/(\d{1,4})\s*\/\s*100/g, (_m, s) => {
+    const n = Math.max(0, Math.min(100, parseInt(s, 10) || 0))
+    return `${n}/100`
+  })
+  cleaned = cleaned.replace(/((?:綜合|整體|總|系統|本系統)?評分[：:]\s*)(\d{1,4})/g, (_m, prefix, s) => {
+    const n = Math.max(0, Math.min(100, parseInt(s, 10) || 0))
+    return `${prefix}${n}`
+  })
+  // 「200 分」「110 分」等獨立分數
+  cleaned = cleaned.replace(/(\s|^)(\d{3,4})\s*分(?=[，。,.、；;！？\s])/g, (_m, pre, s) => {
+    const n = Math.max(0, Math.min(100, parseInt(s, 10) || 0))
+    return `${pre}${n} 分`
+  })
+
+  // 12. 連續空行
   cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n')
 
   console.log(`[cleanAIResponse] 清理完成，清理後長度: ${cleaned.trim().length} 字`)
@@ -954,6 +985,13 @@ export async function callChumenjiTop(
     customer_note: birthData.customer_note || '',
     // AI 分類結果（前端 DeepSeek 預分類）
     event_types_weighted: eventTypesWeighted,
+    // P0 修復（2026-04-17 稽核）：傳入完整八字供後端推算日主喜用神個人化
+    // 後端 /api/chumenji-top 會自動推導 rizhu_gan/xiyongshen_wx/jishen_wx/bazi_strength
+    birth_year: birthData.year,
+    birth_month: birthData.month,
+    birth_day: birthData.day,
+    birth_hour: birthData.hour,
+    birth_minute: (birthData as Record<string, unknown>).minute || 0,
   }
 
   if (planCode === 'E1') {
@@ -2275,6 +2313,67 @@ ${reportContent}`
     return { score: 80, issues: [] }
   }
 }
+
+// ── Step 3.7: 內容安全審查（黑名單 + AI Moderation）──
+// 回傳：action = pass / warn / retry_with_guard / hard_block
+// retry_with_guard 時 workflow 可在 prompt 附上 guardInstruction 重跑一次
+export async function contentModerationStep(
+  reportId: string,
+  reportContent: string,
+  planCode: string,
+  options: { skipAi?: boolean; customerName?: string; otherClientNames?: string[]; retryAttempt?: number } = {},
+) {
+  "use step";
+  await emitProgress({ step: '內容審查', progress: 74, message: '正在執行內容安全審查...' })
+
+  try {
+    const { moderateContent, logModerationEvent } = await import('@/lib/content-moderation')
+    const report = await moderateContent(reportContent, {
+      skipAi: options.skipAi,
+      customerName: options.customerName,
+      otherClientNames: options.otherClientNames,
+    })
+
+    // 無論通過與否都記錄（方便日後稽核）
+    await logModerationEvent({
+      reportId,
+      planCode,
+      action: report.action,
+      blocked: report.blocked,
+      reason: report.reason,
+      hits: report.blacklistHits,
+      aiScores: report.ai?.scores || {},
+      contentPreview: reportContent.slice(0, 500),
+      retryAttempt: options.retryAttempt ?? 0,
+    })
+
+    console.log(
+      `[content-moderation] ${reportId} ${planCode}: action=${report.action}, ` +
+      `黑名單命中 ${report.blacklistHits.length} 項, 警告 ${report.warnings.length} 項`,
+    )
+
+    return {
+      action: report.action,
+      blocked: report.blocked,
+      warnings: report.warnings,
+      guardInstruction: report.guardInstruction || '',
+      reason: report.reason,
+      blacklistCount: report.blacklistHits.length,
+    }
+  } catch (e) {
+    // 審查自身失敗不阻塞報告交付（降級為 pass）
+    console.error('[content-moderation] 執行失敗，降級為 pass:', e)
+    return {
+      action: 'pass' as const,
+      blocked: false,
+      warnings: [`content-moderation 執行例外: ${e instanceof Error ? e.message : String(e)}`],
+      guardInstruction: '',
+      reason: 'moderation-error-fallback',
+      blacklistCount: 0,
+    }
+  }
+}
+contentModerationStep.maxRetries = 1
 
 // ── Step 4: 更新 Supabase 報告狀態為 completed ──
 export async function saveReportToSupabase(

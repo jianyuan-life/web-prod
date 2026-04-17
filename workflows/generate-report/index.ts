@@ -19,6 +19,7 @@ import {
   validateReportAgainstData,
   qualityGate,
   aiReviewReport,
+  contentModerationStep,
   generatePDF,
   saveReportToSupabase,
   sendReportEmail,
@@ -94,6 +95,20 @@ export async function generateReportWorkflow(reportId: string) {
         }
       } catch (e) {
         console.error('G15 AI 審核失敗（不阻塞）:', e)
+      }
+
+      // 內容安全審查（G15 含多位成員名字，用於隱私交叉檢查）
+      try {
+        const familyNamesList = familyReports.map(r => r.name).filter(Boolean)
+        const modResult = await contentModerationStep(reportId, reportContent, 'G15', {
+          customerName: familyNamesList[0],
+          otherClientNames: [],  // G15 本來就包含多位家人名字，不做隱私比對
+        })
+        if (modResult.blocked) {
+          console.warn(`G15 內容審查被標記：${modResult.reason}（不阻塞交付，但已記錄）`)
+        }
+      } catch (e) {
+        console.error('G15 內容審查失敗（不阻塞）:', e)
       }
 
       // G15 用全體成員名字
@@ -220,6 +235,20 @@ export async function generateReportWorkflow(reportId: string) {
         }
       } catch (e) {
         console.error('R AI 審核失敗（不阻塞）:', e)
+      }
+
+      // 內容安全審查
+      try {
+        const firstMemberName = members[0]?.name || ''
+        const modResult = await contentModerationStep(reportId, reportContent, 'R', {
+          customerName: firstMemberName,
+          otherClientNames: [],  // R 方案本來就是雙人合盤
+        })
+        if (modResult.blocked) {
+          console.warn(`R 內容審查被標記：${modResult.reason}（不阻塞交付，但已記錄）`)
+        }
+      } catch (e) {
+        console.error('R 內容審查失敗（不阻塞）:', e)
       }
 
       // R 方案用 × 連接成員名字
@@ -451,6 +480,26 @@ export async function generateReportWorkflow(reportId: string) {
     )
     await closeProgressStream()
     return { success: false, error: '品質閘門失敗' }
+  }
+
+  // Step 3.7: 內容安全審查（黑名單 + AI Moderation）
+  // 發現 block 類別會記錄到 moderation_log 並呼叫 admin 審查頁面；不直接阻塞交付
+  // （若未來要改為硬擋，把下方 markReportFailed 放開即可）
+  try {
+    const modResult = await contentModerationStep(reportId, reportContent, planCode, {
+      customerName: typeof birthData.name === 'string' ? birthData.name : undefined,
+    })
+    if (modResult.blocked) {
+      console.warn(
+        `⚠️ 內容審查發現 ${modResult.blacklistCount} 項違規（${planCode}）: ${modResult.reason}`,
+      )
+      // TODO（未來若要強擋）:
+      //   await markReportFailed(reportId, `內容安全審查失敗: ${modResult.reason}`)
+      //   await closeProgressStream()
+      //   return { success: false, error: '內容審查阻擋' }
+    }
+  } catch (e) {
+    console.error('內容審查失敗（不阻塞）:', e)
   }
 
   // Step 3.6: E1/E2 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）
