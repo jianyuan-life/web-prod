@@ -2,30 +2,54 @@ name: CI Quality Gate
 
 on:
   push:
-    branches: [main, staging]
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.vscode/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+# Cancel in-progress runs when a new push arrives on the same PR
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  quality-gate:
+  type-check:
+    name: TypeScript
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
-
       - run: npm ci
+      - run: npm run type-check
 
-      - name: TypeScript 型別檢查
-        run: npm run type-check
-
-      - name: 自動化測試
+  build:
+    name: Build & Test
+    needs: type-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run tests
         run: npm test
-
-      - name: Build 驗證
+      - name: Build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
