@@ -298,7 +298,7 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {SYSTEMS.map((sys) => (
-              <div key={sys.name} className="glass rounded-xl p-5 flex items-start gap-4 transition-all duration-300 hover:-translate-y-1">
+              <div key={sys.name} className="glass card-gold-glow rounded-xl p-5 flex items-start gap-4">
                 <div className="shrink-0 w-11 h-11 rounded-[10px] bg-gold/[0.06] border border-gold/10 flex items-center justify-center">
                   <SystemIcon d={sys.icon} tier={sys.tier} />
                 </div>

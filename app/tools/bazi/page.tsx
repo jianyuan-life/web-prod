@@ -479,8 +479,8 @@ export default function FreeToolPage() {
   return (
     <div className="py-16">
       <div className="max-w-5xl mx-auto px-6">
-        <h1 className="text-3xl font-bold text-center mb-2"><span className="text-gradient-gold">命理速算</span></h1>
-        <p className="text-center text-text-muted mb-2">精確排盤 + 深度分析 + 個人化命格解讀</p>
+        <h1 className="text-3xl font-bold text-center mb-2"><span className="text-gradient-gold">八字命理速算</span></h1>
+        <p className="text-center text-text-muted mb-2">四柱排盤 + 五行十神 + 大運流年</p>
         <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
 
         {/* 八字由來說明 */}

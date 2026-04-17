@@ -108,6 +108,12 @@ function DashboardContent() {
       }
     } catch { /* 靜默 */ }
 
+    // P1-1：若既無 token 也無 stripeSessionId，直接不打 API，避免 console 噴 401
+    if (!token && !stripeSessionId) {
+      setAuthFailed(true)
+      return []
+    }
+
     const headers: HeadersInit = {}
     if (token) {
       headers['Authorization'] = `Bearer ${token}`

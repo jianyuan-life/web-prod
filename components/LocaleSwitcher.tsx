@@ -25,6 +25,7 @@ export default function LocaleSwitcher() {
       onClick={toggle}
       className="text-xs text-text-muted hover:text-gold transition-colors px-2 py-1 rounded border border-gold/10 hover:border-gold/30"
       title={locale === 'zh-TW' ? '切換為簡體中文' : '切换为繁体中文'}
+      aria-label={locale === 'zh-TW' ? '切換為簡體中文' : '切換為繁體中文'}
     >
       {locale === 'zh-TW' ? '简' : '繁'}
     </button>

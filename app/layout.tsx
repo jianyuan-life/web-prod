@@ -49,7 +49,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable}`}>
+    <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable}`} suppressHydrationWarning>
       <head>
         {/* Meta Pixel (Facebook Pixel) — 只在設定環境變數時載入 */}
         {process.env.NEXT_PUBLIC_META_PIXEL_ID && (
@@ -153,7 +153,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <Tracker />
         <ReferralHandler />
         <LocaleContent>

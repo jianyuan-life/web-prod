@@ -12,6 +12,7 @@ export default function Navbar() {
   const [txt, setTxt] = useState(UI_TEXT['zh-TW'])
   const [toolsOpen, setToolsOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     setTxt(UI_TEXT[getLocale()])
@@ -25,11 +26,26 @@ export default function Navbar() {
       setTxt(UI_TEXT[locale as keyof typeof UI_TEXT] || UI_TEXT['zh-TW'])
     }
     window.addEventListener('locale-change', localeHandler)
+    // 滾動陰影（P2-7）
+    const scrollHandler = () => setScrolled(window.scrollY > 50)
+    scrollHandler()
+    window.addEventListener('scroll', scrollHandler, { passive: true })
     return () => {
       subscription.unsubscribe()
       window.removeEventListener('locale-change', localeHandler)
+      window.removeEventListener('scroll', scrollHandler)
     }
   }, [])
+
+  // 手機選單開啟時鎖定背景捲動
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileMenuOpen])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -37,7 +53,10 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 w-full z-50 border-b border-gold/10" style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}>
+    <nav
+      className={`fixed top-0 w-full z-50 border-b border-gold/10 transition-shadow duration-300 ${scrolled ? 'shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]' : ''}`}
+      style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}
+    >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <img src="/logo-jianyuan.svg?v=11" alt="鑒源" className="h-9 w-9" />
@@ -90,7 +109,9 @@ export default function Navbar() {
           <button
             className="md:hidden p-2 text-text-muted hover:text-gold transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="開啟選單"
+            aria-label={mobileMenuOpen ? '關閉選單' : '開啟選單'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {mobileMenuOpen
@@ -102,9 +123,24 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* 手機版 backdrop（點擊關閉選單）— P1-9 */}
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          aria-label="關閉選單"
+          className="md:hidden fixed inset-0 top-16 bg-black/60 backdrop-blur-sm z-40 animate-fade-in"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* 手機版展開選單 */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-gold/10 px-6 py-4 space-y-3" style={{ background: 'rgba(10,14,26,0.97)' }}>
+        <div
+          id="mobile-menu"
+          role="menu"
+          className="md:hidden relative z-50 border-t border-gold/10 px-6 py-4 space-y-3 animate-slide-down"
+          style={{ background: 'rgba(10,14,26,0.97)' }}
+        >
           <Link href="/#systems" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_systems}</Link>
           <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_pricing}</Link>
           <Link href="/blog" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_blog}</Link>

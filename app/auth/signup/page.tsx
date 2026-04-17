@@ -111,23 +111,27 @@ export default function SignupPage() {
 
         <form onSubmit={handleSignup} className="glass rounded-2xl p-6 space-y-4">
           <div>
-            <label className="block text-xs text-text-muted mb-1">姓名 <span className="text-red-400">*</span></label>
-            <input type="text" required placeholder="你的姓名"
+            <label htmlFor="signup-name" className="block text-xs text-text-muted mb-1">姓名 <span className="text-red-400">*</span></label>
+            <input id="signup-name" name="name" type="text" required placeholder="你的姓名"
+              autoComplete="name"
               value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none" />
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none transition-colors" />
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">Email <span className="text-red-400">*</span></label>
-            <input type="email" required placeholder="your@email.com"
+            <label htmlFor="signup-email" className="block text-xs text-text-muted mb-1">Email <span className="text-red-400">*</span></label>
+            <input id="signup-email" name="email" type="email" required placeholder="your@email.com"
+              autoComplete="email"
+              inputMode="email"
               value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none" />
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none transition-colors" />
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">密碼 <span className="text-red-400">*</span></label>
+            <label htmlFor="signup-password" className="block text-xs text-text-muted mb-1">密碼 <span className="text-red-400">*</span></label>
             <div className="relative">
-              <input type={showPassword ? 'text' : 'password'} required placeholder="至少 8 個字元" minLength={8}
+              <input id="signup-password" name="new-password" type={showPassword ? 'text' : 'password'} required placeholder="至少 8 個字元" minLength={8}
+                autoComplete="new-password"
                 value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 pr-10 text-cream focus:border-gold/40 focus:outline-none" />
+                className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 pr-10 text-cream focus:border-gold/40 focus:outline-none transition-colors" />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted/50 hover:text-gold transition-colors" tabIndex={-1}>
                 {showPassword ? (
@@ -140,11 +144,12 @@ export default function SignupPage() {
             <p className="text-[10px] text-text-muted/60 mt-1">密碼至少 8 個字元</p>
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">確認密碼 <span className="text-red-400">*</span></label>
+            <label htmlFor="signup-confirm-password" className="block text-xs text-text-muted mb-1">確認密碼 <span className="text-red-400">*</span></label>
             <div className="relative">
-              <input type={showConfirmPassword ? 'text' : 'password'} required placeholder="再輸入一次密碼" minLength={8}
+              <input id="signup-confirm-password" name="confirm-password" type={showConfirmPassword ? 'text' : 'password'} required placeholder="再輸入一次密碼" minLength={8}
+                autoComplete="new-password"
                 value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                className={`w-full bg-white/5 border rounded-lg px-4 py-2.5 pr-10 text-cream focus:outline-none ${form.confirmPassword && form.confirmPassword !== form.password ? 'border-red-400/50 focus:border-red-400' : 'border-gold/10 focus:border-gold/40'}`} />
+                className={`w-full bg-white/5 border rounded-lg px-4 py-2.5 pr-10 text-cream focus:outline-none transition-colors ${form.confirmPassword && form.confirmPassword !== form.password ? 'border-red-400/50 focus:border-red-400' : 'border-gold/10 focus:border-gold/40'}`} />
               <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted/50 hover:text-gold transition-colors" tabIndex={-1}>
                 {showConfirmPassword ? (
@@ -164,10 +169,11 @@ export default function SignupPage() {
 
           {/* 推薦碼（選填） */}
           <div>
-            <label className="block text-xs text-text-muted mb-1">推薦碼（選填）</label>
-            <input type="text" placeholder="JY-XXXXX" maxLength={8}
+            <label htmlFor="signup-refcode" className="block text-xs text-text-muted mb-1">推薦碼（選填）</label>
+            <input id="signup-refcode" name="referral-code" type="text" placeholder="JY-XXXXX" maxLength={8}
+              autoComplete="off"
               value={refCode} onChange={(e) => setRefCode(e.target.value.toUpperCase())}
-              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none uppercase tracking-wider" />
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none uppercase tracking-wider transition-colors" />
             {refValid && (
               <p className="text-[11px] text-green-400 mt-1">&#10003; 由 {refValid} 推薦，首次購買雙方都可獲得獎勵點數</p>
             )}

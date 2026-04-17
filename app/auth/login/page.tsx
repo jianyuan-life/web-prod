@@ -57,19 +57,26 @@ function LoginForm() {
 
         <form onSubmit={handleLogin} className="glass rounded-2xl p-6 space-y-4">
           <div>
-            <label className="block text-xs text-text-muted mb-1">Email</label>
+            <label htmlFor="login-email" className="block text-xs text-text-muted mb-1">Email</label>
             <input
+              id="login-email"
+              name="email"
               type="email" required placeholder="your@email.com"
+              autoComplete="email"
+              inputMode="email"
               value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none transition-colors"
             />
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">密碼</label>
+            <label htmlFor="login-password" className="block text-xs text-text-muted mb-1">密碼</label>
             <input
+              id="login-password"
+              name="password"
               type="password" required placeholder="••••••••"
+              autoComplete="current-password"
               value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none transition-colors"
             />
           </div>
 

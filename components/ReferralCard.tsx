@@ -125,9 +125,13 @@ export default function ReferralCard() {
       // 取得 auth token，帶入 API 請求
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData?.session?.access_token
-      const headers: Record<string, string> = {}
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
+      // P1-1：沒 token 時直接跳過，避免未登入狀態 console 噴 401
+      if (!token) {
+        setLoading(false)
+        return
+      }
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`,
       }
 
       const [refRes, ptsRes] = await Promise.all([

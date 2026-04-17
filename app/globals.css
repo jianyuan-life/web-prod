@@ -30,9 +30,9 @@
   --color-purple-accent: #8b5cf6;  /* 靈性紫 */
   --color-teal-accent: #2dd4bf;    /* 能量青 */
 
-  /* 字體 */
-  --font-sans: "Noto Serif TC", "Georgia", "Times New Roman", serif;
-  --font-body: "Noto Sans TC", "Inter", system-ui, sans-serif;
+  /* 字體（含 emoji fallback，避免「方塊」顯示）— P2-1 */
+  --font-sans: "Noto Serif TC", "Georgia", "Times New Roman", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
+  --font-body: "Noto Sans TC", "Inter", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
 /* 簡體中文字體切換 */
@@ -97,6 +97,10 @@ html.locale-cn {
 
 html {
   scroll-behavior: smooth;
+  /* 保險底色（P0-1）：當 body 的 fixed attachment 在長頁或 iOS Safari 失效時，
+     root 這層深色底色負責保底，避免露出瀏覽器預設白背景 */
+  background-color: #0a0e1a;
+  color-scheme: dark;
 }
 
 body {
@@ -107,6 +111,7 @@ body {
     radial-gradient(ellipse at 90% 70%, rgba(74, 122, 255, 0.06) 0%, transparent 40%),
     linear-gradient(180deg, #0a0e1a 0%, #101832 40%, #0a0e1a 100%);
   background-attachment: fixed;
+  background-color: #0a0e1a; /* 雙重保險 */
   color: var(--color-text);
   min-height: 100vh;
   font-family: var(--font-body);
@@ -232,4 +237,78 @@ select, option {
 .border-glow:hover {
   border-color: rgba(74, 122, 255, 0.4);
   box-shadow: 0 0 30px rgba(74, 122, 255, 0.1);
+}
+
+/* ===== Wave 2 UI/UX 優化新增 ===== */
+
+/* 淡入動畫（手機選單 backdrop 用）*/
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* 由上往下滑入（手機選單 panel 用）*/
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slide-down {
+  animation: slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 卡片金色光暈（首頁 15 系統卡片等）*/
+.card-gold-glow {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-gold-glow:hover {
+  transform: translateY(-3px);
+  border-color: rgba(201, 168, 76, 0.3) !important;
+  box-shadow:
+    0 0 0 1px rgba(201, 168, 76, 0.25) inset,
+    0 14px 32px -12px rgba(201, 168, 76, 0.18),
+    0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Skeleton 載入骨架 */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(201, 168, 76, 0.06) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* Focus ring 統一（可訪問性）*/
+*:focus-visible {
+  outline: 2px solid rgba(201, 168, 76, 0.55);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none; /* 表單用自身 border 提示 */
+}
+
+/* 按鈕 active 微彈（點擊回饋）*/
+button:active:not(:disabled),
+a.btn:active {
+  transform: scale(0.98);
 }
