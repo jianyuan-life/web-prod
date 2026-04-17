@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
+import { adminFetch } from '@/lib/admin-fetch'
 
 type LoyaltyCustomer = {
   userId: string
@@ -54,7 +55,7 @@ export default function LoyaltyPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/loyalty?key=${adminKey}`)
+      const res = await adminFetch(`/api/admin/loyalty`, { adminKey })
       if (res.ok) {
         const data = await res.json()
         setCustomers(data.customers || [])

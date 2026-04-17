@@ -51,6 +51,11 @@ interface SectionExpanderProps {
   sectionTitle: string
 }
 
+// 粗估 HTML 可見文字長度（濾 tag 和空白）— 用於判斷 highlights 是不是近乎空白
+function visibleTextLength(html: string): number {
+  return html.replace(/<[^>]*>/g, '').replace(/\s+/g, '').length
+}
+
 export default function SectionExpander({ fullHtml, sectionTitle }: SectionExpanderProps) {
   const [expanded, setExpanded] = useState(false)
   const highlightHtml = extractHighlights(fullHtml)
@@ -59,7 +64,14 @@ export default function SectionExpander({ fullHtml, sectionTitle }: SectionExpan
   // 某些章節預設展開（短章節、寫給你的話、刻意練習）
   const alwaysExpand = /寫給|刻意練習|你的問題|你們的問題|你的答案|你們的答案/.test(sectionTitle)
 
-  if (alwaysExpand || !hasMore) {
+  // P0-5 修復（2026-04-17）：報告頁中段 ~480px 空白區域
+  // 原因：extractHighlights 只抽取「粗體/引言框/emoji/邊框」，若某章節都是純段落文字會抽成空 HTML
+  //      此時 SectionExpander 會渲染一個空 div + 展開按鈕，中間留下約 480px 空白（卡片本身 padding + 一行按鈕）
+  // 修法：highlights 可見文字不足 80 字時，視為抽取失敗，直接展示全文（不留空白骨架）
+  const highlightVisible = visibleTextLength(highlightHtml)
+  const highlightsFallbackEmpty = highlightVisible < 80
+
+  if (alwaysExpand || !hasMore || highlightsFallbackEmpty) {
     return <div dangerouslySetInnerHTML={{ __html: fullHtml }} />
   }
 

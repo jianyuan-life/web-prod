@@ -19,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/tools/ziwei`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/tools/qimen`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/blog`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${base}/whitepaper`, lastModified: new Date('2026-04-17'), changeFrequency: 'monthly', priority: 0.8 },
     ...blogEntries,
     { url: `${base}/checkout`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${base}/auth/login`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.4 },

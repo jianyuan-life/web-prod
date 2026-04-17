@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
+import { adminFetch } from '@/lib/admin-fetch'
 
 type ReferralRecord = {
   id: string; referrerEmail: string; referrerCode: string
@@ -39,7 +40,7 @@ export default function ReferralsPage() {
     if (val.length < 2) { setUserSuggestions([]); setShowSuggestions(false); return }
     searchTimerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/admin/search-users?key=${adminKey}&q=${encodeURIComponent(val)}`)
+        const res = await adminFetch(`/api/admin/search-users?q=${encodeURIComponent(val)}`, { adminKey })
         if (res.ok) {
           const data = await res.json()
           setUserSuggestions(data.users || [])
@@ -60,10 +61,10 @@ export default function ReferralsPage() {
     setGrantLoading(true)
     setGrantResult(null)
     try {
-      const res = await fetch('/api/admin/grant-points', {
+      const res = await adminFetch('/api/admin/grant-points', {
+        adminKey,
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: adminKey, email: grantEmail, points: parseInt(grantPoints), description: grantDesc || undefined }),
+        body: JSON.stringify({ email: grantEmail, points: parseInt(grantPoints), description: grantDesc || undefined }),
       })
       const data = await res.json()
       if (res.ok) {
@@ -80,7 +81,7 @@ export default function ReferralsPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/referrals?key=${adminKey}`)
+      const res = await adminFetch(`/api/admin/referrals`, { adminKey })
       if (res.ok) {
         const data = await res.json()
         setRecords(data.records || [])

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, Fragment } from 'react'
 import { useAdminAuth } from '../layout'
+import { adminFetch } from '@/lib/admin-fetch'
 
 const PLAN_NAMES: Record<string, string> = {
   C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
@@ -35,7 +36,7 @@ export default function OrdersPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin?key=${adminKey}&range=90d`)
+      const res = await adminFetch(`/api/admin?range=90d`, { adminKey })
       if (res.ok) {
         const data = await res.json()
         setOrders(data.recent_orders || [])
@@ -48,7 +49,7 @@ export default function OrdersPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/orders?key=${adminKey}`)
+      const res = await adminFetch(`/api/admin/orders`, { adminKey })
       if (res.ok) {
         const data = await res.json()
         setOrders(data.orders || [])
@@ -81,10 +82,10 @@ export default function OrdersPage() {
 
   // 重試失敗報告
   const retryOrder = async (id: string) => {
-    const res = await fetch('/api/admin/orders', {
+    const res = await adminFetch('/api/admin/orders', {
+      adminKey,
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, key: adminKey }),
+      body: JSON.stringify({ id }),
     })
     if (res.ok) {
       setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'pending', error_message: undefined } : o))

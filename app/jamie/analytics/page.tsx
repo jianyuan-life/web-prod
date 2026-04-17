@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
+import { adminFetch } from '@/lib/admin-fetch'
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
@@ -59,7 +60,7 @@ export default function AnalyticsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/admin/funnel?key=${encodeURIComponent(adminKey)}&days=${d}`)
+      const res = await adminFetch(`/api/admin/funnel?days=${d}`, { adminKey })
       if (!res.ok) throw new Error('API 錯誤')
       const json = await res.json()
       setData(json)

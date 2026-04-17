@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
+import { adminFetch } from '@/lib/admin-fetch'
 
 type ServiceHealth = {
   name: string; status: 'ok' | 'error' | 'warn'; latency_ms: number; message: string
@@ -23,7 +24,7 @@ export default function SystemPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/system?key=${adminKey}`)
+      const res = await adminFetch(`/api/admin/system`, { adminKey })
       if (res.ok) setData(await res.json())
     } finally { setLoading(false) }
   }, [adminKey])

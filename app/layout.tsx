@@ -205,7 +205,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
               <p>本服務融合傳統命理學與現代科技，分析結果僅供參考，不構成任何醫療、投資或法律建議。</p>
-              <p className="mt-2">&copy; {new Date().getFullYear()} 鑒源 JianYuan. 版權所有 &middot; v{pkg.version}</p>
+              {/* P0-6（2026-04-17）：year 寫死 + suppressHydrationWarning 防 hydration #418 */}
+              <p className="mt-2" suppressHydrationWarning>&copy; {new Date().getFullYear()} 鑒源 JianYuan. 版權所有 &middot; v{pkg.version}</p>
             </div>
           </div>
         </footer>

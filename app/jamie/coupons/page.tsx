@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
+import { adminFetch } from '@/lib/admin-fetch'
 
 const PLAN_NAMES: Record<string, string> = {
   C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
@@ -30,7 +31,7 @@ export default function CouponsPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/coupons?key=${adminKey}`)
+      const res = await adminFetch(`/api/admin/coupons`, { adminKey })
       if (res.ok) {
         const data = await res.json()
         setCoupons(data.coupons || [])
@@ -43,9 +44,9 @@ export default function CouponsPage() {
   const createCoupon = async () => {
     setFormError('')
     if (!form.code.trim()) { setFormError('優惠碼不能為空'); return }
-    const res = await fetch(`/api/admin/coupons?key=${adminKey}`, {
+    const res = await adminFetch(`/api/admin/coupons`, {
+      adminKey,
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...form,
         discount_value: Number(form.discount_value) || 0,
@@ -65,9 +66,9 @@ export default function CouponsPage() {
   }
 
   const toggleCoupon = async (id: string) => {
-    await fetch(`/api/admin/coupons?key=${adminKey}`, {
+    await adminFetch(`/api/admin/coupons`, {
+      adminKey,
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'toggle' }),
     })
     fetchCoupons()
@@ -75,9 +76,9 @@ export default function CouponsPage() {
 
   const deleteCoupon = async (id: string) => {
     if (!confirm('確認刪除此優惠碼？')) return
-    await fetch(`/api/admin/coupons?key=${adminKey}`, {
+    await adminFetch(`/api/admin/coupons`, {
+      adminKey,
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'delete' }),
     })
     fetchCoupons()

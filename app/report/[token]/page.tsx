@@ -338,7 +338,9 @@ function parseStructuredContent(markdown: string): ContentSection[] {
     else if (/改善方案|改善建議|行動指南|加持你的運勢|讓家更好|建議詳解|集體建議|刻意練習/.test(title)) type = 'improvement'
 
     // 清除標題中的字數標注（如「（~3,500字）」「（~2,000字）」）— 客戶不需要看字數
-    const cleanTitle = title.replace(/[（(]\s*[~～]?\s*[\d,]+\s*字?\s*[）)]/g, '').trim()
+    let cleanTitle = title.replace(/[（(]\s*[~～]?\s*[\d,]+\s*字?\s*[）)]/g, '').trim()
+    // P0-3（2026-04-17）：清掉標題內的 # 前綴（AI 有時在 ## 章節標題裡再塞「# XXX」造成「# 何宣逸 人生藍圖」顯示）
+    cleanTitle = cleanTitle.replace(/^#+\s*/, '').trim()
     sections.push({ type, title: cleanTitle, content })
   }
 
@@ -364,6 +366,15 @@ function escapeHtml(text: string): string {
 function renderInlineMarkdown(text: string): string {
   // ── 分數殘留清理 ──
   let cleaned = text
+    // P0-4（2026-04-17）：清理超範圍分數（AI 偶爾輸出 200/100、110 分等），clamp 到 0-100
+    .replace(/(\d{3,4})\s*\/\s*100/g, (_m, s) => {
+      const n = Math.max(0, Math.min(100, parseInt(s, 10) || 0))
+      return `${n}/100`
+    })
+    .replace(/(\s|^)(\d{3,4})\s*分(?=[，。,.、；;！？\s])/g, (_m, pre, s) => {
+      const n = Math.max(0, Math.min(100, parseInt(s, 10) || 0))
+      return `${pre}${n} 分`
+    })
     // 移除「N/100」格式的評分（如「85/100」「90/100」），但不影響「4/9」等章節編號
     .replace(/\d{1,3}\/100/g, '')
     // 移除評分相關文字（綜合評分、整體評分、總評分等）
@@ -419,8 +430,12 @@ function renderInlineMarkdown(text: string): string {
     .replace(/^→ 完整分析請繼續閱讀.*$/gm, '')
     // 清理 AI 進度標記（如「4/9」「5/9」等章節編號）
     .replace(/(\d+)\/(\d+)\s*(?=\n|$|「)/gm, '')
-    // 修正流年被截斷（「流年丙午026」→「流年（2026」）
-    .replace(/流年丙午(\d{3})/g, '流年（20$1')
+    // P0-2（2026-04-17）修正 R 方案「026」年份 bug（原本只處理「流年丙午」，擴大涵蓋所有干支年）
+    .replace(/(甲子|乙丑|丙寅|丁卯|戊辰|己巳|庚午|辛未|壬申|癸酉|甲戌|乙亥|丙子|丁丑|戊寅|己卯|庚辰|辛巳|壬午|癸未|甲申|乙酉|丙戌|丁亥|戊子|己丑|庚寅|辛卯|壬辰|癸巳|甲午|乙未|丙申|丁酉|戊戌|己亥|庚子|辛丑|壬寅|癸卯|甲辰|乙巳|丙午|丁未|戊申|己酉|庚戌|辛亥|壬子|癸丑|甲寅|乙卯|丙辰|丁巳|戊午|己未|庚申|辛酉|壬戌|癸亥)\s*(\d{3})(?=\s*[-－])/g, '$1（2$2')
+    // 修補：如果已帶前括號但缺後括號（「（2026-2028」→「（2026-2028）」）
+    .replace(/（2(\d{3})-(\d{4})(?![）)])/g, '（2$1-$2）')
+    // 保留舊規則（向下相容「流年丙午026」）
+    .replace(/流年丙午(\d{3})/g, '流年（20$1）')
     // 清理空的「→ 具體應對：」標題
     .replace(/→\s*具體應對[：:]\s*(?=\n\n|\n[0-9]|\n[一二三四五])/g, '')
     // 清理所有 H1 標題（# 開頭）— 前端不顯示 H1 原始 markdown
@@ -809,7 +824,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               : report.client_name}
           </h1>
           <div className="text-text-muted/40 text-xs mt-2 flex items-center justify-center gap-3">
-            <span>{new Date(report.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            {/* P0-6（2026-04-17）：用固定 ISO 格式避免 server/client timezone 差異觸發 hydration error */}
+            <span suppressHydrationWarning>{(() => {
+              const d = new Date(report.created_at)
+              const y = d.getUTCFullYear()
+              const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+              const dd = String(d.getUTCDate()).padStart(2, '0')
+              return `${y}年${Number(m)}月${Number(dd)}日`
+            })()}</span>
             <span className="text-text-muted/20">|</span>
             <ReadingTime textLength={report.report_result?.ai_content?.length || 0} />
           </div>

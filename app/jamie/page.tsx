@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from './layout'
+import { adminFetch } from '@/lib/admin-fetch'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 const PLAN_NAMES: Record<string, string> = {
@@ -61,7 +62,7 @@ export default function AdminOverview() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin?key=${adminKey}&range=${r}`)
+      const res = await adminFetch(`/api/admin?range=${r}`, { adminKey })
       if (res.ok) setData(await res.json())
     } finally { setLoading(false) }
   }, [adminKey])
@@ -69,7 +70,7 @@ export default function AdminOverview() {
   const fetchAIBalance = useCallback(async () => {
     if (!adminKey) return
     try {
-      const res = await fetch(`/api/admin/ai-balance?key=${adminKey}`)
+      const res = await adminFetch(`/api/admin/ai-balance`, { adminKey })
       if (res.ok) {
         const d = await res.json()
         setAiBalances(d.balances || [])

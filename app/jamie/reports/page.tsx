@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
+import { adminFetch } from '@/lib/admin-fetch'
 
 const PLAN_NAMES: Record<string, string> = {
   C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
@@ -24,7 +25,7 @@ export default function ReportsPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/orders?key=${adminKey}`)
+      const res = await adminFetch(`/api/admin/orders`, { adminKey })
       if (res.ok) {
         const data = await res.json()
         setReports(data.orders || [])
@@ -49,10 +50,10 @@ export default function ReportsPage() {
     if (failedIds.length === 0) { alert('沒有可重試的報告'); return }
     if (!confirm(`確認重試 ${failedIds.length} 筆失敗報告？`)) return
     for (const id of failedIds) {
-      await fetch('/api/admin/orders', {
+      await adminFetch('/api/admin/orders', {
+        adminKey,
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, key: adminKey }),
+        body: JSON.stringify({ id }),
       })
     }
     fetchReports()

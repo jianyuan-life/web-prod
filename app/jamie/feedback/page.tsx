@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
+import { adminFetch } from '@/lib/admin-fetch'
 
 const PLAN_NAMES: Record<string, string> = {
   C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
@@ -49,7 +50,7 @@ export default function FeedbackPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/feedback?key=${adminKey}`)
+      const res = await adminFetch(`/api/admin/feedback`, { adminKey })
       if (res.ok) {
         const data = await res.json()
         setFeedback(data.feedback || [])
