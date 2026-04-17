@@ -61,7 +61,17 @@ export async function POST(req: NextRequest) {
     let yearTG = TG_LIST[((year - 4) % 10 + 10) % 10]
     let sihua = SIHUA[yearTG] || SIHUA['甲']
     // 十二宮位星曜資料：從 Python API tables 中提取
-    const palaceData: Record<string, { branch: string; mainStars: string; minorStars: string }> = {}
+    // palaceGan：宮干（從 detail 解析）、sihuaTag：該宮四化（祿權科忌）
+    const palaceData: Record<string, { branch: string; mainStars: string; minorStars: string; palaceGan?: string; sihuaTag?: string[] }> = {}
+    // 命主/身主/五行局/大限/流年等進階資料
+    let mingZhu = ''          // 命主
+    let shenZhu = ''          // 身主
+    let currentDaxian = ''    // 當前大限宮 (如「田宅宮 35-44歲」)
+    let currentXiaoxian = '' // 小限宮
+    let yearFlow = ''         // 流年宮
+    let daxianStars = ''      // 當前大限四化
+    let triplePairs: string[] = [] // 三方四正
+    let extraAnalyses = ''    // 財運/事業/婚姻/健康
 
     try {
       const pyRes = await fetch(`${PYTHON_API}/api/calculate`, {
@@ -123,6 +133,65 @@ export async function POST(req: NextRequest) {
                 mainStar = star
                 break
               }
+            }
+          }
+
+          // ── 從 detail 解析進階資訊 ──
+          const detail = String(ziweiAnalysis.detail || '')
+          if (detail) {
+            // 命主 / 身主
+            const mzMatch = detail.match(/命主[：:]\s*(\S+?)(?=[\s，,。]|身主|$)/)
+            const szMatch = detail.match(/身主[：:]\s*(\S+?)(?=[\s，,。]|$)/)
+            if (mzMatch) mingZhu = mzMatch[1].trim()
+            if (szMatch) shenZhu = szMatch[1].trim()
+
+            // 當前大限 / 小限 / 流年
+            const dxMatch = detail.match(/當前大限[：:]\s*(.+?)[\n，,。]/)
+            const xxMatch = detail.match(/小限[：:]\s*(.+?)(?=[\n，,。])/)
+            const yrMatch = detail.match(/(\d{4})年流年[：:]\s*(.+?)[\n，,。]/)
+            const dsMatch = detail.match(/大限飛星[：:]\s*(.+?)[\n，,。]/)
+            if (dxMatch) currentDaxian = dxMatch[1].trim()
+            if (xxMatch) currentXiaoxian = xxMatch[1].trim()
+            if (yrMatch) yearFlow = `${yrMatch[1]}年：${yrMatch[2].trim()}`
+            if (dsMatch) daxianStars = dsMatch[1].trim()
+
+            // 三方四正
+            const triRegex = /三方四正[：:]\s*(.+?)(?=[\n]|$)/g
+            let m: RegExpExecArray | null
+            while ((m = triRegex.exec(detail)) !== null) {
+              triplePairs.push(m[1].trim())
+            }
+
+            // 從「十二宮分佈」區塊提取宮干 (如「命宮（巳）」)
+            const palaceBlock = detail.match(/十二宮分[布佈][：:]([\s\S]*?)(?=當前大限|副系統|={5,}|$)/)
+            if (palaceBlock) {
+              const block = palaceBlock[1]
+              for (const palaceName of Object.keys(palaceData)) {
+                // 比對 如「命宮（巳）：紫微、天府」或「命宮（庚巳）：紫微」
+                const palaceRegex = new RegExp(`${palaceName}\\(?（?([甲乙丙丁戊己庚辛壬癸]?)[子丑寅卯辰巳午未申酉戌亥]\\)?）?[:：]`, 'u')
+                const pm = block.match(palaceRegex)
+                if (pm && pm[1]) {
+                  palaceData[palaceName].palaceGan = pm[1]
+                }
+                // 四化標記（例：[紫微化祿] 或 [太陰化祿，太陰化忌]）
+                const huaPattern = new RegExp(`${palaceName}[^\\n]*\\[([^\\]]+)\\]`, 'u')
+                const hm = block.match(huaPattern)
+                if (hm) {
+                  const huaTxt = hm[1]
+                  const tags: string[] = []
+                  for (const t of ['化祿', '化權', '化科', '化忌']) {
+                    if (huaTxt.includes(t)) tags.push(t.replace('化', ''))
+                  }
+                  if (tags.length) palaceData[palaceName].sihuaTag = tags
+                }
+              }
+            }
+
+            // 額外分析（副系統：財運/事業/婚姻/健康）——抽成簡短中文描述
+            const subRegex = /副系統[^\n]*[：:]([\s\S]*?)(?=單宮特性|={5,}|$)/
+            const subMatch = detail.match(subRegex)
+            if (subMatch) {
+              extraAnalyses = subMatch[1].trim().slice(0, 400)
             }
           }
         }
@@ -231,6 +300,15 @@ export async function POST(req: NextRequest) {
       sihua,
       yearTG,
       wuxingju: (pythonData as Record<string, unknown>)?.wuxing_ju || '',
+      // 進階欄位（從 Python detail 解析）
+      mingZhu,
+      shenZhu,
+      currentDaxian,
+      currentXiaoxian,
+      yearFlow,
+      daxianStars,
+      triplePairs,
+      extraAnalyses,
       aiAnalysis,
       hasAi: !!aiAnalysis,
       pythonData,

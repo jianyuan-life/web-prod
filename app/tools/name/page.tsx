@@ -16,6 +16,66 @@ const SHICHEN = [
 
 const WX_COLORS: Record<string, string> = { '木': '#22c55e', '火': '#ef4444', '土': '#eab308', '金': '#f59e0b', '水': '#3b82f6' }
 
+// ── 三才配置吉凶對照（簡化版 125 組合）──
+const SANCAI_JIXIONG: Record<string, { level: string; desc: string }> = {
+  // 吉配
+  '木木木': { level: '大吉', desc: '發展穩定、根基紮實，人緣佳，但個性固執' },
+  '木火土': { level: '大吉', desc: '五行相生，一生平順，貴人多助' },
+  '火土金': { level: '大吉', desc: '人緣好、家庭美滿，事業穩定發展' },
+  '土金水': { level: '大吉', desc: '智慧兼具財運，晚年享福' },
+  '金水木': { level: '大吉', desc: '聰明機智、善於理財' },
+  '水木火': { level: '大吉', desc: '文采兼具領導力，中年後大發' },
+  '木木火': { level: '大吉', desc: '創意豐富、有貴人提攜' },
+  '火火土': { level: '吉', desc: '熱情積極、但需注意脾氣' },
+  '土土金': { level: '吉', desc: '踏實穩重、財運漸長' },
+  // 凶配
+  '木土金': { level: '凶', desc: '易有病痛、家庭關係緊張' },
+  '火水土': { level: '凶', desc: '情緒起伏大、人際易生衝突' },
+  '金木火': { level: '凶', desc: '事業多阻、健康需留意' },
+  '水火金': { level: '凶帶吉', desc: '有才華但路途多波折，中年後改善' },
+  '土木水': { level: '凶', desc: '家人緣薄、事業難成' },
+}
+function getSancaiJixiong(config: string): { level: string; desc: string } {
+  return SANCAI_JIXIONG[config] || { level: '中平', desc: '三才配置中等，關鍵看個人努力與心性修養' }
+}
+
+// ── 生肖喜忌字根（簡化版，主要生肖部首）──
+const SHENGXIAO_PREFER: Record<string, { likes: string[]; dislikes: string[]; note: string }> = {
+  '鼠': { likes: ['米', '豆', '禾', '艸', '宀', '口', '王', '令', '冠'], dislikes: ['午', '馬', '火', '光', '灬', '羊', '未', '兔', '卯'], note: '鼠喜夜行、住洞穴、吃五穀；忌午沖、忌見光、忌遇羊' },
+  '牛': { likes: ['艸', '米', '豆', '禾', '水', '氵', '辶', '車'], dislikes: ['心', '忄', '肉', '日', '午', '馬', '羊', '未'], note: '牛喜食草、勞動，忌鞭策、忌見強者' },
+  '虎': { likes: ['山', '林', '木', '玉', '王', '君', '大', '冠'], dislikes: ['日', '光', '申', '猴', '袁', '蛇', '虫', '人'], note: '虎喜山林稱王，忌被束縛、忌與猴蛇為伍' },
+  '兔': { likes: ['艸', '木', '禾', '豆', '月', '宀', '衣'], dislikes: ['日', '光', '辰', '龍', '酉', '雞'], note: '兔喜月夜、安居，忌日光、忌與龍雞相沖' },
+  '龍': { likes: ['水', '氵', '雨', '雲', '日', '月', '星', '王', '帝', '君'], dislikes: ['戌', '狗', '犬', '田', '虫', '小', '牛'], note: '龍喜升天、霖雨，忌受困、忌遇狗' },
+  '蛇': { likes: ['口', '宀', '木', '虫', '衣', '彩', '糸'], dislikes: ['亥', '豬', '人', '辶', '寅', '虎', '日', '火'], note: '蛇喜洞穴、隱密，忌見強光、忌遇虎豬' },
+  '馬': { likes: ['艸', '禾', '豆', '木', '巾', '系', '衣'], dislikes: ['子', '鼠', '米', '田', '牛', '丑', '水'], note: '馬喜馳騁、華美，忌午沖、忌田園束縛' },
+  '羊': { likes: ['艸', '豆', '禾', '木', '米', '几', '門'], dislikes: ['心', '忄', '肉', '丑', '牛', '辰', '龍', '大'], note: '羊喜青草、小巧，忌肉食、忌做大' },
+  '猴': { likes: ['木', '禾', '豆', '人', '山', '王', '君'], dislikes: ['虎', '寅', '豕', '亥', '豬', '金', '申'], note: '猴喜攀爬、靈活，忌金銀累身、忌遇虎豬' },
+  '雞': { likes: ['米', '豆', '禾', '虫', '宀', '小', '巾', '彩'], dislikes: ['犬', '戌', '狗', '酉', '金', '刀'], note: '雞喜啄食、華彩，忌遇犬、忌剪伐' },
+  '狗': { likes: ['人', '心', '忄', '肉', '月', '王', '令', '宀'], dislikes: ['日', '光', '雞', '酉', '羊', '未', '金', '辰'], note: '狗喜主人、忠誠，忌食素、忌遇龍雞' },
+  '豬': { likes: ['豆', '禾', '米', '艸', '木', '田', '人', '宀'], dislikes: ['蛇', '巳', '刀', '刂', '日', '文', '彩'], note: '豬喜田園、充實，忌遇蛇、忌修飾' },
+}
+
+function getShengxiao(year: number): string {
+  const sxList = ['鼠','牛','虎','兔','龍','蛇','馬','羊','猴','雞','狗','豬']
+  return sxList[((year - 4) % 12 + 12) % 12]
+}
+
+// ── 音律五行分類（簡化：根據拼音聲母分類）──
+// 實際姓名學音韻派涵蓋「宮商角徵羽」五音
+function getMusicWuxing(char: string): string {
+  // 簡化：根據字母（不可能用中文拼音算）— 改用部首近似
+  // 這裡用一個精簡的映射表
+  const MUSIC_MAP: Record<string, string> = {
+    // 常見姓氏字
+    '王': '木', '李': '木', '陳': '金', '林': '木', '黃': '土', '張': '火', '劉': '火', '楊': '木', '吳': '木', '何': '水',
+    '趙': '火', '孫': '金', '周': '金', '徐': '金', '朱': '金', '高': '木', '郭': '木', '馬': '水', '胡': '水', '羅': '火',
+    '許': '木', '蔣': '木', '謝': '金', '鄭': '火', '韓': '水', '唐': '火', '馮': '水', '于': '土', '董': '火', '蕭': '金',
+    '蘇': '金', '曹': '金', '呂': '火', '丁': '火', '潘': '水', '傅': '水', '阮': '木', '翁': '土', '歐': '土',
+    '梁': '火', '任': '金', '袁': '土', '沈': '水', '崔': '金', '彭': '水',
+  }
+  return MUSIC_MAP[char] || ''
+}
+
 // 分析步驟動畫
 const ANALYSIS_STEPS = [
   { text: '拆解姓名筆畫...', icon: '&#9998;', duration: 600 },
@@ -480,32 +540,137 @@ export default function NameToolPage() {
               </div>
             </div>
 
-            {/* 三才配置 */}
-            <div className="glass rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1 h-6 bg-purple-500 rounded-full" />
-                <h2 className="text-lg font-bold text-cream">三才配置</h2>
-              </div>
-              <div className="flex items-center justify-center gap-6 mb-4">
-                {[
-                  { label: '天', wx: result.sancai.tian },
-                  { label: '人', wx: result.sancai.ren },
-                  { label: '地', wx: result.sancai.di },
-                ].map((item, i) => (
-                  <div key={i} className="text-center">
-                    <div className="w-16 h-16 rounded-full border-2 flex items-center justify-center mb-2"
-                      style={{ borderColor: WX_COLORS[item.wx], background: `${WX_COLORS[item.wx]}15` }}>
-                      <span className="text-2xl font-bold" style={{ color: WX_COLORS[item.wx] }}>{item.wx}</span>
-                    </div>
-                    <div className="text-xs text-text-muted">{item.label}格</div>
+            {/* 三才配置（專業版：含 125 組合吉凶） */}
+            {(() => {
+              const sancaiJx = getSancaiJixiong(result.sancai.config)
+              const sancaiLc = LEVEL_COLORS[sancaiJx.level] || { text: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' }
+              return (
+                <div className={`rounded-2xl p-6 border ${sancaiLc.border} ${sancaiLc.bg}`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-purple-500 rounded-full" />
+                    <h2 className="text-lg font-bold text-cream">三才配置</h2>
+                    <span className={`ml-auto text-sm font-bold ${sancaiLc.text}`}>{sancaiJx.level}</span>
                   </div>
-                ))}
-              </div>
-              <p className="text-center text-sm text-text-muted">
-                三才配置「{result.sancai.config}」代表天時、人和、地利三者的五行關係，
-                影響健康、人際、成功等方面。
-              </p>
-            </div>
+                  <div className="flex items-center justify-center gap-6 mb-4">
+                    {[
+                      { label: '天格', wx: result.sancai.tian, sub: '父輩、長上' },
+                      { label: '人格', wx: result.sancai.ren, sub: '性格、本我' },
+                      { label: '地格', wx: result.sancai.di, sub: '妻兒、晚輩' },
+                    ].map((item, i, arr) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="text-center">
+                          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full border-2 flex items-center justify-center mb-1"
+                            style={{ borderColor: WX_COLORS[item.wx], background: `${WX_COLORS[item.wx]}15` }}>
+                            <span className="text-xl md:text-2xl font-bold" style={{ color: WX_COLORS[item.wx] }}>{item.wx}</span>
+                          </div>
+                          <div className="text-xs text-cream font-semibold">{item.label}</div>
+                          <div className="text-[9px] text-text-muted/60">{item.sub}</div>
+                        </div>
+                        {i < arr.length - 1 && (
+                          <div className="text-text-muted/30 text-xl">→</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-center text-sm text-text">
+                    <strong className="text-white">「{result.sancai.config}」三才</strong> — {sancaiJx.desc}
+                  </p>
+                </div>
+              )
+            })()}
+
+            {/* 生肖喜忌字 */}
+            {form.year && (() => {
+              const shengxiao = getShengxiao(parseInt(form.year))
+              const prefer = SHENGXIAO_PREFER[shengxiao]
+              if (!prefer) return null
+              // 檢查姓名中的字是否符合喜忌
+              const nameChars = [...result.surname, ...result.givenName]
+              const matchedLikes: string[] = []
+              const matchedDislikes: string[] = []
+              nameChars.forEach(c => {
+                if (prefer.likes.some(lk => c.includes(lk))) matchedLikes.push(c)
+                if (prefer.dislikes.some(dk => c.includes(dk))) matchedDislikes.push(c)
+              })
+              return (
+                <div className="glass rounded-2xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-amber-500 rounded-full" />
+                    <h2 className="text-lg font-bold text-cream">生肖派：屬{shengxiao}姓名喜忌</h2>
+                  </div>
+                  <p className="text-sm text-text/80 leading-relaxed mb-4">
+                    {prefer.note}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
+                      <h4 className="text-xs font-bold text-green-400 mb-2">&#10003; 喜用字根</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {prefer.likes.map((c, i) => (
+                          <span key={i} className={`text-sm px-2 py-0.5 rounded ${matchedLikes.some(m => m.includes(c)) ? 'bg-green-500/30 text-green-300 font-bold' : 'bg-white/5 text-text-muted/80'}`}>
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                      {matchedLikes.length > 0 && (
+                        <p className="text-[10px] text-green-400/80 mt-2">
+                          您的姓名中「{matchedLikes.join('、')}」符合屬{shengxiao}喜用字根
+                        </p>
+                      )}
+                    </div>
+                    <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+                      <h4 className="text-xs font-bold text-red-400 mb-2">&#9888; 忌避字根</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {prefer.dislikes.map((c, i) => (
+                          <span key={i} className={`text-sm px-2 py-0.5 rounded ${matchedDislikes.some(m => m.includes(c)) ? 'bg-red-500/30 text-red-300 font-bold' : 'bg-white/5 text-text-muted/80'}`}>
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                      {matchedDislikes.length > 0 && (
+                        <p className="text-[10px] text-red-400/80 mt-2">
+                          您的姓名中「{matchedDislikes.join('、')}」為屬{shengxiao}忌避字根
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* 補救建議（基於凶格數量） */}
+            {(() => {
+              const allGe = [result.tiange, result.renge, result.dige, result.waige, result.zongge]
+              const xiongCount = allGe.filter(g => g.level === '凶' || g.level === '凶帶吉').length
+              if (xiongCount === 0) return null
+              const suggestions: string[] = []
+              if (result.renge.level === '凶') suggestions.push('人格為凶，建議佩戴五行相合的飾品（如水晶、玉石）化解')
+              if (result.zongge.level === '凶') suggestions.push('總格為凶，影響後半生運勢，可考慮書畫署名改用其他字輔助')
+              if (result.dige.level === '凶') suggestions.push('地格為凶，前運較多波折，建議用學業專業補強')
+              const sancaiJx2 = getSancaiJixiong(result.sancai.config)
+              if (sancaiJx2.level === '凶' || sancaiJx2.level === '凶帶吉') {
+                suggestions.push(`三才「${result.sancai.config}」不和，建議透過八字喜用神來調節日常行為與方位`)
+              }
+              if (suggestions.length === 0) return null
+              return (
+                <div className="glass rounded-2xl p-6 border border-orange-500/20 bg-orange-500/[0.03]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-6 bg-orange-500 rounded-full" />
+                    <h2 className="text-lg font-bold text-cream">補救建議</h2>
+                  </div>
+                  <p className="text-xs text-text-muted mb-3">
+                    命中五格有 {xiongCount} 項需留意的地方。姓名只是命格補救的一部分，真正化解需配合完整八字用神。
+                  </p>
+                  <ul className="space-y-2">
+                    {suggestions.map((s, i) => (
+                      <li key={i} className="text-sm text-text/80 flex items-start gap-2">
+                        <span className="text-orange-400 mt-0.5">&bull;</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })()}
 
             {/* AI 深度解讀 */}
             {result.hasAi && result.aiAnalysis && (

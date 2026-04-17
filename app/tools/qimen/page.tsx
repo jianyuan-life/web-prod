@@ -120,13 +120,33 @@ interface QimenResult {
   month_gz: string
   day_gz: string
   hour_gz: string
+  shichen?: string
+  shichen_time?: string
   zhifu: string
+  zhifu_gong?: string
   zhishi: string
+  zhishi_gong?: string
+  zhishi_analysis?: { door: string; gong: string; desc: string; is_jimen?: boolean; score?: number } | null
+  dun_method?: string
+  yuan_method?: string
   palaces: Record<string, PalaceData>
   geju_summary?: { ji: string[]; xiong: string[] }
+  kongwang_gongs?: string[]
+  tianyi_gongs?: string[]
+  yima_gong?: string
+  nianming_gong?: string
+  wubuyu_shi?: string | null
+  chaoshen_jieqi?: { days: number; desc: string; status: string } | null
+  tst_offset?: number
   ai_overview?: string
   ai_directions?: string
   has_ai?: boolean
+}
+
+// 宮名→數字映射（反向）
+const GONG_NAME_TO_NUM: Record<string,number> = {
+  '坎一宮': 1, '坎一': 1, '坤二宮': 2, '坤二': 2, '震三宮': 3, '震三': 3, '巽四宮': 4, '巽四': 4,
+  '中五宮': 5, '中五': 5, '乾六宮': 6, '乾六': 6, '兌七宮': 7, '兌七': 7, '艮八宮': 8, '艮八': 8, '離九宮': 9, '離九': 9,
 }
 
 export default function QimenToolPage() {
@@ -220,6 +240,14 @@ export default function QimenToolPage() {
     const info = PALACE_NAMES[palaceNum]
     const isCenterPalace = palaceNum === 5
 
+    // 計算此宮是否為特殊宮（空亡/天乙/驛馬/年命/值符/值使）
+    const isKongwang = result?.kongwang_gongs?.some(k => GONG_NAME_TO_NUM[k] === palaceNum) || false
+    const isTianyi = result?.tianyi_gongs?.some(k => GONG_NAME_TO_NUM[k] === palaceNum) || false
+    const isYima = result?.yima_gong && GONG_NAME_TO_NUM[result.yima_gong] === palaceNum
+    const isNianming = result?.nianming_gong && GONG_NAME_TO_NUM[result.nianming_gong] === palaceNum
+    const isZhifuGong = result?.zhifu_gong && GONG_NAME_TO_NUM[result.zhifu_gong] === palaceNum
+    const isZhishiGong = result?.zhishi_gong && GONG_NAME_TO_NUM[result.zhishi_gong] === palaceNum
+
     if (isCenterPalace) {
       return (
         <div key={palaceNum} className="relative border border-amber-500/30 rounded-xl bg-amber-500/[0.04] p-3 min-h-[180px] flex flex-col justify-center items-center">
@@ -266,10 +294,34 @@ export default function QimenToolPage() {
     if (palace.fanyin) statusTags.push({ label: '反吟', color: 'text-red-400 bg-red-500/15 border-red-500/20' })
     if (palace.menpo) statusTags.push({ label: '門迫', color: 'text-purple-400 bg-purple-500/15 border-purple-500/20' })
 
+    // 特殊宮高亮邊框
+    const specialBorder = isZhifuGong
+      ? 'border-amber-500/50 ring-1 ring-amber-500/30'
+      : isZhishiGong
+      ? 'border-emerald-500/50 ring-1 ring-emerald-500/30'
+      : isTianyi
+      ? 'border-yellow-500/40'
+      : isNianming
+      ? 'border-cyan-500/40'
+      : isYima
+      ? 'border-teal-500/40'
+      : isKongwang
+      ? 'border-purple-500/30 opacity-75'
+      : 'border-white/10'
+
     return (
-      <div key={palaceNum} className="relative border border-white/10 rounded-xl bg-white/[0.02] p-3 min-h-[180px] hover:border-gold/30 hover:bg-gold/[0.02] transition-all group">
+      <div key={palaceNum} className={`relative border rounded-xl bg-white/[0.02] p-3 min-h-[180px] hover:border-gold/30 hover:bg-gold/[0.02] transition-all group ${specialBorder}`}>
+        {/* 特殊宮標記 */}
+        <div className="absolute -top-1.5 left-1 flex gap-1 flex-wrap">
+          {isZhifuGong && <span className="text-[8px] px-1 py-0.5 rounded bg-amber-500 text-dark font-bold">值符</span>}
+          {isZhishiGong && <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-500 text-dark font-bold">值使</span>}
+          {isTianyi && !isZhifuGong && <span className="text-[8px] px-1 py-0.5 rounded bg-yellow-500/80 text-dark font-bold">天乙</span>}
+          {isNianming && <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500 text-dark font-bold">年命</span>}
+          {isYima && <span className="text-[8px] px-1 py-0.5 rounded bg-teal-500 text-dark font-bold">驛馬</span>}
+        </div>
+
         {/* 宮名 + 方位 */}
-        <div className="flex justify-between items-start mb-2">
+        <div className="flex justify-between items-start mb-2 mt-1">
           <span className="text-[10px] text-text-muted/60">{info.name}</span>
           <span className={`text-[10px] ${bashenColor} font-medium`}>{palace.bashen}</span>
         </div>
@@ -511,20 +563,78 @@ export default function QimenToolPage() {
                 <div className="glass rounded-lg p-3">
                   <div className="text-[10px] text-text-muted/60">遁局</div>
                   <div className="text-sm font-semibold text-white">{result.yinyang} {result.ju_number}局</div>
+                  {result.yuan_method && (
+                    <div className="text-[9px] text-text-muted/40 mt-0.5">定元：{result.yuan_method}</div>
+                  )}
                 </div>
                 <div className="glass rounded-lg p-3">
                   <div className="text-[10px] text-text-muted/60">旬首</div>
                   <div className="text-sm font-semibold text-white">{result.xunshou || '-'}</div>
+                  {result.shichen && (
+                    <div className="text-[9px] text-text-muted/40 mt-0.5">{result.shichen}時 {result.shichen_time}</div>
+                  )}
                 </div>
                 <div className="glass rounded-lg p-3">
                   <div className="text-[10px] text-text-muted/60">值符 / 值使</div>
                   <div className="text-sm font-semibold text-amber-400">{result.zhifu} / {result.zhishi}</div>
+                  {result.zhifu_gong && (
+                    <div className="text-[9px] text-amber-400/60 mt-0.5">落宮：{result.zhifu_gong}</div>
+                  )}
                 </div>
                 <div className="glass rounded-lg p-3">
                   <div className="text-[10px] text-text-muted/60">節氣</div>
                   <div className="text-sm font-semibold text-white">{result.jieqi || '-'}</div>
+                  {result.chaoshen_jieqi && (
+                    <div className={`text-[9px] mt-0.5 ${result.chaoshen_jieqi.status === '超神' ? 'text-blue-400' : result.chaoshen_jieqi.status === '接氣' ? 'text-orange-400' : 'text-green-400'}`}>
+                      {result.chaoshen_jieqi.status}
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* 特殊標記（超神接氣、五不遇時、值使分析） */}
+              {(result.chaoshen_jieqi || result.wubuyu_shi || result.zhishi_analysis) && (
+                <div className="mt-4 space-y-2">
+                  {result.chaoshen_jieqi && (
+                    <div className={`rounded-lg p-3 border ${
+                      result.chaoshen_jieqi.status === '超神' ? 'bg-blue-500/10 border-blue-500/20' :
+                      result.chaoshen_jieqi.status === '接氣' ? 'bg-orange-500/10 border-orange-500/20' :
+                      'bg-green-500/10 border-green-500/20'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-bold ${
+                          result.chaoshen_jieqi.status === '超神' ? 'text-blue-400' :
+                          result.chaoshen_jieqi.status === '接氣' ? 'text-orange-400' :
+                          'text-green-400'
+                        }`}>超神接氣：{result.chaoshen_jieqi.status}</span>
+                        <span className="text-[10px] text-text-muted">（距節氣 {result.chaoshen_jieqi.days} 天）</span>
+                      </div>
+                      <p className="text-xs text-text/80">{result.chaoshen_jieqi.desc}</p>
+                    </div>
+                  )}
+                  {result.wubuyu_shi && (
+                    <div className="rounded-lg p-3 border bg-red-500/10 border-red-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-red-400">五不遇時</span>
+                        <span className="text-[10px] text-red-400/70">（百事不宜，忌大事）</span>
+                      </div>
+                      <p className="text-xs text-text/80">{result.wubuyu_shi}</p>
+                    </div>
+                  )}
+                  {result.zhishi_analysis && result.zhishi_analysis.desc && (
+                    <div className={`rounded-lg p-3 border ${
+                      result.zhishi_analysis.is_jimen ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-orange-500/10 border-orange-500/20'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-bold ${result.zhishi_analysis.is_jimen ? 'text-emerald-400' : 'text-orange-400'}`}>值使分析</span>
+                        <span className="text-[10px] text-text-muted">{result.zhishi_analysis.door}落{result.zhishi_analysis.gong}</span>
+                      </div>
+                      <p className="text-xs text-text/80">{result.zhishi_analysis.desc}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {result.datetime && (
                 <p className="text-[10px] text-text-muted/40 text-center mt-3">排盤時間：{result.datetime}</p>
               )}

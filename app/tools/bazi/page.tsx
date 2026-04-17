@@ -54,6 +54,140 @@ const LIUHE_MAP: Record<string,string> = {子:'丑',丑:'子',寅:'亥',亥:'寅
 // 地支六沖
 const LIUCHONG_MAP: Record<string,string> = {子:'午',午:'子',丑:'未',未:'丑',寅:'申',申:'寅',卯:'酉',酉:'卯',辰:'戌',戌:'辰',巳:'亥',亥:'巳'}
 
+// ── 神煞計算（以日支或年支為基準查對應神煞） ──
+// 桃花（咸池）：年支/日支 → 對應桃花地支
+// 亥卯未見子，寅午戌見卯，巳酉丑見午，申子辰見酉
+const TAOHUA_MAP: Record<string,string> = { 亥:'子',卯:'子',未:'子', 寅:'卯',午:'卯',戌:'卯', 巳:'午',酉:'午',丑:'午', 申:'酉',子:'酉',辰:'酉' }
+// 驛馬：亥卯未見巳，寅午戌見申，巳酉丑見亥，申子辰見寅
+const YIMA_MAP: Record<string,string> = { 亥:'巳',卯:'巳',未:'巳', 寅:'申',午:'申',戌:'申', 巳:'亥',酉:'亥',丑:'亥', 申:'寅',子:'寅',辰:'寅' }
+// 華蓋：亥卯未見未，寅午戌見戌，巳酉丑見丑，申子辰見辰
+const HUAGAI_MAP: Record<string,string> = { 亥:'未',卯:'未',未:'未', 寅:'戌',午:'戌',戌:'戌', 巳:'丑',酉:'丑',丑:'丑', 申:'辰',子:'辰',辰:'辰' }
+// 將星：亥卯未見卯，寅午戌見午，巳酉丑見酉，申子辰見子
+const JIANGXING_MAP: Record<string,string> = { 亥:'卯',卯:'卯',未:'卯', 寅:'午',午:'午',戌:'午', 巳:'酉',酉:'酉',丑:'酉', 申:'子',子:'子',辰:'子' }
+// 紅鸞：年支 → 紅鸞地支（順行）
+const HONGLUAN_MAP: Record<string,string> = { 子:'卯',丑:'寅',寅:'丑',卯:'子',辰:'亥',巳:'戌',午:'酉',未:'申',申:'未',酉:'午',戌:'巳',亥:'辰' }
+// 天喜：紅鸞對沖
+const TIANXI_MAP: Record<string,string> = { 子:'酉',丑:'申',寅:'未',卯:'午',辰:'巳',巳:'辰',午:'卯',未:'寅',申:'丑',酉:'子',戌:'亥',亥:'戌' }
+// 天德貴人：月支 → 天干
+const TIANDE_MAP: Record<string,string> = { 子:'巳',丑:'庚',寅:'丁',卯:'申',辰:'壬',巳:'辛',午:'亥',未:'甲',申:'癸',酉:'寅',戌:'丙',亥:'乙' }
+// 月德貴人：月支 → 天干
+const YUEDE_MAP: Record<string,string> = { 寅:'丙',午:'丙',戌:'丙', 申:'壬',子:'壬',辰:'壬', 巳:'庚',酉:'庚',丑:'庚', 亥:'甲',卯:'甲',未:'甲' }
+// 文昌貴人：日干 → 地支
+const WENCHANG_MAP: Record<string,string> = { 甲:'巳',乙:'午',丙:'申',丁:'酉',戊:'申',己:'酉',庚:'亥',辛:'子',壬:'寅',癸:'卯' }
+// 天乙貴人：日干 → 兩個地支
+const TIANYI_MAP: Record<string,string[]> = { 甲:['丑','未'],戊:['丑','未'],庚:['丑','未'], 乙:['子','申'],己:['子','申'], 丙:['亥','酉'],丁:['亥','酉'], 辛:['寅','午'], 壬:['卯','巳'],癸:['卯','巳'] }
+// 空亡（旬空）：日柱干支 → 空亡兩地支
+function calcKongwang(dayPillar: string): string[] {
+  const tgIdx = TG.indexOf(dayPillar[0])
+  const dzIdx = DZ.indexOf(dayPillar[1])
+  if (tgIdx < 0 || dzIdx < 0) return []
+  // 旬首：日柱的甲起點（如甲子旬，甲戌旬…）
+  // 空亡 = 旬首+10 和 旬首+11 的地支
+  // 6個旬首（甲子/甲戌/甲申/甲午/甲辰/甲寅），每旬對應 10 天，空亡為剩下 2 個地支
+  const dayOrder = ((dzIdx - tgIdx) % 12 + 12) % 12  // 0=子旬 2=戌旬 4=申旬...
+  const xunIdx = Math.floor(dayOrder / 2)  // 0~5
+  // 每旬的空亡地支
+  const kongMap: Record<number, string[]> = {
+    0: ['戌', '亥'],  // 甲子旬空戌亥
+    1: ['申', '酉'],  // 甲戌旬空申酉
+    2: ['午', '未'],  // 甲申旬空午未
+    3: ['辰', '巳'],  // 甲午旬空辰巳
+    4: ['寅', '卯'],  // 甲辰旬空寅卯
+    5: ['子', '丑'],  // 甲寅旬空子丑
+  }
+  return kongMap[xunIdx] || []
+}
+
+// 計算四柱神煞
+function calcShensha(pillars: { year: string; month: string; day: string; time: string }, dayMaster: string) {
+  const pillarsArr = [pillars.year, pillars.month, pillars.day, pillars.time]
+  const dzs = pillarsArr.map(p => p[1])
+  const tgs = pillarsArr.map(p => p[0])
+  const yearDz = pillars.year[1]
+  const dayDz = pillars.day[1]
+  const monthDz = pillars.month[1]
+
+  // 以日支/年支 為主的神煞
+  const taohua = TAOHUA_MAP[dayDz] || TAOHUA_MAP[yearDz]
+  const yima = YIMA_MAP[dayDz] || YIMA_MAP[yearDz]
+  const huagai = HUAGAI_MAP[dayDz] || HUAGAI_MAP[yearDz]
+  const jiangxing = JIANGXING_MAP[dayDz] || JIANGXING_MAP[yearDz]
+  const honglan = HONGLUAN_MAP[yearDz]
+  const tianxi = TIANXI_MAP[yearDz]
+  // 天德月德（地支→天干，看四柱天干是否有）
+  const tianDeGan = TIANDE_MAP[monthDz]
+  const yueDeGan = YUEDE_MAP[monthDz]
+  // 文昌天乙（日干→地支，看四柱地支是否有）
+  const wenchangDz = WENCHANG_MAP[dayMaster]
+  const tianyiDzs = TIANYI_MAP[dayMaster] || []
+  // 空亡
+  const kongwang = calcKongwang(pillars.day)
+
+  const shenshaList: { name: string; pillars: string[]; desc: string; color: string }[] = []
+
+  // 檢查各神煞在哪柱
+  const pillarLabels = ['年', '月', '日', '時']
+  const findDzInPillars = (target: string): string[] => {
+    return dzs.map((dz, i) => dz === target ? pillarLabels[i] : null).filter(Boolean) as string[]
+  }
+  const findTgInPillars = (target: string): string[] => {
+    return tgs.map((tg, i) => tg === target ? pillarLabels[i] : null).filter(Boolean) as string[]
+  }
+
+  if (taohua) {
+    const hits = findDzInPillars(taohua)
+    if (hits.length) shenshaList.push({ name: '桃花', pillars: hits, desc: '人緣佳、異性緣旺，主藝術才華', color: 'text-pink-400 bg-pink-500/10 border-pink-500/20' })
+  }
+  if (yima) {
+    const hits = findDzInPillars(yima)
+    if (hits.length) shenshaList.push({ name: '驛馬', pillars: hits, desc: '主奔波、變動、遠行、海外發展', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' })
+  }
+  if (huagai) {
+    const hits = findDzInPillars(huagai)
+    if (hits.length) shenshaList.push({ name: '華蓋', pillars: hits, desc: '主聰明、孤獨、宗教哲學緣深', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' })
+  }
+  if (jiangxing) {
+    const hits = findDzInPillars(jiangxing)
+    if (hits.length) shenshaList.push({ name: '將星', pillars: hits, desc: '主領導才能、有威權、掌權之象', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' })
+  }
+  if (honglan) {
+    const hits = findDzInPillars(honglan)
+    if (hits.length) shenshaList.push({ name: '紅鸞', pillars: hits, desc: '主姻緣、喜慶，運限逢主成婚', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' })
+  }
+  if (tianxi) {
+    const hits = findDzInPillars(tianxi)
+    if (hits.length) shenshaList.push({ name: '天喜', pillars: hits, desc: '主喜悅、添丁進口、婚姻美滿', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' })
+  }
+  if (tianDeGan) {
+    const hits = findTgInPillars(tianDeGan)
+    if (hits.length) shenshaList.push({ name: '天德貴人', pillars: hits, desc: '主逢凶化吉、貴人相助', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' })
+  }
+  if (yueDeGan) {
+    const hits = findTgInPillars(yueDeGan)
+    if (hits.length) shenshaList.push({ name: '月德貴人', pillars: hits, desc: '主逢兇化吉、清廉正直', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' })
+  }
+  if (wenchangDz) {
+    const hits = findDzInPillars(wenchangDz)
+    if (hits.length) shenshaList.push({ name: '文昌', pillars: hits, desc: '主學業優秀、文思敏捷、聰明有才', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' })
+  }
+  for (const tydz of tianyiDzs) {
+    const hits = findDzInPillars(tydz)
+    if (hits.length) {
+      shenshaList.push({ name: '天乙貴人', pillars: hits, desc: '主貴人多助、消災解難', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' })
+      break
+    }
+  }
+  // 空亡（看哪些地支落空亡）
+  for (const k of kongwang) {
+    const hits = findDzInPillars(k)
+    if (hits.length) {
+      shenshaList.push({ name: '空亡', pillars: hits, desc: '主該柱能量減弱、有名無實（化解：六合或三合）', color: 'text-gray-400 bg-gray-500/10 border-gray-500/20' })
+    }
+  }
+
+  return shenshaList
+}
+
 // 大運計算（前端簡化版）
 function calcDayun(yearPillar: string, monthPillar: string, gender: string, birthYear: number): { age: number; ganzhi: string; wuxing: string; startYear: number; isCurrent: boolean }[] {
   // 判斷順逆排（陽年男/陰年女=順排，陽年女/陰年男=逆排）
@@ -105,6 +239,8 @@ function analyzeDzRelations(pillars: string[]): { type: string; desc: string; po
 }
 
 type Profile = { title:string; personality:string; strengths:string; challenges:string; career:string; love:string; health:string; lucky:string; year2026:string }
+type LiunianItem = { year: number; ganzhi: string; shishen: string; rating: string; reason: string; wuxing?: string; interactions?: string[] }
+type DayunItem = { ganzhi: string; shishen: string; start_age: number; start_year?: number }
 type Result = {
   pillars: { year:string; month:string; day:string; time:string }
   day_master:string; day_master_wuxing:string; strength:string; geju:string
@@ -122,6 +258,12 @@ type Result = {
   lunar_converted?: boolean
   time_unknown?: boolean
   is_fallback?: boolean
+  // 進階欄位（從 Python API 取得）
+  dayun?: DayunItem[]
+  current_dayun?: DayunItem
+  liunian?: LiunianItem[]
+  tai_yuan?: { ganzhi: string; nayin: string }
+  strength_detail?: { strength: string; total_score: number; [k: string]: unknown }
 }
 
 // 分析步驟動畫
@@ -303,13 +445,35 @@ export default function FreeToolPage() {
       }
     })
 
-    // 大運
-    const dayun = calcDayun(result.pillars.year, result.pillars.month, form.gender, parseInt(form.year))
+    // 大運：優先使用 Python API 返回的精確大運（含節氣計算）
+    const birthYear = parseInt(form.year)
+    const currentYear = 2026
+    const currentAge = currentYear - birthYear
+    const dayun = (result.dayun && result.dayun.length > 0)
+      ? result.dayun.slice(0, 9).map((dy) => {
+          const startYear = dy.start_year || (birthYear + dy.start_age)
+          const isCurrent = currentAge >= dy.start_age && currentAge < dy.start_age + 10
+          return {
+            age: dy.start_age,
+            ganzhi: dy.ganzhi,
+            wuxing: WX_TG[dy.ganzhi[0]] || '',
+            startYear,
+            isCurrent,
+          }
+        })
+      : calcDayun(result.pillars.year, result.pillars.month, form.gender, birthYear)
 
     // 地支關係
     const dzRelations = analyzeDzRelations(pillarsArr)
 
-    return { pillarDetails, dayun, dzRelations }
+    // 神煞計算
+    const shensha = calcShensha(result.pillars, result.day_master)
+
+    // 空亡（前端計算）：用於在各柱上標記
+    const kongwangDzs = calcKongwang(result.pillars.day)
+    const pillarKongwang = [result.pillars.year, result.pillars.month, result.pillars.day, result.pillars.time].map(p => kongwangDzs.includes(p[1]))
+
+    return { pillarDetails, dayun, dzRelations, shensha, kongwangDzs, pillarKongwang }
   }, [result, form.gender, form.year])
 
   return (
@@ -600,10 +764,13 @@ export default function FreeToolPage() {
               {/* 四柱主體 — 桌面從右到左，手機從上到下 */}
               <div className="hidden md:block overflow-x-auto">
                 <div className="flex flex-row-reverse justify-center gap-3 min-w-[520px]">
-                  {derivedData.pillarDetails.map((p) => (
-                    <div key={p.col} className={`flex-1 max-w-[140px] rounded-xl p-4 text-center transition-all ${
+                  {derivedData.pillarDetails.map((p, idx) => (
+                    <div key={p.col} className={`relative flex-1 max-w-[140px] rounded-xl p-4 text-center transition-all ${
                       p.isDay ? 'border-2 border-gold/40 bg-gold/[0.06]' : 'glass'
                     }`}>
+                      {derivedData.pillarKongwang[idx] && (
+                        <span className="absolute -top-1.5 -right-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-gray-600/80 text-white border border-gray-500/50 font-bold">空亡</span>
+                      )}
                       {/* 柱名 */}
                       <div className="text-xs text-text-muted mb-1">{p.label}</div>
                       {/* 十神 */}
@@ -719,6 +886,89 @@ export default function FreeToolPage() {
                       <span className="text-text/80">{rel.desc}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* ═══ 神煞 ═══ */}
+            {derivedData.shensha.length > 0 && (
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-amber-500 rounded-full" />
+                  <h2 className="text-lg font-bold text-white">命中神煞</h2>
+                  <span className="text-xs text-text-muted/50 ml-2">（傳統四柱神煞，影響命格特質）</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {derivedData.shensha.map((s, i) => (
+                    <div key={i} className={`rounded-lg p-3 border ${s.color}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-sm">{s.name}</span>
+                        <div className="flex gap-1">
+                          {s.pillars.map((p, j) => (
+                            <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-text-muted">{p}柱</span>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-text/70 leading-relaxed">{s.desc}</p>
+                    </div>
+                  ))}
+                </div>
+                {derivedData.kongwangDzs.length > 0 && (
+                  <p className="text-[10px] text-text-muted/50 mt-3 italic">
+                    空亡地支：{derivedData.kongwangDzs.join('、')}（從日柱「{result.pillars.day}」推算的旬空）
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ═══ 胎元（命宮） ═══ */}
+            {result.tai_yuan && (
+              <div className="glass rounded-2xl p-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-5 bg-indigo-500 rounded-full" />
+                  <h3 className="text-base font-bold text-white">胎元</h3>
+                  <span className="text-lg font-bold text-indigo-400 ml-2">{result.tai_yuan.ganzhi}</span>
+                  <span className="text-xs text-text-muted">納音：{result.tai_yuan.nayin}</span>
+                </div>
+                <p className="text-xs text-text-muted mt-2">胎元是受胎之月，代表先天根基與潛在才能，與月柱形成互補關係。</p>
+              </div>
+            )}
+
+            {/* ═══ 近 5 年流年（Python API 提供） ═══ */}
+            {result.liunian && result.liunian.length > 0 && (
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-red-500 rounded-full" />
+                  <h2 className="text-lg font-bold text-white">流年運勢</h2>
+                  <span className="text-xs text-text-muted/50 ml-2">（近 3 年）</span>
+                </div>
+                <div className="space-y-3">
+                  {result.liunian.slice(0, 5).map((ln, i) => {
+                    const isGood = ['吉', '大吉', '小吉'].includes(ln.rating)
+                    const isBad = ['凶', '大凶', '小凶'].includes(ln.rating)
+                    return (
+                      <div key={i} className={`rounded-xl p-4 border ${
+                        isGood ? 'bg-green-500/5 border-green-500/20' : isBad ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/10'
+                      }`}>
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-base font-bold text-white">{ln.year}年</span>
+                          <span className="text-lg font-bold" style={{ color: WX_COLORS[ln.wuxing || ''] }}>{ln.ganzhi}</span>
+                          <span className="text-xs text-gold/70">{ln.shishen}</span>
+                          <span className={`text-xs font-semibold ml-auto px-2 py-0.5 rounded-full ${
+                            isGood ? 'bg-green-500/20 text-green-400' : isBad ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-text-muted'
+                          }`}>{ln.rating}</span>
+                        </div>
+                        <p className="text-xs text-text/80 leading-relaxed">{ln.reason}</p>
+                        {ln.interactions && ln.interactions.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {ln.interactions.map((intr, j) => (
+                              <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">{intr}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}

@@ -40,10 +40,19 @@ type ZiweiResult = {
   health: string
   lucky: string
   year2026: string
-  palaceData: Record<string, { branch: string; mainStars: string; minorStars: string }>
+  palaceData: Record<string, { branch: string; mainStars: string; minorStars: string; palaceGan?: string; sihuaTag?: string[] }>
   sihua: string[]
   yearTG: string
   wuxingju: number
+  // 進階欄位
+  mingZhu?: string
+  shenZhu?: string
+  currentDaxian?: string
+  currentXiaoxian?: string
+  yearFlow?: string
+  daxianStars?: string
+  triplePairs?: string[]
+  extraAnalyses?: string
   aiAnalysis: string
   hasAi: boolean
 }
@@ -143,51 +152,91 @@ function getDaxianRanges(wuxingju: number): { start: number; end: number }[] {
 }
 
 // ==========================================
-// 方盤宮格元件
+// 方盤宮格元件（專業版：宮干 + 四化 + 大限 + 流年高亮）
 // ==========================================
 function PalaceCell({
   palaceName,
   branch,
+  palaceGan,
   mainStarsStr,
   minorStarsStr,
   sihua,
+  sihuaTag,
   isActive,
   onClick,
   daxianRange,
+  isCurrentDaxian,
+  isCurrentYear,
+  isXiaoxian,
 }: {
   palaceName: string
   branch: string
+  palaceGan?: string
   mainStarsStr: string
   minorStarsStr: string
   sihua: string[]
+  sihuaTag?: string[]
   isActive: boolean
   onClick: () => void
   daxianRange?: string
+  isCurrentDaxian?: boolean
+  isCurrentYear?: boolean
+  isXiaoxian?: boolean
 }) {
-  const palaceSihua = getPalaceSihua(mainStarsStr, sihua)
-  // 也檢查輔星的四化
-  const minorSihua = getPalaceSihua(minorStarsStr, sihua)
-  const allSihua = [...palaceSihua, ...minorSihua]
+  // 優先使用後端傳入的 sihuaTag（較準），否則從 mainStarsStr 解析
+  const allSihua = sihuaTag && sihuaTag.length > 0
+    ? sihuaTag.map(t => ({ type: t, label: t }))
+    : [...getPalaceSihua(mainStarsStr, sihua), ...getPalaceSihua(minorStarsStr, sihua)]
   const isLifePalace = palaceName === '命宮'
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative text-left p-2 sm:p-3 rounded-lg border transition-all min-h-[100px] sm:min-h-[120px] flex flex-col ${
+      className={`relative text-left p-2 sm:p-3 rounded-lg border transition-all min-h-[120px] sm:min-h-[140px] flex flex-col ${
         isActive
-          ? 'border-gold/50 bg-gold/[0.08] shadow-[0_0_12px_rgba(201,168,76,0.15)]'
-          : isLifePalace
-            ? 'border-gold/30 bg-gold/[0.04] hover:border-gold/40'
-            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]'
+          ? 'border-gold bg-gold/[0.12] shadow-[0_0_16px_rgba(201,168,76,0.3)] ring-1 ring-gold/40'
+          : isCurrentDaxian
+            ? 'border-cyan-500/50 bg-cyan-500/[0.05] hover:border-cyan-400/70'
+            : isLifePalace
+              ? 'border-gold/30 bg-gold/[0.04] hover:border-gold/40'
+              : 'border-white/[0.06] bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.04]'
       }`}
     >
-      {/* 宮名 + 地支 */}
-      <div className="flex items-center justify-between mb-1">
+      {/* 左上角：宮干 */}
+      {palaceGan && (
+        <div className="absolute top-1 left-1 text-[8px] sm:text-[9px] text-amber-400/70 font-semibold">
+          {palaceGan}
+        </div>
+      )}
+
+      {/* 右上角：地支 */}
+      <div className="absolute top-1 right-1 text-[9px] sm:text-[10px] text-cream/50 font-bold">
+        {branch}
+      </div>
+
+      {/* 流年標記（左上） */}
+      {isCurrentYear && (
+        <div className="absolute -top-1.5 -left-1 bg-red-500 text-white text-[8px] px-1 py-0.5 rounded-full shadow-lg font-bold">流</div>
+      )}
+
+      {/* 小限標記（左下） */}
+      {isXiaoxian && (
+        <div className="absolute -bottom-1 -left-1 bg-blue-500 text-white text-[8px] px-1 py-0.5 rounded-full shadow-lg font-bold">小</div>
+      )}
+
+      {/* 大限標記（右上角下方） */}
+      {isCurrentDaxian && (
+        <div className="absolute top-1 right-7 bg-cyan-500/30 text-cyan-300 text-[8px] px-1 py-0.5 rounded font-bold border border-cyan-500/40">
+          當運
+        </div>
+      )}
+
+      {/* 宮名 */}
+      <div className="flex items-center justify-between mt-3 mb-1">
         <span className={`text-[10px] sm:text-xs font-bold ${isLifePalace ? 'text-gold' : 'text-cream/80'}`}>
           {palaceName}
         </span>
-        <span className="text-[9px] sm:text-[10px] text-text-muted/40">{branch}</span>
       </div>
 
       {/* 主星 */}
@@ -202,12 +251,12 @@ function PalaceCell({
             ))}
           </div>
         ) : (
-          <div className="text-[10px] sm:text-xs text-text-muted/40 italic">無主星</div>
+          <div className="text-[10px] sm:text-xs text-text-muted/50 italic">借對宮星</div>
         )}
 
         {/* 輔星（縮小顯示） */}
         {minorStarsStr && (
-          <div className="text-[9px] sm:text-[10px] text-text-muted/50 leading-tight mt-0.5 line-clamp-2">
+          <div className="text-[9px] sm:text-[10px] text-text-muted/60 leading-tight mt-0.5 line-clamp-2">
             {minorStarsStr}
           </div>
         )}
@@ -229,7 +278,9 @@ function PalaceCell({
 
       {/* 大限年齡範圍 */}
       {daxianRange && (
-        <div className="text-[8px] sm:text-[9px] text-text-muted/30 mt-1 text-center border-t border-white/[0.04] pt-0.5">
+        <div className={`text-[8px] sm:text-[9px] mt-1 text-center border-t pt-0.5 ${
+          isCurrentDaxian ? 'text-cyan-300/80 border-cyan-500/20 font-semibold' : 'text-text-muted/30 border-white/[0.04]'
+        }`}>
           {daxianRange}
         </div>
       )}
@@ -325,11 +376,15 @@ export default function ZiweiToolPage() {
     if (!result) return null
     // 先建立 branch → palaceName 的映射
     const branchToPalace: Record<string, string> = {}
+    const branchToPalaceGan: Record<string, string> = {}
+    const branchToSihuaTag: Record<string, string[]> = {}
     for (const [palaceName, data] of Object.entries(result.palaceData)) {
       if (data.branch) {
         // 取地支（可能是 "寅" 或 "寅宮" 格式）
         const branch = data.branch.replace('宮', '').trim()
         branchToPalace[branch] = palaceName
+        if (data.palaceGan) branchToPalaceGan[branch] = data.palaceGan
+        if (data.sihuaTag) branchToSihuaTag[branch] = data.sihuaTag
       }
     }
     // 計算大限範圍
@@ -340,6 +395,8 @@ export default function ZiweiToolPage() {
     const board: (null | {
       palaceName: string
       branch: string
+      palaceGan?: string
+      sihuaTag?: string[]
       mainStars: string
       minorStars: string
       daxianRange: string
@@ -366,6 +423,8 @@ export default function ZiweiToolPage() {
       board[pos.row][pos.col] = {
         palaceName,
         branch,
+        palaceGan: branchToPalaceGan[branch],
+        sihuaTag: branchToSihuaTag[branch],
         mainStars: data?.mainStars || '',
         minorStars: data?.minorStars || '',
         daxianRange: daxianRanges[dizhiIndex]
@@ -378,53 +437,44 @@ export default function ZiweiToolPage() {
   }
 
   // 如果沒有足夠的 palaceData 有 branch 資訊，使用固定排列 fallback
+  // 預設命宮逆時針排列十二宮（命宮→兄弟→夫妻→子女...）
   function buildBoardFallback() {
     if (!result) return null
-    // 預設命宮在寅位，逆時針排列十二宮
-    // 這是最常見的排列方式的 fallback
-    const palaceNames = PALACE_ORDER
     const wuxingju = typeof result.wuxingju === 'number' ? result.wuxingju : 2
     const daxianRanges = getDaxianRanges(wuxingju)
+
+    // 找到命宮的 branch（如果有的話）
+    const mingData = result.palaceData['命宮']
+    const mingBranch = mingData?.branch?.replace('宮', '').trim() || '寅'
+    const mingBranchIdx = DIZHI_ORDER.indexOf(mingBranch)
 
     const board: (null | {
       palaceName: string
       branch: string
+      palaceGan?: string
+      sihuaTag?: string[]
       mainStars: string
       minorStars: string
       daxianRange: string
     })[][] = Array.from({ length: 4 }, () => Array(4).fill(null))
 
-    // 按地支順序排入方盤，宮名按 PALACE_ORDER 中的順序分配給有資料的宮位
-    DIZHI_ORDER.forEach((branch, dizhiIndex) => {
+    // 命宮→兄弟→夫妻... 在地支上是逆時針（地支越小）
+    PALACE_ORDER.forEach((palaceName, palaceIdx) => {
+      const branchIdx = ((mingBranchIdx - palaceIdx) % 12 + 12) % 12
+      const branch = DIZHI_ORDER[branchIdx]
       const pos = DIZHI_POSITION[branch]
       if (!pos) return
-      // 找到這個地支對應的宮位
-      const palaceName = palaceNames.find(p => {
-        const data = result.palaceData[p]
-        return data && data.branch && data.branch.replace('宮', '').trim() === branch
-      })
-      if (palaceName) {
-        const data = result.palaceData[palaceName]
-        board[pos.row][pos.col] = {
-          palaceName,
-          branch,
-          mainStars: data?.mainStars || '',
-          minorStars: data?.minorStars || '',
-          daxianRange: daxianRanges[dizhiIndex]
-            ? `${daxianRanges[dizhiIndex].start}-${daxianRanges[dizhiIndex].end}`
-            : '',
-        }
-      } else {
-        // 分配未匹配的宮位
-        board[pos.row][pos.col] = {
-          palaceName: '',
-          branch,
-          mainStars: '',
-          minorStars: '',
-          daxianRange: daxianRanges[dizhiIndex]
-            ? `${daxianRanges[dizhiIndex].start}-${daxianRanges[dizhiIndex].end}`
-            : '',
-        }
+      const data = result.palaceData[palaceName]
+      board[pos.row][pos.col] = {
+        palaceName,
+        branch,
+        palaceGan: data?.palaceGan,
+        sihuaTag: data?.sihuaTag,
+        mainStars: data?.mainStars || '',
+        minorStars: data?.minorStars || '',
+        daxianRange: daxianRanges[palaceIdx]
+          ? `${daxianRanges[palaceIdx].start}-${daxianRanges[palaceIdx].end}`
+          : '',
       }
     })
 
@@ -722,72 +772,126 @@ export default function ZiweiToolPage() {
 
                   {/* 方盤容器 */}
                   <div className="overflow-x-auto pb-2">
-                    <div className="min-w-[340px] sm:min-w-0">
+                    <div className="min-w-[360px] sm:min-w-0">
                       <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                         {board.map((row, rowIdx) =>
                           row.map((cell, colIdx) => {
-                            // 中間 2x2 區域：個人資料
+                            // 中間 2x2 區域：個人資料（專業版）
                             if (rowIdx >= 1 && rowIdx <= 2 && colIdx >= 1 && colIdx <= 2) {
-                              // 只在 (1,1) 位置渲染合併格
                               if (rowIdx === 1 && colIdx === 1) {
+                                // 從當前大限抽出宮名（如「田宅宮（35-44歲）」）
+                                const dxPalaceName = result.currentDaxian?.match(/^([\u4e00-\u9fa5]+宮)/)?.[1] || ''
+                                const yrPalaceName = result.yearFlow?.match(/(命宮|兄弟宮|夫妻宮|子女宮|財帛宮|疾厄宮|遷移宮|交友宮|事業宮|田宅宮|福德宮|父母宮)/)?.[1] || ''
                                 return (
                                   <div
                                     key={`center`}
-                                    className="col-span-2 row-span-2 rounded-lg border border-gold/20 bg-gold/[0.03] p-3 sm:p-4 flex flex-col items-center justify-center text-center"
+                                    className="col-span-2 row-span-2 rounded-lg border border-gold/30 bg-gradient-to-br from-gold/[0.06] via-transparent to-gold/[0.02] p-3 sm:p-4 flex flex-col items-center justify-center text-center"
                                     style={{ gridColumn: '2 / 4', gridRow: '2 / 4' }}
                                   >
                                     <div className="text-lg sm:text-xl font-bold text-gradient-gold mb-2" style={{ fontFamily: 'var(--font-sans)' }}>
                                       {form.name}
                                     </div>
-                                    <div className="space-y-1 text-xs sm:text-sm text-text-muted">
+                                    <div className="space-y-0.5 text-[10px] sm:text-xs text-text-muted leading-relaxed">
                                       <p>
                                         <span className="text-cream/70">性別：</span>
-                                        <span className="text-cream">{form.gender === 'M' ? '男' : '女'}</span>
+                                        <span className="text-cream">{form.gender === 'M' ? '乾造' : '坤造'}</span>
+                                        <span className="text-cream/70 ml-2">生辰：</span>
+                                        <span className="text-cream">{result.yearTG}年</span>
                                       </p>
                                       <p>
-                                        <span className="text-cream/70">出生：</span>
-                                        <span className="text-cream">{form.year}年{form.month}月{form.day}日</span>
+                                        <span className="text-cream/70">陽曆：</span>
+                                        <span className="text-cream">{form.year}/{form.month}/{form.day}</span>
                                       </p>
+                                      <div className="border-t border-gold/10 my-1.5" />
                                       <p>
                                         <span className="text-cream/70">命宮主星：</span>
                                         <span className="text-gold font-bold">{result.mainStar}</span>
                                       </p>
                                       <p>
                                         <span className="text-cream/70">五行局：</span>
-                                        <span className="text-cream">{getWuxingJuName(result.wuxingju)}</span>
+                                        <span className="text-cream font-semibold">{getWuxingJuName(result.wuxingju)}</span>
                                       </p>
-                                      <p>
-                                        <span className="text-cream/70">年干：</span>
-                                        <span className="text-cream">{result.yearTG}</span>
+                                      {result.mingZhu && (
+                                        <p>
+                                          <span className="text-cream/70">命主：</span>
+                                          <span className="text-purple-400 font-semibold">{result.mingZhu}</span>
+                                          {result.shenZhu && (
+                                            <>
+                                              <span className="text-cream/70 ml-2">身主：</span>
+                                              <span className="text-cyan-400 font-semibold">{result.shenZhu}</span>
+                                            </>
+                                          )}
+                                        </p>
+                                      )}
+                                      <div className="border-t border-gold/10 my-1.5" />
+                                      <p className="text-[10px]">
+                                        <span className="text-cream/70">生年四化：</span>
                                       </p>
+                                      <div className="flex gap-1 justify-center flex-wrap">
+                                        {result.sihua.map((sh, i) => {
+                                          const types = ['祿', '權', '科', '忌']
+                                          const colors = ['bg-green-500/20 text-green-300 border-green-500/30', 'bg-blue-500/20 text-blue-300 border-blue-500/30', 'bg-purple-500/20 text-purple-300 border-purple-500/30', 'bg-red-500/20 text-red-300 border-red-500/30']
+                                          return (
+                                            <span key={i} className={`text-[9px] px-1 py-0.5 rounded border ${colors[i]}`}>
+                                              {sh.replace('化' + types[i], '')}{types[i]}
+                                            </span>
+                                          )
+                                        })}
+                                      </div>
+                                      {(result.currentDaxian || result.yearFlow) && (
+                                        <>
+                                          <div className="border-t border-gold/10 my-1.5" />
+                                          {result.currentDaxian && (
+                                            <p className="text-[10px]">
+                                              <span className="text-cyan-400/80">當前大限：</span>
+                                              <span className="text-cyan-300">{dxPalaceName || result.currentDaxian}</span>
+                                            </p>
+                                          )}
+                                          {result.yearFlow && (
+                                            <p className="text-[10px]">
+                                              <span className="text-red-400/80">2026流年：</span>
+                                              <span className="text-red-300">{yrPalaceName || '命宮'}</span>
+                                            </p>
+                                          )}
+                                        </>
+                                      )}
                                     </div>
                                   </div>
                                 )
                               }
-                              // 其他中間格不渲染（已被 col-span/row-span 覆蓋）
                               return null
                             }
 
                             // 外圈十二宮
                             if (!cell) {
                               return (
-                                <div key={`${rowIdx}-${colIdx}`} className="min-h-[100px] sm:min-h-[120px] rounded-lg border border-white/[0.04] bg-white/[0.01] p-2 flex items-center justify-center">
+                                <div key={`${rowIdx}-${colIdx}`} className="min-h-[120px] sm:min-h-[140px] rounded-lg border border-white/[0.04] bg-white/[0.01] p-2 flex items-center justify-center">
                                   <span className="text-[10px] text-text-muted/20">空</span>
                                 </div>
                               )
                             }
+
+                            // 判斷是否為當前大限/流年/小限
+                            const dxPalace = result.currentDaxian?.match(/^([\u4e00-\u9fa5]+宮)/)?.[1] || ''
+                            const yrPalace = result.yearFlow?.match(/(命宮|兄弟宮|夫妻宮|子女宮|財帛宮|疾厄宮|遷移宮|交友宮|事業宮|田宅宮|福德宮|父母宮)/)?.[1] || ''
+                            const xxPalace = result.currentXiaoxian?.match(/^([\u4e00-\u9fa5]+宮)/)?.[1] || ''
 
                             return (
                               <PalaceCell
                                 key={`${rowIdx}-${colIdx}`}
                                 palaceName={cell.palaceName}
                                 branch={cell.branch}
+                                palaceGan={cell.palaceGan}
                                 mainStarsStr={cell.mainStars}
                                 minorStarsStr={cell.minorStars}
                                 sihua={result.sihua}
+                                sihuaTag={cell.sihuaTag}
                                 isActive={activePalace === cell.palaceName}
                                 onClick={() => setActivePalace(activePalace === cell.palaceName ? null : cell.palaceName)}
                                 daxianRange={cell.daxianRange}
+                                isCurrentDaxian={!!dxPalace && cell.palaceName === dxPalace}
+                                isCurrentYear={!!yrPalace && cell.palaceName === yrPalace}
+                                isXiaoxian={!!xxPalace && cell.palaceName === xxPalace}
                               />
                             )
                           })
@@ -810,10 +914,64 @@ export default function ZiweiToolPage() {
                         <span className="text-[10px] text-text-muted/40">{item.desc}</span>
                       </span>
                     ))}
+                    <span className="text-[10px] text-text-muted/30 ml-2">|</span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-cyan-500/30 text-cyan-300 font-bold">當運</span>
+                      <span className="text-[10px] text-text-muted/40">當前大限</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-[9px] px-1 py-0.5 rounded-full bg-red-500 text-white font-bold">流</span>
+                      <span className="text-[10px] text-text-muted/40">流年</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-[9px] px-1 py-0.5 rounded-full bg-blue-500 text-white font-bold">小</span>
+                      <span className="text-[10px] text-text-muted/40">小限</span>
+                    </span>
                   </div>
                 </div>
               )
             })()}
+
+            {/* 三方四正 + 運限資訊 */}
+            {(result.currentDaxian || result.triplePairs?.length || result.daxianStars) && (
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-cyan-500 rounded-full" />
+                  <h2 className="text-lg font-bold text-cream">運限與三方四正</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {result.currentDaxian && (
+                    <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-4">
+                      <h4 className="text-sm font-bold text-cyan-400 mb-2">當前大限</h4>
+                      <p className="text-sm text-text">{result.currentDaxian}</p>
+                      {result.daxianStars && (
+                        <p className="text-xs text-cyan-300/70 mt-2">大限飛星：{result.daxianStars}</p>
+                      )}
+                      {result.currentXiaoxian && (
+                        <p className="text-xs text-blue-300/70 mt-1">小限：{result.currentXiaoxian}</p>
+                      )}
+                    </div>
+                  )}
+                  {result.yearFlow && (
+                    <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
+                      <h4 className="text-sm font-bold text-red-400 mb-2">2026 流年</h4>
+                      <p className="text-sm text-text">{result.yearFlow}</p>
+                    </div>
+                  )}
+                </div>
+                {result.triplePairs && result.triplePairs.length > 0 && (
+                  <div className="mt-4 rounded-xl bg-purple-500/10 border border-purple-500/20 p-4">
+                    <h4 className="text-sm font-bold text-purple-400 mb-2">三方四正飛化</h4>
+                    <div className="space-y-1">
+                      {result.triplePairs.map((tp, i) => (
+                        <p key={i} className="text-sm text-text">&bull; {tp}</p>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-purple-300/50 mt-2 italic">三方四正：本宮、對宮、財帛宮、官祿宮之間的能量流動</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 選中宮位的詳情展開 */}
             {activePalace && result.palaceData[activePalace] && (
