@@ -36,13 +36,15 @@ interface ConfirmationModalProps {
   loading: boolean
   e1StartDate?: string
   e1EndDate?: string
+  e1EventType?: string
+  e1HasExactTime?: 'yes' | 'no'
   eSelectedBlocks?: boolean[]
   customerNote?: string
 }
 
 export default function ConfirmationModal({
   show, onClose, onConfirm, planCode, form, timeMode, loading,
-  e1StartDate, e1EndDate, eSelectedBlocks, customerNote,
+  e1StartDate, e1EndDate, e1EventType, e1HasExactTime, eSelectedBlocks, customerNote,
   finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied,
 }: ConfirmationModalProps) {
   if (!show) return null
@@ -100,6 +102,18 @@ export default function ConfirmationModal({
           {/* E1/E2 專屬：事件日期+可配合時辰+事件描述 */}
           {(planCode === 'E1' || planCode === 'E2') && (
             <>
+              {planCode === 'E1' && e1EventType && (
+                <div className="flex justify-between items-center py-2 border-b border-white/10">
+                  <span className="text-text-muted text-sm">事件類型</span>
+                  <span className="text-white font-medium">{e1EventType}</span>
+                </div>
+              )}
+              {planCode === 'E1' && e1HasExactTime && (
+                <div className="flex justify-between items-center py-2 border-b border-white/10">
+                  <span className="text-text-muted text-sm">有無固定時間</span>
+                  <span className="text-white font-medium">{e1HasExactTime === 'yes' ? '有（固定時間）' : '無（找最佳吉時）'}</span>
+                </div>
+              )}
               {planCode === 'E1' && e1StartDate && (
                 <div className="flex justify-between items-center py-2 border-b border-white/10">
                   <span className="text-text-muted text-sm">事件日期</span>

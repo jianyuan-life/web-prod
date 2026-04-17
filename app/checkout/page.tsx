@@ -283,6 +283,10 @@ function CheckoutForm() {
             setE1StartDate={ctx.setE1StartDate}
             e1EndDate={ctx.e1EndDate}
             setE1EndDate={ctx.setE1EndDate}
+            e1EventType={ctx.e1EventType}
+            setE1EventType={ctx.setE1EventType}
+            e1HasExactTime={ctx.e1HasExactTime}
+            setE1HasExactTime={ctx.setE1HasExactTime}
             eSelectedBlocks={ctx.eSelectedBlocks}
             setESelectedBlocks={ctx.setESelectedBlocks}
             customerNote={ctx.customerNote}

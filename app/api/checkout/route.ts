@@ -76,15 +76,40 @@ export async function POST(req: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
 
     // G15 家族藍圖：固定 $59，不再按人數加價
-    // R 方案：可加人（前端傳 totalPrice），但必須驗證最低價格
+    // R 方案：可加人（前端傳 totalPrice），後端必須驗證人數 × 單價
     // 其他方案：使用固定金額
     const isVariablePrice = planCode === 'R' && typeof totalPrice === 'number'
     let baseAmount = isVariablePrice
       ? Math.round(totalPrice * 100)
       : plan.amount
 
-    // 伺服器端價格驗證：前端傳來的金額不得低於方案定價
-    if (baseAmount < plan.amount) {
+    // R 方案：嚴格驗證人數 × 單價（防價格篡改）
+    // 規則：基本 $59（含 2 人），第 3 人起每人 +$19，最多 6 人
+    if (planCode === 'R') {
+      const rAddPrice = PRICE_MAP['R-ADD'].amount // $19/人
+      const R_MIN_MEMBERS = 2
+      const R_MAX_MEMBERS = 6
+
+      // 從 birthData.members 取得實際人數
+      const members = Array.isArray(birthData?.members) ? birthData.members : []
+      const memberCount = members.length
+
+      if (memberCount < R_MIN_MEMBERS || memberCount > R_MAX_MEMBERS) {
+        return NextResponse.json({ error: `合否？方案人數需在 ${R_MIN_MEMBERS} 至 ${R_MAX_MEMBERS} 人之間（實際：${memberCount} 人）` }, { status: 400 })
+      }
+
+      // 後端計算應付金額：基本價 + (人數 - 2) × 每人加價
+      const extraCount = memberCount - R_MIN_MEMBERS
+      const expectedAmount = plan.amount + extraCount * rAddPrice
+
+      // 驗證前端傳來的金額必須 === 後端計算的金額（防篡改）
+      if (baseAmount !== expectedAmount) {
+        console.error(`R 方案金額篡改警告：前端 ${baseAmount}，後端計算 ${expectedAmount}，人數 ${memberCount}`)
+        // 強制使用後端計算的金額（不信任前端）
+        baseAmount = expectedAmount
+      }
+    } else if (baseAmount < plan.amount) {
+      // 其他方案：金額不得低於方案定價
       return NextResponse.json({ error: '金額低於方案最低定價' }, { status: 400 })
     }
 
@@ -146,6 +171,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Stripe 最低金額：USD $0.50（50 cents），若最終金額 > 0 但 < 50 cents 會被 Stripe 拒絕
+    // 參考：https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts
+    const STRIPE_MIN_CHARGE_CENTS = 50
+
     // 3. 計算最終金額：促銷 vs 優惠碼，取較高折扣（不疊加）
     let finalAmount = baseAmount
     if (couponIsFree) {
@@ -165,6 +194,17 @@ export async function POST(req: NextRequest) {
       }
       // 取較低金額（= 較高折扣）
       finalAmount = Math.min(promoAmount, couponAmount)
+
+      // 防守：若優惠碼/促銷折抵後金額落在 (0, 50) cents 區間，Stripe 會拒絕
+      // 視為折抵到免費處理（一般 $39 以上方案用常見折扣不會觸發，但 fixed 折扣或極端 percentage 可能）
+      if (finalAmount > 0 && finalAmount < STRIPE_MIN_CHARGE_CENTS) {
+        console.warn(`優惠/促銷後金額 ${finalAmount} cents < Stripe 最低 ${STRIPE_MIN_CHARGE_CENTS} cents，已拉平至 0（視為免費）`)
+        finalAmount = 0
+        // 若沒有優惠碼但促銷把價格壓到 < 50 cents，仍需走免費流程 → 補記一個識別碼
+        if (!couponIsFree && !verifiedCouponCode) {
+          couponIsFree = true
+        }
+      }
     }
 
     // 4. 點數折抵（與優惠碼互斥，前端控制；後端再驗證）
@@ -178,11 +218,38 @@ export async function POST(req: NextRequest) {
         // 驗證餘額
         const { data: pts } = await supabase.from('user_points').select('balance').eq('user_id', verifiedUserId).single()
         const balance = pts?.balance || 0
-        // 最多用到餘額，且不超過訂單金額（100% 可折抵）
-        const maxPoints = Math.floor(finalAmount / 100) // 100% 上限，單位美元
-        verifiedPointsToUse = Math.min(pointsToUse, balance, maxPoints)
+        // 1 點 = $1 = 100 cents；最多折抵到 finalAmount 全額（整除上取，避免丟精度）
+        // 原本 Math.floor(finalAmount/100) 在 finalAmount 不是 100 倍數時會少扣一點，
+        // 造成剩餘金額 < $0.50 被 Stripe 拒絕。改用「可用點數上限 = 能把金額扣到 0 的最少點數」
+        const maxPointsToZero = Math.ceil(finalAmount / 100) // 扣完剩 <= 0
+        const maxPoints = Math.min(maxPointsToZero, balance)
+        verifiedPointsToUse = Math.min(pointsToUse, maxPoints)
+
         if (verifiedPointsToUse > 0) {
-          finalAmount = Math.max(0, finalAmount - verifiedPointsToUse * 100)
+          const discountCents = verifiedPointsToUse * 100
+          const newAmount = finalAmount - discountCents
+
+          if (newAmount <= 0) {
+            // 完全折抵：金額歸 0，走免費流程
+            finalAmount = 0
+          } else if (newAmount < STRIPE_MIN_CHARGE_CENTS) {
+            // 折抵後剩餘 < $0.50，Stripe 會拒絕。兩種處理：
+            // (a) 若用戶餘額夠再多扣 1 點，把金額扣到 0（最慷慨、用戶體驗最好）
+            // (b) 若用戶餘額不夠，退回無折抵狀態（保留完整扣款）
+            const extraNeeded = 1
+            if (balance >= verifiedPointsToUse + extraNeeded) {
+              verifiedPointsToUse += extraNeeded
+              finalAmount = 0
+            } else {
+              // 回退：取消本次積分折抵（避免觸發 Stripe 最低金額限制）
+              console.warn(`積分折抵後金額 ${newAmount} cents < Stripe 最低 ${STRIPE_MIN_CHARGE_CENTS} cents，且餘額不足多扣 1 點，已取消折抵`)
+              verifiedPointsToUse = 0
+              // finalAmount 不變
+            }
+          } else {
+            // 正常情況：扣款後金額 >= $0.50
+            finalAmount = newAmount
+          }
         }
       }
     }

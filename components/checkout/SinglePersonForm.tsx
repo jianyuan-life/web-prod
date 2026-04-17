@@ -7,7 +7,7 @@ import BirthDataFields from './BirthDataFields'
 import TimeBlockPicker from './TimeBlockPicker'
 import CustomerNote from './CustomerNote'
 import ConfirmationModal from './ConfirmationModal'
-import { D_TOPICS, type CheckoutFormState as FormState } from './types'
+import { D_TOPICS, E1_EVENT_TYPES, type CheckoutFormState as FormState } from './types'
 
 interface SinglePersonFormProps {
   planCode: string
@@ -31,6 +31,10 @@ interface SinglePersonFormProps {
   setE1StartDate: (v: string) => void
   e1EndDate: string
   setE1EndDate: (v: string) => void
+  e1EventType: string
+  setE1EventType: (v: string) => void
+  e1HasExactTime: 'yes' | 'no'
+  setE1HasExactTime: (v: 'yes' | 'no') => void
   // E1/E2 時段
   eSelectedBlocks: boolean[]
   setESelectedBlocks: (v: boolean[]) => void
@@ -60,6 +64,7 @@ export default function SinglePersonForm({
   onCountrySelect, onCancelCountry, needCityForCountry,
   dTopic, setDTopic, dOtherDesc, setDOtherDesc,
   e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
+  e1EventType, setE1EventType, e1HasExactTime, setE1HasExactTime,
   eSelectedBlocks, setESelectedBlocks,
   customerNote, setCustomerNote,
   loading, error, finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied, isFormValid, onSubmit,
@@ -139,15 +144,57 @@ export default function SinglePersonForm({
         </div>
       )}
 
-      {/* 方案 E1：事件日期範圍（最多 1 個月） */}
+      {/* 方案 E1：事件類型 + 事件日期範圍（最早 7 天後、最晚 30 天內） */}
       {planCode === 'E1' && (() => {
-        const today = new Date().toISOString().split('T')[0]
-        const maxStart = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        // 事件日期規則：最早今天+7 天（給足排盤準備與提前準備時間）、最晚今天+30 天
+        const minStartDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        const maxStartDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
         const maxEnd = e1StartDate
           ? new Date(new Date(e1StartDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          : maxStart
+          : maxStartDate
         return (
         <div className="border-t border-gold/10 pt-4 space-y-3">
+          {/* 事件類型 */}
+          <div>
+            <label className="block text-sm font-semibold text-gold mb-2">事件類型 *</label>
+            <select
+              required
+              value={e1EventType}
+              onChange={(e) => setE1EventType(e.target.value)}
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
+            >
+              <option value="" className="bg-[#1a1a2e] text-white">請選擇事件類型</option>
+              {E1_EVENT_TYPES.map((t) => <option key={t} value={t} className="bg-[#1a1a2e] text-white">{t}</option>)}
+            </select>
+            <p className="text-[10px] text-text-muted/60 mt-1">系統會依據事件類型調整吉時篩選條件（如財運 vs. 貴人 vs. 安全等）</p>
+          </div>
+
+          {/* 有無明確時間 */}
+          <div>
+            <label className="block text-sm font-semibold text-gold mb-2">事件有無固定時間？ *</label>
+            <div className="flex gap-6 flex-wrap">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio" name="e1-has-exact-time" value="yes"
+                  checked={e1HasExactTime === 'yes'}
+                  onChange={() => setE1HasExactTime('yes')}
+                  className="accent-gold"
+                />
+                <span className="text-sm text-text">有（如面試、簽約、會議已排好時間）</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio" name="e1-has-exact-time" value="no"
+                  checked={e1HasExactTime === 'no'}
+                  onChange={() => setE1HasExactTime('no')}
+                  className="accent-gold"
+                />
+                <span className="text-sm text-text">無（由我們找最佳吉時）</span>
+              </label>
+            </div>
+            <p className="text-[10px] text-text-muted/60 mt-1">{e1HasExactTime === 'yes' ? '請於下方事件描述註明確切時間，系統會驗證該時辰的吉凶' : '系統會從事件日期範圍內找出 Top3 最佳吉時'}</p>
+          </div>
+
           <p className="text-sm font-semibold text-gold">事件日期</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -155,11 +202,11 @@ export default function SinglePersonForm({
               <input
                 type="date" required
                 value={e1StartDate}
-                min={today}
-                max={maxStart}
+                min={minStartDate}
+                max={maxStartDate}
                 onChange={(e) => {
                   setE1StartDate(e.target.value)
-                  // 如果結束日期超過新開始日期+1個月，自動清空
+                  // 如果結束日期超過新開始日期+30 天，自動清空
                   if (e1EndDate) {
                     const newMax = new Date(new Date(e.target.value).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
                     if (e1EndDate > newMax) setE1EndDate('')
@@ -167,13 +214,14 @@ export default function SinglePersonForm({
                 }}
                 className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
               />
+              <p className="text-[10px] text-text-muted/50 mt-1">最早 7 天後、最晚 30 天內（預留準備時間）</p>
             </div>
             <div>
               <label className="block text-xs text-gold/80 mb-1">事件截止日期（選填）</label>
               <input
                 type="date"
                 value={e1EndDate}
-                min={e1StartDate || today}
+                min={e1StartDate || minStartDate}
                 max={maxEnd}
                 onChange={(e) => setE1EndDate(e.target.value)}
                 placeholder="不填則預設 1 個月"
@@ -188,7 +236,9 @@ export default function SinglePersonForm({
               required
               maxLength={200}
               rows={4}
-              placeholder="請描述事件背景（如：重要面試、簽約、旅行、搬家）與希望達成的目標..."
+              placeholder={e1HasExactTime === 'yes'
+                ? '請描述事件與確切時間（如：4月25日下午3點面試，對方是科技公司HR）...'
+                : '請描述事件背景（如：重要面試、簽約、旅行、搬家）與希望達成的目標...'}
               value={customerNote}
               onChange={(e) => setCustomerNote(e.target.value)}
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none resize-none placeholder:text-text-muted/40"
@@ -248,6 +298,8 @@ export default function SinglePersonForm({
         loading={loading}
         e1StartDate={e1StartDate}
         e1EndDate={e1EndDate}
+        e1EventType={e1EventType}
+        e1HasExactTime={e1HasExactTime}
         eSelectedBlocks={eSelectedBlocks}
         customerNote={customerNote}
         finalPrice={finalPrice}

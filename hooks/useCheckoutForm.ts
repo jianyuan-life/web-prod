@@ -80,6 +80,8 @@ export function useCheckoutForm() {
   // 方案 E1
   const [e1StartDate, setE1StartDate] = useState('')
   const [e1EndDate, setE1EndDate] = useState('')
+  const [e1EventType, setE1EventType] = useState('')
+  const [e1HasExactTime, setE1HasExactTime] = useState<'yes' | 'no'>('no')
 
   // E1/E2 十二時辰：子丑寅卯辰巳午未申酉戌亥，預設全不勾（讓客戶自己選）
   const [eSelectedBlocks, setESelectedBlocks] = useState<boolean[]>([
@@ -122,6 +124,8 @@ export function useCheckoutForm() {
     if (!form.birthCity || form.cityLat === 0) return false
     // E1 必填（結束日期選填，不填則預設開始日期+1個月）
     if (planCode === 'E1' && !e1StartDate) return false
+    // E1 事件類型必填
+    if (planCode === 'E1' && !e1EventType) return false
     // E1/E2 時段
     if ((planCode === 'E1' || planCode === 'E2') && !eSelectedBlocks.some(b => b)) return false
     // D 方案問事（其他）必填描述
@@ -346,6 +350,7 @@ export function useCheckoutForm() {
     }
 
     if (planCode === 'E1') {
+      if (!e1EventType) { alert('請選擇事件類型'); return }
       if (!e1StartDate) { alert('請選擇事件開始日期'); return }
     }
 
@@ -439,6 +444,9 @@ export function useCheckoutForm() {
             const defaultEnd = new Date(new Date(e1StartDate).getTime() + 30 * 24 * 60 * 60 * 1000)
             birthData.event_end_date = defaultEnd.toISOString().split('T')[0]
           }
+          // E1 新增：事件類型 + 有無明確時間（結構化欄位，不依賴 customer_note）
+          birthData.event_type = e1EventType
+          birthData.has_exact_time = e1HasExactTime === 'yes'
         }
 
         if (planCode === 'E1' || planCode === 'E2') {
@@ -530,6 +538,7 @@ export function useCheckoutForm() {
     familyMembers, updateFamilyMember, addFamilyMember, removeFamilyMember,
     // E1 方案
     e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
+    e1EventType, setE1EventType, e1HasExactTime, setE1HasExactTime,
     // E1/E2 時段
     eSelectedBlocks, setESelectedBlocks,
     // 金額
