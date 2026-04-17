@@ -3,6 +3,7 @@ import LiveCounter from '@/components/LiveCounter'
 import StarField from '@/components/StarField'
 import Astrolabe from '@/components/Astrolabe'
 import ReportPreview from '@/components/ReportPreview'
+import HeroCTAExperiment from '@/components/HeroCTAExperiment'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -95,13 +96,8 @@ export default function HomePage() {
             找到一個更清晰的方向。讓我們陪你，看見那個真實的自己。
           </p>
           <div className="flex flex-wrap gap-4 justify-center mb-6">
-            <a href="/tools/bazi"
-              className="inline-flex items-center gap-2 px-8 py-3.5 bg-gold text-dark font-bold rounded-[10px] text-[15px] btn-glow">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-              </svg>
-              免費體驗 &middot; 30 秒出結果
-            </a>
+            {/* A/B 測試：Hero CTA 文案（experimentKey: hero_cta_20260417） */}
+            <HeroCTAExperiment />
             <a href="/pricing"
               className="inline-flex items-center gap-2 px-8 py-3.5 glass text-cream font-semibold rounded-[10px] text-[15px] hover:bg-surface-hover transition-colors">
               探索完整方案

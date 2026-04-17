@@ -57,6 +57,9 @@ export function middleware(request: NextRequest) {
   } else if (path.startsWith('/api/points/transfer')) {
     // 積分贈與：5/min（防濫用）
     maxPerMinute = 5
+  } else if (path.startsWith('/api/ab-events')) {
+    // A/B 測試事件追蹤：每頁可能有多個 impression/click，放寬到 120/min
+    maxPerMinute = 120
   }
 
   // 推薦碼驗證 brute force 封鎖檢查（先於速率限制，失敗 5 次封 1 小時）
