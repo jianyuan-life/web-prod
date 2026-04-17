@@ -36,24 +36,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const pathname = usePathname()
 
-  // 嘗試從 sessionStorage 恢復
+  // 不再從 sessionStorage 恢復明文密碼（L7 P0 修復 2026-04-17）
+  // 每次頁面刷新都要重新輸入，降低 XSS 外洩風險。
+  // 未來可升級為 HttpOnly cookie + 短 TTL session。
   useEffect(() => {
-    const saved = sessionStorage.getItem('admin_key')
-    if (saved) {
-      setAdminKey(saved)
-      setAuthed(true)
-    }
+    // 清除任何舊版留下的 sessionStorage 密碼（向下相容）
+    try { sessionStorage.removeItem('admin_key') } catch {}
   }, [])
 
   const handleLogin = async () => {
     setLoading(true)
     setLoginError('')
     try {
-      const res = await fetch(`/api/admin?key=${keyInput}&range=7d`)
+      // 用 x-admin-key header 驗證（不再塞到 URL query）
+      const res = await fetch(`/api/admin?range=7d`, {
+        headers: { 'x-admin-key': keyInput },
+      })
       if (res.ok) {
         setAdminKey(keyInput)
         setAuthed(true)
-        sessionStorage.setItem('admin_key', keyInput)
+      } else if (res.status === 429) {
+        setLoginError('嘗試次數過多，請稍後再試')
       } else {
         setLoginError('密碼錯誤')
       }
@@ -112,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             })}
           </nav>
           <div className="p-4 border-t border-white/5">
-            <button onClick={() => { setAuthed(false); setAdminKey(''); sessionStorage.removeItem('admin_key') }}
+            <button onClick={() => { setAuthed(false); setAdminKey(''); try { sessionStorage.removeItem('admin_key') } catch {} }}
               className={`text-xs text-gray-500 hover:text-red-400 ${sidebarCollapsed ? 'text-center w-full' : ''}`}>
               {sidebarCollapsed ? 'X' : '登出'}
             </button>

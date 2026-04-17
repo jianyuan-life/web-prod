@@ -39,7 +39,17 @@ const TG_LIST = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { year, month, day, hour = 12, gender = 'M', name = '', calendar_type = 'solar' } = body
+    // v5.2.2 修正：加收 latitude/longitude/timezone_offset/lunar_leap 讓免費和付費結果一致
+    const {
+      year, month, day, hour = 12, minute = 0, gender = 'M', name = '',
+      calendar_type = 'solar',
+      latitude = null,
+      longitude = null,
+      timezone_offset = 8.0,
+      lunar_leap = false,
+      time_unknown = false,
+      time_mode = 'shichen',
+    } = body
 
     if (!year || !month || !day) {
       return NextResponse.json({ detail: '請提供完整出生資料' }, { status: 400 })
@@ -57,7 +67,12 @@ export async function POST(req: NextRequest) {
       const pyRes = await fetch(`${PYTHON_API}/api/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: '用戶', year, month, day, hour, minute: 0, gender }),
+        body: JSON.stringify({
+          name: name || '用戶',
+          year, month, day, hour, minute, gender,
+          calendar_type, lunar_leap, time_unknown, time_mode,
+          latitude, longitude, timezone_offset,
+        }),
         signal: AbortSignal.timeout(60000),
       })
       if (pyRes.ok) {

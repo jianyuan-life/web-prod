@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { isDisposableEmail } from '@/lib/disposable-email-domains'
+import { getClientIp } from '@/lib/bruteforce-tracker'
 
 function getSupabase() {
   return createClient(
@@ -25,6 +27,15 @@ export async function POST(req: NextRequest) {
     const { data: { user: verifiedUser } } = await supabaseAdmin.auth.admin.getUserById(userId)
     if (!verifiedUser) {
       return NextResponse.json({ error: '用戶不存在' }, { status: 403 })
+    }
+
+    // 反作弊：拒絕拋棄式/臨時信箱註冊推薦關係
+    const verifiedEmail = verifiedUser.email || email || ''
+    if (isDisposableEmail(verifiedEmail)) {
+      return NextResponse.json(
+        { error: '此信箱類型不支援推薦獎勵，請使用常用信箱' },
+        { status: 400 },
+      )
     }
 
     // 格式驗證
@@ -67,15 +78,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: '推薦關係已存在' })
     }
 
-    // 寫入 referrals 表
-    const { error: insertErr } = await supabase
-      .from('referrals')
-      .insert({
-        referrer_user_id: referralCodeRow.user_id,
-        referred_user_id: userId,
-        referral_code: code,
-        status: 'registered',
-      })
+    // 寫入 referrals 表（關鍵：帶上 referred_email 修復 L5 bug #2）
+    // 注意：referred_email / referred_ip 欄位由 add_referred_email migration 建立
+    // 若 migration 尚未執行，下方 insert 會報錯；透過 try/catch 做 fallback
+    const clientIp = getClientIp(req)
+    let insertErr: { code?: string; message?: string } | null = null
+    {
+      const { error } = await supabase
+        .from('referrals')
+        .insert({
+          referrer_user_id: referralCodeRow.user_id,
+          referred_user_id: userId,
+          referral_code: code,
+          status: 'registered',
+          referred_email: verifiedEmail.toLowerCase(),
+          referred_ip: clientIp,
+        })
+      insertErr = error
+    }
+
+    // 若 migration 尚未執行，欄位不存在時退回舊格式（確保不 break 既有功能）
+    if (insertErr && /column .*(referred_email|referred_ip)/i.test(insertErr.message || '')) {
+      console.warn('[referral/register] referred_email/ip 欄位未建立，退回舊格式寫入')
+      const { error } = await supabase
+        .from('referrals')
+        .insert({
+          referrer_user_id: referralCodeRow.user_id,
+          referred_user_id: userId,
+          referral_code: code,
+          status: 'registered',
+        })
+      insertErr = error
+    }
 
     if (insertErr) {
       // unique constraint 碰撞也靜默成功

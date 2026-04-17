@@ -1,4 +1,4 @@
-// API 速率限制中間件 — 防止濫用燒 AI 費用
+// API 速率限制中間件 — 防止濫用燒 AI 費用 + 推薦系統反作弊
 // 使用 in-memory Map：Vercel Edge 每個區域共用同一進程，
 // 單實例內的 Map 已能有效防禦單一 IP 的短時間爆量請求。
 // 對於分散式場景（多區域部署），可未來升級至 Upstash Redis。
@@ -10,6 +10,11 @@ const rateLimit = new Map<string, { count: number; resetTime: number }>()
 
 // 每日速率限制（免費工具每 IP 每天 30 次）
 const dailyLimit = new Map<string, { count: number; resetTime: number }>()
+
+// 推薦碼驗證失敗計數（防爆破）— 單一 IP 連續失敗 5 次封鎖 1 小時
+const referralValidateFails = new Map<string, { fails: number; blockUntil: number }>()
+const REFERRAL_BRUTEFORCE_THRESHOLD = 5
+const REFERRAL_BRUTEFORCE_BLOCK_MS = 60 * 60 * 1000 // 1 小時
 
 // 從 Vercel/Cloudflare 取得真實 IP（按可靠度排序）
 function getClientIp(request: NextRequest): string {
@@ -43,6 +48,31 @@ export function middleware(request: NextRequest) {
     maxPerMinute = 2
   } else if (path.includes('search-reports')) {
     maxPerMinute = 10
+  } else if (
+    path.startsWith('/api/referral/validate') ||
+    path.startsWith('/api/referral/register')
+  ) {
+    // 推薦碼驗證：10/min（防爆破）
+    maxPerMinute = 10
+  } else if (path.startsWith('/api/points/transfer')) {
+    // 積分贈與：5/min（防濫用）
+    maxPerMinute = 5
+  }
+
+  // 推薦碼驗證 brute force 封鎖檢查（先於速率限制，失敗 5 次封 1 小時）
+  if (path.startsWith('/api/referral/validate')) {
+    const bfKey = `${ip}:referral-validate`
+    const bf = referralValidateFails.get(bfKey)
+    if (bf && bf.blockUntil > now) {
+      const retry = Math.ceil((bf.blockUntil - now) / 1000)
+      return NextResponse.json(
+        { error: '驗證失敗次數過多，請稍後再試' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(retry) },
+        },
+      )
+    }
   }
 
   // 每分鐘速率檢查

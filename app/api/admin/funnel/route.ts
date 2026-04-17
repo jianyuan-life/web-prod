@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-const ADMIN_KEY = process.env.ADMIN_KEY
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 
 function getSupabase() {
   return createClient(
@@ -20,10 +20,10 @@ const isBot = (ua: string) => BOT_UA_PATTERNS.some(p => ua.toLowerCase().include
 
 // GET — 漏斗分析 API
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
-  if (key !== ADMIN_KEY) {
-    return NextResponse.json({ error: '無權限' }, { status: 403 })
-  }
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
 
   const daysParam = req.nextUrl.searchParams.get('days')
   const days = Math.min(Math.max(parseInt(daysParam || '30', 10) || 30, 1), 365)

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import {
+  isBlocked,
+  recordFailure,
+  recordSuccess,
+  getClientIp,
+} from '@/lib/bruteforce-tracker'
 
 function getSupabase() {
   return createClient(
@@ -17,16 +23,29 @@ function maskName(name: string): string {
 }
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req)
+
+  // 爆破封鎖檢查（連續 5 次失敗 → 封鎖 1 小時）
+  const block = isBlocked(ip)
+  if (block.blocked) {
+    return NextResponse.json(
+      { valid: false, message: '驗證失敗次數過多，請稍後再試' },
+      { status: 429, headers: { 'Retry-After': String(block.retryAfter) } },
+    )
+  }
+
   try {
     const { searchParams } = new URL(req.url)
     const code = searchParams.get('code')?.trim().toUpperCase()
 
     if (!code) {
+      recordFailure(ip)
       return NextResponse.json({ valid: false, message: '請提供推薦碼' }, { status: 400 })
     }
 
     // 格式驗證：JY-XXXXX
     if (!/^JY-[A-HJ-NP-Z2-9]{5}$/.test(code)) {
+      recordFailure(ip)
       return NextResponse.json({ valid: false, message: '推薦碼格式無效' })
     }
 
@@ -40,12 +59,17 @@ export async function GET(req: NextRequest) {
       .single()
 
     if (!referralCode) {
+      recordFailure(ip)
       return NextResponse.json({ valid: false, message: '推薦碼不存在' })
     }
 
     if (!referralCode.is_active) {
+      recordFailure(ip)
       return NextResponse.json({ valid: false, message: '此推薦碼已停用' })
     }
+
+    // 驗證成功，清除失敗計數
+    recordSuccess(ip)
 
     // 取推薦人名字（從 auth.users）
     const { data: userData } = await supabase.auth.admin.getUserById(referralCode.user_id)

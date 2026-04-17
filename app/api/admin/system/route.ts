@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-const ADMIN_KEY = process.env.ADMIN_KEY
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 
 type HealthResult = {
   name: string
@@ -21,10 +21,10 @@ async function checkService(name: string, fn: () => Promise<string>): Promise<He
 }
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
-  if (key !== ADMIN_KEY) {
-    return NextResponse.json({ error: '無權限' }, { status: 403 })
-  }
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
 
   const checks = await Promise.all([
     // Supabase 連線

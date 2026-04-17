@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.2.1（2026-04-13）
+**網站版本：** v5.2.3（2026-04-17）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,23 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.2.2（2026-04-17 L5 推薦積分致命 bug 修復）
+
+**P0：推薦獎勵從未發放過（L5 Audit Bug #2）**
+- ✅ 新增 migration `supabase/migrations/add_referred_email.sql`（待 Jamie 手動執行）
+  - 補 `referrals.referred_email` 欄位 + index + 從 auth.users 回填歷史
+  - 補 `referrals.referred_ip / referrer_last_ip / suspicious_flag` 反作弊欄位
+  - 補 `point_transactions(reference_id, type)` 冪等 index
+  - 補 `auth_users_view`（若不存在）
+- ✅ `app/api/referral/register/route.ts` insert 時寫入 `referred_email` + `referred_ip`，並加入 fallback（欄位未建時退回舊格式）
+- ✅ 撰寫 `check_referral_rewards.py` 歷史補償掃描腳本（`--apply` 實際補發、`--json` 輸出）
+
+**P1：反作弊**
+- ✅ 新增 `lib/disposable-email-domains.ts`（~120 個拋棄式信箱域名黑名單）
+- ✅ 註冊時拒絕 disposable email 獲得推薦獎勵
+- ✅ 新增 `lib/bruteforce-tracker.ts`：連續 5 次推薦碼驗證失敗封鎖 1 小時
+- ✅ `middleware.ts` 加強：`/api/referral/validate` 和 `/api/referral/register` 降為 10/min、`/api/points/transfer` 降為 5/min
 
 ### v4.8.0（2026-04-12 通宵衝刺版）
 

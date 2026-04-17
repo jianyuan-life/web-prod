@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getSafeRedirect } from '@/lib/safe-redirect'
 
 function LoginForm() {
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/dashboard'
-  const safeRedirect = redirectTo.startsWith('/') ? redirectTo : '/dashboard'
+  const redirectTo = searchParams.get('redirect')
+  const safeRedirect = getSafeRedirect(redirectTo, '/dashboard')
 
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)

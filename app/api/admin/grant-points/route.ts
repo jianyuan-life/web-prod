@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-const ADMIN_KEY = process.env.ADMIN_KEY
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
+import { writeAuditLog } from '@/lib/admin-audit-log'
 
 function getSupabase() {
   return createClient(
@@ -12,11 +13,12 @@ function getSupabase() {
 
 // POST — 管理員手動發放積分
 export async function POST(req: NextRequest) {
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
   try {
     const { key, email, points, description } = await req.json()
-    if (key !== ADMIN_KEY) {
-      return NextResponse.json({ error: '無權限' }, { status: 403 })
-    }
+    const authFail = checkAdminAuth(req, key)
+    if (authFail) return authFail
     if (!email || !points || points <= 0) {
       return NextResponse.json({ error: '請提供 Email 和正數的積分數量' }, { status: 400 })
     }
@@ -65,6 +67,14 @@ export async function POST(req: NextRequest) {
       balance_after: newBalance,
       description: description || '管理員手動發放',
       reference_id: `admin_${Date.now()}`,
+    })
+
+    // 稽核紀錄
+    await writeAuditLog(req, 'grant_points', 'user', user.id, {
+      email,
+      points_granted: points,
+      new_balance: newBalance,
+      description: description || '管理員手動發放',
     })
 
     return NextResponse.json({

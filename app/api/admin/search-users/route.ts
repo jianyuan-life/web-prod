@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-const ADMIN_KEY = process.env.ADMIN_KEY
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 
 // GET — 搜尋已註冊用戶（輸入時自動完成）
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
   const q = req.nextUrl.searchParams.get('q') || ''
-
-  if (key !== ADMIN_KEY) {
-    return NextResponse.json({ error: '無權限' }, { status: 403 })
-  }
   if (q.length < 2) {
     return NextResponse.json({ users: [] })
   }

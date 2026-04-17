@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-const ADMIN_KEY = process.env.ADMIN_KEY
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
+import { writeAuditLog } from '@/lib/admin-audit-log'
 
 function getSupabase() {
   return createClient(
@@ -12,10 +13,10 @@ function getSupabase() {
 
 // GET — 取得所有訂單（完整資料）
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
-  if (key !== ADMIN_KEY) {
-    return NextResponse.json({ error: '無權限' }, { status: 403 })
-  }
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
 
   const { data, error } = await getSupabase()
     .from('paid_reports')
@@ -45,10 +46,13 @@ export async function GET(req: NextRequest) {
 
 // PATCH — 管理員強制重試報告（任何狀態都可以）
 export async function PATCH(req: NextRequest) {
-  const { id, key } = await req.json()
-  if (key !== ADMIN_KEY) {
-    return NextResponse.json({ error: '無權限' }, { status: 403 })
-  }
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const body = await req.json()
+  const { id, key } = body
+  // 相容舊路徑：key 可由 header 或 body 傳入
+  const authFail = checkAdminAuth(req, key)
+  if (authFail) return authFail
   if (!id) return NextResponse.json({ error: '缺少報告 ID' }, { status: 400 })
 
   const supabase = getSupabase()
@@ -104,6 +108,12 @@ export async function PATCH(req: NextRequest) {
       clearTimeout(fbTimeout)
     } catch { /* 靜默 */ }
   }
+
+  // 稽核紀錄
+  await writeAuditLog(req, 'retry_report', 'report', String(id), {
+    previous_status: report.status,
+    new_retry_count: (report.retry_count ?? 0) + 1,
+  })
 
   return NextResponse.json({ success: true, message: '已重新觸發報告生成' })
 }

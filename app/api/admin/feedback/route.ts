@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-function getAdminKey() {
-  return process.env.ADMIN_KEY || ''
-}
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 
 function getSupabase() {
   return createClient(
@@ -14,11 +12,10 @@ function getSupabase() {
 
 // GET — 取得所有客戶反饋（需 ADMIN_KEY）
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
-  const adminKey = getAdminKey()
-  if (!adminKey || key !== adminKey) {
-    return NextResponse.json({ error: '無權限' }, { status: 403 })
-  }
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
 
   const supabase = getSupabase()
 

@@ -99,6 +99,17 @@ interface PersonalityCardData {
   rawContent: string   // 原始內容（fallback 用）
 }
 
+// 合法命格封號白名單（對應 lib/profiles.ts 的 10 個日主封號）
+const LEGAL_PERSONA_TITLES = [
+  '參天大樹', '柔韌藤蔓', '太陽之火', '燭火星光', '巍峨高山',
+  '沃土田園', '精鋼利刃', '珠玉寶石', '江河大海', '雨露甘霖',
+] as const
+
+// 判斷是否為合法 4 字命格封號
+function isLegalPersonaTitle(title: string): boolean {
+  return (LEGAL_PERSONA_TITLES as readonly string[]).includes(title)
+}
+
 // 從 markdown 中提取命格名片數據
 function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   // 嘗試匹配「命格名片」章節（支援 ## 一、命格名片 或 ## 命格名片）
@@ -113,31 +124,49 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   const cleanMd = (s: string) => s.replace(/\*{1,2}/g, '').replace(/^[\d]+\.\s*/, '').trim()
 
   // 提取人格封號（擴大搜尋範圍到全文）
+  // 🚨 硬規則：封號必須是 10 個合法 4 字封號之一，其他一律視為 AI 自創錯誤
   let title = ''
-  // 先在命格名片章節找（支援「命格封號：精鋼利刃」同行格式）
-  const titleMatch = content.match(/(?:人格封號|命格封號|你的封號)\*{0,2}[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
-  if (titleMatch) {
-    title = cleanMd(titleMatch[1])
-  }
-  // 支援「### 1. 命格封號」標題格式，封號在下一行粗體（如「**江河大海**」）
-  if (!title) {
-    const headingTitleMatch = content.match(/(?:人格封號|命格封號|你的封號)\s*\n+\s*\*{1,2}([^*\n]+?)\*{1,2}/m)
-    if (headingTitleMatch) title = cleanMd(headingTitleMatch[1])
-  }
-  if (!title) {
-    // 在全文找封號（可能在人生速覽等其他章節）
-    const globalTitleMatch = fullText.match(/(?:人格封號|命格封號|你的封號|封號)\*{0,2}[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
-      || fullText.match(/命格就像[^，,]*?\*{0,2}(.{2,8}(?:利刃|大樹|烈火|星光|磐石|清風|深海|明月|雷霆|瀑布|鑽石|寶劍|孤狼|鳳凰|蛟龍|精鋼))\*{0,2}/)
-      || fullText.match(/「(.{2,6})」(?:的命格|命格)/)
-    if (globalTitleMatch) title = cleanMd(globalTitleMatch[1])
-    else {
-      // fallback：第一個 ### 標題或第一個粗體行
-      const h3Match = content.match(/^###?\s*(.+?)$/m)
-      const boldMatch = content.match(/^\*\*(.+?)\*\*\s*$/m)
-      if (h3Match) title = cleanMd(h3Match[1])
-      else if (boldMatch) title = cleanMd(boldMatch[1])
+
+  // 第 0 層（最可靠）：直接掃描全文找合法封號（白名單匹配）
+  // 因為 Prompt 已強制 AI 用 10 個固定封號，全文第一個出現的合法封號就是正確答案
+  for (const legal of LEGAL_PERSONA_TITLES) {
+    if (fullText.includes(legal)) {
+      title = legal
+      break
     }
   }
+
+  // 第 1 層：在命格名片章節找「命格封號：XXX」同行格式，必須驗證白名單
+  if (!title) {
+    const titleMatch = content.match(/(?:人格封號|命格封號|你的封號)\*{0,2}[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
+    if (titleMatch) {
+      const extracted = cleanMd(titleMatch[1])
+      if (isLegalPersonaTitle(extracted)) title = extracted
+    }
+  }
+
+  // 第 2 層：標題格式「### 1. 命格封號」下一行粗體
+  if (!title) {
+    const headingTitleMatch = content.match(/(?:人格封號|命格封號|你的封號)\s*\n+\s*\*{1,2}([^*\n]+?)\*{1,2}/m)
+    if (headingTitleMatch) {
+      const extracted = cleanMd(headingTitleMatch[1])
+      if (isLegalPersonaTitle(extracted)) title = extracted
+    }
+  }
+
+  // 第 3 層：全文「封號：XXX」格式（驗證白名單）
+  if (!title) {
+    const globalTitleMatch = fullText.match(/(?:人格封號|命格封號|你的封號|封號)\*{0,2}[：:]\s*\*{0,2}(.+?)\*{0,2}\s*$/m)
+    if (globalTitleMatch) {
+      const extracted = cleanMd(globalTitleMatch[1])
+      if (isLegalPersonaTitle(extracted)) title = extracted
+    }
+  }
+
+  // ❌ 已移除危險的「命格就像…」fallback（會誤抓「一片被烈火」等非封號片段）
+  // ❌ 已移除「「XX」的命格」fallback（容易誤抓其他章節的引號片段）
+  // ❌ 已移除 h3/bold 第一行 fallback（會抓到章節編號「1. 命格封號」）
+  // 所有 fallback 都必須經過 isLegalPersonaTitle 白名單驗證，防止非法封號污染 UI
 
   // 提取「一句話定義你」
   // AI 格式多樣：「一句話定義你：...」同行 / 標題後下一行粗體 / 引言框

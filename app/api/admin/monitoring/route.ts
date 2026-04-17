@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 
 // ============================================================
 // 報告生成監控 API — 過去 24 小時報告生成狀態、平均時間、花費估算
-// GET /api/admin/monitoring?key=ADMIN_KEY
+// GET /api/admin/monitoring  (ADMIN_KEY via x-admin-key header)
 // ============================================================
-
-function getAdminKey() {
-  return process.env.ADMIN_KEY || ''
-}
 
 function getSupabase() {
   return createClient(
@@ -31,11 +29,10 @@ const COST_ESTIMATES: Record<string, number> = {
 }
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
-  const adminKey = getAdminKey()
-  if (!adminKey || key !== adminKey) {
-    return NextResponse.json({ error: '無權限' }, { status: 403 })
-  }
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
 
   const supabase = getSupabase()
   const now = new Date()

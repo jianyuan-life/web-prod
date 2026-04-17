@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit, clearAdminAuthFail } from '@/lib/admin-rate-limit'
+import { writeAuditLog } from '@/lib/admin-audit-log'
 
-// 管理後台 API — 簡單密碼保護
-// 注意：延遲到請求時才讀取，避免建置時 env var 不存在報錯
-function getAdminKey() {
-  return process.env.ADMIN_KEY || ''
-}
+// 管理後台 API — x-admin-key header 驗證 + timing-safe compare + rate limit
 
 function getSupabase() {
   return createClient(
@@ -15,11 +14,14 @@ function getSupabase() {
 }
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
-  const adminKey = getAdminKey()
-  if (!adminKey || key !== adminKey) {
-    return NextResponse.json({ error: '無權限' }, { status: 403 })
-  }
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
+  // 認證成功 → 清空失敗紀錄 + 紀錄登入（限總覽 route 紀錄一次）
+  clearAdminAuthFail(req)
+  // 登入/總覽載入 → 寫稽核（不擋主流程）
+  void writeAuditLog(req, 'login', 'system', null, { range: req.nextUrl.searchParams.get('range') || '7d' })
 
   const range = req.nextUrl.searchParams.get('range') || '7d'
   const days = range === '30d' ? 30 : range === '90d' ? 90 : 7

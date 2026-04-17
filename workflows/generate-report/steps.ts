@@ -7,7 +7,7 @@ import { getWritable } from 'workflow'
 import { FatalError, RetryableError } from 'workflow'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { getUnsubscribeHtml } from '@/lib/unsubscribe'
+import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
 import {
   getAgeGroup,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
@@ -1725,9 +1725,17 @@ export async function aiGenerateR(
     userPrompt += `八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}\n`
     userPrompt += `農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}\n`
 
-    const analyses = calc.analyses || []
-    userPrompt += `${analyses.length} 套系統排盤數據：\n`
-    for (const a of analyses.slice(0, 15)) {
+    // L3 P0 Bug 4 修復：R 方案 userPrompt 預篩 8 套最相關系統（關係合盤）
+    // 不餵全 15 套以免稀釋焦點（奇門/風水/塔羅/生物節律/南洋術數對關係合盤貢獻低）
+    const R_RELEVANT_SYSTEMS = [
+      '八字四柱', '紫微斗數', '西洋占星', '吠陀占星',
+      '人類圖', '數字能量學', '姓名學', '生肖運勢',
+    ]
+    const analyses = (calc.analyses || []).filter((a: { system?: string }) =>
+      a.system && R_RELEVANT_SYSTEMS.includes(a.system),
+    )
+    userPrompt += `${analyses.length} 套關係相關系統排盤數據（八字/紫微/西洋占星/吠陀占星/人類圖/數字能量學/姓名學/生肖）：\n`
+    for (const a of analyses.slice(0, 8)) {
       userPrompt += `\n【${a.system}】`
       if (a.summary) userPrompt += `\n摘要：${a.summary}`
       if (a.good_points?.length) {
@@ -2056,6 +2064,22 @@ export async function qualityGate(
     if (reportContent.length < 8000) {
       warnings.push(`合否內容偏短: ${reportContent.length} 字（期望 > 8,000 字）`)
     }
+    // L3 P0 Bug 4 修復：雙方互動比例檢查（>= 40% 段落必須包含雙方互動字眼）
+    // 掃描段落中是否有「你們」「兩個人」「互動」「彼此」「對方」「她/他」等雙方字眼
+    const paragraphs = reportContent.split(/\n\s*\n/).filter(p => p.trim().length > 50)
+    const interactionPattern = /你們|兩個人|兩人|彼此|互動|對方|一個.{0,3}一個|互相|雙方/
+    const interactionParagraphs = paragraphs.filter(p => interactionPattern.test(p))
+    const interactionRatio = paragraphs.length > 0 ? interactionParagraphs.length / paragraphs.length : 0
+    if (interactionRatio < 0.40) {
+      warnings.push(`合否雙方互動比例過低: ${(interactionRatio * 100).toFixed(0)}% 段落含互動字眼（期望 >= 40%，避免變成個人分析）`)
+    }
+    // R 每章三段式總結檢查（🟢🟡🔵）
+    const hasTrinitySummary = /🟢|好的地方/.test(reportContent)
+      && /🟡|需要注意/.test(reportContent)
+      && /🔵|改善建議|關係處方/.test(reportContent)
+    if (!hasTrinitySummary) {
+      warnings.push('合否缺少三段式總結（🟢好的地方/🟡需要注意/🔵改善建議）')
+    }
   }
 
   // 2e. D 方案「心之所惑」必要章節檢查
@@ -2148,9 +2172,39 @@ export async function qualityGate(
   // passed 判定：排除「含有禁止字眼」和「[軟性]」警告
   // 只有結構性問題（缺章節、系統子章節大量缺失）才觸發重跑
   const criticalWarnings = warnings.filter(w => !w.startsWith('含有禁止字眼') && !w.startsWith('[軟性]'))
-  const passed = criticalWarnings.length === 0
-  console.log(`品質閘門: ${passed ? '通過' : '警告'} (${warnings.length} 項, 嚴重 ${criticalWarnings.length} 項)`)
-  return { passed, warnings }
+
+  // ── L3 P0 Bug 1 修復：品質閘門從「警告式」升級為「阻斷式」 ──
+  // 分級輸出 hard/soft 問題，讓上游 workflow 可以做 retry 決策
+  // hardFailures = 致命結構問題（必觸發 retry），softWarnings = 文字瑕疵（只 log）
+  const hardFailures: string[] = [...criticalWarnings]
+  const softWarnings: string[] = warnings.filter(w => w.startsWith('[軟性]') || w.startsWith('含有禁止字眼'))
+
+  // C 方案硬門檻（L3 Audit 建議）：字數 >= 8,000 + 每章 >= 300
+  if (planCode === 'C') {
+    // 8,000 字硬底線：低於即判定為 hardFailure（無論原本歸類）
+    if (reportContent.length < 8000 && !hardFailures.some(h => h.includes('偏短'))) {
+      hardFailures.push(`[硬門檻] C 方案總字數 ${reportContent.length} 低於 8,000 字下限`)
+    }
+    // 每章字數檢查（以 ## 分段）
+    const chapters = reportContent.split(/^##\s/m).slice(1)
+    let shortChapterCount = 0
+    for (const ch of chapters) {
+      const chLen = ch.replace(/\s/g, '').length
+      if (chLen > 0 && chLen < 300) shortChapterCount++
+    }
+    if (shortChapterCount >= 3) {
+      hardFailures.push(`[硬門檻] 有 ${shortChapterCount} 個章節字數 < 300 字（疑似 AI 敷衍）`)
+    }
+  }
+
+  const passed = hardFailures.length === 0
+  console.log(`品質閘門: ${passed ? '通過' : '失敗'} (硬門檻失敗 ${hardFailures.length} 項, 軟警告 ${softWarnings.length} 項)`)
+  return {
+    passed,
+    warnings,
+    hardFailures,   // L3 新增：致命結構問題，觸發 retry
+    softWarnings,   // L3 新增：文字瑕疵，只 log
+  }
 }
 
 // ── Step 3.5: AI 自我審核（全文審查，用客戶視角評分）──
@@ -2401,10 +2455,19 @@ export async function sendReportEmail(
   ).join('')
   const resend = new Resend(process.env.RESEND_API_KEY || '')
 
+  // List-Unsubscribe header（Gmail/Yahoo 2024 大宗寄件人硬要求）
+  // https://support.google.com/mail/answer/81126
+  const unsubscribeUrl = getUnsubscribeUrl(customerEmail)
+  const listUnsubscribeHeaders = {
+    'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:unsubscribe@jianyuan.life?subject=unsubscribe>`,
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  }
+
   await resend.emails.send({
     from: emailText.from,
     to: customerEmail,
     subject: emailText.subject,
+    headers: listUnsubscribeHeaders,
     html: `<!DOCTYPE html>
 <html lang="${emailLang}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -2453,19 +2516,29 @@ export async function sendReportEmail(
 }
 sendReportEmail.maxRetries = 2
 
-// ── Step 6: 標記失敗 + 發送告警 Email ──
+// ── Step 6: 標記失敗 + 發送告警 Email + 客戶致歉信 ──
+// L4 P0 升級：達最終失敗（retry_count >= 3）時自動寄客戶致歉信，承諾 24 小時人工介入或全額退款
 export async function markReportFailed(reportId: string, errorMessage: string) {
   "use step";
   const supabase = getSupabase()
+
+  // 先查報告資料（供致歉信使用 + 判斷是否達最終失敗）
+  const { data: reportData } = await supabase
+    .from('paid_reports')
+    .select('customer_email, plan_code, retry_count, birth_data, apology_sent_at')
+    .eq('id', reportId)
+    .maybeSingle()
+
   await supabase.from('paid_reports').update({
     status: 'failed',
     error_message: errorMessage,
   }).eq('id', reportId)
   console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
 
+  const resend = new Resend(process.env.RESEND_API_KEY || '')
+
   // 發送告警 Email 通知管理員
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY || '')
     await resend.emails.send({
       from: '鑒源系統告警 <reports@jianyuan.life>',
       to: 'support@jianyuan.life',
@@ -2474,15 +2547,135 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
         <h2>報告生成失敗告警</h2>
         <p><strong>報告 ID：</strong>${reportId}</p>
         <p><strong>錯誤訊息：</strong>${errorMessage}</p>
+        <p><strong>客戶 Email：</strong>${reportData?.customer_email || '（未知）'}</p>
+        <p><strong>方案：</strong>${reportData?.plan_code || '（未知）'}</p>
+        <p><strong>重試次數：</strong>${reportData?.retry_count ?? 0}</p>
         <p><strong>時間：</strong>${new Date().toISOString()}</p>
         <hr />
-        <p>請前往 <a href="https://jianyuan.life/admin">管理後台</a> 查看並處理。</p>
+        <p>請前往 <a href="https://jianyuan.life/jamie/orders">管理後台</a> 查看並處理。</p>
       `,
     })
     console.log(`📧 告警 Email 已發送（報告 ${reportId}）`)
   } catch (emailErr) {
     // 告警 Email 失敗不影響主流程
     console.error('告警 Email 發送失敗:', emailErr)
+  }
+
+  // 客戶致歉信：僅在達最終失敗（retry_count >= 3）且尚未寄過時發送
+  const retryCount = (reportData?.retry_count as number | undefined) ?? 0
+  const customerEmailFailed = reportData?.customer_email as string | undefined
+  const alreadySent = !!reportData?.apology_sent_at
+
+  if (customerEmailFailed && retryCount >= 3 && !alreadySent) {
+    try {
+      const planCode = (reportData?.plan_code as string | undefined) || ''
+      const planNamesLocal: Record<string, string> = {
+        C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
+        R: '合否？', E1: '事件出門訣', E2: '月盤出門訣', Y: '年度運勢',
+      }
+      const planName = planNamesLocal[planCode] || '命理報告'
+
+      const birthDataObj = (reportData?.birth_data || {}) as Record<string, unknown>
+      const rawLocale = typeof birthDataObj['locale'] === 'string'
+        ? String(birthDataObj['locale'])
+        : 'zh-TW'
+      const isCN = rawLocale === 'zh-CN'
+      const emailFont = isCN
+        ? "'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif"
+        : "'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif"
+      const emailLang = isCN ? 'zh-CN' : 'zh-TW'
+
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+      const refundUrl = `${siteUrl}/refund?report=${reportId}`
+      const supportEmail = 'support@jianyuan.life'
+      const subject = isCN
+        ? `关于您的${planName}报告 — 我们正在处理`
+        : `關於您的${planName}報告 — 我們正在處理`
+      const from = isCN ? '鉴源命理 <reports@jianyuan.life>' : '鑒源命理 <reports@jianyuan.life>'
+
+      const apologyHtml = isCN ? `
+      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">您好，</p>
+      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">很抱歉通知您，您的<strong style="color:#c9a84c;">${planName}</strong>报告在生成过程中遇到技术问题，系统经多次自动重试仍未能完成。</p>
+      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">我们的团队已收到告警并介入处理。我们承诺：</p>
+      <ul style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 20px 0;padding-left:20px;">
+        <li><strong style="color:#c9a84c;">24 小时内</strong>亲自为您重新生成报告并寄送</li>
+        <li>若您不愿等候，可随时申请<strong style="color:#c9a84c;">全额退款</strong>（Stripe 原路退回，3-5 个工作天到账）</li>
+        <li>报告已进入优先处理队列，请留意您的邮箱</li>
+      </ul>
+      ` : `
+      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">您好，</p>
+      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">很抱歉通知您，您的<strong style="color:#c9a84c;">${planName}</strong>報告在生成過程中遇到技術問題，系統經多次自動重試仍未能完成。</p>
+      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">我們的團隊已收到告警並介入處理。我們承諾：</p>
+      <ul style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 20px 0;padding-left:20px;">
+        <li><strong style="color:#c9a84c;">24 小時內</strong>親自為您重新生成報告並寄送</li>
+        <li>若您不願等候，可隨時申請<strong style="color:#c9a84c;">全額退款</strong>（Stripe 原路退回，3-5 個工作天到帳）</li>
+        <li>報告已進入優先處理佇列，請留意您的信箱</li>
+      </ul>
+      `
+
+      const ctaRefund = isCN ? '申请全额退款' : '申請全額退款'
+      const ctaContact = isCN ? '联系客服' : '聯繫客服'
+      const refIdLabel = isCN ? '报告编号' : '報告編號'
+      const brand = isCN ? '鉴 源' : '鑒 源'
+      const subtitle = isCN ? 'JIANYUAN · 东西方命理整合平台' : 'JIANYUAN · 東西方命理整合平台'
+      const notice = isCN ? '✦ 报告处理通知' : '✦ 報告處理通知'
+      const titleText = isCN ? '您的报告正在人工处理中' : '您的報告正在人工處理中'
+      const copyright = isCN ? '© 2026 鉴源命理平台 · jianyuan.life' : '© 2026 鑒源命理平台 · jianyuan.life'
+      const footer = isCN ? '如有任何疑问，请联系' : '如有任何疑問，請聯繫'
+
+      const unsubscribeUrlApology = getUnsubscribeUrl(customerEmailFailed)
+
+      await resend.emails.send({
+        from,
+        to: customerEmailFailed,
+        subject,
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeUrlApology}>, <mailto:unsubscribe@jianyuan.life?subject=unsubscribe>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+        html: `<!DOCTYPE html>
+<html lang="${emailLang}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0d1117;font-family:${emailFont};">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="color:#c9a84c;font-size:24px;font-weight:700;letter-spacing:4px;">${brand}</div>
+      <div style="color:#6b7280;font-size:12px;margin-top:4px;">${subtitle}</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#1a2a4a,#0d1a2e);border:1px solid #2a3a5a;border-radius:16px;padding:32px;margin-bottom:24px;">
+      <div style="color:#c9a84c;font-size:13px;letter-spacing:2px;margin-bottom:8px;">${notice}</div>
+      <h1 style="color:#ffffff;font-size:22px;margin:0 0 16px 0;">${titleText}</h1>
+      ${apologyHtml}
+      <div style="margin-top:24px;">
+        <a href="${refundUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 8px 4px 0;">${ctaRefund}</a>
+        <a href="mailto:${supportEmail}?subject=${encodeURIComponent((isCN ? '报告处理询问 ' : '報告處理詢問 ') + reportId.slice(0, 8))}" style="display:inline-block;background:transparent;color:#c9a84c;border:1px solid #c9a84c;font-weight:700;font-size:14px;padding:11px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 0;">${ctaContact}</a>
+      </div>
+      <p style="color:#6b7280;font-size:12px;margin:20px 0 0 0;">${refIdLabel}：${reportId.slice(0, 8)}</p>
+    </div>
+    <div style="text-align:center;color:#4b5563;font-size:12px;line-height:1.8;">
+      <p>${footer} <a href="mailto:${supportEmail}" style="color:#c9a84c;">${supportEmail}</a></p>
+      <p style="margin-top:8px;">${copyright}</p>
+      ${getUnsubscribeHtml(customerEmailFailed)}
+    </div>
+  </div>
+</body>
+</html>`,
+      })
+
+      // 紀錄已寄（防重複）；若欄位尚未建立僅 warn，不中斷流程
+      try {
+        await supabase.from('paid_reports')
+          .update({ apology_sent_at: new Date().toISOString() })
+          .eq('id', reportId)
+      } catch (updErr) {
+        console.warn('apology_sent_at 更新失敗（可能欄位尚未建立）:', updErr)
+      }
+
+      console.log(`📧 客戶致歉信已寄至 ${customerEmailFailed}（報告 ${reportId.slice(0, 8)}）`)
+    } catch (apologyErr) {
+      // 致歉信失敗不影響 failed 標記
+      console.error('客戶致歉信發送失敗:', apologyErr)
+    }
   }
 }
 

@@ -364,30 +364,93 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('Post-generation QA 執行失敗（不阻塞）:', e)
   }
 
-  // Step 3: 品質閘門（只記錄警告，不重跑）
-  // 128k tokens 無上限 + 犀利版 Prompt 已經能產出高品質內容
-  // 重跑造成的問題（重複章節、浪費 token）比品質警告更嚴重
-  try {
-    const qResult = await qualityGate(reportContent, planCode, analyses.length)
-    if (qResult.passed) {
-      console.log('品質閘門通過')
-    } else {
-      console.warn(`品質閘門警告（不重跑）: ${qResult.warnings.join('; ')}`)
+  // Step 3: 品質閘門（L3 P0 Bug 1 修復：阻斷式，失敗觸發 retry）
+  // hardFailures 非空時 → 重新生成；重試上限 3 次，仍失敗則 markReportFailed
+  // 分數門檻：Reviewer score < 75 也視為 hardFailure
+  const MAX_QUALITY_RETRIES = 3
+  const HARD_MIN_SCORE = 75
+  let qualityRetryCount = 0
+  let qualityPassed = false
+  let lastQualityIssues: string[] = []
+
+  while (qualityRetryCount <= MAX_QUALITY_RETRIES) {
+    // 3a. 品質閘門硬檢查
+    let gateResult: { passed: boolean; warnings: string[]; hardFailures?: string[]; softWarnings?: string[] } | null = null
+    try {
+      gateResult = await qualityGate(reportContent, planCode, analyses.length)
+    } catch (e) {
+      console.error('品質閘門執行失敗:', e)
+      break  // 閘門本身壞了就不阻塞，避免永遠卡住
     }
-  } catch (e) {
-    console.error('品質閘門執行失敗:', e)
+
+    // 3b. AI 審核員（客戶視角評分）
+    let reviewerScore = 85
+    let reviewerIssues: string[] = []
+    try {
+      const review = await aiReviewReport(reportContent, planCode)
+      reviewerScore = review.score
+      reviewerIssues = review.issues
+    } catch (e) {
+      console.error('AI 審核失敗（不阻塞硬門檻）:', e)
+    }
+
+    // 3c. 合併結果：hardFailures 或 score < 75 都視為不通過
+    const hardFails = gateResult?.hardFailures || []
+    const softFails = gateResult?.softWarnings || []
+    const scoreFail = reviewerScore < HARD_MIN_SCORE
+
+    if (hardFails.length === 0 && !scoreFail) {
+      qualityPassed = true
+      console.log(`品質閘門通過（第 ${qualityRetryCount + 1} 次）: Reviewer ${reviewerScore} 分`)
+      if (softFails.length > 0) console.log(`軟警告（不影響通過）: ${softFails.join('; ')}`)
+      break
+    }
+
+    // 3d. 失敗：記錄原因，決定是否重試
+    lastQualityIssues = [
+      ...hardFails,
+      ...(scoreFail ? [`[硬門檻] Reviewer 分數 ${reviewerScore} < ${HARD_MIN_SCORE}`] : []),
+      ...(reviewerIssues.length > 0 ? [`Reviewer 問題: ${reviewerIssues.join('; ')}`] : []),
+    ]
+    console.warn(`品質閘門失敗（第 ${qualityRetryCount + 1} 次）: ${lastQualityIssues.join('; ')}`)
+
+    if (qualityRetryCount >= MAX_QUALITY_RETRIES) {
+      console.error(`品質閘門重試 ${MAX_QUALITY_RETRIES} 次仍失敗，標記報告 failed`)
+      break
+    }
+
+    // 3e. 重試：對 C 方案重跑整個 3-call 流程（只有 C 支援，其他方案品質閘門軟降級）
+    if (planCode !== 'C') {
+      console.warn(`非 C 方案不支援自動重試，${planCode} 只記錄警告`)
+      break
+    }
+
+    qualityRetryCount++
+    console.log(`重新生成 C 方案（第 ${qualityRetryCount}/${MAX_QUALITY_RETRIES} 次重試）...`)
+    try {
+      const clientQuestion = (birthData.question || birthData.customer_note || birthData.topic || undefined) as string | undefined
+      const r1 = await aiGenerateCall1(calcResult, birthData, clientQuestion, reportId)
+      const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
+      const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
+      const appendix = buildAppendix(calcResult.analyses)
+      const rawContent = [r1.content, r2.content, r3.content, appendix].join('\n\n')
+      reportContent = cleanFinalReport(rawContent, birthData.name)
+      aiModelUsed = r1.model
+      console.log(`C 方案重試第 ${qualityRetryCount} 次完成：${reportContent.length} 字`)
+    } catch (retryErr) {
+      console.error(`C 方案重試失敗:`, retryErr)
+      break
+    }
   }
 
-  // Step 3.5: AI 審核員（客戶視角品質審查）
-  try {
-    const review = await aiReviewReport(reportContent, planCode)
-    if (review.score < 70) {
-      console.warn(`AI 審核分數偏低: ${review.score}，問題: ${review.issues.join('; ')}`)
-    } else {
-      console.log(`AI 審核通過: ${review.score}分`)
-    }
-  } catch (e) {
-    console.error('AI 審核失敗（不阻塞）:', e)
+  // 3f. 品質閘門最終判定：重試仍失敗 → markReportFailed，不要騙客戶
+  if (!qualityPassed && planCode === 'C') {
+    await markReportFailed(
+      reportId,
+      `品質閘門連續 ${qualityRetryCount} 次失敗: ${lastQualityIssues.slice(0, 3).join('; ').slice(0, 400)}`,
+    )
+    await closeProgressStream()
+    return { success: false, error: '品質閘門失敗' }
   }
 
   // Step 3.6: E1/E2 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）

@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 
 // ============================================================
 // AI API 餘額監控 — 查詢 Claude / DeepSeek / Kimi 的帳戶餘額
-// GET /api/admin/ai-balance?key=ADMIN_KEY
+// GET /api/admin/ai-balance  (ADMIN_KEY via x-admin-key header)
 // ============================================================
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
-  if (key !== process.env.ADMIN_KEY) {
-    return NextResponse.json({ error: '未授權' }, { status: 401 })
-  }
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
 
   const results: Array<{
     name: string

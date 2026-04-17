@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-const ADMIN_KEY = process.env.ADMIN_KEY
+import { checkAdminAuth } from '@/lib/admin-auth'
+import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
+import { writeAuditLog } from '@/lib/admin-audit-log'
 
 function getSupabase() {
   return createClient(
@@ -10,14 +11,12 @@ function getSupabase() {
   )
 }
 
-function auth(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key')
-  return key === ADMIN_KEY
-}
-
 // GET — 取得所有促銷活動
 export async function GET(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: '無權限' }, { status: 403 })
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
 
   const { data, error } = await getSupabase()
     .from('promotions')
@@ -30,7 +29,10 @@ export async function GET(req: NextRequest) {
 
 // POST — 建立新促銷活動
 export async function POST(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: '無權限' }, { status: 403 })
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const authFail = checkAdminAuth(req)
+  if (authFail) return authFail
 
   const body = await req.json()
   const { name, discount_percent, start_at, end_at, applicable_plans } = body
@@ -62,15 +64,22 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await writeAuditLog(req, 'create_promotion', 'promotion', data?.id ? String(data.id) : null, {
+    name, discount_percent,
+  })
   return NextResponse.json({ promotion: data })
 }
 
 // PATCH — 更新/切換啟用/停用促銷活動
 export async function PATCH(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: '無權限' }, { status: 403 })
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
 
   const body = await req.json()
-  const { id, action, ...updates } = body
+  const { id, action, key: bodyKey, ...updates } = body
+
+  const authFail = checkAdminAuth(req, bodyKey)
+  if (authFail) return authFail
 
   if (!id) return NextResponse.json({ error: '缺少 id' }, { status: 400 })
 
@@ -85,11 +94,13 @@ export async function PATCH(req: NextRequest) {
       .single()
     if (!current) return NextResponse.json({ error: '找不到該促銷活動' }, { status: 404 })
 
+    const newActive = !current.is_active
     const { error } = await supabase
       .from('promotions')
-      .update({ is_active: !current.is_active })
+      .update({ is_active: newActive })
       .eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await writeAuditLog(req, 'update_promotion', 'promotion', String(id), { is_active: newActive })
     return NextResponse.json({ ok: true })
   }
 
@@ -97,6 +108,7 @@ export async function PATCH(req: NextRequest) {
   if (action === 'delete') {
     const { error } = await supabase.from('promotions').delete().eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await writeAuditLog(req, 'delete_promotion', 'promotion', String(id), null)
     return NextResponse.json({ ok: true })
   }
 
@@ -120,6 +132,7 @@ export async function PATCH(req: NextRequest) {
       .update(allowed)
       .eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await writeAuditLog(req, 'update_promotion', 'promotion', String(id), allowed)
     return NextResponse.json({ ok: true })
   }
 
