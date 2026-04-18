@@ -1625,6 +1625,19 @@ async function callClaudeOnly(
       systemPrompt, userPrompt, maxTokens, reportId, label,
     )
 
+    // v5.3.19：空內容保護（Bug 4 根因）
+    //   Claude streaming 偶爾回空字串（early disconnect / rate limit abort），
+    //   但 fetch 成功 → callClaudeOnly 不拋錯 → workflow 拿到 content='' 繼續往下
+    //   → Call 1 空內容 merge 進 rawContent → 品質閘門找不到「人生速覽」章節
+    //   → hardFail → retry 又空 → needs_human_review（3 份 C 方案 0 bytes 根因）
+    //   修：content 太短直接拋 RetryableError 觸發 workflow step 的 3 次 retry
+    if (!content || content.trim().length < 100) {
+      console.error(`${label}: Claude 返回空內容或過短（${content?.length ?? 0} 字），拋 RetryableError 觸發 step retry`)
+      throw new RetryableError(
+        `${label}: Claude 返回內容過短（${content?.length ?? 0} 字），視為失敗要求重試`,
+      )
+    }
+
     // 成功：寫一筆 success log（含 token 用量與 latency）
     try {
       await recordAIUsage({
@@ -2376,7 +2389,7 @@ export async function qualityGate(
     }
   }
 
-  // 2c-2. E2 月度出門訣必要章節檢查（每週 Top1，共 4 盤）
+  // 2c-2. E2 月度出門訣必要章節檢查（v5.3.19 簡化：移除每週坐盤補運/忌方忌日）
   if (planCode === 'E2') {
     const e2Required = [
       { pattern: /本月出行能量總覽|本月出行能量概覽/, name: '本月出行能量總覽' },
@@ -2384,8 +2397,6 @@ export async function qualityGate(
       { pattern: /第二週/, name: '第二週' },
       { pattern: /第三週/, name: '第三週' },
       { pattern: /第四週/, name: '第四週' },
-      { pattern: /坐盤補運|補運指南/, name: '坐盤補運指南' },
-      { pattern: /忌方|忌日/, name: '忌方忌日' },
       { pattern: /補運操作指南|操作指南/, name: '補運操作指南' },
       { pattern: /月度總結/, name: '月度總結' },
     ]
@@ -2409,7 +2420,11 @@ export async function qualityGate(
     }
   }
 
-  // 2c-3. E1/E2 出門訣：非奇門詞彙檢查（嚴重警告）
+  // 2c-3. E1/E2 出門訣：非奇門詞彙檢查
+  // v5.3.19：從 hardFail 降級為 soft warning（index.ts 已有 bannedTerms 自動 replace）
+  //   AI 偶爾違反 prompt 寫出「八字/紫微/生氣位」等跨系統詞彙
+  //   之前被 qualityGate 當 hardFail → retry → 第二次還是有同問題 → needs_human_review
+  //   現在 index.ts 的 bannedTerms regex 會自動把這些詞 replace 掉，這裡只做 soft 紀錄
   if (planCode === 'E1' || planCode === 'E2') {
     const nonQimenTerms = [
       '用神', '喜神', '日主', '八字', '風水', '八宅', '本命卦',
@@ -2424,7 +2439,8 @@ export async function qualityGate(
       }
     }
     if (foundTerms.length > 0) {
-      warnings.push(`出門訣含非奇門詞彙（${foundTerms.length} 種）: ${foundTerms.join('、')}`)
+      // [軟性] 前綴讓下游 criticalWarnings filter 把它排除 → 不觸發 retry
+      warnings.push(`[軟性] 出門訣含非奇門詞彙（${foundTerms.length} 種）: ${foundTerms.join('、')}（將自動替換）`)
     }
   }
 

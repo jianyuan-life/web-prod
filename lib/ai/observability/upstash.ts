@@ -43,16 +43,21 @@ async function callUpstash(
   const url = `${cfg.url}/${path}`
 
   try {
-    // v5.3.17：Vercel Workflow 沙箱沒 AbortController 全域，改 AbortSignal.timeout
-    const res = await fetch(url, {
-      method: opts.method || 'GET',
-      headers: {
-        Authorization: `Bearer ${cfg.token}`,
-        ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: opts.body,
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 3000),
-    })
+    // v5.3.19：Workflow 沙箱連 AbortSignal 都沒有，改 Promise.race
+    const TIMEOUT_MS = opts.timeoutMs ?? 3000
+    const res = await Promise.race<Response>([
+      fetch(url, {
+        method: opts.method || 'GET',
+        headers: {
+          Authorization: `Bearer ${cfg.token}`,
+          ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: opts.body,
+      }),
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error(`[upstash] timeout ${TIMEOUT_MS}ms`)), TIMEOUT_MS)
+      ),
+    ])
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
@@ -112,16 +117,21 @@ export async function setCache(
   if (!cfg) return false
 
   try {
-    // v5.3.17：Workflow 沙箱相容
-    const res = await fetch(`${cfg.url}/SET/${encodeURIComponent(key)}?EX=${Math.floor(ttlSeconds)}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${cfg.token}`,
-        'Content-Type': 'text/plain',
-      },
-      body: serialized,
-      signal: AbortSignal.timeout(3000),
-    })
+    // v5.3.19：Workflow 沙箱相容（Promise.race 取代 AbortSignal）
+    const TIMEOUT_MS = 3000
+    const res = await Promise.race<Response>([
+      fetch(`${cfg.url}/SET/${encodeURIComponent(key)}?EX=${Math.floor(ttlSeconds)}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${cfg.token}`,
+          'Content-Type': 'text/plain',
+        },
+        body: serialized,
+      }),
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error(`[upstash SET] timeout ${TIMEOUT_MS}ms`)), TIMEOUT_MS)
+      ),
+    ])
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')

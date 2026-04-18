@@ -153,16 +153,21 @@ async function sendEvent(payload: Record<string, unknown>): Promise<string | nul
     `sentry_key=${dsn.publicKey}`
 
   try {
-    // v5.3.17：Workflow 沙箱相容
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Sentry-Auth': authHeader,
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000),
-    })
+    // v5.3.19：Workflow 沙箱相容（Promise.race 取代 AbortSignal）
+    const TIMEOUT_MS = 5000
+    const res = await Promise.race<Response>([
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Sentry-Auth': authHeader,
+        },
+        body: JSON.stringify(payload),
+      }),
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error(`[sentry] timeout ${TIMEOUT_MS}ms`)), TIMEOUT_MS)
+      ),
+    ])
     if (!res.ok) {
       console.warn(`[sentry] Store API 回 ${res.status}`)
       return null

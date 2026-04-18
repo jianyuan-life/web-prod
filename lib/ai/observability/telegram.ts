@@ -53,20 +53,25 @@ async function sendTelegramMessage(text: string, opts: SendOptions = {}): Promis
   }
 
   try {
-    // v5.3.17：Vercel Workflow step 沙箱沒 AbortController 全域，改用 AbortSignal.timeout
-    //   原 new AbortController() → ReferenceError 導致告警全掛
-    const res = await fetch(`${TELEGRAM_API_BASE}/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text.slice(0, 4000),
-        parse_mode: opts.parseMode || 'HTML',
-        disable_notification: opts.disableNotification || false,
-        disable_web_page_preview: opts.disableWebPagePreview ?? true,
+    // v5.3.19：Vercel Workflow step 沙箱連 AbortSignal 都沒有（v5.3.17 用 AbortSignal.timeout 仍掛）
+    //   完全放棄 signal，改 Promise.race 實現 timeout（不依賴 Web Streams API）
+    const TIMEOUT_MS = 5000
+    const res = await Promise.race<Response>([
+      fetch(`${TELEGRAM_API_BASE}/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: text.slice(0, 4000),
+          parse_mode: opts.parseMode || 'HTML',
+          disable_notification: opts.disableNotification || false,
+          disable_web_page_preview: opts.disableWebPagePreview ?? true,
+        }),
       }),
-      signal: AbortSignal.timeout(5000),
-    })
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error(`[telegram] timeout ${TIMEOUT_MS}ms`)), TIMEOUT_MS)
+      ),
+    ])
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')

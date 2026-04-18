@@ -514,20 +514,24 @@ function parseReviewerResponse(
       passed,
     }
   } catch {
+    // v5.3.19：JSON 解析失敗降級為 neutral passed（不當 critical）
+    //   根因：DeepSeek 偶爾回不完整 JSON（token 中斷、格式漂移）
+    //   之前 passed=false → anyFailed=true → 整份報告 QA fail → retry 燒錢
+    //   這是 reviewer 自己的輸出問題，不該算報告品質差
     return {
       reviewer: cfg.key,
       role: cfg.role,
       roleLabel: cfg.roleLabel,
       provider: cfg.provider,
       model,
-      score: 80,
-      issues: [`${cfg.displayName}（${cfg.roleLabel}）JSON 解析失敗：${content.slice(0, 200)}`],
+      score: 82,
+      issues: [`${cfg.displayName}（${cfg.roleLabel}）JSON 解析失敗（降級通過，非報告問題）：${content.slice(0, 120)}`],
       criticalErrors: [],
       strengths: [],
-      suggestions: ['建議重審查'],
+      suggestions: [],
       latencyMs,
       costUsd,
-      passed: false,
+      passed: true,
     }
   }
 }

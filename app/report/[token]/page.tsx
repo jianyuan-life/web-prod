@@ -569,10 +569,29 @@ function renderSectionMarkdown(content: string): string {
 
 // Google Calendar URL 生成（純前端，不需要 API key）
 // v5.3.14：改用 plain_advantage/plain_purpose 白話版（fallback 規則表）
+// v5.3.19：修跨日吉時（如 23:00-01:00）結束日期沒 +1 天的 bug
 function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   const dateStr = timing.date.replace(/-/g, '')
   const startStr = `${dateStr}T${timing.time_start.replace(':', '')}00`
-  const endStr = `${dateStr}T${timing.time_end.replace(':', '')}00`
+
+  // 跨日判斷：若 time_end < time_start（例 23:00-01:00），end 日期 +1
+  const startMinutes = (() => {
+    const [h, m] = timing.time_start.split(':').map(n => parseInt(n, 10) || 0)
+    return h * 60 + m
+  })()
+  const endMinutes = (() => {
+    const [h, m] = timing.time_end.split(':').map(n => parseInt(n, 10) || 0)
+    return h * 60 + m
+  })()
+  let endDateForUrl = timing.date
+  if (endMinutes <= startMinutes) {
+    const [yStr, mStr, dStr] = timing.date.split('-')
+    const d = new Date(Date.UTC(Number(yStr), Number(mStr) - 1, Number(dStr)))
+    d.setUTCDate(d.getUTCDate() + 1)
+    endDateForUrl = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+  }
+  const endDateStr = endDateForUrl.replace(/-/g, '')
+  const endStr = `${endDateStr}T${timing.time_end.replace(':', '')}00`
   // 標題改用白話動詞（取 plain_purpose 第一項作 CTA，否則用 title）
   const firstPurpose = Array.isArray(timing.plain_purpose) && timing.plain_purpose.length > 0
     ? timing.plain_purpose[0]
