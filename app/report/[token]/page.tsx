@@ -338,21 +338,105 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   }
 }
 
+// v5.3.28：認可版 blockquote 格式 parser
+// 認可版 Claude 報告（Bryant/何宣逸/汝/林沅霖等）不用 ## 或 ###，
+// 而是用 `> **標題**：...` blockquote + `**粗體單行**` 作為主次分隔。
+// 此 parser 把自由流敘事切成 6-10 個自然章節，讓 起承轉合 UI 能工作。
+function extractAcclaimedTitle(fullTitle: string): string {
+  // 短標題（<=12 字）直接用
+  if (fullTitle.length <= 12) return fullTitle
+  // 長句型 starter：取前半句（第一個標點前），作為章節標題
+  const firstBreak = fullTitle.search(/[，、。——：:]/)
+  if (firstBreak > 2 && firstBreak <= 20) {
+    return fullTitle.slice(0, firstBreak).trim()
+  }
+  // 如果前半句還是太長，截到 15 字
+  return fullTitle.slice(0, 15).trim() + '…'
+}
+
+function parseAcclaimedFormat(markdown: string): ContentSection[] {
+  const lines = markdown.split('\n')
+  const headerRegex = /^>\s*\*\*([^*\n]{2,120})\*\*/  // `> **標題**...`
+  const anchors: { idx: number; title: string }[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(headerRegex)
+    if (!m) continue
+    anchors.push({ idx: i, title: m[1].trim() })
+  }
+
+  if (anchors.length < 4) return []
+
+  // 分組：連續的（<=8行內）anchor 合併成一個章節（例如開頭 3 個 preview blockquote）
+  const groups: { startIdx: number; endIdx: number; titles: string[] }[] = []
+  let i = 0
+  while (i < anchors.length) {
+    const group: { idx: number; title: string }[] = [anchors[i]]
+    let j = i + 1
+    while (j < anchors.length && anchors[j].idx - anchors[j - 1].idx <= 8) {
+      group.push(anchors[j])
+      j++
+    }
+    groups.push({
+      startIdx: group[0].idx,
+      endIdx: j < anchors.length ? anchors[j].idx : lines.length,
+      titles: group.map(a => a.title),
+    })
+    i = j
+  }
+
+  if (groups.length < 4) return []
+
+  const sections: ContentSection[] = []
+
+  // 第一組如果有 >=3 個 anchor 且位於前 30 行內 → 開篇速覽
+  const firstGroup = groups[0]
+  let firstIdx = 0
+  if (firstGroup.titles.length >= 3 && firstGroup.startIdx < 30) {
+    const headTitle = '命格速覽：三把鑰匙'
+    const headEnd = groups.length > 1 ? groups[1].startIdx : lines.length
+    const content = lines.slice(0, headEnd).join('\n').trim()
+    if (content) sections.push({ type: 'general', title: headTitle, content })
+    firstIdx = 1
+  } else if (firstGroup.startIdx > 3) {
+    // 第一個 anchor 前有序言內容
+    const preContent = lines.slice(0, firstGroup.startIdx).join('\n').trim()
+    if (preContent) sections.push({ type: 'general', title: '開篇', content: preContent })
+  }
+
+  for (let g = firstIdx; g < groups.length; g++) {
+    const grp = groups[g]
+    const rawTitle = grp.titles[0]
+    const title = extractAcclaimedTitle(rawTitle)
+    const content = lines.slice(grp.startIdx, grp.endIdx).join('\n').trim()
+    if (!content) continue
+    sections.push({ type: 'general', title, content })
+  }
+
+  return sections
+}
+
 function parseStructuredContent(markdown: string): ContentSection[] {
   const sections: ContentSection[] = []
 
-  // v5.3.27：支援三種格式
+  // v5.3.28：支援四種格式
   // 1. 新版主題式：## 一、命格名片  或  ## 二、你是什麼樣的人
   // 2. 舊版系統式：## 八字分析  或  ## 紫微斗數
-  // 3. 認可版 H3 主體：### 思維模式/行動模式/情感模式（Claude 認可版常用）
-  //    → 如果 ## 章節 < 4，自動降級用 ### 切分
+  // 3. 認可版 H3 主體：### 思維模式/行動模式/情感模式
+  // 4. 認可版 blockquote：> **你最大的天賦**：...（Bryant/何宣逸自由流格式）
   let parts = markdown.split(/^## /gm).filter(Boolean)
 
-  // v5.3.27：如果 ## 章節太少，改用 ### 切分（認可版 Claude 寫法）
+  // 如果 ## 章節太少，改用 ### 切分（認可版 Claude 寫法）
   if (parts.length < 4) {
     const h3Parts = markdown.split(/^### /gm).filter(Boolean)
     if (h3Parts.length >= 4) {
       parts = h3Parts
+    } else {
+      // v5.3.28：兩種 header 都不足，嘗試 blockquote 認可版格式
+      const acclaimed = parseAcclaimedFormat(markdown)
+      if (acclaimed.length >= 4) {
+        return acclaimed
+      }
     }
   }
 
