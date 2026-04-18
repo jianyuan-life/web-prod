@@ -297,6 +297,7 @@ export async function POST(req: NextRequest) {
         status: 'pending',
         access_token: accessToken,
         customer_email: customerEmail,
+        user_id: verifiedUserId || null, // v5.3.22：明確記錄下單用戶身份
       }).select('id').single()
 
       const reportId = reportData?.id || ''
@@ -457,7 +458,16 @@ export async function POST(req: NextRequest) {
     params.set('line_items[0][price_data][product_data][name]', `鑒源命理 - ${plan.name}`)
     params.set('line_items[0][price_data][unit_amount]', finalAmount.toString())
     params.set('line_items[0][quantity]', '1')
+    // v5.3.22 P0 隱私修復：Stripe session 強制設定登入用戶的 email
+    //   → webhook 接收時 session.customer_email 會有值，不用 fallback 到信用卡 email
+    //   → 避免「老公刷卡幫老婆買」→ 報告記到老公 email → 個資外洩給老公
+    if (customerEmail) {
+      params.set('customer_email', customerEmail)
+    }
     params.set('metadata[plan_code]', planCode)
+    // v5.3.22：審計軌跡 — 記錄登入用戶的 email 和 user_id 到 Stripe metadata
+    if (customerEmail) params.set('metadata[login_email]', customerEmail)
+    if (verifiedUserId) params.set('metadata[login_user_id]', verifiedUserId)
     if (verifiedCouponCode) params.set('metadata[coupon_code]', verifiedCouponCode)
     if (promoName) params.set('metadata[promotion]', promoName)
     if (verifiedPointsToUse > 0) {

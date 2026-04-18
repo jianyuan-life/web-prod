@@ -104,13 +104,20 @@ export async function recordAIUsage(usage: AIUsage): Promise<void> {
     // 正規化 provider（把 alibaba/google/claude 等別名統一）
     const providerTag: ProviderTag = canonicalProvider(usage.provider)
 
+    // v5.3.22：reportId UUID 檢查
+    //   根因：ai_cost_log.report_id 是 UUID 欄位，但 workflow 偶爾傳非 UUID（workflow instance id 等）
+    //   → PostgreSQL 拒絕（error 42804）→ 累計失敗 → 全部 AI call 不記錄（今天 Telegram 一直告警）
+    //   修：非標準 UUID 格式一律傳 null，保住記帳主流程
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const safeReportId = (usage.reportId && UUID_REGEX.test(usage.reportId)) ? usage.reportId : null
+
     // v5.3.10：用 .select() 強制取回結果，這樣 Supabase insert 的真實錯誤才會浮出來
     //   以前 await supabase.from().insert() 吞掉 error（因為 postgrest-js 回 { error } 而不 throw），
     //   導致寫入失敗 recordAIUsage 外層 try/catch 看不到 → 06:01 後全部靜默失敗。
     const { error: insertError, data: insertedRow } = await supabase
       .from('ai_cost_log')
       .insert({
-        report_id: usage.reportId || null,
+        report_id: safeReportId,
         plan_code: usage.planCode || null,
         provider: providerTag,
         model: usage.model,

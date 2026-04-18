@@ -48,13 +48,18 @@ export async function POST(req: NextRequest) {
     const birthDataStr = session.metadata?.birth_data // 向後兼容舊格式
     const sessionLocale = session.metadata?.locale || 'zh-TW'
     const amount = (session.amount_total || 0) / 100
-    // v5.3.22：修「老公刷卡幫老婆買」bug
-    //   舊：customer_details.email（Stripe 從信用卡自動抓的付款人 email）優先
-    //   → 老闆情境：cbe566 登入、backup901012 的信用卡 → 報告記到 backup901012
-    //   → 老婆登入但用老公的卡付款 → 報告記到老公 email 老婆看不到
-    //   新：session.customer_email（checkout API 建立時設定的登入用戶 email）優先
-    //   → 登入用戶永遠在自己的 Dashboard 看得到
-    const customerEmail = (session.customer_email || session.customer_details?.email || '').toLowerCase()
+    // v5.3.22 P0 隱私修復：優先用 metadata.login_email（checkout API 寫入的登入用戶 email）
+    //   session.customer_email 也可用（checkout API 也設了，雙保險）
+    //   customer_details.email 只做最後 fallback（訪客沒登入且沒輸入 email 的邊角案例）
+    // 情境：老公刷卡幫老婆買 → 老婆登入 email 優先 → 報告記到老婆
+    const loginEmailFromMetadata = (session.metadata?.login_email || '').toLowerCase()
+    const customerEmail = (
+      loginEmailFromMetadata ||
+      session.customer_email ||
+      session.customer_details?.email ||
+      ''
+    ).toLowerCase()
+    const loginUserId = session.metadata?.login_user_id || null
 
     console.info(`✅ 付款成功！方案${planCode}, $${amount}`)
 
@@ -116,6 +121,7 @@ export async function POST(req: NextRequest) {
         stripe_session_id: session.id,
         birth_data: birthData,
         customer_email: customerEmail,
+        user_id: loginUserId, // v5.3.22：明確記錄下單用戶身份（不依賴 email）
         status: 'pending',
       }).select('id, access_token').single()
 
