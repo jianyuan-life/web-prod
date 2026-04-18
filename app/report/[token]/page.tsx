@@ -12,6 +12,11 @@ import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/R
 import ScrollSpy from '@/components/ScrollSpy'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
+import {
+  generatePlainAdvantage,
+  generatePlainPurpose,
+  buildCalendarDescription,
+} from '@/lib/qimen-plain-text'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -31,6 +36,9 @@ interface Top5Timing {
   shensha_warning?: string // v3.0 神煞警告
   zhishi_info?: string     // v3.0 值使門資訊
   boost_explanation?: string // 為什麼這個時間能加乘
+  // v5.3.14：AI 生成的白話優勢與適合事項（給一般客戶看）
+  plain_advantage?: string      // 盤的優勢（40-80 字白話）
+  plain_purpose?: string[]      // 最適合做什麼（3-4 個動詞行動）
 }
 
 interface ReportData {
@@ -553,21 +561,25 @@ function renderSectionMarkdown(content: string): string {
 }
 
 // Google Calendar URL 生成（純前端，不需要 API key）
+// v5.3.14：改用 plain_advantage/plain_purpose 白話版（fallback 規則表）
 function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   const dateStr = timing.date.replace(/-/g, '')
   const startStr = `${dateStr}T${timing.time_start.replace(':', '')}00`
   const endStr = `${dateStr}T${timing.time_end.replace(':', '')}00`
-  const title = encodeURIComponent(`鑒源出門訣 - ${clientName} ${timing.title}`)
-  // 清洗 reason 中的技術細節
-  const cleanReason = (timing.reason || '')
-    .replace(/[（(]基礎\d+[\s\S]*?[）)]/g, '')
-    .replace(/[（(][+-]?\d+\.?\d*[）)]/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-  const angleStr = timing.angle ? ` ${timing.angle}` : ''
-  const details = encodeURIComponent(
-    `方位：${timing.direction}${angleStr}\n從住家朝${timing.direction}方向走約500公尺，找定點靜坐40分鐘。\n\n為什麼選這個時間：\n${timing.title}\n${cleanReason}\n\n鑒源命理平台 jianyuan.life`
-  )
+  // 標題改用白話動詞（取 plain_purpose 第一項作 CTA，否則用 title）
+  const firstPurpose = Array.isArray(timing.plain_purpose) && timing.plain_purpose.length > 0
+    ? timing.plain_purpose[0]
+    : timing.title
+  const title = encodeURIComponent(`鑒源吉時｜${firstPurpose}`)
+  const description = buildCalendarDescription({
+    plainAdvantage: timing.plain_advantage,
+    plainPurpose: timing.plain_purpose,
+    title: timing.title,
+    direction: timing.direction,
+    angle: timing.angle,
+    clientName,
+  })
+  const details = encodeURIComponent(description)
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&ctz=Asia/Taipei`
 }
 
@@ -1840,19 +1852,55 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     </div>
                   )}
 
-                  {/* 命理依據 / 加乘理由 */}
-                  <div className="mb-4 px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--color-gold)' }}>
-                    <div className="text-text-muted/50 text-xs mb-1">{report.plan_code === 'E1' ? '為什麼這個時間能加乘' : '命理依據'}</div>
-                    <p className="text-text-muted text-sm leading-7">{
-                      // 清理引擎技術性評分細節，只保留客戶看得懂的部分
-                      String(timing.reason || '')
-                        .replace(/[（(]基礎\d+[×x][\s\S]*?[）)]/g, '')  // 移除 (基礎30×因0.5=15)
-                        .replace(/[（(][+-]\d+[）)]/g, '')              // 移除 (+12) (-15)
-                        .replace(/；\s*；/g, '；')                       // 清理連續分號
-                        .replace(/\s{2,}/g, ' ')                         // 清理多餘空白
-                        .trim()
-                    }</p>
-                  </div>
+                  {/* v5.3.14：盤的優勢（白話版，給一般客戶看）*/}
+                  {(() => {
+                    const advantage = timing.plain_advantage
+                      || generatePlainAdvantage(timing.title, timing.direction)
+                    return (
+                      <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', borderLeft: '3px solid #22c55e' }}>
+                        <div className="text-emerald-400/80 text-xs mb-1.5 font-medium">✨ 這時段的優勢</div>
+                        <p className="text-text-muted text-sm leading-7">{advantage}</p>
+                      </div>
+                    )
+                  })()}
+
+                  {/* v5.3.14：最適合做什麼（白話動作清單）*/}
+                  {(() => {
+                    const purposes = Array.isArray(timing.plain_purpose) && timing.plain_purpose.length > 0
+                      ? timing.plain_purpose
+                      : generatePlainPurpose(timing.title)
+                    return (
+                      <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(197,150,58,0.06)', borderLeft: '3px solid var(--color-gold)' }}>
+                        <div className="text-gold/80 text-xs mb-1.5 font-medium">🎯 最適合做的事</div>
+                        <ul className="text-text-muted text-sm leading-7 space-y-1">
+                          {purposes.map((p: string, idx: number) => (
+                            <li key={idx} className="flex gap-2">
+                              <span className="text-gold/60 flex-shrink-0">•</span>
+                              <span>{p}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })()}
+
+                  {/* 命理依據（摺疊，給專業人士驗證盤）*/}
+                  <details className="mb-4 group">
+                    <summary className="cursor-pointer text-xs text-text-muted/50 hover:text-text-muted select-none transition-colors flex items-center gap-1">
+                      <span className="group-open:rotate-90 transition-transform">▸</span>
+                      {report.plan_code === 'E1' ? '進階：為什麼這個時間能加乘（命理依據）' : '進階：命理依據（給專業人士驗盤）'}
+                    </summary>
+                    <div className="mt-2 px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid rgba(197,150,58,0.3)' }}>
+                      <p className="text-text-muted/80 text-sm leading-7">{
+                        String(timing.reason || '')
+                          .replace(/[（(]基礎\d+[×x][\s\S]*?[）)]/g, '')
+                          .replace(/[（(][+-]\d+[）)]/g, '')
+                          .replace(/；\s*；/g, '；')
+                          .replace(/\s{2,}/g, ' ')
+                          .trim()
+                      }</p>
+                    </div>
+                  </details>
 
                   {/* Google Calendar 按鈕 */}
                   <a
