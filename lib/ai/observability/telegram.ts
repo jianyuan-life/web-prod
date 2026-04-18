@@ -337,3 +337,97 @@ export async function notifyWorkflowFailed(
     `<i>Workflow 異常退出，系統會自動重試最多 3 次</i>`
   return sendTelegramMessage(msg)
 }
+
+// ============================================================
+// Post-Gen 5 LLM QA Pipeline 告警（2026-04-18）
+// ============================================================
+
+export type FiveLLMScores = {
+  gpt?: number
+  qwen?: number
+  gemini?: number
+  kimi?: number
+  deepseek?: number
+}
+
+/**
+ * 5 LLM QA 黃色警告（avg < 93 但 >= 85）：報告交付但品質拉警報
+ */
+export async function notifyFiveLLMWarning(
+  reportId: string,
+  planCode: string,
+  avg: number,
+  min: number,
+  scores: FiveLLMScores,
+  issues: string[] = [],
+): Promise<boolean> {
+  const scoreLine = Object.entries(scores)
+    .map(([k, v]) => `  ${k.toUpperCase()}: ${v ?? '-'}`)
+    .join('\n')
+  const issuesText = issues.length > 0
+    ? `\n<b>主要問題：</b>\n` + issues.slice(0, 5).map(i => `  • ${esc(i).slice(0, 120)}`).join('\n')
+    : ''
+  const msg =
+    `🟡 <b>5 LLM QA 黃色警告</b>\n\n` +
+    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>方案：</b>${esc(planCode)}\n` +
+    `<b>平均分：</b>${avg}（門檻 93）\n` +
+    `<b>最低分：</b>${min}（門檻 95）\n\n` +
+    `<b>各 Reviewer 分數：</b>\n${scoreLine}` +
+    issuesText +
+    `\n\n<i>報告已交付但品質拉警報，請到 /jamie/quality-reports 檢視</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * 5 LLM QA 紅色警報（avg < 85）：嚴重品質問題
+ */
+export async function notifyFiveLLMCritical(
+  reportId: string,
+  planCode: string,
+  avg: number,
+  min: number,
+  scores: FiveLLMScores,
+  criticalErrors: string[] = [],
+): Promise<boolean> {
+  const scoreLine = Object.entries(scores)
+    .map(([k, v]) => `  ${k.toUpperCase()}: ${v ?? '-'}`)
+    .join('\n')
+  const critText = criticalErrors.length > 0
+    ? `\n<b>致命錯誤：</b>\n` + criticalErrors.slice(0, 5).map(i => `  ⚠ ${esc(i).slice(0, 150)}`).join('\n')
+    : ''
+  const msg =
+    `🔴 <b>5 LLM QA 紅色警報</b>\n\n` +
+    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>方案：</b>${esc(planCode)}\n` +
+    `<b>平均分：</b>${avg}（紅色門檻 85）\n` +
+    `<b>最低分：</b>${min}\n\n` +
+    `<b>各 Reviewer 分數：</b>\n${scoreLine}` +
+    critText +
+    `\n\n<i>立刻到 /jamie/quality-reports 檢視，不要交付給客戶</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * 5 LLM QA 連續失敗：已標為 needs_human_review
+ */
+export async function notifyNeedsHumanReview(
+  reportId: string,
+  planCode: string,
+  attempts: number,
+  lastAvg: number,
+  criticalErrors: string[] = [],
+): Promise<boolean> {
+  const critText = criticalErrors.length > 0
+    ? `\n<b>致命錯誤：</b>\n` + criticalErrors.slice(0, 5).map(i => `  ⚠ ${esc(i).slice(0, 150)}`).join('\n')
+    : ''
+  const msg =
+    `🚨 <b>報告需人工介入</b>\n\n` +
+    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>方案：</b>${esc(planCode)}\n` +
+    `<b>已重試次數：</b>${attempts}\n` +
+    `<b>最後平均分：</b>${lastAvg}` +
+    critText +
+    `\n\n<i>status 已改 needs_human_review，請到 /jamie/quality-reports 審理</i>`
+  return sendTelegramMessage(msg)
+}

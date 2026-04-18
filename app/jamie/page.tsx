@@ -7,7 +7,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 
 const PLAN_NAMES: Record<string, string> = {
   C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
-  E1:'事件出門訣', E2:'月盤出門訣',
+  E1:'事件出門訣', E2:'月度出門訣',
 }
 
 const PIE_COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899']

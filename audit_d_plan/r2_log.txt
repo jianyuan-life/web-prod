@@ -1,0 +1,50 @@
+載入 3 份 D 方案歷史報告
+
+============================================================
+評核 f6c38b65 施俊光 — r2
+============================================================
+  → gpt-4o ... score=65 (4.4s)
+  → kimi-128k ... score=90 (7.2s)
+  → deepseek ... score=35 (26.6s)
+  → qwen-max ... score=70 (6.1s)
+  → gemini-2.5 ... ERROR: HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your curr
+  → 存檔 f6c38b65_r2.json
+
+============================================================
+評核 69c40749 何芊郳（6歲女孩） — r2
+============================================================
+  → gpt-4o ... score=45 (3.6s)
+  → kimi-128k ... score=85 (5.7s)
+  → deepseek ... score=45 (37.5s)
+  → qwen-max ... score=70 (8.2s)
+  → gemini-2.5 ... ERROR: HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your curr
+  → 存檔 69c40749_r2.json
+
+============================================================
+評核 c57048dd 何宣逸 — r2
+============================================================
+  → gpt-4o ... score=80 (2.5s)
+  → kimi-128k ... score=90 (12.6s)
+  → deepseek ... score=65 (18.9s)
+  → qwen-max ... score=85 (5.2s)
+  → gemini-2.5 ... ERROR: HTTP 429: {
+  "error": {
+    "code": 429,
+    "message": "You exceeded your curr
+  → 存檔 c57048dd_r2.json
+
+============================================================
+總結 — r2
+============================================================
+  f6c38b65: min=35 max=90 avg=65.0 | gpt-4o=65 kimi-128k=90 deepseek=35 qwen-max=70 gemini-2.5=ERR
+  69c40749: min=45 max=85 avg=61.2 | gpt-4o=45 kimi-128k=85 deepseek=45 qwen-max=70 gemini-2.5=ERR
+  c57048dd: min=65 max=90 avg=80.0 | gpt-4o=80 kimi-128k=90 deepseek=65 qwen-max=85 gemini-2.5=ERR
+
+最低分: 35 | 通過門檻：95
+❌ 未過 — 需要改 prompt/UI/PDF 後重跑

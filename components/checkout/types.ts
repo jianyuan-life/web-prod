@@ -36,7 +36,7 @@ export const PLANS: Record<string, { name: string; price: number; systems: numbe
   G15: { name: '家族藍圖', price: 59, systems: 15 },
   R: { name: '合否？', price: 59, systems: 0 },
   E1: { name: '事件出門訣', price: 89, systems: 1 },
-  E2: { name: '月盤出門訣', price: 99, systems: 1 },
+  E2: { name: '月度出門訣', price: 99, systems: 1 },
 }
 
 

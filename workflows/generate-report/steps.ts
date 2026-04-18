@@ -2136,7 +2136,7 @@ export async function generatePDF(
 
   const planNames: Record<string, string> = {
     C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-    R: '合否？', E1: '事件出門訣', E2: '月盤出門訣', Y: '年度運勢',
+    R: '合否？', E1: '事件出門訣', E2: '月度出門訣', Y: '年度運勢',
   }
   const planName = planNames[planCode] || '命理分析報告'
 
@@ -2325,7 +2325,7 @@ export async function qualityGate(
     }
   }
 
-  // 2c-2. E2 月盤出門訣必要章節檢查（每週 Top1，共 4 盤）
+  // 2c-2. E2 月度出門訣必要章節檢查（每週 Top1，共 4 盤）
   if (planCode === 'E2') {
     const e2Required = [
       { pattern: /本月出行能量總覽|本月出行能量概覽/, name: '本月出行能量總覽' },
@@ -2340,7 +2340,7 @@ export async function qualityGate(
     ]
     for (const sec of e2Required) {
       if (!sec.pattern.test(reportContent)) {
-        warnings.push(`月盤出門訣缺少必要章節: ${sec.name}`)
+        warnings.push(`月度出門訣缺少必要章節: ${sec.name}`)
       }
     }
     // E2 應有四個 Top1 JSON 區塊（每週一個），相容舊版 TOP5 標記
@@ -2348,13 +2348,13 @@ export async function qualityGate(
     const top5Matches = reportContent.match(/===TOP5_JSON_START===/g)
     const totalJsonBlocks = (top1Matches?.length || 0) + (top5Matches?.length || 0)
     if (totalJsonBlocks === 0) {
-      warnings.push('月盤出門訣缺少吉時 JSON 區塊')
+      warnings.push('月度出門訣缺少吉時 JSON 區塊')
     } else if (totalJsonBlocks < 4) {
-      warnings.push(`月盤出門訣 JSON 區塊不足: 找到 ${totalJsonBlocks} 個（期望 4 個，每週一個）`)
+      warnings.push(`月度出門訣 JSON 區塊不足: 找到 ${totalJsonBlocks} 個（期望 4 個，每週一個）`)
     }
     // 內容長度檢查（四週格式預期更長）
     if (reportContent.length < 5000) {
-      warnings.push(`月盤出門訣內容偏短: ${reportContent.length} 字（期望 > 5,000 字）`)
+      warnings.push(`月度出門訣內容偏短: ${reportContent.length} 字（期望 > 5,000 字）`)
     }
   }
 
@@ -2598,6 +2598,24 @@ export async function qualityGate(
   // hardFailures = 致命結構問題（必觸發 retry），softWarnings = 文字瑕疵（只 log）
   const hardFailures: string[] = [...criticalWarnings]
   const softWarnings: string[] = warnings.filter(w => w.startsWith('[軟性]') || w.startsWith('含有禁止字眼'))
+
+  // R 方案硬門檻：禁忌關係詞（不存在的地支/天干關係）
+  if (planCode === 'R') {
+    const forbiddenRelations: [RegExp, string][] = [
+      [/子戌相刑|戌子相刑/g, '子戌相刑（不存在，地支三刑為寅巳申/丑戌未/子卯/自刑）'],
+      [/丙庚相沖|庚丙相沖/g, '丙庚相沖（不存在，只有甲庚/乙辛/壬丙/癸丁四沖）'],
+      [/狗鼠相害|鼠狗相害/g, '狗鼠相害（不存在，地支六害為子未/丑午/寅巳/卯辰/申亥/酉戌）'],
+      [/狗兔相沖/g, '狗兔相沖（不存在，卯戌為六合）'],
+      [/馬雞相沖|午酉相沖/g, '馬雞相沖（不存在，中性關係）'],
+    ]
+    for (const [pat, note] of forbiddenRelations) {
+      if (pat.test(reportContent)) {
+        hardFailures.push(`[R方案硬門檻] 發現不存在的命理關係：${note}`)
+      }
+    }
+    // 生肖自相矛盾檢查：同一成員被說成不同生肖
+    // 這個在多人場景複雜，僅做粗略檢查
+  }
 
   // C 方案硬門檻（L3 Audit 建議）：字數 >= 8,000 + 每章 >= 300
   if (planCode === 'C') {
@@ -2878,7 +2896,7 @@ export async function sendReportEmail(
 
   const planNames: Record<string, string> = {
     C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-    R: '合否？', E1: '事件出門訣', E2: '月盤出門訣', Y: '年度運勢',
+    R: '合否？', E1: '事件出門訣', E2: '月度出門訣', Y: '年度運勢',
   }
   const planName = planNames[planCode] || '命理分析報告'
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
@@ -3060,7 +3078,7 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       const planCode = (reportData?.plan_code as string | undefined) || ''
       const planNamesLocal: Record<string, string> = {
         C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-        R: '合否？', E1: '事件出門訣', E2: '月盤出門訣', Y: '年度運勢',
+        R: '合否？', E1: '事件出門訣', E2: '月度出門訣', Y: '年度運勢',
       }
       const planName = planNamesLocal[planCode] || '命理報告'
 

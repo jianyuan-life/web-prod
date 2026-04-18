@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
+import { recordRevenue } from '@/lib/accounting'
 
 function getStripe() {
   // @ts-expect-error - Stripe SDK version mismatch
@@ -117,6 +118,31 @@ export async function POST(req: NextRequest) {
       reportId = insertData?.id || ''
       accessToken = insertData?.access_token || ''
       console.info('✅ 報告記錄已建立:', reportId)
+
+      // 寫入會計系統 revenue_log（自動計算 Stripe 手續費）
+      try {
+        const originalAmount = (session.amount_subtotal || session.amount_total || 0) / 100
+        const finalAmount = amount
+        const couponDiscount = Math.max(0, originalAmount - finalAmount)
+        const pointsDiscount = Number(session.metadata?.points_discount_usd || 0)
+        await recordRevenue({
+          reportId,
+          planCode,
+          amountUsd: finalAmount,
+          stripeSessionId: session.id,
+          pointsDiscountUsd: pointsDiscount,
+          couponDiscountUsd: couponDiscount,
+          customerEmail,
+          currency: (session.currency || 'usd').toLowerCase(),
+          metadata: {
+            payment_intent: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+            coupon_code: session.metadata?.coupon_code || null,
+            locale: sessionLocale,
+          },
+        })
+      } catch (revErr) {
+        console.error('⚠️ revenue_log 寫入失敗（不影響報告生成）:', revErr)
+      }
     } catch (err) {
       console.error('❌ Supabase 連線異常（嚴重）:', err)
       return NextResponse.json({ error: 'Supabase connection error' }, { status: 500 })
@@ -173,7 +199,7 @@ export async function POST(req: NextRequest) {
         }).eq('id', reportId)
 
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' }
+        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' }
 
         // 付款後立即發訂單確認信（讓客戶知道我們收到了）
         try {
@@ -369,7 +395,7 @@ export async function POST(req: NextRequest) {
                 type: 'use_checkout',
                 amount: -pointsUsed,
                 balance_after: newBalance,
-                description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
+                description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
                 reference_id: session.id,
               })
               console.info(`✅ 點數扣除（fallback）：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)
@@ -383,7 +409,7 @@ export async function POST(req: NextRequest) {
             type: 'use_checkout',
             amount: -pointsUsed,
             balance_after: newBalance,
-            description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
+            description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
             reference_id: session.id,
           })
           console.info(`✅ 點數扣除（RPC）：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)

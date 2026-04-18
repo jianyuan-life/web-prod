@@ -19,7 +19,7 @@ export const maxDuration = 60
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-  R: '合否？', E1: '事件出門訣', E2: '月盤出門訣',
+  R: '合否？', E1: '事件出門訣', E2: '月度出門訣',
 }
 
 // 從報告內容提取 3 個重點發現

@@ -10,7 +10,7 @@ sys.path.insert(0, r'D:/Users/Desktop/Claude專案/Claude-鑑源/llm_collab')
 from multi_llm import ask_gpt, ask_kimi, ask_deepseek, ask_qwen, ask_gemini
 
 REPORTS = {
-    '何紀萳_E2_4週全對': """# 🌙 月盤出門訣 ── 何紀萳的四月出行能量地圖
+    '何紀萳_E2_4週全對': """# 🌙 月度出門訣 ── 何紀萳的四月出行能量地圖
 
 **報告期間：2026年4月13日 ～ 5月10日**
 紀萳你好，這份報告是你接下來四週的出行節拍器...

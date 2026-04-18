@@ -34,8 +34,12 @@ def load_reports():
     full_dir = REPORTS_DIR / 'full_reports'
     full_dir.mkdir(exist_ok=True)
     reports = []
+    # 環境變數 SUFFIX 可指定讀 _v2 版本
+    suffix = os.environ.get('REPORT_SUFFIX', '')
     for r in meta['reports']:
-        f = full_dir / f"{r['id']}.md"
+        f = full_dir / f"{r['id']}{suffix}.md"
+        if not f.exists():
+            f = full_dir / f"{r['id']}.md"
         if f.exists():
             r['ai_content'] = f.read_text(encoding='utf-8')
         reports.append(r)

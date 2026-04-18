@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
     ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 1000) / 10
     : null
 
-  // ==== E2 續訂率（月盤出門訣 — 以 email 為單位計算 M2/M3/M6/M12） ====
+  // ==== E2 續訂率（月度出門訣 — 以 email 為單位計算 M2/M3/M6/M12） ====
   // 邏輯：抓出所有 E2 訂單，按 email group，計算同一 email 跨月購買次數
   const { data: allE2 } = await supabase
     .from('paid_reports')

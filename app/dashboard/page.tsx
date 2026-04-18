@@ -14,7 +14,7 @@ import UpdateBirthLocation from '@/components/UpdateBirthLocation'
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
   G15: '家族藍圖', R: '合否？',
-  E1: '事件出門訣', E2: '月盤出門訣',
+  E1: '事件出門訣', E2: '月度出門訣',
 }
 
 type Report = {

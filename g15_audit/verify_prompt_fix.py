@@ -68,22 +68,25 @@ Q3_REASON: <簡短理由>
 
 def main():
     body = {
-        'model': 'deepseek-reasoner',
+        'model': 'deepseek-chat',
         'messages': [
-            {'role': 'system', 'content': '你是最嚴苛的邏輯推演專家 DeepSeek-R1，本次任務是驗證一份 Prompt 修正能否解決你之前的扣分批評。不客氣、不鼓勵、純邏輯判斷。'},
+            {'role': 'system', 'content': '你是最嚴苛的邏輯推演專家，代入 DeepSeek-R1 的視角。本次任務是驗證一份 Prompt 修正能否解決你之前的扣分批評。不客氣、不鼓勵、純邏輯判斷。'},
             {'role': 'user', 'content': USER_PROMPT},
         ],
         'max_tokens': 3000,
+        'stream': False,
     }
     req = urllib.request.Request(
         'https://api.deepseek.com/v1/chat/completions',
         data=json.dumps(body).encode('utf-8'),
         headers={'Content-Type': 'application/json',
-                 'Authorization': f'Bearer {DEEPSEEK_KEY}'},
+                 'Authorization': f'Bearer {DEEPSEEK_KEY}',
+                 'Accept-Encoding': 'identity'},
         method='POST',
     )
     with urllib.request.urlopen(req, timeout=300) as resp:
-        r = json.loads(resp.read().decode('utf-8'))
+        data = resp.read()
+    r = json.loads(data.decode('utf-8'))
     content = r['choices'][0]['message']['content']
     out = Path(__file__).parent / 'prompt_fix_verification.txt'
     out.write_text(content, encoding='utf-8')

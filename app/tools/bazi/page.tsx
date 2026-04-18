@@ -1328,7 +1328,7 @@ export default function FreeToolPage() {
                         事件出門訣 $89
                       </a>
                       <a href="/checkout?plan=E2" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        月盤出門訣 $99
+                        月度出門訣 $99
                       </a>
                     </div>
                   </div>

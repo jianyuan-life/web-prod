@@ -1000,7 +1000,7 @@ export default function QimenToolPage() {
                     </Link>
                     <Link href="/checkout?plan=E2"
                       className="px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10">
-                      月盤出門訣 $99
+                      月度出門訣 $99
                     </Link>
                   </div>
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">

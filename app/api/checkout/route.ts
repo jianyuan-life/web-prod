@@ -17,7 +17,7 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
   G15: { amount: 5900, name: '家族藍圖' },
   R: { amount: 5900, name: '合否？' },
   E1: { amount: 8900, name: '事件出門訣' },
-  E2: { amount: 9900, name: '月盤出門訣' },
+  E2: { amount: 9900, name: '月度出門訣' },
   // 加人附加費（G15 已改為固定 $59，不再加人加價）
   'R-ADD': { amount: 1900, name: '合否？加1人' },
 }
@@ -333,7 +333,7 @@ export async function POST(req: NextRequest) {
             .gte('balance', verifiedPointsToUse)
 
           if (!updateErr) {
-            const PLAN_NAMES_PTS: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' }
+            const PLAN_NAMES_PTS: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' }
             await supabase.from('point_transactions').insert({
               user_id: pointsUserId,
               type: 'use_checkout',
@@ -350,7 +350,7 @@ export async function POST(req: NextRequest) {
       // 免費方案也發訂單確認信
       if (customerEmail) {
         try {
-          const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月盤出門訣' }
+          const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' }
           const resend = new Resend(process.env.RESEND_API_KEY || '')
           const planName = PLAN_NAMES[planCode] || planCode
           await resend.emails.send({

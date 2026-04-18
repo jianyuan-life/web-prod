@@ -17,6 +17,7 @@ import Stripe from 'stripe'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 import { writeAuditLog } from '@/lib/admin-audit-log'
+import { recordExpense } from '@/lib/accounting'
 
 function getSupabase() {
   return createClient(
@@ -194,7 +195,24 @@ export async function POST(req: NextRequest) {
     console.error('[refund] 扣回推薦積分失敗:', err)
   }
 
-  // 6. 稽核紀錄
+  // 6. 寫入會計支出（會計系統）
+  await recordExpense({
+    category: 'refund',
+    subcategory: 'stripe_refund',
+    reportId: report?.id || null,
+    amountUsd: refundedAmountUsd,
+    description: `退款 ${reason || 'admin_manual'}（${report?.customer_email || paymentIntentId}）`,
+    source: 'refund_api',
+    createdBy: 'admin',
+    metadata: {
+      stripe_refund_id: refundResult.id,
+      stripe_payment_intent_id: paymentIntentId,
+      customer_email: report?.customer_email || null,
+      reason: reason || null,
+    },
+  })
+
+  // 7. 稽核紀錄
   await writeAuditLog(req, 'refund', 'order', report?.id || paymentIntentId, {
     stripe_refund_id: refundResult.id,
     stripe_payment_intent_id: paymentIntentId,

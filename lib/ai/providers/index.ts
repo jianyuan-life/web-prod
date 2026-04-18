@@ -13,6 +13,7 @@ import { openaiProvider } from './openai'
 import { geminiProvider } from './gemini'
 import { qwenProvider } from './qwen'
 import { deepseekProvider } from './deepseek'
+import { moonshotProvider } from './moonshot'
 
 // 自動註冊（模組載入時執行一次）
 registerProvider(claudeProvider)
@@ -20,6 +21,7 @@ registerProvider(openaiProvider)
 registerProvider(geminiProvider)
 registerProvider(qwenProvider)
 registerProvider(deepseekProvider)
+registerProvider(moonshotProvider)
 
 export {
   claudeProvider,
@@ -27,6 +29,7 @@ export {
   geminiProvider,
   qwenProvider,
   deepseekProvider,
+  moonshotProvider,
 }
 
 export const allProviders = [
@@ -35,4 +38,5 @@ export const allProviders = [
   geminiProvider,
   qwenProvider,
   deepseekProvider,
+  moonshotProvider,
 ]

@@ -77,7 +77,7 @@ interface ReportData {
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
   G15: '家族藍圖', R: '合否？',
-  E1: '事件出門訣', E2: '月盤出門訣',
+  E1: '事件出門訣', E2: '月度出門訣',
 }
 
 // 將 AI markdown 內容解析為結構化區塊
@@ -2056,7 +2056,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     了解出門訣方案
                   </a>
                   <span className="text-xs text-text-muted/60 mt-2 sm:mt-0 sm:self-center">
-                    事件出門訣 $89 / 月盤出門訣 $99
+                    事件出門訣 $89 / 月度出門訣 $99
                   </span>
                 </div>
               </div>
@@ -2064,22 +2064,41 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 底部 PDF 按鈕（出門訣不顯示 PDF，分享已在頂部）──── */}
-        {report.pdf_url && !isChumenji && (
+        {/* ──── 底部 PDF 按鈕（所有方案包含 E1/E2 都提供下載）──── */}
+        {report.pdf_url && (
           <div className="flex justify-center my-10">
             <a
               href={report.pdf_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c87a)', color: '#0a0e1a' }}
+              className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105 shadow-lg"
+              style={{
+                background: isChumenji
+                  ? 'linear-gradient(135deg, #c9a84c 0%, #e8c87a 50%, #f7dfa0 100%)'
+                  : 'linear-gradient(135deg, #c9a84c, #e8c87a)',
+                color: '#0a0e1a',
+                boxShadow: isChumenji ? '0 4px 14px rgba(201, 168, 76, 0.4)' : undefined,
+              }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              下載 PDF 完整報告
+              {isChumenji ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                  <polyline points="8 15 12 19 16 15" />
+                  <line x1="12" y1="13" x2="12" y2="19" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              )}
+              {isChumenji
+                ? (report.plan_code === 'E1' ? '下載 Top3 吉時 PDF' : '下載 4 週吉時月度 PDF')
+                : '下載 PDF 完整報告'}
             </a>
           </div>
         )}

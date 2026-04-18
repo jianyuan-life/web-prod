@@ -807,9 +807,9 @@ def build_chapter8(s):
 
     elements.append(Spacer(1, 5*mm))
 
-    elements.append(Paragraph('8.2 E2 月盤出門訣', s['H2']))
+    elements.append(Paragraph('8.2 E2 月度出門訣', s['H2']))
     e2_rows = [
-        ['產品名稱', '月盤出門訣'],
+        ['產品名稱', '月度出門訣'],
         ['代碼', 'E2'],
         ['定價', 'USD $89'],
         ['輸入', '客戶出生年月日時 + 月份 + 出發城市'],

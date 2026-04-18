@@ -437,7 +437,7 @@ export default function HomePage() {
                   <div className="flex items-center gap-2 text-xs text-text-muted">
                     <span className="text-gold">&#10003;</span> 事件出門訣 $89
                     <span className="mx-1">|</span>
-                    <span className="text-gold">&#10003;</span> 月盤出門訣 $99
+                    <span className="text-gold">&#10003;</span> 月度出門訣 $99
                   </div>
                 </div>
               </div>

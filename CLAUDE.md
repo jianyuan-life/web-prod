@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.3（2026-04-18）
+**網站版本：** v5.3.4（2026-04-18）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -264,7 +264,7 @@ Resend 寄 Email（含報告連結）
 - ✅ 報告品質修復（Markdown 表格殘留/分數殘留清理）
 - ✅ 章節折疊/展開功能
 - ✅ 閱讀進度條 + 回到頂部按鈕 + 預估閱讀時間
-- ✅ E2 月盤出門訣每週改版（每週 1 盤共 4 盤）
+- ✅ E2 月度出門訣每週改版（每週 1 盤共 4 盤）
 
 **用戶體驗與品牌：**
 - ✅ Logo v11
@@ -322,7 +322,7 @@ Resend 寄 Email（含報告連結）
 - ✅ available_time_slots 注入 AI prompt
 - ✅ 報告頁專屬三色卡片版面
 - ✅ Top5 JSON 解析修復 + E1/E2 Prompt 精簡
-- ✅ E2 月盤出門訣 prompt 全面修正（聚焦出門訣）
+- ✅ E2 月度出門訣 prompt 全面修正（聚焦出門訣）
 
 **R 方案合否？重建：**
 - ✅ 雙人結帳表單 + 出生城市欄位
@@ -410,7 +410,7 @@ Resend 寄 Email（含報告連結）
 | G15 | 家族藍圖 | $59 | 🟡 待驗證 |
 | R | 合否？ | $59 | 🔴 AI 報告待開發 |
 | E1 | 事件出門訣 | $89 | 🟡 E1 表單需補事件描述 |
-| E2 | 月盤出門訣 | $99 | ✅ 端對端測試通過 |
+| E2 | 月度出門訣 | $99 | ✅ 端對端測試通過 |
 
 ---
 
