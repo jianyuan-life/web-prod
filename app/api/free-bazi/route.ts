@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getFullProfileByDayMaster, type DayMasterProfile } from '@/lib/profiles'
+import { recordAIUsage } from '@/lib/ai-cost-tracker'
 
 // ============================================================
 // 免費命理速算 — Python排盤(+TS fallback) + Kimi AI 潤色
@@ -215,6 +216,7 @@ async function callAI(bazi: ReturnType<typeof localBazi>, name: string, year: nu
   }
 
   // 先試 DeepSeek
+  const tDS = Date.now()
   try {
     const res = await fetch(DEEPSEEK_API, {
       method: 'POST',
@@ -227,13 +229,37 @@ async function callAI(bazi: ReturnType<typeof localBazi>, name: string, year: nu
     })
     const data = await res.json()
     const text = data.choices?.[0]?.message?.content || ''
+    // v5.3.5 記帳：不管是否回傳，都 log
+    try {
+      await recordAIUsage({
+        provider: 'deepseek',
+        model: 'deepseek-chat',
+        promptTokens: Number(data?.usage?.prompt_tokens || 0),
+        completionTokens: Number(data?.usage?.completion_tokens || 0),
+        callStage: 'free_bazi',
+        latencyMs: Date.now() - tDS,
+        status: text ? 'success' : 'error',
+        errorMessage: !text && !res.ok ? `HTTP ${res.status}` : undefined,
+      })
+    } catch { /* noop */ }
     if (text) {
       const sections = parseResponse(text)
       if (Object.keys(sections).length >= 3) return sections
     }
-  } catch (e) { console.error('DeepSeek error:', e) }
+  } catch (e) {
+    console.error('DeepSeek error:', e)
+    try {
+      await recordAIUsage({
+        provider: 'deepseek', model: 'deepseek-chat',
+        promptTokens: 0, completionTokens: 0,
+        callStage: 'free_bazi', latencyMs: Date.now() - tDS,
+        status: 'error', errorMessage: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+      })
+    } catch { /* noop */ }
+  }
 
   // DeepSeek 失敗，用 Kimi 備用
+  const tKimi = Date.now()
   try {
     const res = await fetch(KIMI_API, {
       method: 'POST',
@@ -246,9 +272,28 @@ async function callAI(bazi: ReturnType<typeof localBazi>, name: string, year: nu
     })
     const data = await res.json()
     const text = data.choices?.[0]?.message?.content || ''
+    try {
+      await recordAIUsage({
+        provider: 'moonshot',
+        model: 'moonshot-v1-8k',
+        promptTokens: Number(data?.usage?.prompt_tokens || 0),
+        completionTokens: Number(data?.usage?.completion_tokens || 0),
+        callStage: 'free_bazi_fallback',
+        latencyMs: Date.now() - tKimi,
+        status: text ? 'success' : 'error',
+      })
+    } catch { /* noop */ }
     return parseResponse(text)
   } catch (e) {
     console.error('Kimi fallback error:', e)
+    try {
+      await recordAIUsage({
+        provider: 'moonshot', model: 'moonshot-v1-8k',
+        promptTokens: 0, completionTokens: 0,
+        callStage: 'free_bazi_fallback', latencyMs: Date.now() - tKimi,
+        status: 'error', errorMessage: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+      })
+    } catch { /* noop */ }
     return {}
   }
 }

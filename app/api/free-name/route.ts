@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import * as OpenCC from 'opencc-js'
+import { recordAIUsage } from '@/lib/ai-cost-tracker'
 
 // ============================================================
 // 免費姓名學速算 — 五格剖象法 + DeepSeek AI 解讀
@@ -265,6 +266,7 @@ export async function POST(req: NextRequest) {
 - 不要用「您好」開頭，直接進入分析
 - 語氣要溫暖親切`
 
+      const tDS = Date.now()
       const aiRes = await fetch(DEEPSEEK_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
@@ -280,8 +282,35 @@ export async function POST(req: NextRequest) {
       if (aiRes.ok) {
         const aiJson = await aiRes.json()
         aiAnalysis = aiJson.choices?.[0]?.message?.content || ''
+        try {
+          await recordAIUsage({
+            provider: 'deepseek', model: 'deepseek-chat',
+            promptTokens: Number(aiJson?.usage?.prompt_tokens || 0),
+            completionTokens: Number(aiJson?.usage?.completion_tokens || 0),
+            callStage: 'free_name', latencyMs: Date.now() - tDS,
+            status: aiAnalysis ? 'success' : 'incomplete',
+          })
+        } catch { /* noop */ }
+      } else {
+        try {
+          await recordAIUsage({
+            provider: 'deepseek', model: 'deepseek-chat',
+            promptTokens: 0, completionTokens: 0,
+            callStage: 'free_name', latencyMs: Date.now() - tDS,
+            status: 'error', errorMessage: `HTTP ${aiRes.status}`,
+          })
+        } catch { /* noop */ }
       }
-    } catch {
+    } catch (e) {
+      try {
+        await recordAIUsage({
+          provider: 'deepseek', model: 'deepseek-chat',
+          promptTokens: 0, completionTokens: 0,
+          callStage: 'free_name', latencyMs: 0,
+          status: 'error', errorMessage: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+        })
+      } catch { /* noop */ }
+      const tKimi = Date.now()
       try {
         const kimiRes = await fetch(KIMI_API, {
           method: 'POST',
@@ -298,8 +327,35 @@ export async function POST(req: NextRequest) {
         if (kimiRes.ok) {
           const kimiJson = await kimiRes.json()
           aiAnalysis = kimiJson.choices?.[0]?.message?.content || ''
+          try {
+            await recordAIUsage({
+              provider: 'moonshot', model: 'moonshot-v1-auto',
+              promptTokens: Number(kimiJson?.usage?.prompt_tokens || 0),
+              completionTokens: Number(kimiJson?.usage?.completion_tokens || 0),
+              callStage: 'free_name_fallback', latencyMs: Date.now() - tKimi,
+              status: aiAnalysis ? 'success' : 'incomplete',
+            })
+          } catch { /* noop */ }
+        } else {
+          try {
+            await recordAIUsage({
+              provider: 'moonshot', model: 'moonshot-v1-auto',
+              promptTokens: 0, completionTokens: 0,
+              callStage: 'free_name_fallback', latencyMs: Date.now() - tKimi,
+              status: 'error', errorMessage: `HTTP ${kimiRes.status}`,
+            })
+          } catch { /* noop */ }
         }
-      } catch { /* AI 全部失敗 */ }
+      } catch (err) {
+        try {
+          await recordAIUsage({
+            provider: 'moonshot', model: 'moonshot-v1-auto',
+            promptTokens: 0, completionTokens: 0,
+            callStage: 'free_name_fallback', latencyMs: Date.now() - tKimi,
+            status: 'error', errorMessage: err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200),
+          })
+        } catch { /* noop */ }
+      }
     }
 
     // 記錄用戶分析（去重）

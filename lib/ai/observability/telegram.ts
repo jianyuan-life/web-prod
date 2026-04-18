@@ -408,6 +408,51 @@ export async function notifyFiveLLMCritical(
   return sendTelegramMessage(msg)
 }
 
+// ============================================================
+// v5.3.5 AI 成本監控告警（2026-04-18）
+// ============================================================
+
+/**
+ * 單日 AI 成本超過閾值（預設 $20）
+ * 用於 accounting/check-ai-daily cron
+ */
+export async function notifyAICostDailyExceed(
+  amount: number,
+  threshold: number = 20,
+): Promise<boolean> {
+  const overBy = amount - threshold
+  const pct = threshold > 0 ? ((overBy / threshold) * 100).toFixed(1) : '∞'
+  const msg =
+    `💸 <b>單日 AI 成本超標</b>\n\n` +
+    `<b>今日累計：</b>${fmtUsd(amount)}\n` +
+    `<b>告警閾值：</b>${fmtUsd(threshold)}\n` +
+    `<b>超出：</b>${fmtUsd(overBy)}（+${pct}%）\n\n` +
+    `<i>請到 /jamie/ai-cost 查看細項，排查是否有異常 retry 或 prompt 爆量</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * 單筆 AI 呼叫花費超過閾值（預設 $5）
+ * 由 recordAIUsage 自動觸發
+ */
+export async function notifyAICostSingleCallExpensive(
+  model: string,
+  cost: number,
+  reportId: string | null,
+  callStage: string | null,
+): Promise<boolean> {
+  const reportLine = reportId ? `<b>Report：</b><code>${esc(reportId)}</code>\n` : ''
+  const stageLine = callStage ? `<b>階段：</b>${esc(callStage)}\n` : ''
+  const msg =
+    `🔴 <b>單筆 AI 呼叫超貴</b>\n\n` +
+    `<b>Model：</b><code>${esc(model)}</code>\n` +
+    `<b>單次花費：</b>${fmtUsd(cost)}\n` +
+    reportLine +
+    stageLine +
+    `\n<i>單筆超過 $5 代表 prompt 過長或 max_tokens 太大，請檢查 /jamie/ai-cost Top 10 最貴呼叫</i>`
+  return sendTelegramMessage(msg)
+}
+
 /**
  * 5 LLM QA 連續失敗：已標為 needs_human_review
  */

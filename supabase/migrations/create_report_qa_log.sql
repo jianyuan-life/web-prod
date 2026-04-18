@@ -80,8 +80,9 @@ CREATE INDEX IF NOT EXISTS idx_report_qa_log_plan ON public.report_qa_log (plan_
 
 -- 為了加速後台 /jamie/quality-reports 查詢（最近 50 份報告的 QA 摘要）
 -- 在 paid_reports 補一個部分索引：needs_human_review 快速查
+-- 注意：paid_reports 沒有 updated_at 欄位，用 created_at 排序
 CREATE INDEX IF NOT EXISTS idx_paid_reports_needs_human_review
-  ON public.paid_reports (updated_at DESC)
+  ON public.paid_reports (created_at DESC)
   WHERE status = 'needs_human_review';
 
 -- ============================================================

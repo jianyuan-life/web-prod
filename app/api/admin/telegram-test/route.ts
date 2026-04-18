@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
+import { writeAuditLog } from '@/lib/admin-audit-log'
 import {
   notifyFailed, notifyHighCost, notifyQualityGate, notifyDaily,
   notifyLLMBalanceLow, notifyLLMBalanceCritical,
@@ -99,6 +100,12 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     )
   }
+
+  await writeAuditLog(req, 'create', 'system', `telegram-test-${event}`, {
+    resource: 'telegram_test',
+    event,
+    result_ok: ok,
+  })
 
   return NextResponse.json({
     ok,

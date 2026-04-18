@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
     console.error('[refund] 扣回推薦積分失敗:', err)
   }
 
-  // 6. 寫入會計支出（會計系統）
+  // 6a. 寫入會計支出（會計系統）
   await recordExpense({
     category: 'refund',
     subcategory: 'stripe_refund',
@@ -211,6 +211,30 @@ export async function POST(req: NextRequest) {
       reason: reason || null,
     },
   })
+
+  // 6b. 更新對應 revenue_log 的 refunded_amount_usd（衝銷）
+  try {
+    if (report?.stripe_session_id) {
+      const { data: revRow } = await supabase
+        .from('revenue_log')
+        .select('id, refunded_amount_usd')
+        .eq('stripe_session_id', report.stripe_session_id)
+        .maybeSingle()
+      if (revRow) {
+        const newRefunded = Number(revRow.refunded_amount_usd || 0) + refundedAmountUsd
+        await supabase
+          .from('revenue_log')
+          .update({
+            refunded_amount_usd: newRefunded,
+            refunded_at: new Date().toISOString(),
+          })
+          .eq('id', revRow.id)
+      }
+    }
+  } catch (revErr) {
+    // eslint-disable-next-line no-console
+    console.error('[refund] revenue_log 衝銷失敗（不影響退款）:', revErr)
+  }
 
   // 7. 稽核紀錄
   await writeAuditLog(req, 'refund', 'order', report?.id || paymentIntentId, {

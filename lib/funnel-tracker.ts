@@ -94,6 +94,11 @@ export async function trackFunnelClient(params: {
 
 function getOrCreateClientSessionId(): string {
   try {
+    // 優先使用 Tracker.tsx 已有的 sessionStorage['jy_session']（與 visitor_events 同軌）
+    const ss = sessionStorage.getItem('jy_session')
+    if (ss) return ss
+
+    // 次選 localStorage（跨 session 持久化，用於付款後回到新 tab 仍能保留漏斗）
     const key = 'jy_session_id'
     let s = localStorage.getItem(key)
     if (!s) {

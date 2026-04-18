@@ -25,6 +25,11 @@ export type AdminAction =
   | 'unblock_user'
   | 'delete_user'
   | 'update_order_status'
+  | 'create'                  // 通用：建立（會計 expense 等）
+  | 'update'                  // 通用：更新（v5.3.5）
+  | 'delete'                  // 通用：刪除
+  | 'deactivate'              // 軟刪（停用訂閱等，v5.3.5）
+  | 'backfill'                // 歷史回填（v5.3.5）
 
 export type AdminTargetType =
   | 'user'
@@ -35,6 +40,11 @@ export type AdminTargetType =
   | 'referral'
   | 'points'
   | 'refund'
+  | 'expense'                 // 會計系統：支出記錄
+  | 'revenue'                 // 會計系統：收入記錄
+  | 'fixed_subscription'      // 固定訂閱（v5.3.5）
+  | 'fixed_subscriptions'     // 固定訂閱批次（v5.3.5）
+  | 'anthropic_historical'    // Anthropic 歷史回填（v5.3.5）
   | 'system'
 
 function getClientIp(req: NextRequest): string {

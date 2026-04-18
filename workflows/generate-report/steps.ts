@@ -9,6 +9,8 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
+import { recordEmailSend } from '@/lib/email-send-log'
+import { notifyEmailFailed } from '@/lib/ai/observability/telegram'
 import {
   getAgeGroup,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
@@ -2645,14 +2647,150 @@ export async function qualityGate(
   }
 }
 
-// ── Step 3.5: AI 自我審核（全文審查，用客戶視角評分）──
-export async function aiReviewReport(reportContent: string, planCode: string): Promise<{ score: number; issues: string[] }> {
+// ── Step 3.5: AI 自我審核（5 LLM 並行評分，Post-Gen QA 流水線）──
+// Post-Gen 5 LLM QA Pipeline（2026-04-18）：
+//   原本單 Claude 自審 → 5 LLM（GPT/Qwen/Gemini/Kimi/DeepSeek）並行評分
+//   最低分 < 95 或 平均分 < 93 → workflow 視為 hardFailure 觸發 retry
+//   所有評分寫入 report_qa_log，供後台 /jamie/quality-reports 檢視
+//
+// 回傳舊介面 { score, issues }：避免既有 caller 破版
+//   新增 fiveLLM 擴充欄位，workflow 可用 scores/avg/min 做更嚴格判斷
+export async function aiReviewReport(
+  reportContent: string,
+  planCode: string,
+  options: {
+    reportId?: string
+    round?: number
+    chartDataJson?: string
+    customerName?: string
+  } = {},
+): Promise<{
+  score: number
+  issues: string[]
+  fiveLLM?: {
+    scores: Record<string, number>
+    avg: number
+    min: number
+    max: number
+    passed: boolean
+    severity: 'ok' | 'yellow' | 'red'
+    criticalErrors: string[]
+    totalCostUsd: number
+    totalLatencyMs: number
+  }
+}> {
   "use step";
   if (!['C', 'D', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] }
 
-  await emitProgress({ step: 'AI審核', progress: 72, message: '正在進行全文品質審核...' })
+  await emitProgress({ step: 'AI審核', progress: 72, message: '5 LLM 並行品質審核中...' })
 
-  // 用 Claude Opus 自己審核自己寫的報告（看完全文，不截斷）
+  // 動態 import：workflow 環境避免 ESM 循環/熱載入問題
+  const { fiveLLMQualityReview } = await import('@/lib/ai/team/five-llm-qa')
+
+  try {
+    const result = await fiveLLMQualityReview(
+      reportContent,
+      planCode,
+      options.chartDataJson || '',
+      options.customerName || '',
+      options.reportId,
+    )
+
+    console.log(
+      `5 LLM QA: avg=${result.avg}, min=${result.min}, max=${result.max}, ` +
+      `passed=${result.passed}, severity=${result.severity}, ` +
+      `$${result.totalCostUsd.toFixed(4)}, ${result.totalLatencyMs}ms`
+    )
+
+    // 寫入 report_qa_log（失敗不阻塞）
+    if (options.reportId) {
+      try {
+        await writeReportQaLog(options.reportId, planCode, options.round ?? 1, result.reviewer_notes)
+      } catch (e) {
+        console.error('[five-llm-qa] 寫入 report_qa_log 失敗（不阻塞）:', e)
+      }
+    }
+
+    return {
+      score: Math.round(result.avg),
+      issues: result.issues.slice(0, 20),
+      fiveLLM: {
+        scores: result.scores,
+        avg: result.avg,
+        min: result.min,
+        max: result.max,
+        passed: result.passed,
+        severity: result.severity,
+        criticalErrors: result.criticalErrors,
+        totalCostUsd: result.totalCostUsd,
+        totalLatencyMs: result.totalLatencyMs,
+      },
+    }
+  } catch (e) {
+    console.error('5 LLM QA 執行失敗（降級為 score 80，不阻塞交付）:', e)
+    return {
+      score: 80,
+      issues: [`5 LLM QA 執行例外: ${e instanceof Error ? e.message : String(e)}`],
+    }
+  }
+}
+
+// 寫入 report_qa_log（5 LLM 每人一筆）
+async function writeReportQaLog(
+  reportId: string,
+  planCode: string,
+  round: number,
+  reviewerNotes: Array<{
+    reviewer: string
+    provider: string
+    model: string
+    score: number
+    issues: string[]
+    criticalErrors: string[]
+    strengths: string[]
+    suggestions: string[]
+    latencyMs: number
+    costUsd: number
+    passed: boolean
+    error?: string
+  }>,
+): Promise<void> {
+  const supabase = getSupabase()
+  const rows = reviewerNotes.map(n => ({
+    report_id: reportId,
+    plan_code: planCode,
+    round,
+    reviewer: n.reviewer,
+    model: n.model,
+    score: n.score,
+    issues: n.issues,
+    critical_errors: n.criticalErrors,
+    strengths: n.strengths,
+    suggestions: n.suggestions,
+    passed: n.passed,
+    latency_ms: typeof n.latencyMs === 'number' ? Math.round(n.latencyMs) : null,
+    cost_usd: n.costUsd || 0,
+    error_message: n.error || null,
+  }))
+  const { error } = await supabase.from('report_qa_log').insert(rows)
+  if (error) {
+    // Migration 沒跑 / 表不存在：只 log，不拋
+    console.warn('[report_qa_log] insert 失敗:', error.message)
+  }
+}
+
+// ── Step 3.5a (legacy): 單 Claude 自審（備援，保留函式以防 fallback）──
+export async function aiReviewReportLegacy(
+  reportContent: string,
+  planCode: string,
+  reportId?: string,
+): Promise<{ score: number; issues: string[] }> {
+  "use step";
+  if (!['C', 'D', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] }
+
+  await emitProgress({ step: 'AI審核(legacy)', progress: 72, message: '單 Claude 自審中...' })
+
+  const tStart = Date.now()
   try {
     const apiKey = getNextClaudeKey()
     if (!apiKey) return { score: 80, issues: ['無可用 API Key'] }
@@ -2687,9 +2825,43 @@ ${reportContent}`
       })
     })
 
-    if (!res.ok) return { score: 80, issues: ['AI審核API失敗'] }
+    if (!res.ok) {
+      // v5.3.5：寫失敗 log（含 latency）
+      try {
+        await recordAIUsage({
+          provider: 'anthropic',
+          model: 'claude-opus-4-6',
+          promptTokens: 0,
+          completionTokens: 0,
+          reportId,
+          planCode,
+          callStage: 'review_legacy',
+          latencyMs: Date.now() - tStart,
+          status: 'error',
+          errorMessage: `HTTP ${res.status}`,
+        })
+      } catch { /* log 失敗不影響主流程 */ }
+      return { score: 80, issues: ['AI審核API失敗'] }
+    }
     const data = await res.json()
     const text = data.content?.[0]?.text || ''
+    const promptTokens = Number(data?.usage?.input_tokens || 0)
+    const completionTokens = Number(data?.usage?.output_tokens || 0)
+
+    // v5.3.5：寫成功 log
+    try {
+      await recordAIUsage({
+        provider: 'anthropic',
+        model: 'claude-opus-4-6',
+        promptTokens,
+        completionTokens,
+        reportId,
+        planCode,
+        callStage: 'review_legacy',
+        latencyMs: Date.now() - tStart,
+        status: 'success',
+      })
+    } catch { /* log 失敗不影響主流程 */ }
 
     const match = text.match(/\{[\s\S]*\}/)
     if (match) {
@@ -2701,6 +2873,20 @@ ${reportContent}`
     return { score: 80, issues: [] }
   } catch (e) {
     console.error('AI 審核失敗:', e)
+    try {
+      await recordAIUsage({
+        provider: 'anthropic',
+        model: 'claude-opus-4-6',
+        promptTokens: 0,
+        completionTokens: 0,
+        reportId,
+        planCode,
+        callStage: 'review_legacy',
+        latencyMs: Date.now() - tStart,
+        status: 'error',
+        errorMessage: e instanceof Error ? e.message.slice(0, 500) : String(e).slice(0, 500),
+      })
+    } catch { /* log 失敗不影響主流程 */ }
     return { score: 80, issues: [] }
   }
 }
@@ -2815,6 +3001,25 @@ export async function saveReportToSupabase(
     console.log(`⏭️ 報告 ${reportId} 已被其他實例完成，跳過重複寫入`)
     return true
   }
+
+  // v5.3.2：報告完成 → 寫 funnel report_generated（僅首次完成時）
+  try {
+    const { data: reportMeta } = await supabase
+      .from('paid_reports')
+      .select('stripe_session_id, plan_code, amount_usd')
+      .eq('id', reportId)
+      .maybeSingle()
+    if (reportMeta?.stripe_session_id) {
+      const { trackFunnelServer } = await import('@/lib/funnel-tracker')
+      await trackFunnelServer({
+        sessionId: reportMeta.stripe_session_id,
+        step: 'report_generated',
+        planCode: (reportMeta.plan_code || '').split(/\s/)[0],
+        reportId,
+        amountUsd: Number(reportMeta.amount_usd) || null,
+      })
+    }
+  } catch { /* funnel 寫入失敗不影響主流程 */ }
 
   console.log(`✅ 報告 ${reportId} 已標記完成`)
   return true
@@ -2962,7 +3167,10 @@ export async function sendReportEmail(
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
   }
 
-  await resend.emails.send({
+  let sendResult: { id?: string } | null = null
+  let sendErr: unknown = null
+  try {
+    const resendRaw = await resend.emails.send({
     from: emailText.from,
     to: customerEmail,
     subject: emailText.subject,
@@ -3002,7 +3210,42 @@ export async function sendReportEmail(
   </div>
 </body>
 </html>`,
+    })
+    // Resend v2 回傳 { data, error } 結構，需要 unwrap
+    const unwrapped = resendRaw as unknown as { data: { id?: string } | null; error: unknown }
+    if (unwrapped.error) {
+      sendErr = unwrapped.error
+    } else if (unwrapped.data) {
+      sendResult = { id: unwrapped.data.id }
+    }
+  } catch (err) {
+    sendErr = err
+  }
+
+  // 寫入 email_send_log（不論成功失敗都記）
+  await recordEmailSend({
+    resendId: (sendResult && 'data' in sendResult
+      ? (sendResult as unknown as { data?: { id?: string } }).data?.id
+      : sendResult?.id) || null,
+    toEmail: customerEmail,
+    fromEmail: emailText.from,
+    emailType: 'report_ready',
+    subject: emailText.subject,
+    reportId,
+    status: sendErr ? 'failed' : 'sent',
+    errorMessage: sendErr ? (sendErr instanceof Error ? sendErr.message : String(sendErr)).slice(0, 400) : null,
+    metadata: { plan: planCode, analyses: analysesCount },
   })
+
+  if (sendErr) {
+    // Telegram 告警 + 拋錯讓 workflow 重試
+    try {
+      await notifyEmailFailed(reportId, customerEmail,
+        sendErr instanceof Error ? sendErr.message : String(sendErr))
+    } catch { /* 告警失敗不阻塞 */ }
+    console.error('Resend 寄信失敗:', sendErr)
+    throw sendErr
+  }
 
   // 更新 email_sent_at
   const supabase = getSupabase()
@@ -3036,8 +3279,12 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
 
   // Telegram 即時告警給老闆
   try {
-    const { notifyFailed } = await import('@/lib/ai/observability/telegram')
+    const { notifyFailed, notifyWorkflowFailed } = await import('@/lib/ai/observability/telegram')
     await notifyFailed(reportId, errorMessage)
+    // 如果已達 3 次重試仍失敗，再發一次 workflow 崩潰告警（需立刻人工介入）
+    if ((reportData?.retry_count ?? 0) >= 3) {
+      await notifyWorkflowFailed(reportId, errorMessage, 'final_failure_after_3_retries')
+    }
   } catch (e) {
     console.warn('Telegram 告警失敗（不阻塞）:', e)
   }
@@ -3046,10 +3293,11 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
 
   // 發送告警 Email 通知管理員
   try {
-    await resend.emails.send({
+    const alertSubj = `⚠️ 報告生成失敗：${reportId.slice(0, 8)}`
+    const alertRes = await resend.emails.send({
       from: '鑒源系統告警 <reports@jianyuan.life>',
       to: 'support@jianyuan.life',
-      subject: `⚠️ 報告生成失敗：${reportId.slice(0, 8)}`,
+      subject: alertSubj,
       html: `
         <h2>報告生成失敗告警</h2>
         <p><strong>報告 ID：</strong>${reportId}</p>
@@ -3062,10 +3310,28 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
         <p>請前往 <a href="https://jianyuan.life/jamie/orders">管理後台</a> 查看並處理。</p>
       `,
     })
+    await recordEmailSend({
+      resendId: (alertRes as unknown as { data?: { id?: string } })?.data?.id || null,
+      toEmail: 'support@jianyuan.life',
+      fromEmail: '鑒源系統告警 <reports@jianyuan.life>',
+      emailType: 'admin_alert',
+      subject: alertSubj,
+      reportId,
+      status: 'sent',
+      metadata: { errorMessage },
+    })
     console.log(`📧 告警 Email 已發送（報告 ${reportId}）`)
   } catch (emailErr) {
     // 告警 Email 失敗不影響主流程
     console.error('告警 Email 發送失敗:', emailErr)
+    await recordEmailSend({
+      toEmail: 'support@jianyuan.life',
+      emailType: 'admin_alert',
+      subject: `⚠️ 報告生成失敗：${reportId.slice(0, 8)}`,
+      reportId,
+      status: 'failed',
+      errorMessage: emailErr instanceof Error ? emailErr.message : String(emailErr),
+    })
   }
 
   // 客戶致歉信：僅在達最終失敗（retry_count >= 3）且尚未寄過時發送
@@ -3132,7 +3398,10 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
 
       const unsubscribeUrlApology = getUnsubscribeUrl(customerEmailFailed)
 
-      await resend.emails.send({
+      let apologyResId: string | null = null
+      let apologyErr: unknown = null
+      try {
+        const apologyRaw = await resend.emails.send({
         from,
         to: customerEmailFailed,
         subject,
@@ -3168,17 +3437,44 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
 </body>
 </html>`,
       })
-
-      // 紀錄已寄（防重複）；若欄位尚未建立僅 warn，不中斷流程
-      try {
-        await supabase.from('paid_reports')
-          .update({ apology_sent_at: new Date().toISOString() })
-          .eq('id', reportId)
-      } catch (updErr) {
-        console.warn('apology_sent_at 更新失敗（可能欄位尚未建立）:', updErr)
+        const apologyUnwrapped = apologyRaw as unknown as { data?: { id?: string } | null; error?: unknown }
+        if (apologyUnwrapped?.error) apologyErr = apologyUnwrapped.error
+        else apologyResId = apologyUnwrapped?.data?.id || null
+      } catch (err) {
+        apologyErr = err
       }
 
-      console.log(`📧 客戶致歉信已寄至 ${customerEmailFailed}（報告 ${reportId.slice(0, 8)}）`)
+      // 不論成敗都記 log
+      await recordEmailSend({
+        resendId: apologyResId,
+        toEmail: customerEmailFailed,
+        fromEmail: from,
+        emailType: 'report_failed_apology',
+        subject,
+        reportId,
+        status: apologyErr ? 'failed' : 'sent',
+        errorMessage: apologyErr
+          ? (apologyErr instanceof Error ? apologyErr.message : String(apologyErr)).slice(0, 400)
+          : null,
+        metadata: { plan: planCode, retryCount },
+      })
+
+      if (apologyErr) {
+        try { await notifyEmailFailed(reportId, customerEmailFailed,
+          apologyErr instanceof Error ? apologyErr.message : String(apologyErr))
+        } catch { /* ignore */ }
+        console.error('客戶致歉信發送失敗:', apologyErr)
+      } else {
+        // 紀錄已寄（防重複）；若欄位尚未建立僅 warn，不中斷流程
+        try {
+          await supabase.from('paid_reports')
+            .update({ apology_sent_at: new Date().toISOString() })
+            .eq('id', reportId)
+        } catch (updErr) {
+          console.warn('apology_sent_at 更新失敗（可能欄位尚未建立）:', updErr)
+        }
+        console.log(`📧 客戶致歉信已寄至 ${customerEmailFailed}（報告 ${reportId.slice(0, 8)}）`)
+      }
     } catch (apologyErr) {
       // 致歉信失敗不影響 failed 標記
       console.error('客戶致歉信發送失敗:', apologyErr)
@@ -3191,6 +3487,59 @@ export async function closeProgressStream() {
   "use step";
   const writable = getWritable<ProgressUpdate>()
   await writable.close()
+}
+
+// ── Step 6b: 標記為 needs_human_review（5 LLM QA 連續失敗用）──
+// Post-Gen 5 LLM QA Pipeline (2026-04-18)：
+//   5 LLM 評分連續 3 次 < 門檻 → 不交付、不 failed，改為 needs_human_review
+//   老闆到 /jamie/quality-reports 手動審理（放行 / 重生成 / 退款）
+export async function markReportNeedsHumanReview(
+  reportId: string,
+  reason: string,
+  fiveLLMSnapshot?: {
+    scores: Record<string, number>
+    avg: number
+    min: number
+    max: number
+    severity: string
+    criticalErrors: string[]
+  },
+): Promise<void> {
+  "use step";
+  const supabase = getSupabase()
+
+  const updatePayload: Record<string, unknown> = {
+    status: 'needs_human_review',
+    error_message: `[需人工審核] ${reason}`.slice(0, 500),
+  }
+
+  // 若有 5 LLM snapshot，寫入 qa_snapshot 欄位（需 schema 支援）
+  if (fiveLLMSnapshot) {
+    updatePayload.qa_snapshot = {
+      ts: new Date().toISOString(),
+      scores: fiveLLMSnapshot.scores,
+      avg: fiveLLMSnapshot.avg,
+      min: fiveLLMSnapshot.min,
+      max: fiveLLMSnapshot.max,
+      severity: fiveLLMSnapshot.severity,
+      critical_errors: fiveLLMSnapshot.criticalErrors,
+    }
+  }
+
+  const { error } = await supabase.from('paid_reports')
+    .update(updatePayload)
+    .eq('id', reportId)
+
+  if (error) {
+    // qa_snapshot 欄位不存在 → fallback 不帶該欄位再試一次
+    console.warn('markReportNeedsHumanReview 含 qa_snapshot 失敗，fallback:', error.message)
+    await supabase.from('paid_reports').update({
+      status: 'needs_human_review',
+      error_message: `[需人工審核] ${reason}`.slice(0, 500),
+    }).eq('id', reportId)
+  }
+
+  console.error(`報告 ${reportId} 標記為 needs_human_review: ${reason}`)
 }
 
 // ── 匯出輔助常數（供 workflow 使用） ──

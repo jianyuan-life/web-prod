@@ -10,6 +10,7 @@ import {
   SYSTEM_GROUPS,
 } from '@/prompts/c_plan_v2'
 import { validateReportAgainstData } from '@/workflows/generate-report/steps'
+import { recordAIUsage } from '@/lib/ai-cost-tracker'
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
@@ -109,9 +110,15 @@ async function callClaudeStreaming(
   userPrompt: string,
   maxTokens: number,
   timeoutMs: number = 200000,
+  tracking?: { reportId?: string; planCode?: string; callStage?: string },
 ): Promise<string> {
+  const tStart = Date.now()
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  // 粗估 tokens（streaming SSE 無 usage 事件時）
+  const estimateTokens = (text: string) => Math.max(1, Math.ceil(text.length / 3))
+  const estPromptTokens = estimateTokens(systemPrompt + userPrompt)
 
   let res: Response
   try {
@@ -136,6 +143,18 @@ async function callClaudeStreaming(
     })
   } catch (e) {
     clearTimeout(timeout)
+    // v5.3.5 記帳：連線失敗
+    try {
+      await recordAIUsage({
+        provider: 'anthropic', model: 'claude-opus-4-6',
+        promptTokens: 0, completionTokens: 0,
+        reportId: tracking?.reportId, planCode: tracking?.planCode,
+        callStage: tracking?.callStage || 'fallback_route',
+        latencyMs: Date.now() - tStart,
+        status: 'error',
+        errorMessage: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
+      })
+    } catch { /* noop */ }
     if (e instanceof Error && e.name === 'AbortError') {
       throw new Error(`Claude API 連線超時（${timeoutMs / 1000}秒）`)
     }
@@ -146,6 +165,16 @@ async function callClaudeStreaming(
     clearTimeout(timeout)
     const errText = await res.text()
     console.error(`Claude API 回傳 HTTP ${res.status}，回應內容: ${errText.slice(0, 500)}`)
+    try {
+      await recordAIUsage({
+        provider: 'anthropic', model: 'claude-opus-4-6',
+        promptTokens: 0, completionTokens: 0,
+        reportId: tracking?.reportId, planCode: tracking?.planCode,
+        callStage: tracking?.callStage || 'fallback_route',
+        latencyMs: Date.now() - tStart,
+        status: 'error', errorMessage: `HTTP ${res.status}: ${errText.slice(0, 200)}`,
+      })
+    } catch { /* noop */ }
     if (res.status === 529) {
       throw new Error(`Claude API 529 過載，請稍後重試`)
     }
@@ -191,6 +220,20 @@ async function callClaudeStreaming(
     }
   } catch (e) {
     clearTimeout(timeout)
+    // v5.3.5 記帳：串流失敗（可能已消耗 tokens，用字元粗估）
+    try {
+      await recordAIUsage({
+        provider: 'anthropic', model: 'claude-opus-4-6',
+        promptTokens: estPromptTokens,
+        completionTokens: estimateTokens(result),
+        reportId: tracking?.reportId, planCode: tracking?.planCode,
+        callStage: tracking?.callStage || 'fallback_route',
+        latencyMs: Date.now() - tStart,
+        status: 'incomplete',
+        errorMessage: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
+        metadata: { note: 'SSE stream error, tokens estimated from chars', chars: result.length },
+      })
+    } catch { /* noop */ }
     if (e instanceof Error && e.name === 'AbortError') {
       // 串流超時一律拋錯重試，不接受截斷的部分結果
       throw new Error(`Claude API 串流超時（${timeoutMs / 1000}秒，已收到 ${result.length} 字）`)
@@ -199,6 +242,22 @@ async function callClaudeStreaming(
   }
 
   clearTimeout(timeout)
+
+  // v5.3.5 記帳：成功完成（SSE 沒 usage，用字元粗估 tokens）
+  // 標 status=incomplete 但 metadata 說明是成功，讓後台查帳時知道是估算值
+  try {
+    await recordAIUsage({
+      provider: 'anthropic', model: 'claude-opus-4-6',
+      promptTokens: estPromptTokens,
+      completionTokens: estimateTokens(result),
+      reportId: tracking?.reportId, planCode: tracking?.planCode,
+      callStage: tracking?.callStage || 'fallback_route',
+      latencyMs: Date.now() - tStart,
+      status: 'success',
+      metadata: { note: 'SSE stream, tokens estimated from chars (char/3)', chars: result.length },
+    })
+  } catch { /* noop */ }
+
   return result
 }
 
@@ -878,27 +937,55 @@ ${analyses.length}套系統排盤完整數據：
     // ── DeepSeek fallback 呼叫函式 ──
     async function callDeepSeekFallback(systemPrompt: string, userPrompt: string): Promise<string> {
       console.info('Fallback: 呼叫 DeepSeek 生成報告...')
+      const tStart = Date.now()
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 180000)
-      const res = await fetch(DEEPSEEK_API, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          max_tokens: 16000,
-          temperature: 0.7,
-        }),
-        signal: controller.signal,
-      })
-      clearTimeout(timeout)
-      const data = await res.json()
-      const content = data.choices?.[0]?.message?.content || ''
-      console.info(`DeepSeek 回覆: ${content.length} 字`)
-      return content
+      try {
+        const res = await fetch(DEEPSEEK_API, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            max_tokens: 16000,
+            temperature: 0.7,
+          }),
+          signal: controller.signal,
+        })
+        clearTimeout(timeout)
+        const data = await res.json()
+        const content = data.choices?.[0]?.message?.content || ''
+        console.info(`DeepSeek 回覆: ${content.length} 字`)
+        try {
+          await recordAIUsage({
+            provider: 'deepseek', model: 'deepseek-chat',
+            promptTokens: Number(data?.usage?.prompt_tokens || 0),
+            completionTokens: Number(data?.usage?.completion_tokens || 0),
+            reportId, planCode,
+            callStage: `${planCode}_fallback_deepseek`,
+            latencyMs: Date.now() - tStart,
+            status: content ? 'success' : 'incomplete',
+          })
+        } catch { /* noop */ }
+        return content
+      } catch (e) {
+        clearTimeout(timeout)
+        try {
+          await recordAIUsage({
+            provider: 'deepseek', model: 'deepseek-chat',
+            promptTokens: 0, completionTokens: 0,
+            reportId, planCode,
+            callStage: `${planCode}_fallback_deepseek`,
+            latencyMs: Date.now() - tStart,
+            status: 'error',
+            errorMessage: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
+          })
+        } catch { /* noop */ }
+        throw e
+      }
     }
 
     console.info(`方案 ${planCode}：開始 AI 生成...`)
@@ -916,7 +1003,9 @@ ${analyses.length}套系統排盤完整數據：
           // 改為單次 generic prompt 呼叫，確保在時限內完成
           const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
           const genericUserPrompt = buildGenericUserPrompt()
-          const rawResult = await callClaudeStreaming(systemPrompt, genericUserPrompt, 16000)
+          const rawResult = await callClaudeStreaming(systemPrompt, genericUserPrompt, 16000, 200000, {
+            reportId, planCode, callStage: 'C_fallback_single',
+          })
 
           // Fallback 單次呼叫，清理後直接使用
           reportContent = cleanAIResponse(rawResult)
@@ -953,7 +1042,9 @@ ${analyses.length}套系統排盤完整數據：
       if (CLAUDE_API_KEY) {
         try {
           console.info(`方案 ${planCode}：嘗試 Claude Opus 4.6 單次呼叫...`)
-          reportContent = cleanAIResponse(await callClaudeStreaming(systemPrompt, userPrompt, 32768))
+          reportContent = cleanAIResponse(await callClaudeStreaming(systemPrompt, userPrompt, 32768, 200000, {
+            reportId, planCode, callStage: `${planCode}_fallback_single`,
+          }))
           aiModelUsed = 'claude-opus-4-6'
           console.info(`方案 ${planCode} Claude 回覆：${reportContent.length} 字`)
         } catch (e) {

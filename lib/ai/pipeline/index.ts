@@ -75,6 +75,7 @@ export async function runTeamPipeline(args: {
       chartDataJson,
       retrievedRules: args.retrievedRules,
       customerNote: args.customerNote,
+      reportId: args.reportId,
     })
     ctx.draft = draft.content
     totalCost += draft.costUsd
@@ -101,7 +102,7 @@ export async function runTeamPipeline(args: {
 
       // STAGE 5: Peer Review（3 方並行）
       console.log(`[Pipeline ${args.reportId}] Stage 5: Peer Review (round ${round})`)
-      const peerResult = await peerReview(ctx.draft, chartDataJson, args.planCode)
+      const peerResult = await peerReview(ctx.draft, chartDataJson, args.planCode, args.reportId)
       ctx.reviews = peerResult.reviews
       totalCost += peerResult.totalCostUsd
       finalPeerReviewScore = peerResult.overallScore
@@ -150,6 +151,7 @@ export async function runTeamPipeline(args: {
         chartDataJson,
         args.planCode,
         revisionRounds,
+        args.reportId,
       )
       totalCost += revised.costUsd
       ctx.draft = revised.revisedContent

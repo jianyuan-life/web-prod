@@ -61,15 +61,15 @@ export default function ReportsPage() {
 
   // 單筆重試（用 admin 直接更新 Supabase）
   const retryOne = async (id: string) => {
-    const res = await fetch('/api/admin/orders', {
+    const res = await adminFetch('/api/admin/orders', {
+      adminKey,
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, key: adminKey }),
+      body: JSON.stringify({ id }),
     })
     if (res.ok) {
       setReports(prev => prev.map(r => r.id === id ? { ...r, status: 'pending', error_message: undefined } : r))
     } else {
-      const err = await res.json()
+      const err = await res.json().catch(() => ({ error: '重試失敗' }))
       alert(err.error || '重試失敗')
     }
   }

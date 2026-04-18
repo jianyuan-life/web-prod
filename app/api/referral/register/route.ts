@@ -124,6 +124,14 @@ export async function POST(req: NextRequest) {
     const REGISTER_REFERRER_POINTS = 3
     const REGISTER_REFERRED_POINTS = 5
 
+    // 取剛寫入的 referral id，用來更新 awarded 欄位 + 作為 point_transactions 的 reference_id
+    const { data: newReferral } = await supabase
+      .from('referrals')
+      .select('id')
+      .eq('referred_user_id', userId)
+      .maybeSingle()
+    const referralId = newReferral?.id || null
+
     // 發放推薦人積分
     const { data: refPts } = await supabase.from('user_points').select('balance, total_earned').eq('user_id', referralCodeRow.user_id).maybeSingle()
     if (refPts) {
@@ -131,7 +139,14 @@ export async function POST(req: NextRequest) {
     } else {
       await supabase.from('user_points').insert({ user_id: referralCodeRow.user_id, balance: REGISTER_REFERRER_POINTS, total_earned: REGISTER_REFERRER_POINTS, total_used: 0 })
     }
-    await supabase.from('point_transactions').insert({ user_id: referralCodeRow.user_id, type: 'earn_referral_register', amount: REGISTER_REFERRER_POINTS, balance_after: (refPts?.balance || 0) + REGISTER_REFERRER_POINTS, description: '推薦朋友完成註冊獎勵', reference_id: `register_${userId}` })
+    await supabase.from('point_transactions').insert({
+      user_id: referralCodeRow.user_id,
+      type: 'earn_referral_register',
+      amount: REGISTER_REFERRER_POINTS,
+      balance_after: (refPts?.balance || 0) + REGISTER_REFERRER_POINTS,
+      description: '推薦朋友完成註冊獎勵',
+      reference_id: referralId ? String(referralId) : `register_${userId}`,
+    })
 
     // 發放被推薦人積分
     const { data: newPts } = await supabase.from('user_points').select('balance, total_earned').eq('user_id', userId).maybeSingle()
@@ -140,7 +155,25 @@ export async function POST(req: NextRequest) {
     } else {
       await supabase.from('user_points').insert({ user_id: userId, balance: REGISTER_REFERRED_POINTS, total_earned: REGISTER_REFERRED_POINTS, total_used: 0 })
     }
-    await supabase.from('point_transactions').insert({ user_id: userId, type: 'earn_welcome', amount: REGISTER_REFERRED_POINTS, balance_after: (newPts?.balance || 0) + REGISTER_REFERRED_POINTS, description: '透過推薦碼註冊歡迎獎勵', reference_id: `register_${userId}` })
+    await supabase.from('point_transactions').insert({
+      user_id: userId,
+      type: 'earn_welcome',
+      amount: REGISTER_REFERRED_POINTS,
+      balance_after: (newPts?.balance || 0) + REGISTER_REFERRED_POINTS,
+      description: '透過推薦碼註冊歡迎獎勵',
+      reference_id: referralId ? String(referralId) : `register_${userId}`,
+    })
+
+    // 更新 referrals 表的 awarded 欄位（用於後台統計和數據一致性校驗）
+    if (referralId) {
+      await supabase
+        .from('referrals')
+        .update({
+          referrer_points_awarded: REGISTER_REFERRER_POINTS,
+          referred_points_awarded: REGISTER_REFERRED_POINTS,
+        })
+        .eq('id', referralId)
+    }
 
     console.info(`✅ 推薦關係建立：${code} → ${userId}，已發放積分（推薦人 +${REGISTER_REFERRER_POINTS}，被推薦人 +${REGISTER_REFERRED_POINTS}）`)
     return NextResponse.json({ success: true })

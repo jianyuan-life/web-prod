@@ -137,6 +137,7 @@ export async function fiveLLMQualityReview(
   planCode: string,
   chartDataJson: string = '',
   customerName: string = '',
+  reportId?: string,
 ): Promise<FiveLLMQualityResult> {
   const t0 = Date.now()
 
@@ -153,7 +154,11 @@ export async function fiveLLMQualityReview(
     },
   }))
 
-  const responses = await generateParallel(jobs)
+  const responses = await generateParallel(jobs, {
+    reportId: reportId ?? null,
+    planCode,
+    callStage: 'qa_5llm',
+  })
 
   // 解析 5 個結果
   const reviewer_notes: ReviewerScore[] = responses.map((resp, i) => {

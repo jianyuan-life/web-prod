@@ -28,10 +28,12 @@ export async function generateDraft(args: {
   retrievedRules: RetrievedRule[]
   customerNote?: string            // 客戶問題（D 方案）或備註
   maxTokens?: number
+  reportId?: string                // v5.3.5：傳入以便 ai_cost_log 關聯
 }): Promise<DraftResult> {
   const {
     planCode, planPrompt, birthData, chartDataJson,
     retrievedRules, customerNote, maxTokens = 8000,  // 8000 以內各 provider 都支援
+    reportId,
   } = args
 
   // ── 組合 system prompt：主筆角色 + 方案專屬結構 ──
@@ -78,6 +80,7 @@ ${rulesText}${noteText}---
   const res = await generateWithFailover(
     { system: systemPrompt, user: userPrompt, maxTokens, temperature: 0.5 },
     AUTHOR.providers,
+    { reportId: reportId ?? null, planCode, callStage: 'team_author' },
   )
 
   return {

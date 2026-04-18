@@ -1,11 +1,18 @@
 // ============================================================
-// 鑑源 AI 團隊 — Provider Registry + Circuit Breaker
+// 鑑源 AI 團隊 — Provider Registry + Circuit Breaker + Cost Log
 // ============================================================
 // 統一管理所有 LLM provider
 // 內建熔斷器：連續失敗自動停用、失敗自動降級
 // 這是「任一供應商掛掉仍可出貨」的核心
+//
+// v5.3.5：所有經過 registry 的呼叫自動寫入 ai_cost_log
+//   - generateWithFailover / generateParallel 都會 log 每個 attempt
+//   - 透過 TrackingContext 傳入 reportId / planCode / callStage
+//   - log 失敗不影響主流程
 
 import type { LLMProvider, LLMRequest, LLMResponse, ProviderName, CircuitBreakerState } from './types'
+import { recordAIUsage, type AIProvider } from '../ai-cost-tracker'
+import { canonicalProvider } from './pricing'
 
 // 熔斷器參數
 const CB_FAILURE_THRESHOLD = 5             // 連續失敗次數
@@ -76,20 +83,59 @@ function recordFailure(name: ProviderName) {
 }
 
 // ============================================================
+// Tracking Context（v5.3.5）
+// 傳入此物件，registry 會自動把每次呼叫寫入 ai_cost_log
+// ============================================================
+export interface TrackingContext {
+  reportId?: string | null
+  planCode?: string | null
+  callStage?: string | null     // 例：team_author / team_peer_review / team_revision / qa_5llm / moderation
+  metadata?: Record<string, unknown>
+}
+
+function logRegistryCall(
+  providerName: ProviderName,
+  res: LLMResponse | { error: string; provider: ProviderName; latencyMs?: number },
+  ctx?: TrackingContext,
+): void {
+  // fire-and-forget：永遠不 await，不讓 log 阻塞主流程
+  void recordAIUsage({
+    provider: canonicalProvider(providerName) as AIProvider,
+    model: 'model' in res ? (res.model || 'unknown') : 'unknown',
+    promptTokens: 'usage' in res ? (res.usage?.promptTokens || 0) : 0,
+    completionTokens: 'usage' in res ? (res.usage?.completionTokens || 0) : 0,
+    reportId: ctx?.reportId ?? null,
+    planCode: ctx?.planCode ?? null,
+    callStage: ctx?.callStage ?? 'team_pipeline',
+    latencyMs: 'latencyMs' in res && typeof res.latencyMs === 'number' ? res.latencyMs : undefined,
+    status: 'error' in res
+      ? 'error'
+      : (res.content ? 'success' : 'incomplete'),
+    errorMessage: 'error' in res ? (typeof res.error === 'string' ? res.error.slice(0, 500) : undefined) : undefined,
+    metadata: ctx?.metadata,
+  })
+}
+
+// ============================================================
 // 核心：帶降級的生成
 // ============================================================
 /**
  * 依照 order 順序嘗試 provider，第一個可用且成功的回傳。
  * 全部失敗才 throw。
+ *
+ * v5.3.5：第三個參數傳 TrackingContext，每個 attempt（含失敗）都會寫入 ai_cost_log
  */
 export async function generateWithFailover(
   req: LLMRequest,
   order: Array<{ provider: ProviderName; model?: string }>,
+  tracking?: TrackingContext,
 ): Promise<LLMResponse> {
   const errors: string[] = []
   for (const { provider: name, model } of order) {
     if (!isAvailable(name)) {
       errors.push(`${name}: circuit breaker open`)
+      // 熔斷器開啟也記一筆（讓後台知道為什麼沒呼叫）
+      logRegistryCall(name, { provider: name, error: 'circuit_breaker_open' }, tracking)
       continue
     }
     const p = providers.get(name)
@@ -99,6 +145,8 @@ export async function generateWithFailover(
     }
     try {
       const res = await p.generate({ ...req, model })
+      // 不管 error 或成功都記 log（失敗情況也要看到 latency/原因）
+      logRegistryCall(name, res, tracking)
       if (res.error) {
         recordFailure(name)
         errors.push(`${name}: ${res.error}`)
@@ -110,6 +158,7 @@ export async function generateWithFailover(
       recordFailure(name)
       const msg = e instanceof Error ? e.message : String(e)
       errors.push(`${name}: ${msg.slice(0, 100)}`)
+      logRegistryCall(name, { provider: name, error: msg }, tracking)
     }
   }
   throw new Error(`All providers failed: ${errors.join(' | ')}`)
@@ -124,15 +173,19 @@ export async function generateParallel(
     model?: string
     req: LLMRequest
   }>,
+  tracking?: TrackingContext,
 ): Promise<Array<LLMResponse | { error: string; provider: ProviderName }>> {
   return Promise.all(jobs.map(async ({ provider: name, model, req }) => {
     if (!isAvailable(name)) {
-      return { error: 'circuit breaker open', provider: name }
+      const result = { error: 'circuit breaker open', provider: name }
+      logRegistryCall(name, result, tracking)
+      return result
     }
     const p = providers.get(name)
     if (!p) return { error: 'not registered', provider: name }
     try {
       const res = await p.generate({ ...req, model })
+      logRegistryCall(name, res, tracking)
       if (res.error) {
         recordFailure(name)
         return { error: res.error, provider: name }
@@ -142,6 +195,7 @@ export async function generateParallel(
     } catch (e) {
       recordFailure(name)
       const msg = e instanceof Error ? e.message : String(e)
+      logRegistryCall(name, { provider: name, error: msg }, tracking)
       return { error: msg, provider: name }
     }
   }))

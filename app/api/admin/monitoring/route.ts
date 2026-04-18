@@ -38,10 +38,10 @@ export async function GET(req: NextRequest) {
   const now = new Date()
   const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
 
-  // 查詢過去 24 小時的所有報告
+  // 查詢過去 24 小時的所有報告（paid_reports 無 updated_at，用 last_viewed_at 最近活動時間近似）
   const { data: reports, error } = await supabase
     .from('paid_reports')
-    .select('id, plan_code, status, created_at, updated_at, retry_count, error_message, client_name, generation_progress')
+    .select('id, plan_code, status, created_at, last_viewed_at, email_sent_at, retry_count, error_message, client_name, generation_progress')
     .gte('created_at', twentyFourHoursAgo)
     .order('created_at', { ascending: false })
 
@@ -63,15 +63,17 @@ export async function GET(req: NextRequest) {
     if (s in statusCounts) statusCounts[s]++
   }
 
-  // 計算平均生成時間（只看已完成的報告）
+  // 計算平均生成時間（只看已完成的報告，用 email_sent_at 近似 completion 時間）
   const completedReports = allReports.filter(r => r.status === 'completed')
   let avgGenerationMs = 0
   let validDurations = 0
   for (const r of completedReports) {
-    if (r.created_at && r.updated_at) {
+    // 用 email_sent_at 當完成時間（寄信是完成後最後一步）
+    const endAt = r.email_sent_at || r.last_viewed_at
+    if (r.created_at && endAt) {
       const created = new Date(r.created_at).getTime()
-      const updated = new Date(r.updated_at).getTime()
-      const duration = updated - created
+      const completed = new Date(endAt).getTime()
+      const duration = completed - created
       // 排除不合理的值（< 10 秒或 > 60 分鐘）
       if (duration > 10000 && duration < 3600000) {
         avgGenerationMs += duration
@@ -107,7 +109,7 @@ export async function GET(req: NextRequest) {
       plan_code: (r.plan_code || '').split(/\s/)[0],
       status: r.status,
       created_at: r.created_at,
-      updated_at: r.updated_at,
+      updated_at: r.email_sent_at || r.last_viewed_at || r.created_at,
       retry_count: r.retry_count || 0,
       error_message: r.error_message || null,
       started_at: progress?.started_at || null,

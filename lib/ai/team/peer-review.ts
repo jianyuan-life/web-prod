@@ -32,6 +32,7 @@ export async function peerReview(
   draft: string,
   chartDataJson: string,
   planCode: string,
+  reportId?: string,
 ): Promise<PeerReviewResult> {
   const t0 = Date.now()
 
@@ -52,7 +53,11 @@ export async function peerReview(
     }
   })
 
-  const responses = await generateParallel(jobs)
+  const responses = await generateParallel(jobs, {
+    reportId: reportId ?? null,
+    planCode,
+    callStage: 'team_peer_review',
+  })
 
   // 解析三方結果
   const roles: RoleConfig[] = [ASTROLOGY_VALIDATOR, STRUCTURE_ARCHITECT, UX_ADVOCATE]

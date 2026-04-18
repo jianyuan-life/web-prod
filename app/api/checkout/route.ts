@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import crypto from 'crypto'
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
+import { recordEmailSend } from '@/lib/email-send-log'
+import { trackFunnelServer } from '@/lib/funnel-tracker'
 
 function getSupabase() {
   return createClient(
@@ -349,16 +351,17 @@ export async function POST(req: NextRequest) {
 
       // 免費方案也發訂單確認信
       if (customerEmail) {
+        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' }
+        const planName = PLAN_NAMES[planCode] || planCode
+        const freeSubject = verifiedCouponCode
+          ? `已收到您的訂單 — ${planName}（優惠碼 ${verifiedCouponCode}）`
+          : `已收到您的訂單 — ${planName}（積分折抵）`
         try {
-          const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' }
           const resend = new Resend(process.env.RESEND_API_KEY || '')
-          const planName = PLAN_NAMES[planCode] || planCode
-          await resend.emails.send({
+          const freeRes = await resend.emails.send({
             from: '鑒源命理 <noreply@jianyuan.life>',
             to: customerEmail,
-            subject: verifiedCouponCode
-              ? `已收到您的訂單 — ${planName}（優惠碼 ${verifiedCouponCode}）`
-              : `已收到您的訂單 — ${planName}（積分折抵）`,
+            subject: freeSubject,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
                 <h2 style="color: #1a1a2e; margin-bottom: 16px;">感謝您的購買</h2>
@@ -379,7 +382,28 @@ export async function POST(req: NextRequest) {
               </div>
             `,
           })
-        } catch { /* 確認信失敗不影響報告生成 */ }
+          await recordEmailSend({
+            resendId: (freeRes as unknown as { data?: { id?: string } })?.data?.id || null,
+            toEmail: customerEmail,
+            fromEmail: '鑒源命理 <noreply@jianyuan.life>',
+            emailType: 'welcome',
+            subject: freeSubject,
+            reportId: reportId || null,
+            status: 'sent',
+            metadata: { plan: planCode, free: true, coupon: verifiedCouponCode || null },
+          })
+        } catch (freeErr) {
+          await recordEmailSend({
+            toEmail: customerEmail,
+            emailType: 'welcome',
+            subject: freeSubject,
+            reportId: reportId || null,
+            status: 'failed',
+            errorMessage: freeErr instanceof Error ? freeErr.message : String(freeErr),
+            metadata: { plan: planCode, free: true },
+          })
+          /* 確認信失敗不影響報告生成 */
+        }
       }
 
       // 觸發 Workflow 生成報告（await + fallback，與 webhook 一致）
@@ -481,11 +505,32 @@ export async function POST(req: NextRequest) {
       console.error('Stripe error:', JSON.stringify(data))
       const errMsg = data.error?.message || '建立付款失敗'
       const errParam = data.error?.param || ''
+      // Stripe failed → Telegram 告警（非同步，不阻塞 response）
+      try {
+        const { notifyStripeFailed } = await import('@/lib/ai/observability/telegram')
+        void notifyStripeFailed(
+          data.id || 'session-creation-failed',
+          `${errMsg}${errParam ? ` (param: ${errParam})` : ''}`,
+        )
+      } catch { /* ignore */ }
       return NextResponse.json(
         { error: `${errMsg}${errParam ? ` (param: ${errParam})` : ''}`, debug: { status: res.status, stripe_error: data.error } },
         { status: 500 },
       )
     }
+
+    // 成功建立 Stripe session → 追 begin_payment 事件
+    try {
+      const sid = data.id || String(Date.now())
+      await trackFunnelServer({
+        sessionId: sid,
+        step: 'begin_payment',
+        planCode,
+        userId: pointsUserId || null,
+        amountUsd: isVariablePrice ? Number(totalPrice || 0) : ((plan as { amount?: number; price?: number } | undefined)?.amount || (plan as { amount?: number; price?: number } | undefined)?.price || 0),
+        metadata: { stripe_session: sid, coupon: verifiedCouponCode || null },
+      })
+    } catch { /* 追蹤失敗不阻塞 */ }
 
     return NextResponse.json({ url: data.url })
   } catch (err) {

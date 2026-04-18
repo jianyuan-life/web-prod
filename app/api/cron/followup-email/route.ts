@@ -107,13 +107,14 @@ export async function GET(req: NextRequest) {
   let rawReports: RawReport[] | null = null
 
   try {
+    // paid_reports 無 updated_at，用 email_sent_at 作為完成時間戳
     const { data, error: queryErr } = await supabase
       .from('paid_reports')
       .select('id, client_name, plan_code, customer_email, access_token, report_result, generation_progress, birth_data')
       .eq('status', 'completed')
-      .lt('updated_at', seventyHoursAgo)
-      .gt('updated_at', seventyFourHoursAgo)
-      .order('updated_at', { ascending: true })
+      .lt('email_sent_at', seventyHoursAgo)
+      .gt('email_sent_at', seventyFourHoursAgo)
+      .order('email_sent_at', { ascending: true })
       .limit(50)
 
     if (queryErr) {

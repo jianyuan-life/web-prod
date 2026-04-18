@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { recordRevenue } from '@/lib/accounting'
+import { recordEmailSend } from '@/lib/email-send-log'
+import { trackFunnelServer } from '@/lib/funnel-tracker'
+import { notifyStripeFailed } from '@/lib/ai/observability/telegram'
 
 function getStripe() {
   // @ts-expect-error - Stripe SDK version mismatch
@@ -125,6 +128,22 @@ export async function POST(req: NextRequest) {
         const finalAmount = amount
         const couponDiscount = Math.max(0, originalAmount - finalAmount)
         const pointsDiscount = Number(session.metadata?.points_discount_usd || 0)
+        const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null
+
+        // 嘗試從 Stripe API 實際取 balance_transaction 的真實手續費
+        let actualStripeFee: number | undefined
+        if (paymentIntentId) {
+          try {
+            const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ['latest_charge.balance_transaction'] })
+            type ChargeWithBal = { balance_transaction?: string | { fee?: number | null } | null }
+            const charge = (pi.latest_charge || null) as ChargeWithBal | string | null
+            if (charge && typeof charge === 'object' && charge.balance_transaction && typeof charge.balance_transaction === 'object') {
+              const fee = charge.balance_transaction.fee
+              if (typeof fee === 'number') actualStripeFee = fee / 100
+            }
+          } catch { /* noop */ }
+        }
+
         await recordRevenue({
           reportId,
           planCode,
@@ -135,11 +154,20 @@ export async function POST(req: NextRequest) {
           customerEmail,
           currency: (session.currency || 'usd').toLowerCase(),
           metadata: {
-            payment_intent: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+            payment_intent: paymentIntentId,
             coupon_code: session.metadata?.coupon_code || null,
             locale: sessionLocale,
+            actual_stripe_fee_usd: actualStripeFee ?? null,
           },
         })
+
+        // 若有真實手續費，覆蓋估算值
+        if (typeof actualStripeFee === 'number') {
+          await supabase
+            .from('revenue_log')
+            .update({ stripe_fee_usd: Math.round(actualStripeFee * 10000) / 10000 })
+            .eq('stripe_session_id', session.id)
+        }
       } catch (revErr) {
         console.error('⚠️ revenue_log 寫入失敗（不影響報告生成）:', revErr)
       }
@@ -259,10 +287,11 @@ export async function POST(req: NextRequest) {
             `
             : ''
 
-          await resend.emails.send({
+          const confirmSubject = `${clientName || '您'}，已收到您的「${planName}」訂單`
+          const confirmRes = await resend.emails.send({
             from: '鑒源命理 <noreply@jianyuan.life>',
             to: customerEmail,
-            subject: `${clientName || '您'}，已收到您的「${planName}」訂單`,
+            subject: confirmSubject,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
                 <!-- 品牌頭部 -->
@@ -290,10 +319,41 @@ export async function POST(req: NextRequest) {
               </div>
             `,
           })
+          await recordEmailSend({
+            resendId: (confirmRes as unknown as { data?: { id?: string } })?.data?.id || null,
+            toEmail: customerEmail,
+            fromEmail: '鑒源命理 <noreply@jianyuan.life>',
+            emailType: 'welcome',
+            subject: confirmSubject,
+            reportId,
+            status: 'sent',
+            metadata: { plan: planCode, stripe_session: session.id, amount },
+          })
           console.info('✅ 訂單確認信已發送:', customerEmail)
         } catch (emailErr) {
+          await recordEmailSend({
+            toEmail: customerEmail,
+            emailType: 'welcome',
+            subject: `${PLAN_NAMES[planCode] || planCode}訂單確認`,
+            reportId,
+            status: 'failed',
+            errorMessage: emailErr instanceof Error ? emailErr.message : String(emailErr),
+            metadata: { plan: planCode, stripe_session: session.id, amount },
+          })
           console.error('訂單確認信發送失敗（不影響報告生成）:', emailErr)
         }
+
+        // 追 funnel：payment_success
+        try {
+          await trackFunnelServer({
+            sessionId: session.id,
+            step: 'payment_success',
+            planCode,
+            reportId,
+            amountUsd: amount,
+            metadata: { email: customerEmail },
+          })
+        } catch { /* ignore */ }
 
         // 觸發 Workflow（帶超時確認 + Fallback 機制）
         let workflowTriggered = false
@@ -563,6 +623,24 @@ export async function POST(req: NextRequest) {
       console.error('⚠️ 推薦碼點數發放失敗（不影響報告生成）:', referralErr)
     }
 
+  } else if (
+    event.type === 'checkout.session.async_payment_failed' ||
+    event.type === 'checkout.session.expired' ||
+    event.type === 'payment_intent.payment_failed'
+  ) {
+    // Stripe 付款失敗 → Telegram 告警
+    try {
+      const obj = event.data.object as { id?: string; last_payment_error?: { message?: string }; metadata?: Record<string, string>; amount_total?: number }
+      const reason = obj.last_payment_error?.message
+        || (event.type === 'checkout.session.expired' ? 'Checkout session expired (20 分鐘未付款)' : '付款失敗')
+      await notifyStripeFailed(
+        obj.id || 'unknown',
+        reason,
+        typeof obj.amount_total === 'number' ? obj.amount_total / 100 : undefined,
+      )
+    } catch (notifyErr) {
+      console.error('Stripe 失敗告警發送失敗:', notifyErr)
+    }
   }
 
   return NextResponse.json({ received: true })

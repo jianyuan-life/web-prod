@@ -79,40 +79,64 @@ export async function GET(req: NextRequest) {
 
   const costs: CostRow[] = (rows as CostRow[]) || []
 
+  // Provider 正規化（同 lib/ai/pricing.ts canonicalProvider）
+  const norm = (p: string): string => {
+    const r = (p || '').toLowerCase()
+    if (r === 'claude' || r === 'anthropic') return 'anthropic'
+    if (r === 'kimi' || r === 'moonshot') return 'moonshot'
+    if (r === 'alibaba' || r === 'dashscope' || r === 'qwen') return 'qwen'
+    if (r === 'google' || r === 'gemini') return 'gemini'
+    if (r === 'voyage' || r === 'voyageai') return 'voyage'
+    if (r === 'openai' || r === 'deepseek') return r
+    return 'other'
+  }
+
   // 總花費
   const totalCost = costs.reduce((s, c) => s + Number(c.cost_usd || 0), 0)
 
-  // 每日花費
-  const dailyMap: Record<string, { total: number; claude: number; deepseek: number; kimi: number; moonshot: number; other: number }> = {}
+  // 每日花費（v5.3.5 擴充 7 家 provider bucket）
+  type DailyBucket = { total: number; anthropic: number; openai: number; deepseek: number; moonshot: number; qwen: number; gemini: number; voyage: number; other: number }
+  const makeEmptyBucket = (): DailyBucket => ({ total: 0, anthropic: 0, openai: 0, deepseek: 0, moonshot: 0, qwen: 0, gemini: 0, voyage: 0, other: 0 })
+  const dailyMap: Record<string, DailyBucket> = {}
   for (const c of costs) {
     const day = (c.created_at || '').slice(0, 10)
     if (!day) continue
-    if (!dailyMap[day]) dailyMap[day] = { total: 0, claude: 0, deepseek: 0, kimi: 0, moonshot: 0, other: 0 }
+    if (!dailyMap[day]) dailyMap[day] = makeEmptyBucket()
     const cost = Number(c.cost_usd || 0)
     dailyMap[day].total += cost
-    const provider = (c.provider || 'other').toLowerCase()
-    if (provider === 'claude') dailyMap[day].claude += cost
-    else if (provider === 'deepseek') dailyMap[day].deepseek += cost
-    else if (provider === 'kimi') dailyMap[day].kimi += cost
-    else if (provider === 'moonshot') dailyMap[day].moonshot += cost
+    const p = norm(c.provider)
+    if (p === 'anthropic') dailyMap[day].anthropic += cost
+    else if (p === 'openai') dailyMap[day].openai += cost
+    else if (p === 'deepseek') dailyMap[day].deepseek += cost
+    else if (p === 'moonshot') dailyMap[day].moonshot += cost
+    else if (p === 'qwen') dailyMap[day].qwen += cost
+    else if (p === 'gemini') dailyMap[day].gemini += cost
+    else if (p === 'voyage') dailyMap[day].voyage += cost
     else dailyMap[day].other += cost
   }
+  const round4 = (n: number) => Math.round(n * 10000) / 10000
   const daily = Object.entries(dailyMap)
     .map(([date, v]) => ({
       date,
-      total: Math.round(v.total * 10000) / 10000,
-      claude: Math.round(v.claude * 10000) / 10000,
-      deepseek: Math.round(v.deepseek * 10000) / 10000,
-      kimi: Math.round(v.kimi * 10000) / 10000,
-      moonshot: Math.round(v.moonshot * 10000) / 10000,
-      other: Math.round(v.other * 10000) / 10000,
+      total: round4(v.total),
+      anthropic: round4(v.anthropic),
+      openai: round4(v.openai),
+      deepseek: round4(v.deepseek),
+      moonshot: round4(v.moonshot),
+      qwen: round4(v.qwen),
+      gemini: round4(v.gemini),
+      voyage: round4(v.voyage),
+      other: round4(v.other),
+      // 舊欄位別名（維持向下相容，前端可能還用到）
+      claude: round4(v.anthropic),
+      kimi: round4(v.moonshot),
     }))
     .sort((a, b) => a.date.localeCompare(b.date))
 
-  // 按 provider
+  // 按 provider（v5.3.5 正規化 provider 名）
   const byProvider: Record<string, { cost: number; calls: number; prompt_tokens: number; completion_tokens: number }> = {}
   for (const c of costs) {
-    const p = c.provider || 'other'
+    const p = norm(c.provider || 'other')
     if (!byProvider[p]) byProvider[p] = { cost: 0, calls: 0, prompt_tokens: 0, completion_tokens: 0 }
     byProvider[p].cost += Number(c.cost_usd || 0)
     byProvider[p].calls += 1
@@ -165,6 +189,61 @@ export async function GET(req: NextRequest) {
     }))
     .sort((a, b) => b.cost_usd - a.cost_usd)
 
+  // v5.3.5 按 call_stage 分組
+  const stageMap: Record<string, { cost: number; calls: number }> = {}
+  for (const c of costs) {
+    const rawStage = c.call_stage || 'unknown'
+    // 把 team_revision_r1/r2/r3 / Call 1/2/3 / *_fallback_* 等 normalise 成大分類
+    let stageKey = rawStage
+    if (/^team_revision_r\d/.test(rawStage)) stageKey = 'team_revision'
+    else if (/^Call\s*\d/.test(rawStage)) stageKey = 'main_report'
+    else if (rawStage.endsWith('_main')) stageKey = 'main_report'
+    else if (rawStage.startsWith('free_')) stageKey = 'free_tool'
+    else if (rawStage.startsWith('moderation_')) stageKey = 'moderation'
+    else if (rawStage.includes('fallback')) stageKey = 'fallback'
+    else if (rawStage === 'qa_5llm' || rawStage.startsWith('qa_')) stageKey = 'qa_5llm'
+    else if (rawStage.startsWith('team_')) stageKey = 'team_pipeline'
+    else if (rawStage === 'embed') stageKey = 'embed'
+    else if (rawStage === 'review_legacy') stageKey = 'review_legacy'
+    if (!stageMap[stageKey]) stageMap[stageKey] = { cost: 0, calls: 0 }
+    stageMap[stageKey].cost += Number(c.cost_usd || 0)
+    stageMap[stageKey].calls += 1
+  }
+  const byStage = Object.entries(stageMap)
+    .map(([stage, v]) => ({
+      stage,
+      cost_usd: round4(v.cost),
+      calls: v.calls,
+      avg_cost_usd: v.calls > 0 ? round4(v.cost / v.calls) : 0,
+    }))
+    .sort((a, b) => b.cost_usd - a.cost_usd)
+
+  // v5.3.5 異常告警判斷
+  const anomalies: Array<{ type: 'expensive_single' | 'daily_exceed'; message: string; data: Record<string, unknown> }> = []
+  const EXPENSIVE_SINGLE_THRESHOLD = 5
+  const DAILY_EXCEED_THRESHOLD = 30
+  for (const c of costs) {
+    const cost = Number(c.cost_usd || 0)
+    if (cost > EXPENSIVE_SINGLE_THRESHOLD) {
+      anomalies.push({
+        type: 'expensive_single',
+        message: `單筆 $${cost.toFixed(2)} (${c.model})`,
+        data: { id: c.id, model: c.model, cost_usd: cost, report_id: c.report_id, call_stage: c.call_stage, created_at: c.created_at },
+      })
+    }
+  }
+  for (const d of daily) {
+    if (d.total > DAILY_EXCEED_THRESHOLD) {
+      anomalies.push({
+        type: 'daily_exceed',
+        message: `${d.date} 單日 $${d.total.toFixed(2)}`,
+        data: { date: d.date, total: d.total },
+      })
+    }
+  }
+  anomalies.sort((a, b) => Number((b.data as { cost_usd?: number; total?: number }).cost_usd ?? (b.data as { total?: number }).total ?? 0)
+    - Number((a.data as { cost_usd?: number; total?: number }).cost_usd ?? (a.data as { total?: number }).total ?? 0))
+
   // Top 10 最貴呼叫
   const topExpensive = [...costs]
     .sort((a, b) => Number(b.cost_usd || 0) - Number(a.cost_usd || 0))
@@ -202,6 +281,8 @@ export async function GET(req: NextRequest) {
     by_provider: byProviderOut,
     by_plan: byPlanOut,
     by_model: byModel,
+    by_stage: byStage,                        // v5.3.5
+    anomalies: anomalies.slice(0, 50),        // v5.3.5
     top_expensive_calls: topExpensive,
     month_to_date_usd: Math.round(mtdCost * 10000) / 10000,
     budget_usd: budget,

@@ -102,6 +102,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '儲存失敗，請稍後再試' }, { status: 500 })
   }
 
+  // v5.3.2：< 3 星 → Telegram 告警
+  if (rating < 3) {
+    try {
+      const { notifyLowRating } = await import('@/lib/ai/observability/telegram')
+      await notifyLowRating(report_id, rating, suggestion || undefined)
+    } catch (e) {
+      console.warn('低評分告警發送失敗:', e)
+    }
+  }
+
   return NextResponse.json({ success: true, feedback: data })
 }
 

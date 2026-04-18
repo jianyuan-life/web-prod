@@ -97,6 +97,7 @@ export async function moderateWithAI(content: string): Promise<AiModerationResul
 // ────────────────────────────────────────────────────────────
 async function callOpenAIModeration(content: string): Promise<AiModerationResult> {
   const apiKey = process.env.OPENAI_API_KEY!
+  const t0 = Date.now()
   const res = await fetch('https://api.openai.com/v1/moderations', {
     method: 'POST',
     headers: {
@@ -108,6 +109,21 @@ async function callOpenAIModeration(content: string): Promise<AiModerationResult
       input: content,
     }),
   })
+
+  // v5.3.5 記帳（moderation API 免費，但仍紀錄呼叫次數與 latency）
+  try {
+    const { recordAIUsage } = await import('@/lib/ai-cost-tracker')
+    await recordAIUsage({
+      provider: 'openai', model: 'omni-moderation-latest',
+      // moderation 沒 token，用字元數當參考
+      promptTokens: Math.ceil(content.length / 4),
+      completionTokens: 0,
+      callStage: 'moderation_openai',
+      latencyMs: Date.now() - t0,
+      status: res.ok ? 'success' : 'error',
+      errorMessage: res.ok ? undefined : `HTTP ${res.status}`,
+    })
+  } catch { /* noop */ }
 
   if (!res.ok) {
     const body = await res.text()
@@ -156,6 +172,7 @@ async function callClaudeHaiku(content: string): Promise<AiModerationResult> {
 待審文字（最多 10,000 字）：
 ${content.slice(0, 10000)}`
 
+  const t0 = Date.now()
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -173,10 +190,32 @@ ${content.slice(0, 10000)}`
 
   if (!res.ok) {
     const body = await res.text()
+    try {
+      const { recordAIUsage } = await import('@/lib/ai-cost-tracker')
+      await recordAIUsage({
+        provider: 'anthropic', model: 'claude-haiku-4-5',
+        promptTokens: 0, completionTokens: 0,
+        callStage: 'moderation_claude_haiku',
+        latencyMs: Date.now() - t0,
+        status: 'error', errorMessage: `HTTP ${res.status}`,
+      })
+    } catch { /* noop */ }
     throw new Error(`Claude Haiku ${res.status}: ${body.slice(0, 200)}`)
   }
 
   const data = await res.json()
+  // v5.3.5 記帳
+  try {
+    const { recordAIUsage } = await import('@/lib/ai-cost-tracker')
+    await recordAIUsage({
+      provider: 'anthropic', model: 'claude-haiku-4-5',
+      promptTokens: Number(data?.usage?.input_tokens || 0),
+      completionTokens: Number(data?.usage?.output_tokens || 0),
+      callStage: 'moderation_claude_haiku',
+      latencyMs: Date.now() - t0,
+      status: 'success',
+    })
+  } catch { /* noop */ }
   const text = data.content?.[0]?.text || ''
   const match = text.match(/\{[\s\S]*\}/)
   if (!match) throw new Error('Claude Haiku 未回傳合法 JSON')

@@ -17,15 +17,23 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 // Types
 // ============================================================
 
+// v5.3.5 擴充到 12 類，完整覆蓋鑑源所有支出
 export type ExpenseCategory =
-  | 'ai_cost'
-  | 'hosting_monthly'
-  | 'api_setup'
-  | 'domain'
-  | 'refund'
-  | 'marketing'
-  | 'email'
-  | 'other'
+  | 'ai_cost'             // AI 模型 API（變動成本，由 ai_cost_log trigger 鏡像）
+  | 'hosting_monthly'     // Vercel/Supabase/Fly.io/Cloudflare/Upstash/Resend/Sentry/LangFuse 月費
+  | 'domain_annual'       // 網域年費（jianyuan.life 續約）
+  | 'domain_setup'        // 網域一次性購買費用
+  | 'ai_subscription'     // Claude Pro / ChatGPT Plus / Cursor / Claude Code 開發訂閱
+  | 'api_credit_topup'    // Anthropic/OpenAI/Moonshot 一次性充值
+  | 'stripe_fee'          // 金流手續費（2.9% + $0.30）
+  | 'refund'              // 退款
+  | 'marketing'           // 廣告投放
+  | 'font_license'        // 字體/圖庫授權
+  | 'external_service'    // 其他付費 SaaS
+  | 'api_setup'           // 一次性 API 開通費（舊類別保留）
+  | 'domain'              // 舊類別保留（等同 domain_annual）
+  | 'email'               // Email 服務額外用量
+  | 'other'               // 其他雜支
 
 export type ExpenseSource = 'auto' | 'manual' | 'refund_api' | 'webhook' | 'cron' | 'backfill'
 
@@ -193,6 +201,7 @@ type RevenueRow = {
   stripe_fee_usd: number | string | null
   points_discount_usd: number | string | null
   coupon_discount_usd: number | string | null
+  refunded_amount_usd: number | string | null
   plan_code: string | null
 }
 
@@ -232,7 +241,7 @@ export async function calcPeriodPnL(
   // Revenue
   const { data: revRows, error: revErr } = await supabase
     .from('revenue_log')
-    .select('amount_usd, net_revenue_usd, stripe_fee_usd, points_discount_usd, coupon_discount_usd, plan_code')
+    .select('amount_usd, net_revenue_usd, stripe_fee_usd, points_discount_usd, coupon_discount_usd, refunded_amount_usd, plan_code')
     .gte('created_at', startISO)
     .lt('created_at', endISO)
     .limit(50000)
@@ -257,6 +266,8 @@ export async function calcPeriodPnL(
   const stripeFeeTotal = revenues.reduce((s, r) => s + toNum(r.stripe_fee_usd), 0)
   const pointsDiscountTotal = revenues.reduce((s, r) => s + toNum(r.points_discount_usd), 0)
   const couponDiscountTotal = revenues.reduce((s, r) => s + toNum(r.coupon_discount_usd), 0)
+  // 退款衝銷：revenue_log.refunded_amount_usd 已扣過的金額（會重複登記在 expense_log.refund）
+  const refundedViaRevenue = revenues.reduce((s, r) => s + toNum(r.refunded_amount_usd), 0)
 
   const expByCategory: Record<string, number> = {}
   let totalExpense = 0
@@ -273,9 +284,22 @@ export async function calcPeriodPnL(
   const refundCost = expByCategory['refund'] || 0
   const marketingCost = expByCategory['marketing'] || 0
   const emailCost = expByCategory['email'] || 0
-  const otherCost = (expByCategory['api_setup'] || 0) + (expByCategory['domain'] || 0) + (expByCategory['other'] || 0)
+  // v5.3.5 新類別也加入「其他固定/一次性支出」
+  const otherCost = (expByCategory['api_setup'] || 0)
+    + (expByCategory['domain'] || 0)
+    + (expByCategory['domain_annual'] || 0)
+    + (expByCategory['domain_setup'] || 0)
+    + (expByCategory['ai_subscription'] || 0)
+    + (expByCategory['api_credit_topup'] || 0)
+    + (expByCategory['font_license'] || 0)
+    + (expByCategory['external_service'] || 0)
+    + (expByCategory['stripe_fee'] || 0)   // TODO：上線後要去重，不要和 revenue_log.stripe_fee_usd 雙計
+    + (expByCategory['other'] || 0)
 
-  const grossProfit = netRevenue - refundCost
+  // 防止退款雙計：expense_log.refund 和 revenue_log.refunded_amount_usd 可能同時有
+  // 取最大值代表真實退款（通常兩者應一致，取 max 保守）
+  const effectiveRefund = Math.max(refundCost, refundedViaRevenue)
+  const grossProfit = netRevenue - effectiveRefund
   const netProfit = grossProfit - aiCost - hostingCost - marketingCost - emailCost - otherCost
   const marginPct = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
 
@@ -297,7 +321,7 @@ export async function calcPeriodPnL(
       total_usd: round4(totalExpense),
       ai_cost_usd: round4(aiCost),
       hosting_cost_usd: round2(hostingCost),
-      refund_usd: round2(refundCost),
+      refund_usd: round2(effectiveRefund),
       marketing_cost_usd: round2(marketingCost),
       email_cost_usd: round4(emailCost),
       other_usd: round2(otherCost),

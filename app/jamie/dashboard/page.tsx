@@ -194,6 +194,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* 今日財務（會計系統） */}
+      <TodayAccountingCard />
+
       {/* 營收趨勢（堆疊面積圖） */}
       {revenue && (
         <div className="bg-[#141c2e] rounded-xl border border-white/5 p-5 mb-6">
@@ -330,8 +333,8 @@ export default function DashboardPage() {
 
         {/* AI 餘額 */}
         <div className="bg-[#141c2e] rounded-xl border border-white/5 p-5">
-          <h2 className="text-base font-semibold text-white mb-3">AI API 餘額</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <h2 className="text-base font-semibold text-white mb-3">AI API 餘額（7 家）</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {aiBalances.map(b => (
               <div key={b.name} className={`rounded-lg p-3 border ${
                 b.status === 'ok' ? 'border-green-500/30 bg-green-500/5' :
@@ -348,7 +351,7 @@ export default function DashboardPage() {
                 {b.detail && <div className="text-[10px] text-gray-500 mt-1">{b.detail}</div>}
               </div>
             ))}
-            {aiBalances.length === 0 && <div className="text-xs text-gray-500 col-span-3 py-4">載入中...</div>}
+            {aiBalances.length === 0 && <div className="text-xs text-gray-500 col-span-full py-4">載入中...</div>}
           </div>
         </div>
       </div>
@@ -428,11 +431,95 @@ export default function DashboardPage() {
           <a href="/jamie/orders" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">訂單管理 →</a>
           <a href="/jamie/reports" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">報告管理 →</a>
           <a href="/jamie/refunds" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">退款管理 →</a>
+          <a href="/jamie/accounting" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">會計系統 →</a>
           <a href="/jamie/ai-cost" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">AI 成本監控 →</a>
           <a href="/jamie/monitoring" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">系統監控 →</a>
           <a href="/jamie/audit-log" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">稽核日誌 →</a>
           <a href="/jamie/loyalty" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">客戶忠誠度 →</a>
           <a href="/jamie/feedback" className="p-3 bg-white/5 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white transition">客戶反饋 →</a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────
+// 今日財務卡片 — 會計系統 Summary
+// ────────────────────────────────────────────────────────────
+function TodayAccountingCard() {
+  const { adminKey } = useAdminAuth()
+  type TAC = {
+    today_revenue: number; today_ai_cost: number; today_net_profit: number
+    month_revenue: number; month_expense: number; month_net_profit: number
+    ai_budget_pct: number; ai_budget_usd: number
+  }
+  const [data, setData] = useState<TAC | null>(null)
+
+  useEffect(() => {
+    if (!adminKey) return
+    Promise.all([
+      adminFetch('/api/admin/accounting/summary?period=this_month', { adminKey }),
+      adminFetch('/api/admin/accounting/daily?period=7d', { adminKey }),
+    ]).then(async ([s, d]) => {
+      if (!s.ok || !d.ok) return
+      const sj = await s.json()
+      const dj = await d.json()
+      const today = new Date().toISOString().slice(0, 10)
+      const todayRow = (dj.daily || []).find((x: { date: string }) => x.date === today)
+      setData({
+        today_revenue: todayRow?.revenue || 0,
+        today_ai_cost: todayRow?.ai_cost || 0,
+        today_net_profit: todayRow?.net_profit || 0,
+        month_revenue: sj.this_month_pnl?.revenue?.total_usd || 0,
+        month_expense: sj.this_month_pnl?.expense?.total_usd || 0,
+        month_net_profit: sj.this_month_pnl?.profit?.net_profit_usd || 0,
+        ai_budget_pct: sj.ai_budget_pct || 0,
+        ai_budget_usd: sj.ai_budget_usd || 0,
+      })
+    }).catch(() => { /* noop */ })
+  }, [adminKey])
+
+  if (!data) return null
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">今日財務</h2>
+        <a href="/jamie/accounting" className="text-xs text-[#4E9AC7] hover:underline">查看完整會計 →</a>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-[#141c2e] rounded-xl p-4 border border-white/5">
+          <div className="text-[10px] text-gray-400 mb-1 uppercase">今日收入</div>
+          <div className="text-xl font-bold text-green-400">${data.today_revenue.toFixed(2)}</div>
+        </div>
+        <div className="bg-[#141c2e] rounded-xl p-4 border border-white/5">
+          <div className="text-[10px] text-gray-400 mb-1 uppercase">今日 AI 成本</div>
+          <div className="text-xl font-bold text-red-400">${data.today_ai_cost.toFixed(4)}</div>
+        </div>
+        <div className="bg-[#141c2e] rounded-xl p-4 border border-white/5">
+          <div className="text-[10px] text-gray-400 mb-1 uppercase">今日淨利</div>
+          <div className={`text-xl font-bold ${data.today_net_profit >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
+            {data.today_net_profit >= 0 ? '+' : ''}${data.today_net_profit.toFixed(2)}
+          </div>
+        </div>
+        <div className="bg-[#141c2e] rounded-xl p-4 border border-white/5">
+          <div className="text-[10px] text-gray-400 mb-1 uppercase">本月累計收入</div>
+          <div className="text-xl font-bold text-green-300">${data.month_revenue.toFixed(2)}</div>
+        </div>
+        <div className="bg-[#141c2e] rounded-xl p-4 border border-white/5">
+          <div className="text-[10px] text-gray-400 mb-1 uppercase">本月累計支出</div>
+          <div className="text-xl font-bold text-red-300">${data.month_expense.toFixed(2)}</div>
+        </div>
+        <div className={`rounded-xl p-4 border ${
+          data.month_net_profit >= 0 ? 'bg-[#141c2e] border-amber-500/30' : 'bg-red-500/5 border-red-500/40'
+        }`}>
+          <div className="text-[10px] text-gray-400 mb-1 uppercase">本月淨利</div>
+          <div className={`text-xl font-bold ${data.month_net_profit >= 0 ? 'text-amber-300' : 'text-red-300'}`}>
+            {data.month_net_profit >= 0 ? '+' : ''}${data.month_net_profit.toFixed(2)}
+          </div>
+          <div className="text-[10px] text-gray-500 mt-1">
+            AI 預算 {data.ai_budget_pct}% / ${data.ai_budget_usd}
+          </div>
         </div>
       </div>
     </div>

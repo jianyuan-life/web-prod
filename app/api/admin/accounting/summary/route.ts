@@ -112,6 +112,51 @@ export async function GET(req: NextRequest) {
     breakEvenPerPlan[code] = margin > 0 ? Math.ceil(thisMonthFixedCost / margin) : 0
   }
 
+  // v5.3.5 盈虧率 KPI（BI 層）
+  // - 毛利率 = (收入 − 變動成本: AI + Stripe 手續費) / 收入
+  // - 淨利率 = 淨利 / 收入
+  // - ROI 回本率 = 累計淨利 / 累計總支出（含歷史 AI + 固定訂閱）
+  // - 每份報告平均 AI 成本
+  // - 損益兩平還要賣幾份（沿用既有 break_even_count_per_plan）
+  function calcKpi(p: typeof periodPnL) {
+    const rev = p.revenue.total_usd
+    if (rev <= 0) {
+      return {
+        gross_margin_pct: 0,
+        net_margin_pct: 0,
+        avg_ai_cost_per_report: 0,
+        samples: p.report_count,
+      }
+    }
+    const variableCost = p.expense.ai_cost_usd + p.revenue.stripe_fee_total_usd
+    const grossMargin = (rev - variableCost) / rev * 100
+    const netMargin = (p.profit.net_profit_usd / rev) * 100
+    const avgAiCost = p.report_count > 0 ? p.expense.ai_cost_usd / p.report_count : 0
+    return {
+      gross_margin_pct: Math.round(grossMargin * 100) / 100,
+      net_margin_pct: Math.round(netMargin * 100) / 100,
+      avg_ai_cost_per_report: Math.round(avgAiCost * 10000) / 10000,
+      samples: p.report_count,
+    }
+  }
+
+  const kpiPeriod = calcKpi(periodPnL)
+  const kpiAllTime = calcKpi(allPnL)
+  const kpiThisMonth = calcKpi(thisMonthPnL)
+  const kpiLastMonth = calcKpi(lastMonthPnL)
+
+  // ROI 回本率：累計淨利 / 累計總支出
+  const roiPct = allPnL.expense.total_usd > 0
+    ? Math.round((allPnL.profit.net_profit_usd / allPnL.expense.total_usd) * 10000) / 100
+    : 0
+
+  // 盈虧率顏色（給前端用）
+  function marginColor(pct: number): 'green' | 'yellow' | 'red' {
+    if (pct >= 60) return 'green'
+    if (pct >= 30) return 'yellow'
+    return 'red'
+  }
+
   return NextResponse.json({
     period: range,
     period_pnl: periodPnL,
@@ -126,6 +171,15 @@ export async function GET(req: NextRequest) {
       this_month_fixed_cost_usd: Math.round(thisMonthFixedCost * 100) / 100,
       avg_margin_per_plan: avgMarginPerPlan,
       break_even_count_per_plan: breakEvenPerPlan,
+    },
+    // v5.3.5 盈虧率 KPI
+    kpi: {
+      period: { ...kpiPeriod, margin_color: marginColor(kpiPeriod.gross_margin_pct) },
+      all_time: { ...kpiAllTime, margin_color: marginColor(kpiAllTime.gross_margin_pct) },
+      this_month: { ...kpiThisMonth, margin_color: marginColor(kpiThisMonth.gross_margin_pct) },
+      last_month: { ...kpiLastMonth, margin_color: marginColor(kpiLastMonth.gross_margin_pct) },
+      roi_pct: roiPct,
+      roi_color: roiPct >= 0 ? 'green' : 'red',
     },
   })
 }

@@ -3,6 +3,7 @@ import PricingButton from '@/components/PricingButton'
 import { PromotionTopBanner, PromotionPrice } from '@/components/PromotionBanner'
 import SocialProof from '@/components/SocialProof'
 import FreeTryBanner from '@/components/FreeTryBanner'
+import FunnelPageHit from '@/components/FunnelPageHit'
 
 const PLANS = {
   personal: [
@@ -104,6 +105,7 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
 export default function PricingPage() {
   return (
     <div className="py-20">
+      <FunnelPageHit step="visit_pricing" />
       <div className="max-w-7xl mx-auto px-6">
         <FreeTryBanner />
         <h1 className="text-3xl font-bold text-center mb-2" style={{ fontFamily: 'var(--font-sans)' }}>

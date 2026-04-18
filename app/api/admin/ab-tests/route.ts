@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
+import { writeAuditLog } from '@/lib/admin-audit-log'
 
 interface VariantStats {
   variant: string
@@ -203,6 +204,12 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+  await writeAuditLog(req, 'create', 'system', key, {
+    resource: 'ab_experiment',
+    name,
+    variants_count: variants.length,
+    primary_metric: primary_metric || 'conversion',
+  })
   return NextResponse.json({ ok: true, key, primary_metric: primary_metric || 'conversion' })
 }
 
@@ -238,5 +245,9 @@ export async function PATCH(req: NextRequest) {
   const supabase = getSupabase()
   const { error } = await supabase.from('ab_experiments').update(update).eq('key', key)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await writeAuditLog(req, 'create', 'system', key, {
+    resource: 'ab_experiment_update',
+    changes: update,
+  })
   return NextResponse.json({ ok: true })
 }

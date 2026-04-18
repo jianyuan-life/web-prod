@@ -1,8 +1,10 @@
 'use client'
 import { useEffect } from 'react'
+import { trackFunnelClient } from '@/lib/funnel-tracker'
 
 // 報告瀏覽追蹤元件
 // 載入後自動記錄一次瀏覽事件，5 分鐘內同一 token 不重複計算
+// v5.3.2：同步觸發 customer_funnel_events 的 report_viewed
 
 interface ReportTrackerProps {
   reportId: string
@@ -33,6 +35,13 @@ export default function ReportTracker({ reportId, planCode, token }: ReportTrack
       }),
     }).catch(() => {
       // 追蹤失敗不影響使用者體驗
+    })
+
+    // 同時寫入 customer_funnel_events（v5.3.2 監控漏斗）
+    trackFunnelClient({
+      step: 'report_viewed',
+      planCode,
+      reportId,
     })
   }, [reportId, planCode, token])
 

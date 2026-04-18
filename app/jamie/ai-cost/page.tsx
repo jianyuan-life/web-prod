@@ -9,15 +9,32 @@ import { adminFetch } from '@/lib/admin-fetch'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, CartesianGrid, Legend,
+  PieChart, Pie, Cell,
 } from 'recharts'
+
+type DailyRow = {
+  date: string; total: number
+  anthropic?: number; openai?: number; deepseek?: number; moonshot?: number
+  qwen?: number; gemini?: number; voyage?: number; other?: number
+  // 舊欄位（向下相容）
+  claude?: number; kimi?: number
+}
+
+type Anomaly = {
+  type: 'expensive_single' | 'daily_exceed'
+  message: string
+  data: Record<string, unknown>
+}
 
 type AICost = {
   period: string
   total_cost_usd: number
-  daily: Array<{ date: string; total: number; claude: number; deepseek: number; kimi: number; moonshot: number; other: number }>
+  daily: DailyRow[]
   by_provider: Record<string, { cost_usd: number; calls: number; prompt_tokens: number; completion_tokens: number; avg_cost_usd: number }>
   by_plan: Record<string, { cost_usd: number; calls: number; avg_cost_usd: number }>
   by_model: Array<{ model: string; provider: string; cost_usd: number; calls: number; avg_cost_usd: number }>
+  by_stage?: Array<{ stage: string; cost_usd: number; calls: number; avg_cost_usd: number }>
+  anomalies?: Anomaly[]
   top_expensive_calls: Array<{ id: string; report_id: string | null; plan_code: string | null; provider: string; model: string; cost_usd: number; prompt_tokens: number | null; completion_tokens: number | null; created_at: string | null }>
   month_to_date_usd: number
   budget_usd: number
@@ -32,11 +49,29 @@ const PLAN_NAMES: Record<string, string> = {
 }
 
 const PROVIDER_COLOR: Record<string, string> = {
-  claude: '#4E9AC7',
+  anthropic: '#4E9AC7',
+  claude: '#4E9AC7',           // 舊別名
+  openai: '#22c55e',
   deepseek: '#10b981',
-  kimi: '#f59e0b',
-  moonshot: '#8b5cf6',
+  moonshot: '#f59e0b',
+  kimi: '#f59e0b',              // 舊別名
+  qwen: '#a855f7',
+  gemini: '#ec4899',
+  voyage: '#06b6d4',
   other: '#6b7280',
+}
+
+const STAGE_LABEL: Record<string, string> = {
+  main_report: '主報告生成',
+  team_pipeline: 'Team Pipeline',
+  team_revision: 'Team 修訂',
+  qa_5llm: '5 LLM QA',
+  review_legacy: '單Claude舊版自審',
+  moderation: '內容審查',
+  free_tool: '免費工具',
+  fallback: 'Fallback 路徑',
+  embed: 'RAG 向量',
+  unknown: '未分類',
 }
 
 export default function AICostPage() {
@@ -119,6 +154,33 @@ export default function AICostPage() {
         </div>
       </div>
 
+      {/* v5.3.5 異常告警區塊 */}
+      {data.anomalies && data.anomalies.length > 0 && (
+        <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+          <h2 className="text-base font-semibold text-red-300 mb-2">
+            🔴 成本異常告警（{data.anomalies.length} 項）
+          </h2>
+          <div className="space-y-1 max-h-[200px] overflow-y-auto">
+            {data.anomalies.slice(0, 30).map((a, i) => (
+              <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-red-500/10 last:border-0">
+                <span className="text-red-400">
+                  {a.type === 'expensive_single' ? '💸 單筆' : '📅 單日'}
+                </span>
+                <span className="text-white flex-1 mx-3 truncate">{a.message}</span>
+                <span className="text-gray-500 text-[10px]">
+                  {a.type === 'expensive_single' && a.data.created_at
+                    ? new Date(String(a.data.created_at)).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                    : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="text-[10px] text-red-300/70 mt-2">
+            閾值：單筆 &gt; $5，單日 &gt; $30。超標時自動發 Telegram 通知。
+          </div>
+        </div>
+      )}
+
       {/* 每日花費趨勢 */}
       <div className="bg-[#141c2e] rounded-xl border border-white/5 p-5 mb-6">
         <h2 className="text-base font-semibold text-white mb-3">每日花費趨勢（USD）</h2>
@@ -130,11 +192,14 @@ export default function AICostPage() {
               <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} />
               <Tooltip contentStyle={{ background: '#0A0F1E', border: '1px solid rgba(78,154,199,0.3)', borderRadius: 8, fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="claude" stackId="1" stroke={PROVIDER_COLOR.claude} fill={PROVIDER_COLOR.claude} fillOpacity={0.6} />
-              <Area type="monotone" dataKey="deepseek" stackId="1" stroke={PROVIDER_COLOR.deepseek} fill={PROVIDER_COLOR.deepseek} fillOpacity={0.6} />
-              <Area type="monotone" dataKey="kimi" stackId="1" stroke={PROVIDER_COLOR.kimi} fill={PROVIDER_COLOR.kimi} fillOpacity={0.6} />
-              <Area type="monotone" dataKey="moonshot" stackId="1" stroke={PROVIDER_COLOR.moonshot} fill={PROVIDER_COLOR.moonshot} fillOpacity={0.6} />
-              <Area type="monotone" dataKey="other" stackId="1" stroke={PROVIDER_COLOR.other} fill={PROVIDER_COLOR.other} fillOpacity={0.6} />
+              <Area type="monotone" dataKey="anthropic" name="Claude" stackId="1" stroke={PROVIDER_COLOR.anthropic} fill={PROVIDER_COLOR.anthropic} fillOpacity={0.65} />
+              <Area type="monotone" dataKey="openai" name="OpenAI" stackId="1" stroke={PROVIDER_COLOR.openai} fill={PROVIDER_COLOR.openai} fillOpacity={0.65} />
+              <Area type="monotone" dataKey="deepseek" name="DeepSeek" stackId="1" stroke={PROVIDER_COLOR.deepseek} fill={PROVIDER_COLOR.deepseek} fillOpacity={0.65} />
+              <Area type="monotone" dataKey="moonshot" name="Kimi/Moonshot" stackId="1" stroke={PROVIDER_COLOR.moonshot} fill={PROVIDER_COLOR.moonshot} fillOpacity={0.65} />
+              <Area type="monotone" dataKey="qwen" name="Qwen" stackId="1" stroke={PROVIDER_COLOR.qwen} fill={PROVIDER_COLOR.qwen} fillOpacity={0.65} />
+              <Area type="monotone" dataKey="gemini" name="Gemini" stackId="1" stroke={PROVIDER_COLOR.gemini} fill={PROVIDER_COLOR.gemini} fillOpacity={0.65} />
+              <Area type="monotone" dataKey="voyage" name="Voyage" stackId="1" stroke={PROVIDER_COLOR.voyage} fill={PROVIDER_COLOR.voyage} fillOpacity={0.65} />
+              <Area type="monotone" dataKey="other" name="其他" stackId="1" stroke={PROVIDER_COLOR.other} fill={PROVIDER_COLOR.other} fillOpacity={0.65} />
             </AreaChart>
           </ResponsiveContainer>
         ) : (

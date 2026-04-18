@@ -73,16 +73,16 @@ export async function GET(req: NextRequest) {
       .select('*')
       .order('provider', { ascending: true }),
 
-    // 2. 今日報告
+    // 2. 今日報告（paid_reports 無 updated_at 欄位，改用 created_at 排序與計時）
     supabase
       .from('paid_reports')
-      .select('id, client_name, plan_code, status, created_at, updated_at, error_message, generation_progress, amount_usd')
+      .select('id, client_name, plan_code, status, created_at, error_message, generation_progress, amount_usd')
       .gte('created_at', todayStart.toISOString()),
 
     // 3. 卡住 > 20 分的 generating
     supabase
       .from('paid_reports')
-      .select('id, client_name, plan_code, status, created_at, updated_at, generation_progress')
+      .select('id, client_name, plan_code, status, created_at, generation_progress')
       .eq('status', 'generating')
       .lt('created_at', twentyMinAgo.toISOString())
       .order('created_at', { ascending: true })
@@ -100,11 +100,11 @@ export async function GET(req: NextRequest) {
       .select('provider, cost_usd')
       .gte('created_at', monthStart.toISOString()),
 
-    // 6. 7 日寄信紀錄
+    // 6. 7 日寄信紀錄（table 實際欄位：status / template / sent_at；無 email_type、無 created_at）
     supabase
       .from('email_send_log')
-      .select('status, email_type, created_at')
-      .gte('created_at', sevenDaysAgo.toISOString()),
+      .select('status, template, sent_at')
+      .gte('sent_at', sevenDaysAgo.toISOString()),
 
     // 7. 7 日客戶評分
     supabase
@@ -201,7 +201,8 @@ export async function GET(req: NextRequest) {
     by_type: {} as Record<string, { sent: number; failed: number }>,
   }
   for (const e of emailRows) {
-    const t = e.email_type || 'other'
+    // template 作為 email 類型分類（transactional_report / welcome / 等）
+    const t = (e as { template?: string | null }).template || 'other'
     if (!emailSummary.by_type[t]) emailSummary.by_type[t] = { sent: 0, failed: 0 }
     if (e.status === 'failed' || e.status === 'bounced') emailSummary.by_type[t].failed++
     else emailSummary.by_type[t].sent++

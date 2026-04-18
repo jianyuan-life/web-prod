@@ -34,6 +34,14 @@
     {
       "path": "/api/cron/daily-digest",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/monthly-fixed-costs",
+      "schedule": "0 0 1 * *"
+    },
+    {
+      "path": "/api/cron/monthly-pnl",
+      "schedule": "0 1 1 * *"
     }
   ]
 }

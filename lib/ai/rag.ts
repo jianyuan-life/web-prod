@@ -77,6 +77,7 @@ export async function embedText(
     throw new Error('[rag] embedText: 輸入文字為空')
   }
 
+  const t0 = Date.now()
   const res = await fetch(VOYAGE_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -92,12 +93,37 @@ export async function embedText(
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
+    try {
+      const { recordAIUsage } = await import('@/lib/ai-cost-tracker')
+      await recordAIUsage({
+        provider: 'voyage', model: VOYAGE_MODEL,
+        promptTokens: 0, completionTokens: 0,
+        callStage: 'embed',
+        latencyMs: Date.now() - t0,
+        status: 'error', errorMessage: `HTTP ${res.status}: ${errText.slice(0, 150)}`,
+      })
+    } catch { /* noop */ }
     throw new Error(`[rag] Voyage embedding 失敗 (${res.status}): ${errText}`)
   }
 
   const json = await res.json() as {
     data?: Array<{ embedding: number[] }>
+    usage?: { total_tokens?: number }
   }
+
+  // v5.3.5 記帳
+  try {
+    const { recordAIUsage } = await import('@/lib/ai-cost-tracker')
+    await recordAIUsage({
+      provider: 'voyage', model: VOYAGE_MODEL,
+      promptTokens: Number(json?.usage?.total_tokens || Math.ceil(cleaned.length / 4)),
+      completionTokens: 0,
+      callStage: 'embed',
+      latencyMs: Date.now() - t0,
+      status: 'success',
+      metadata: { input_type: inputType, text_length: cleaned.length },
+    })
+  } catch { /* noop */ }
 
   const vector = json?.data?.[0]?.embedding
   if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIM) {

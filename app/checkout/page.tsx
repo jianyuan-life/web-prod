@@ -9,6 +9,7 @@ import RMemberForm from '@/components/checkout/RMemberForm'
 import FamilyMemberField from '@/components/checkout/FamilyMemberField'
 import CustomerNote from '@/components/checkout/CustomerNote'
 import PointsRedeem from '@/components/checkout/PointsRedeem'
+import FunnelPageHit from '@/components/FunnelPageHit'
 
 function CheckoutForm() {
   const ctx = useCheckoutForm()
@@ -19,6 +20,7 @@ function CheckoutForm() {
 
   return (
     <div className="py-20">
+      <FunnelPageHit step="start_checkout" planCode={ctx.planCode} />
       <div className="max-w-2xl mx-auto px-6">
         <CheckoutHeader
           planCode={ctx.planCode}

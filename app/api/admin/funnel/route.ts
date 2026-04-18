@@ -48,9 +48,9 @@ export async function GET(req: NextRequest) {
       .select('session_id, user_agent')
       .gte('created_at', sinceISO)
       .like('page_path', '%/checkout%'),
-    // 付費報告
+    // 付費報告（paid_reports 無 updated_at，用 email_sent_at 近似完成時間）
     supabase.from('paid_reports')
-      .select('id, plan_code, amount_usd, status, created_at, updated_at, customer_email')
+      .select('id, plan_code, amount_usd, status, created_at, email_sent_at, customer_email')
       .gte('created_at', sinceISO),
   ])
 
@@ -146,15 +146,15 @@ export async function GET(req: NextRequest) {
     ? Math.round(totalRevenue / paidEmails.size * 100) / 100
     : 0
 
-  // 平均報告生成時間（分鐘）
+  // 平均報告生成時間（分鐘）— 用 email_sent_at 作為完成時間戳
   const completedWithTime = reports.filter(r =>
-    r.status === 'completed' && r.created_at && r.updated_at
+    r.status === 'completed' && r.created_at && r.email_sent_at
   )
   let avgGenerationMinutes = 0
   if (completedWithTime.length > 0) {
     const totalMinutes = completedWithTime.reduce((sum, r) => {
       const created = new Date(r.created_at).getTime()
-      const updated = new Date(r.updated_at).getTime()
+      const updated = new Date(r.email_sent_at as string).getTime()
       return sum + (updated - created) / 60000
     }, 0)
     avgGenerationMinutes = Math.round(totalMinutes / completedWithTime.length * 10) / 10

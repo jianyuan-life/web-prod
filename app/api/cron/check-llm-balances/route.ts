@@ -153,6 +153,110 @@ async function checkAnthropic(): Promise<BalanceRow> {
   }
 }
 
+async function checkOpenAI(): Promise<BalanceRow> {
+  const key = process.env.OPENAI_API_KEY || ''
+  if (!key) {
+    return { provider: 'openai', balance: null, currency: 'USD', balance_usd: null,
+             status: 'unknown', error_message: 'OPENAI_API_KEY 未設定', raw: {} }
+  }
+  try {
+    // OpenAI 無公開 balance API，用 /v1/models 驗證 key
+    const res = await fetch('https://api.openai.com/v1/models', {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (res.ok) {
+      return { provider: 'openai', balance: null, currency: 'USD', balance_usd: null,
+               status: 'unknown',
+               error_message: 'API 可用，OpenAI 無 balance 端點（請到 platform.openai.com/usage）',
+               raw: {} }
+    }
+    if (res.status === 401) {
+      return { provider: 'openai', balance: 0, currency: 'USD', balance_usd: 0,
+               status: 'critical', error_message: '401：API key 失效', raw: {} }
+    }
+    if (res.status === 429) {
+      return { provider: 'openai', balance: 0, currency: 'USD', balance_usd: 0,
+               status: 'critical', error_message: '429：quota 或 rate limit', raw: {} }
+    }
+    return { provider: 'openai', balance: null, currency: 'USD', balance_usd: null,
+             status: 'error', error_message: `HTTP ${res.status}`, raw: {} }
+  } catch (e) {
+    return { provider: 'openai', balance: null, currency: 'USD', balance_usd: null,
+             status: 'error', error_message: e instanceof Error ? e.message : 'timeout', raw: {} }
+  }
+}
+
+async function checkQwen(): Promise<BalanceRow> {
+  const key = process.env.DASHSCOPE_API_KEY || process.env.QWEN_API_KEY || ''
+  if (!key) {
+    return { provider: 'qwen', balance: null, currency: 'CNY', balance_usd: null,
+             status: 'unknown', error_message: 'DASHSCOPE_API_KEY / QWEN_API_KEY 未設定', raw: {} }
+  }
+  try {
+    const res = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'qwen-turbo', max_tokens: 1, messages: [{ role: 'user', content: '1' }] }),
+      signal: AbortSignal.timeout(10000),
+    })
+    if (res.ok) {
+      return { provider: 'qwen', balance: null, currency: 'CNY', balance_usd: null,
+               status: 'unknown',
+               error_message: 'API 可用，DashScope 無 balance 端點（請到 bailian.console.aliyun.com）',
+               raw: {} }
+    }
+    if (res.status === 401 || res.status === 403) {
+      return { provider: 'qwen', balance: 0, currency: 'CNY', balance_usd: 0,
+               status: 'critical', error_message: `HTTP ${res.status}：API key 失效`, raw: {} }
+    }
+    if (res.status === 429) {
+      return { provider: 'qwen', balance: 0, currency: 'CNY', balance_usd: 0,
+               status: 'critical', error_message: '429：quota 耗盡', raw: {} }
+    }
+    return { provider: 'qwen', balance: null, currency: 'CNY', balance_usd: null,
+             status: 'error', error_message: `HTTP ${res.status}`, raw: {} }
+  } catch (e) {
+    return { provider: 'qwen', balance: null, currency: 'CNY', balance_usd: null,
+             status: 'error', error_message: e instanceof Error ? e.message : 'timeout', raw: {} }
+  }
+}
+
+async function checkVoyage(): Promise<BalanceRow> {
+  const key = process.env.VOYAGE_API_KEY || ''
+  if (!key) {
+    return { provider: 'voyage', balance: null, currency: 'USD', balance_usd: null,
+             status: 'unknown', error_message: 'VOYAGE_API_KEY 未設定', raw: {} }
+  }
+  try {
+    const res = await fetch('https://api.voyageai.com/v1/embeddings', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'voyage-3', input: ['1'] }),
+      signal: AbortSignal.timeout(10000),
+    })
+    if (res.ok) {
+      return { provider: 'voyage', balance: null, currency: 'USD', balance_usd: null,
+               status: 'unknown',
+               error_message: 'API 可用，Voyage 無 balance 端點（請到 dash.voyageai.com）',
+               raw: {} }
+    }
+    if (res.status === 401) {
+      return { provider: 'voyage', balance: 0, currency: 'USD', balance_usd: 0,
+               status: 'critical', error_message: '401：API key 失效', raw: {} }
+    }
+    if (res.status === 429) {
+      return { provider: 'voyage', balance: 0, currency: 'USD', balance_usd: 0,
+               status: 'critical', error_message: '429：quota 耗盡', raw: {} }
+    }
+    return { provider: 'voyage', balance: null, currency: 'USD', balance_usd: null,
+             status: 'error', error_message: `HTTP ${res.status}`, raw: {} }
+  } catch (e) {
+    return { provider: 'voyage', balance: null, currency: 'USD', balance_usd: null,
+             status: 'error', error_message: e instanceof Error ? e.message : 'timeout', raw: {} }
+  }
+}
+
 async function checkGemini(): Promise<BalanceRow> {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
   if (!key) {
@@ -186,14 +290,17 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   )
 
-  // 並行查詢
-  const [ds, ms, cl, gm] = await Promise.all([
+  // 並行查詢（v5.3.5 擴充到 7 家）
+  const [ds, ms, cl, gm, oa, qw, vy] = await Promise.all([
     checkDeepSeek(),
     checkMoonshot(),
     checkAnthropic(),
     checkGemini(),
+    checkOpenAI(),
+    checkQwen(),
+    checkVoyage(),
   ])
-  const results = [ds, ms, cl, gm]
+  const results = [ds, ms, cl, gm, oa, qw, vy]
 
   // 寫入 Supabase
   const rows = results.map(r => ({

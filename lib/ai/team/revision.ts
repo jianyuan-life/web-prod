@@ -33,6 +33,7 @@ export async function reviseDraft(
   chartDataJson: string,
   planCode: string,
   round: number,
+  reportId?: string,
 ): Promise<RevisionResult> {
   const systemPrompt = `${AUTHOR.systemPrompt}
 
@@ -72,6 +73,11 @@ ${feedback}
   const res = await generateWithFailover(
     { system: systemPrompt, user: userPrompt, maxTokens: 8000, temperature: 0.5 },
     AUTHOR.providers,
+    {
+      reportId: reportId ?? null,
+      planCode,
+      callStage: `team_revision_r${round}`,
+    },
   )
 
   return {

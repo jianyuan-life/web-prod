@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { trackFunnelClient } from '@/lib/funnel-tracker'
 
 export default function ReportClientButtons({ pdfUrl, planCode, reportId }: { pdfUrl: string | null; planCode?: string; reportId?: string }) {
   const [shareLabel, setShareLabel] = useState('分享報告')
@@ -20,6 +21,8 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId }: { pd
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ report_id: reportId, plan_code: planCode, event_type: 'pdf_download' }),
     }).catch(() => {})
+    // v5.3.2：同步寫入 funnel 事件
+    trackFunnelClient({ step: 'pdf_downloaded', planCode, reportId })
   }
 
   const handleShare = async () => {

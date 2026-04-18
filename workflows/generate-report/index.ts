@@ -24,6 +24,7 @@ import {
   saveReportToSupabase,
   sendReportEmail,
   markReportFailed,
+  markReportNeedsHumanReview,
   closeProgressStream,
   buildAppendix,
   setCurrentReportId,
@@ -87,10 +88,27 @@ export async function generateReportWorkflow(reportId: string) {
         console.error('G15 品質閘門執行失敗:', e)
       }
 
-      // AI 審核
+      // AI 審核（5 LLM Post-Gen QA）
       try {
-        const review = await aiReviewReport(reportContent, 'G15')
-        if (review.score < 70) {
+        const familyNamesList = familyReports.map(r => r.name).filter(Boolean)
+        const review = await aiReviewReport(reportContent, 'G15', {
+          reportId,
+          round: 1,
+          customerName: familyNamesList.join(' × '),
+          // G15 家族藍圖 chartData 是多人合併，先不傳避免 prompt 過長
+        })
+        if (review.fiveLLM) {
+          console.log(`G15 5 LLM QA: avg=${review.fiveLLM.avg}, min=${review.fiveLLM.min}, severity=${review.fiveLLM.severity}`)
+          // 5 LLM 黃色/紅色告警
+          if (review.fiveLLM.severity !== 'ok') {
+            const { notifyFiveLLMWarning, notifyFiveLLMCritical } = await import('@/lib/ai/observability/telegram')
+            if (review.fiveLLM.severity === 'red') {
+              await notifyFiveLLMCritical(reportId, 'G15', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.fiveLLM.criticalErrors)
+            } else {
+              await notifyFiveLLMWarning(reportId, 'G15', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.issues)
+            }
+          }
+        } else if (review.score < 70) {
           console.warn(`G15 AI 審核分數偏低: ${review.score}`)
         }
       } catch (e) {
@@ -227,10 +245,30 @@ export async function generateReportWorkflow(reportId: string) {
         console.error('R 品質閘門執行失敗:', e)
       }
 
-      // AI 審核
+      // AI 審核（5 LLM Post-Gen QA）
       try {
-        const review = await aiReviewReport(reportContent, 'R')
-        if (review.score < 70) {
+        const firstMemberName = members[0]?.name || ''
+        // R 方案：合併所有成員 chartData JSON（給 5 LLM 驗證）
+        const rChartJson = (() => {
+          try { return JSON.stringify(memberResults).slice(0, 14000) } catch { return '' }
+        })()
+        const review = await aiReviewReport(reportContent, 'R', {
+          reportId,
+          round: 1,
+          chartDataJson: rChartJson,
+          customerName: firstMemberName,
+        })
+        if (review.fiveLLM) {
+          console.log(`R 5 LLM QA: avg=${review.fiveLLM.avg}, min=${review.fiveLLM.min}, severity=${review.fiveLLM.severity}`)
+          if (review.fiveLLM.severity !== 'ok') {
+            const { notifyFiveLLMWarning, notifyFiveLLMCritical } = await import('@/lib/ai/observability/telegram')
+            if (review.fiveLLM.severity === 'red') {
+              await notifyFiveLLMCritical(reportId, 'R', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.fiveLLM.criticalErrors)
+            } else {
+              await notifyFiveLLMWarning(reportId, 'R', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.issues)
+            }
+          }
+        } else if (review.score < 70) {
           console.warn(`R AI 審核分數偏低: ${review.score}`)
         }
       } catch (e) {
@@ -455,63 +493,147 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('Post-generation QA 執行失敗（不阻塞）:', e)
   }
 
-  // Step 3: 品質閘門（L3 P0 Bug 1 修復：阻斷式，失敗觸發 retry）
-  // hardFailures 非空時 → 重新生成；重試上限 3 次，仍失敗則 markReportFailed
-  // 分數門檻：Reviewer score < 75 也視為 hardFailure
+  // Step 3: 品質閘門 + Post-Gen 5 LLM QA Pipeline
+  // L3 P0 Bug 1 修復：阻斷式，失敗觸發 retry
+  // Post-Gen 5 LLM QA Pipeline (2026-04-18)：
+  //   舊：單 Claude reviewer score < 75 視為 hardFailure
+  //   新：5 LLM (GPT/Qwen/Gemini/Kimi/DeepSeek) 並行評分
+  //       min < 95 或 avg < 93 → hardFailure 觸發 retry
+  //       連續 3 次失敗 → status = 'needs_human_review' + Telegram 告警
   const MAX_QUALITY_RETRIES = 3
-  const HARD_MIN_SCORE = 75
+  const LEGACY_HARD_MIN_SCORE = 75    // 舊分數門檻（5 LLM 失敗降級時用）
+  const FIVE_LLM_MIN_PER_REVIEWER = 95 // 新門檻：單 reviewer 最低
+  const FIVE_LLM_AVG = 93              // 新門檻：5 位平均
+
+  type FiveLLMSnapshot = {
+    scores: Record<string, number>
+    avg: number
+    min: number
+    max: number
+    severity: 'ok' | 'yellow' | 'red'
+    criticalErrors: string[]
+  }
+
   let qualityRetryCount = 0
   let qualityPassed = false
   let lastQualityIssues: string[] = []
+  let lastFiveLLM: FiveLLMSnapshot | null = null
+
+  const customerNameForQA = typeof birthData.name === 'string' ? birthData.name : ''
+  // chartData JSON（給 5 LLM 驗證報告引用是否正確）
+  const chartDataJsonForQA = (() => {
+    try {
+      return JSON.stringify(calcResult || {}).slice(0, 14000)
+    } catch {
+      return ''
+    }
+  })()
 
   while (qualityRetryCount <= MAX_QUALITY_RETRIES) {
-    // 3a. 品質閘門硬檢查
+    const roundNum = qualityRetryCount + 1
+
+    // 3a. 品質閘門硬檢查（結構、章節、字眼）
     let gateResult: { passed: boolean; warnings: string[]; hardFailures?: string[]; softWarnings?: string[] } | null = null
     try {
-      // CHUMENJI DEEP AUDIT 2026-04-18：E1/E2 傳入 chumenjiTop 做硬比對
       gateResult = await qualityGate(reportContent, planCode, analyses.length, chumenjiTop)
     } catch (e) {
       console.error('品質閘門執行失敗:', e)
-      break  // 閘門本身壞了就不阻塞，避免永遠卡住
+      break
     }
 
-    // 3b. AI 審核員（客戶視角評分）
+    // 3b. 5 LLM Post-Gen QA 評分
     let reviewerScore = 85
     let reviewerIssues: string[] = []
+    let fiveLLMInfo: FiveLLMSnapshot | null = null
     try {
-      const review = await aiReviewReport(reportContent, planCode)
+      const review = await aiReviewReport(reportContent, planCode, {
+        reportId,
+        round: roundNum,
+        chartDataJson: chartDataJsonForQA,
+        customerName: customerNameForQA,
+      })
       reviewerScore = review.score
       reviewerIssues = review.issues
+      if (review.fiveLLM) {
+        fiveLLMInfo = {
+          scores: review.fiveLLM.scores,
+          avg: review.fiveLLM.avg,
+          min: review.fiveLLM.min,
+          max: review.fiveLLM.max,
+          severity: review.fiveLLM.severity,
+          criticalErrors: review.fiveLLM.criticalErrors,
+        }
+        lastFiveLLM = fiveLLMInfo
+      }
     } catch (e) {
-      console.error('AI 審核失敗（不阻塞硬門檻）:', e)
+      console.error('5 LLM QA 失敗（不阻塞硬門檻）:', e)
     }
 
-    // 3c. 合併結果：hardFailures 或 score < 75 都視為不通過
+    // 3c. 合併結果：hardFailures / 5 LLM 未通過 / legacy 分數過低 都視為不通過
     const hardFails = gateResult?.hardFailures || []
     const softFails = gateResult?.softWarnings || []
-    const scoreFail = reviewerScore < HARD_MIN_SCORE
 
-    if (hardFails.length === 0 && !scoreFail) {
+    // 5 LLM 門檻：min >= 95 且 avg >= 93
+    let fiveLLMFail = false
+    if (fiveLLMInfo) {
+      fiveLLMFail = fiveLLMInfo.min < FIVE_LLM_MIN_PER_REVIEWER || fiveLLMInfo.avg < FIVE_LLM_AVG
+    } else {
+      // 5 LLM 整個掛了才走 legacy 門檻
+      fiveLLMFail = reviewerScore < LEGACY_HARD_MIN_SCORE
+    }
+
+    if (hardFails.length === 0 && !fiveLLMFail) {
       qualityPassed = true
-      console.log(`品質閘門通過（第 ${qualityRetryCount + 1} 次）: Reviewer ${reviewerScore} 分`)
+      const scoreLog = fiveLLMInfo
+        ? `5 LLM avg=${fiveLLMInfo.avg}, min=${fiveLLMInfo.min} (PASSED)`
+        : `Reviewer ${reviewerScore} 分 (legacy)`
+      console.log(`品質閘門通過（第 ${roundNum} 次）: ${scoreLog}`)
       if (softFails.length > 0) console.log(`軟警告（不影響通過）: ${softFails.join('; ')}`)
       break
     }
 
     // 3d. 失敗：記錄原因，決定是否重試
+    const fiveLLMDesc = fiveLLMInfo
+      ? `[5 LLM] avg=${fiveLLMInfo.avg}/${FIVE_LLM_AVG}, min=${fiveLLMInfo.min}/${FIVE_LLM_MIN_PER_REVIEWER}, ` +
+        `severity=${fiveLLMInfo.severity}` +
+        (fiveLLMInfo.criticalErrors.length > 0
+          ? `, critical=${fiveLLMInfo.criticalErrors.slice(0, 3).join('|')}`
+          : '')
+      : `[Legacy] Reviewer 分數 ${reviewerScore} < ${LEGACY_HARD_MIN_SCORE}`
+
     lastQualityIssues = [
       ...hardFails,
-      ...(scoreFail ? [`[硬門檻] Reviewer 分數 ${reviewerScore} < ${HARD_MIN_SCORE}`] : []),
-      ...(reviewerIssues.length > 0 ? [`Reviewer 問題: ${reviewerIssues.join('; ')}`] : []),
+      ...(fiveLLMFail ? [fiveLLMDesc] : []),
+      ...(reviewerIssues.length > 0 ? [`Reviewer 問題: ${reviewerIssues.slice(0, 5).join('; ')}`] : []),
     ]
-    console.warn(`品質閘門失敗（第 ${qualityRetryCount + 1} 次）: ${lastQualityIssues.join('; ')}`)
+    console.warn(`品質閘門失敗（第 ${roundNum} 次）: ${lastQualityIssues.join('; ')}`)
+
+    // 5 LLM QA 即時告警（不等重試完才告警）
+    if (fiveLLMInfo) {
+      try {
+        const { notifyFiveLLMWarning, notifyFiveLLMCritical } = await import('@/lib/ai/observability/telegram')
+        if (fiveLLMInfo.severity === 'red') {
+          await notifyFiveLLMCritical(
+            reportId, planCode, fiveLLMInfo.avg, fiveLLMInfo.min,
+            fiveLLMInfo.scores, fiveLLMInfo.criticalErrors,
+          )
+        } else if (fiveLLMInfo.severity === 'yellow') {
+          await notifyFiveLLMWarning(
+            reportId, planCode, fiveLLMInfo.avg, fiveLLMInfo.min,
+            fiveLLMInfo.scores, reviewerIssues,
+          )
+        }
+      } catch (telErr) {
+        console.warn('Telegram 5 LLM 告警失敗（不阻塞）:', telErr)
+      }
+    }
 
     if (qualityRetryCount >= MAX_QUALITY_RETRIES) {
-      console.error(`品質閘門重試 ${MAX_QUALITY_RETRIES} 次仍失敗，標記報告 failed`)
+      console.error(`品質閘門重試 ${MAX_QUALITY_RETRIES} 次仍失敗，標記 needs_human_review`)
       break
     }
 
-    // 3e. 重試：對 C 方案重跑整個 3-call 流程（只有 C 支援，其他方案品質閘門軟降級）
+    // 3e. 重試：只有 C 方案支援整體重跑（其他方案首次失敗後不重試，只記錄）
     if (planCode !== 'C') {
       console.warn(`非 C 方案不支援自動重試，${planCode} 只記錄警告`)
       break
@@ -535,14 +657,27 @@ export async function generateReportWorkflow(reportId: string) {
     }
   }
 
-  // 3f. 品質閘門最終判定：重試仍失敗 → markReportFailed，不要騙客戶
+  // 3f. 品質閘門最終判定：
+  //   C 方案連 3 次失敗 → 標為 needs_human_review（供 /jamie/quality-reports 處理）
+  //   其他方案首次 5 LLM 未通過 → 仍交付但 Telegram 已發警告（client-facing SLA）
   if (!qualityPassed && planCode === 'C') {
-    await markReportFailed(
-      reportId,
-      `品質閘門連續 ${qualityRetryCount} 次失敗: ${lastQualityIssues.slice(0, 3).join('; ').slice(0, 400)}`,
-    )
+    const reasonMsg = `品質閘門連續 ${qualityRetryCount + 1} 次失敗: ${lastQualityIssues.slice(0, 3).join('; ').slice(0, 400)}`
+    try {
+      await markReportNeedsHumanReview(reportId, reasonMsg, lastFiveLLM || undefined)
+      try {
+        const { notifyNeedsHumanReview } = await import('@/lib/ai/observability/telegram')
+        await notifyNeedsHumanReview(
+          reportId, planCode, qualityRetryCount + 1,
+          lastFiveLLM?.avg ?? 0,
+          lastFiveLLM?.criticalErrors || [],
+        )
+      } catch { /* 不阻塞 */ }
+    } catch (markErr) {
+      console.error('markReportNeedsHumanReview 失敗，fallback markReportFailed:', markErr)
+      await markReportFailed(reportId, reasonMsg)
+    }
     await closeProgressStream()
-    return { success: false, error: '品質閘門失敗' }
+    return { success: false, error: '品質閘門失敗，已轉為人工審核' }
   }
 
   // Step 3.7: 內容安全審查（黑名單 + AI Moderation）
