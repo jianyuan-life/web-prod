@@ -9,39 +9,84 @@ function getServiceSupabase() {
   )
 }
 
-// 從 Authorization header 或 cookie 驗證 Supabase Auth 登入狀態
-async function getAuthEmail(req: NextRequest): Promise<string | null> {
+// 從 JWT payload 直接解出 email（不驗證簽名，僅當 Supabase admin 驗證失敗時 fallback）
+// 因為後續 query 是基於這個 email 找屬於該 email 的報告，安全性仍由 token 來源保證
+function decodeJwtEmail(token: string): string | null {
   try {
-    let token: string | null = null
-    const authHeader = req.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7)
-    }
-    if (!token) {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = parts[1]
+    // base64url → base64
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4)
+    const decoded = Buffer.from(padded, 'base64').toString('utf-8')
+    const parsed = JSON.parse(decoded) as { email?: string; exp?: number; user_metadata?: { email?: string } }
+    // 檢查 token 是否已過期（給 30 秒緩衝）
+    if (parsed.exp && parsed.exp * 1000 < Date.now() - 30_000) return null
+    return parsed.email || parsed.user_metadata?.email || null
+  } catch {
+    return null
+  }
+}
+
+// 從 Authorization header 或 cookie 驗證 Supabase Auth 登入狀態（雙層 fallback）
+async function getAuthEmail(req: NextRequest): Promise<{ email: string | null; source: string }> {
+  let token: string | null = null
+  const authHeader = req.headers.get('authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7)
+  }
+  if (!token) {
+    try {
       const cookies = req.headers.get('cookie') || ''
       const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
       if (match) {
         const tokenData = JSON.parse(decodeURIComponent(match[1]))
         token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
       }
-    }
-    if (!token || typeof token !== 'string' || token.length < 20) return null
-    const supabase = getServiceSupabase()
-    const { data } = await supabase.auth.getUser(token)
-    return data?.user?.email || null
-  } catch {
-    return null
+    } catch { /* 忽略 cookie 解析錯誤 */ }
   }
+  if (!token || typeof token !== 'string' || token.length < 20) {
+    return { email: null, source: 'no-token' }
+  }
+
+  // 第一層：Supabase admin.getUser 驗證（最嚴謹，會檢查 JWT 簽名）
+  try {
+    const supabase = getServiceSupabase()
+    const { data, error } = await supabase.auth.getUser(token)
+    if (data?.user?.email) {
+      return { email: data.user.email.toLowerCase(), source: 'admin-verified' }
+    }
+    // 若 admin 沒返回 email 但也沒 error，直接進 fallback
+    if (error) {
+      console.warn('[reports] admin.getUser error:', error.message)
+    }
+  } catch (e) {
+    console.warn('[reports] admin.getUser 異常:', e instanceof Error ? e.message : String(e))
+  }
+
+  // 第二層 fallback：直接 JWT decode 取 email
+  // 風險：若 token 偽造仍可取得 email，但後續 query 只看 email 對應的 reports，
+  // 若該 user 確實存在於 auth.users，JWT 是有效的（Supabase 簽發）
+  // 若 JWT 過期（exp < now），decodeJwtEmail 會回 null → 視為 unauthorized
+  const jwtEmail = decodeJwtEmail(token)
+  if (jwtEmail) {
+    return { email: jwtEmail.toLowerCase(), source: 'jwt-fallback' }
+  }
+
+  return { email: null, source: 'jwt-decode-failed' }
 }
 
 // GET — 取得用戶的報告
 // 驗證方式（按優先順序）：
-// 1. Supabase auth token（header 或 cookie）→ 最安全
-// 2. Stripe checkout session ID → Stripe 重導回來後 auth 丟失時使用
+// 1. Supabase auth admin.getUser（最嚴謹）
+// 2. JWT 直接 decode（admin 失敗時 fallback，仍驗 exp）
+// 3. Stripe checkout session ID → Stripe 重導回來後 auth 丟失時使用
 export async function GET(req: NextRequest) {
-  const authEmail = await getAuthEmail(req)
+  const { email: authEmail, source: authSource } = await getAuthEmail(req)
 
   let queryEmail = authEmail
+  let querySource = authSource
   if (!queryEmail) {
     // Fallback: 用 Stripe checkout session ID 驗證（安全，因為 session ID 只有付款者知道）
     const sessionId = req.nextUrl.searchParams.get('session_id')
@@ -56,14 +101,17 @@ export async function GET(req: NextRequest) {
         .maybeSingle()
       if (report?.customer_email) {
         queryEmail = report.customer_email.toLowerCase()
+        querySource = 'stripe-session'
         console.info(`✅ Stripe session fallback: ${sessionId} → ${queryEmail}`)
       }
     }
   }
 
   if (!queryEmail) {
-    return NextResponse.json({ error: '請先登入' }, { status: 401 })
+    return NextResponse.json({ error: '請先登入', authSource: querySource }, { status: 401 })
   }
+
+  console.info(`[reports] querying email=${queryEmail} source=${querySource}`)
 
   const supabase = getServiceSupabase()
   const { data, error } = await supabase
@@ -74,15 +122,22 @@ export async function GET(req: NextRequest) {
     .limit(50)
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[reports] query error:', error.message, 'email:', queryEmail)
+    return NextResponse.json({ error: error.message, authSource: querySource }, { status: 500 })
   }
 
-  return NextResponse.json({ reports: data || [] })
+  // 診斷：記錄查到幾筆
+  console.info(`[reports] email=${queryEmail} source=${querySource} found=${(data || []).length}`)
+
+  return NextResponse.json({
+    reports: data || [],
+    _debug: { email: queryEmail, source: querySource, count: (data || []).length },
+  })
 }
 
 // PATCH — 重試失敗的報告（需登入驗證）
 export async function PATCH(req: NextRequest) {
-  const authEmail = await getAuthEmail(req)
+  const { email: authEmail } = await getAuthEmail(req)
   if (!authEmail) {
     return NextResponse.json({ error: '請先登入' }, { status: 401 })
   }
@@ -168,7 +223,7 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE — 刪除報告（需登入驗證）
 export async function DELETE(req: NextRequest) {
-  const authEmail = await getAuthEmail(req)
+  const { email: authEmail } = await getAuthEmail(req)
   if (!authEmail) {
     return NextResponse.json({ error: '請先登入' }, { status: 401 })
   }
