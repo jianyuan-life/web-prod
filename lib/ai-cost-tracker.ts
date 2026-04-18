@@ -74,6 +74,13 @@ export function estimateCostUsd(
 // 單筆呼叫超過此金額（USD）觸發即時 Telegram 告警
 const EXPENSIVE_SINGLE_CALL_USD = 5.0
 
+// v5.3.10：寫入失敗告警 rate-limit（避免洪水）
+//   在 serverless runtime 裡 module-level 變數可能跨 invocation 保留，也可能 reset
+//   這是 best-effort，重點是不要一秒發 100 則告警
+let lastInsertFailAlertAt = 0
+const INSERT_FAIL_ALERT_COOLDOWN_MS = 60 * 1000  // 1 分鐘內最多 1 則告警
+let cumulativeInsertFailCount = 0                // 從 process 啟動到現在失敗總數
+
 /**
  * 寫入一筆 AI 呼叫紀錄。
  * 失敗不拋錯（避免阻擋業務流程），但會 console.error。
@@ -83,7 +90,13 @@ export async function recordAIUsage(usage: AIUsage): Promise<void> {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!url || !serviceKey) return
+    if (!url || !serviceKey) {
+      // v5.3.10：之前這邊 return 讓老闆裸奔 1 個月沒人知道
+      console.error('[ai-cost-tracker] 缺 Supabase env，無法記錄 AI 成本', {
+        hasUrl: Boolean(url), hasKey: Boolean(serviceKey),
+      })
+      return
+    }
 
     const supabase = createClient(url, serviceKey)
     const cost = estimateCostUsd(usage.model, usage.promptTokens, usage.completionTokens)
@@ -91,20 +104,67 @@ export async function recordAIUsage(usage: AIUsage): Promise<void> {
     // 正規化 provider（把 alibaba/google/claude 等別名統一）
     const providerTag: ProviderTag = canonicalProvider(usage.provider)
 
-    await supabase.from('ai_cost_log').insert({
-      report_id: usage.reportId || null,
-      plan_code: usage.planCode || null,
-      provider: providerTag,
-      model: usage.model,
-      call_stage: usage.callStage || null,
-      prompt_tokens: Math.max(0, Math.round(usage.promptTokens || 0)),
-      completion_tokens: Math.max(0, Math.round(usage.completionTokens || 0)),
-      cost_usd: cost,
-      latency_ms: typeof usage.latencyMs === 'number' ? Math.round(usage.latencyMs) : null,
-      status: usage.status || 'success',
-      error_message: usage.errorMessage || null,
-      metadata: usage.metadata || {},
-    })
+    // v5.3.10：用 .select() 強制取回結果，這樣 Supabase insert 的真實錯誤才會浮出來
+    //   以前 await supabase.from().insert() 吞掉 error（因為 postgrest-js 回 { error } 而不 throw），
+    //   導致寫入失敗 recordAIUsage 外層 try/catch 看不到 → 06:01 後全部靜默失敗。
+    const { error: insertError, data: insertedRow } = await supabase
+      .from('ai_cost_log')
+      .insert({
+        report_id: usage.reportId || null,
+        plan_code: usage.planCode || null,
+        provider: providerTag,
+        model: usage.model,
+        call_stage: usage.callStage || null,
+        prompt_tokens: Math.max(0, Math.round(usage.promptTokens || 0)),
+        completion_tokens: Math.max(0, Math.round(usage.completionTokens || 0)),
+        cost_usd: cost,
+        latency_ms: typeof usage.latencyMs === 'number' ? Math.round(usage.latencyMs) : null,
+        status: usage.status || 'success',
+        error_message: usage.errorMessage || null,
+        metadata: usage.metadata || {},
+      })
+      .select('id')
+      .single()
+
+    if (insertError) {
+      cumulativeInsertFailCount += 1
+      // 真實 Supabase 錯誤（含 code/hint/details）一定要看到
+      console.error('[ai-cost-tracker] Supabase insert 失敗:', {
+        code: (insertError as { code?: string }).code,
+        message: (insertError as { message?: string }).message,
+        hint: (insertError as { hint?: string }).hint,
+        details: (insertError as { details?: string }).details,
+        usage_preview: {
+          provider: providerTag, model: usage.model,
+          reportId: usage.reportId, planCode: usage.planCode,
+          callStage: usage.callStage, status: usage.status,
+        },
+        cumulative_fail_count: cumulativeInsertFailCount,
+      })
+      // Telegram 告警（rate-limit 1 分鐘一則，避免洪水）
+      const now = Date.now()
+      if (now - lastInsertFailAlertAt > INSERT_FAIL_ALERT_COOLDOWN_MS) {
+        lastInsertFailAlertAt = now
+        try {
+          const telegramMod = await import('./ai/observability/telegram') as {
+            notify?: (title: string, body: string) => Promise<boolean>
+          }
+          if (typeof telegramMod.notify === 'function') {
+            await telegramMod.notify(
+              '🚨 AI 成本記帳寫入失敗（裸奔燒錢警告）',
+              `provider=${providerTag} model=${usage.model}\n` +
+              `error: ${(insertError as { code?: string }).code ?? '?'} — ${(insertError as { message?: string }).message ?? 'unknown'}\n` +
+              `累計失敗 ${cumulativeInsertFailCount} 筆（以後 AI call 都不會被記錄）`,
+            )
+          }
+        } catch (telErr) {
+          console.error('[ai-cost-tracker] Telegram 告警也失敗:', telErr)
+        }
+      }
+      return  // 寫入失敗，後面的告警 / 單筆超貴偵測都跳過
+    }
+    // 成功寫入：log 出 id 便於追蹤
+    console.log(`[ai-cost-tracker] 寫入成功 id=${insertedRow?.id} ${providerTag}/${usage.model} $${cost.toFixed(4)}`)
 
     // 高金額單筆告警（不阻塞主流程）
     // notifyAICostSingleCallExpensive 由 AI 成本 agent v5.3.5 後補 export，
