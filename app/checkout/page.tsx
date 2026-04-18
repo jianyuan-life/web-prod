@@ -289,6 +289,8 @@ function CheckoutForm() {
             setE1EventType={ctx.setE1EventType}
             e1HasExactTime={ctx.e1HasExactTime}
             setE1HasExactTime={ctx.setE1HasExactTime}
+            e1EventExactTime={ctx.e1EventExactTime}
+            setE1EventExactTime={ctx.setE1EventExactTime}
             eSelectedBlocks={ctx.eSelectedBlocks}
             setESelectedBlocks={ctx.setESelectedBlocks}
             customerNote={ctx.customerNote}

@@ -1100,6 +1100,17 @@ export async function callChumenjiTop(
   if (planCode === 'E1') {
     body.event_start_date = birthData.event_start_date || new Date().toISOString().split('T')[0]
     body.event_end_date = birthData.event_end_date || birthData.event_start_date || ''
+    // v5.3.23：E1 升級 — 傳 has_exact_time + event_exact_time 給 Python
+    //   yes 模式：Python 驗證該時辰吉凶 + 前置補運 Top 3
+    //   no 模式：Python 掃描 Top 3 最佳時機（舊行為）
+    const hasExactTime = Boolean((birthData as Record<string, unknown>).has_exact_time)
+    body.has_exact_time = hasExactTime
+    if (hasExactTime) {
+      const exactTime = (birthData as Record<string, unknown>).event_exact_time
+      if (typeof exactTime === 'string' && /^\d{2}:\d{2}$/.test(exactTime)) {
+        body.event_exact_time = exactTime
+      }
+    }
   } else if (planCode === 'E2') {
     // E2：從今天開始算 4 週（國曆）
     body.start_date = new Date().toISOString().split('T')[0]
@@ -1449,6 +1460,27 @@ function buildGenericUserPrompt(
       if (qimenAnalysis.details) {
         const detail = typeof qimenAnalysis.details === 'string' ? qimenAnalysis.details : JSON.stringify(qimenAnalysis.details)
         userPrompt += `\n詳細排盤：\n${detail}\n`
+      }
+    }
+
+    // v5.3.23：E1 新增命盤×事件背景（八字+紫微精簡摘要）
+    //   E1 從「純奇門」升級為「奇門為主，八字/紫微為輔」
+    //   AI 先看客戶本命對此事件的傾向（助力/阻力），再給 Top 3 吉時
+    //   E2 維持純奇門（不加）
+    if (birthData.plan_code === 'E1') {
+      userPrompt += `\n【客戶命盤背景 — 八字/紫微摘要（僅供事件本質分析）】\n`
+      userPrompt += `八字：${cd.bazi || ''}\n`
+      if (cd.yongshen) userPrompt += `用神：${cd.yongshen}\n`
+      if (cd.five_elements) userPrompt += `五行分佈：${JSON.stringify(cd.five_elements)}\n`
+
+      const baziAnalysis = analyses.find(a => a.system === '八字' || (a.system || '').includes('八字'))
+      if (baziAnalysis?.summary) {
+        userPrompt += `八字摘要：${String(baziAnalysis.summary).slice(0, 600)}\n`
+      }
+
+      const ziweiAnalysis = analyses.find(a => a.system === '紫微斗數' || (a.system || '').includes('紫微'))
+      if (ziweiAnalysis?.summary) {
+        userPrompt += `紫微摘要：${String(ziweiAnalysis.summary).slice(0, 600)}\n`
       }
     }
     userPrompt += '\n'
@@ -2322,47 +2354,27 @@ export async function qualityGate(
     warnings.push(`排盤系統不足: 期望 15 套，實際 ${systemsCount} 套`)
   }
 
-  // 2. C 方案必要章節檢查
-  // v5.3.6：C 方案有兩條生成路徑，章節結構不同，regex 必須同時支援
-  //   A) Team Pipeline（USE_TEAM_PIPELINE_FOR_C=true，plan-prompts.ts 起承轉合 15 章）：
-  //      命盤全觀/性格特質/天賦潛能/人生課題/事業發展/財富運勢/感情關係/健康與福祉/
-  //      大運/流年運勢/優勢發揮/風險規避/心態調整/總結與進階指引（內含寫給你的話）
-  //   B) Legacy 3-call（fallback，prompts/c_plan_v2.ts 舊 11 章）：
-  //      人生速覽/一、命格名片/二、你是什麼樣的人/三、事業與天賦/四、財運分析/
-  //      五、感情與人際/六、健康提醒/七、大運走勢/八、2026流年重點/九、給你的一句話/
-  //      十、刻意練習/十一、寫給XX的話
-  //   修 cascade bug：舊 regex 只認 Legacy 章節，遇 Team Pipeline 產出 100% 誤報 hardFail。
+  // v5.3.23：C 方案改為結構性檢查（移除 regex 章節名硬匹配）
+  // 根因：prompt 一改章節名（例：「人生速覽」→「你最大的天賦」），
+  //   regex 沒同步 → 4 次 C 方案都誤判「缺少必要章節」hardFail 老闆燒 $400
+  // 修：結構性檢查 — 字數+章節數+結尾完整，不檢查特定標題名
+  //   讓 Claude 可自由發揮章節命名，只要結構對就放行
   if (planCode === 'C') {
-    const requiredSections = [
-      {
-        pattern: /命盤全觀|命格名片|命格總覽|人生速覽|性格特質|人格畫像|你是什麼樣的人/,
-        name: '人生速覽/命盤全觀',
-      },
-      {
-        pattern: /天賦潛能|你的天賦武器|好的地方|天賦優勢|天賦.*Top|🟢/,
-        name: '天賦潛能/好的地方',
-      },
-      {
-        pattern: /人生課題|事業陷阱|破財陷阱|最需注意|需要注意|課題|🟡/,
-        name: '人生課題/需要注意',
-      },
-      {
-        pattern: /改善建議|改善方案|改善|優勢發揮|行動策略|行動方案|理財行動方案|人際改善方案|刻意練習|🔵/,
-        name: '改善建議/行動方案',
-      },
-      {
-        pattern: /寫給.*的話|總結.*指引|總結/,
-        name: '寫給你的話/總結',
-      },
-    ]
-    for (const sec of requiredSections) {
-      if (!sec.pattern.test(reportContent)) {
-        warnings.push(`缺少必要章節: ${sec.name}`)
-      }
+    // 章節數：C 方案期望至少 5 個 ## 章節（實際通常 11-15 章）
+    const h2Matches = reportContent.match(/^## [^\n]+/gm) || []
+    const chapterCount = h2Matches.length
+    if (chapterCount < 5) {
+      warnings.push(`C 方案章節數過少: ${chapterCount} 個 ## 章節（期望 >= 5）`)
     }
-    // v5.3.6 移除：舊版「每個命理系統都要含好的地方/需要注意/改善建議」子章節檢查。
-    // 原因：Team Pipeline 起承轉合新結構不再按「15 命理系統」切章，
-    //   而是按人生主題整合交叉驗證；原檢查會 100% false-positive 誤判。
+
+    // 結尾完整性：最後 500 字必須有結尾符號（。！？」）
+    const tail = reportContent.slice(-500).trim()
+    if (tail.length > 0 && !/[。！？」\]]\s*$/.test(tail)) {
+      warnings.push(`[軟性] C 方案結尾可能被截斷: "${tail.slice(-80)}"`)
+    }
+    // v5.3.23 移除：舊的硬編碼章節名 regex 匹配。
+    //   Claude 可自由命名章節（「你最大的天賦」「力量宣告」等都 OK）
+    //   品質靠「字數 + 章節數 + 6 LLM QA + 結尾完整」多層把關
   }
 
   // 2c. E1 事件出門訣必要章節檢查（Top3 加乘時機）

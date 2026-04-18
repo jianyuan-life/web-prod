@@ -35,6 +35,8 @@ interface SinglePersonFormProps {
   setE1EventType: (v: string) => void
   e1HasExactTime: 'yes' | 'no'
   setE1HasExactTime: (v: 'yes' | 'no') => void
+  e1EventExactTime: string
+  setE1EventExactTime: (v: string) => void
   // E1/E2 時段
   eSelectedBlocks: boolean[]
   setESelectedBlocks: (v: boolean[]) => void
@@ -65,6 +67,7 @@ export default function SinglePersonForm({
   dTopic, setDTopic, dOtherDesc, setDOtherDesc,
   e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
   e1EventType, setE1EventType, e1HasExactTime, setE1HasExactTime,
+  e1EventExactTime, setE1EventExactTime,
   eSelectedBlocks, setESelectedBlocks,
   customerNote, setCustomerNote,
   loading, error, finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied, isFormValid, onSubmit,
@@ -230,6 +233,24 @@ export default function SinglePersonForm({
             </div>
           </div>
           <p className="text-[10px] text-text-muted/60">不填截止日期 = 從開始日起算 1 個月內找最佳時機。有明確截止日（如面試、簽約）請填寫。</p>
+
+          {/* v5.3.22：yes 模式下要求填事件確切時辰 */}
+          {e1HasExactTime === 'yes' && (
+            <div className="mt-3 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)' }}>
+              <label className="block text-sm font-semibold text-gold mb-2">事件確切時間 *（HH:MM）</label>
+              <input
+                type="time"
+                required
+                value={e1EventExactTime}
+                onChange={(e) => setE1EventExactTime(e.target.value)}
+                className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
+              />
+              <p className="text-[10px] text-text-muted/60 mt-1">
+                事件的確切開始時間（如：面試 14:00、簽約 15:30）。
+                系統會**直接評估這個時辰的吉凶**並提供前置補運建議，而不只是找 Top 3 吉時。
+              </p>
+            </div>
+          )}
           <div className="mt-4">
             <label className="block text-sm font-semibold text-gold mb-2">事件描述 *（最多 200 字）</label>
             <textarea

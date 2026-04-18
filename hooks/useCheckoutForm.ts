@@ -84,6 +84,8 @@ export function useCheckoutForm() {
   const [e1EndDate, setE1EndDate] = useState('')
   const [e1EventType, setE1EventType] = useState('')
   const [e1HasExactTime, setE1HasExactTime] = useState<'yes' | 'no'>('no')
+  // v5.3.22：E1 升級，「有固定時間」時填入精確時辰（HH:MM）
+  const [e1EventExactTime, setE1EventExactTime] = useState('')
 
   // E1/E2 十二時辰：子丑寅卯辰巳午未申酉戌亥，預設全不勾（讓客戶自己選）
   const [eSelectedBlocks, setESelectedBlocks] = useState<boolean[]>([
@@ -495,6 +497,10 @@ export function useCheckoutForm() {
           // E1 新增：事件類型 + 有無明確時間（結構化欄位，不依賴 customer_note）
           birthData.event_type = e1EventType
           birthData.has_exact_time = e1HasExactTime === 'yes'
+          // v5.3.22：E1 升級，yes 時傳入事件精確時辰
+          if (e1HasExactTime === 'yes' && e1EventExactTime) {
+            birthData.event_exact_time = e1EventExactTime
+          }
         }
 
         if (planCode === 'E1' || planCode === 'E2') {
@@ -587,6 +593,7 @@ export function useCheckoutForm() {
     // E1 方案
     e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
     e1EventType, setE1EventType, e1HasExactTime, setE1HasExactTime,
+    e1EventExactTime, setE1EventExactTime,
     // E1/E2 時段
     eSelectedBlocks, setESelectedBlocks,
     // 金額
