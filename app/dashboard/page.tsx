@@ -9,7 +9,6 @@ import * as fbpixel from '@/lib/fbpixel'
 import ReportProgress from '@/components/ReportProgress'
 import FamilyMembersManager from '@/components/FamilyMembersManager'
 import ReferralCard from '@/components/ReferralCard'
-import UpdateBirthLocation from '@/components/UpdateBirthLocation'
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
@@ -626,18 +625,7 @@ function DashboardContent() {
                 {(r.status === 'pending' || r.status === 'generating') && (
                   <ReportProgress createdAt={r.created_at} planCode={r.plan_code} generationProgress={r.generation_progress} />
                 )}
-                {/* Sprint 5 國際化：completed 報告可更新出生地 + 免費重算（最多 2 次） */}
-                {r.status === 'completed' && (r.self_update_count ?? 0) < 2 && (
-                  <div className="mt-2 text-right">
-                    <UpdateBirthLocation
-                      reportId={r.id}
-                      authToken={authToken}
-                      currentTimezone={r.timezone}
-                      currentCity={r.birth_city}
-                      onSuccess={() => fetchReports().then(setReports)}
-                    />
-                  </div>
-                )}
+                {/* v5.3.15：移除「更新出生地」— 我們沒有重算功能，不該讓客戶以為可以 */}
                 {/* 刪除確認 — 強調不可復原 + 隱私保護 */}
                 {confirmId === r.id && (
                   <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl px-5 py-4 space-y-3">
