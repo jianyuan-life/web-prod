@@ -546,33 +546,16 @@ export async function generateReportWorkflow(reportId: string) {
       break
     }
 
-    // 3b. 5 LLM Post-Gen QA 評分
-    let reviewerScore = 85
-    let reviewerIssues: string[] = []
-    let fiveLLMInfo: FiveLLMSnapshot | null = null
-    try {
-      const review = await aiReviewReport(reportContent, planCode, {
-        reportId,
-        round: roundNum,
-        chartDataJson: chartDataJsonForQA,
-        customerName: customerNameForQA,
-      })
-      reviewerScore = review.score
-      reviewerIssues = review.issues
-      if (review.fiveLLM) {
-        fiveLLMInfo = {
-          scores: review.fiveLLM.scores,
-          avg: review.fiveLLM.avg,
-          min: review.fiveLLM.min,
-          max: review.fiveLLM.max,
-          severity: review.fiveLLM.severity,
-          criticalErrors: review.fiveLLM.criticalErrors,
-        }
-        lastFiveLLM = fiveLLMInfo
-      }
-    } catch (e) {
-      console.error('5 LLM QA 失敗（不阻塞硬門檻）:', e)
-    }
+    // 3b. 5 LLM Post-Gen QA 已砍（v5.3.31，老闆決定簡化：1 Claude 寫 + 結構硬檢查）
+    // 理由：
+    //   1. 5 LLM QA 限制 Claude 創作空間，反而砍掉認可版 DNA
+    //   2. 成本過高（每份 $2-3 QA 費用）
+    //   3. qualityGate 的硬結構檢查已足以抓大錯誤
+    const reviewerScore: number = 95 // 不再由外部 LLM 打分
+    const reviewerIssues: string[] = []
+    const fiveLLMInfo = null as FiveLLMSnapshot | null
+    // 保留 chartDataJsonForQA 和 customerNameForQA 變數（讓 TS 不抱怨未使用）
+    void chartDataJsonForQA; void customerNameForQA; void roundNum; void lastFiveLLM
 
     // 3c. 合併結果：hardFailures / 5 LLM 未通過 / legacy 分數過低 都視為不通過
     const hardFails = gateResult?.hardFailures || []
@@ -669,13 +652,13 @@ export async function generateReportWorkflow(reportId: string) {
     const reasonMsg = `品質閘門連續 ${qualityRetryCount + 1} 次失敗: ${lastQualityIssues.slice(0, 3).join('; ').slice(0, 400)}`
     try {
       // v5.3.18：傳入 reportContent，讓後台 /jamie/quality-reports 能看到原文（不用重跑再燒 $5）
-      await markReportNeedsHumanReview(reportId, reasonMsg, lastFiveLLM || undefined, reportContent, aiModelUsed)
+      await markReportNeedsHumanReview(reportId, reasonMsg, undefined, reportContent, aiModelUsed)
       try {
         const { notifyNeedsHumanReview } = await import('@/lib/ai/observability/telegram')
         await notifyNeedsHumanReview(
           reportId, planCode, qualityRetryCount + 1,
-          lastFiveLLM?.avg ?? 0,
-          lastFiveLLM?.criticalErrors || [],
+          0,
+          [],
         )
       } catch { /* 不阻塞 */ }
     } catch (markErr) {
