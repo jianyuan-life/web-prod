@@ -25,7 +25,15 @@ sys.path.insert(0, str(LLM_PATH))
 from multi_llm import ask_gpt, ask_kimi, ask_deepseek, ask_qwen, ask_gemini
 
 # 從 MCP 快取檔讀
-CACHE = Path(r'C:\Users\Administrator\.claude\projects\D--Users-Desktop-Claude---Claude---\c7ab35a4-d24d-4410-8ca9-3ec3d6fac3cb\tool-results\mcp-claude_ai_Supabase-execute_sql-1776491426871.txt')
+# 路徑用 os.path.join 拆分，避免 Windows raw-string path 裡 `\c7ab35...` 被 Tailwind v4
+# content auto-detection 誤當成 CSS escape 解析（觸發 Invalid code point > 0x10FFFF，
+# 導致 build 失敗）。根因紀錄：2026-04-18 v5.3.5 部署連續 3 次 Error。
+import os as _os
+CACHE = Path(
+    _os.environ.get('USERPROFILE', r'C:\Users\Administrator'),
+) / '.claude' / 'projects' / 'D--Users-Desktop-Claude---Claude---' / (
+    '-'.join(['c7ab35a4', 'd24d', '4410', '8ca9', '3ec3d6fac3cb'])
+) / 'tool-results' / 'mcp-claude_ai_Supabase-execute_sql-1776491426871.txt'
 
 REPORT_META = {
     'ccb28867-8f4f-4573-a959-648cd8f9e0e5': 'R1_進壹×思齊',

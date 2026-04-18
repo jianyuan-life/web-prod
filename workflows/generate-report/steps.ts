@@ -2263,44 +2263,46 @@ export async function qualityGate(
   }
 
   // 2. C 方案必要章節檢查
+  // v5.3.6：C 方案有兩條生成路徑，章節結構不同，regex 必須同時支援
+  //   A) Team Pipeline（USE_TEAM_PIPELINE_FOR_C=true，plan-prompts.ts 起承轉合 15 章）：
+  //      命盤全觀/性格特質/天賦潛能/人生課題/事業發展/財富運勢/感情關係/健康與福祉/
+  //      大運/流年運勢/優勢發揮/風險規避/心態調整/總結與進階指引（內含寫給你的話）
+  //   B) Legacy 3-call（fallback，prompts/c_plan_v2.ts 舊 11 章）：
+  //      人生速覽/一、命格名片/二、你是什麼樣的人/三、事業與天賦/四、財運分析/
+  //      五、感情與人際/六、健康提醒/七、大運走勢/八、2026流年重點/九、給你的一句話/
+  //      十、刻意練習/十一、寫給XX的話
+  //   修 cascade bug：舊 regex 只認 Legacy 章節，遇 Team Pipeline 產出 100% 誤報 hardFail。
   if (planCode === 'C') {
     const requiredSections = [
-      { pattern: /命格名片|命格總覽|人生速覽/, name: '命格名片/人生速覽' },
-      { pattern: /好的地方|天賦優勢|天賦.*Top|🟢/, name: '好的地方' },
-      { pattern: /需要注意|課題|🟡/, name: '需要注意的地方' },
-      { pattern: /改善建議|改善方案|改善|🔵/, name: '改善建議' },
-      { pattern: /刻意練習/, name: '刻意練習' },
-      { pattern: /寫給.*的話/, name: '寫給你的話' },
+      {
+        pattern: /命盤全觀|命格名片|命格總覽|人生速覽|性格特質|人格畫像|你是什麼樣的人/,
+        name: '人生速覽/命盤全觀',
+      },
+      {
+        pattern: /天賦潛能|你的天賦武器|好的地方|天賦優勢|天賦.*Top|🟢/,
+        name: '天賦潛能/好的地方',
+      },
+      {
+        pattern: /人生課題|事業陷阱|破財陷阱|最需注意|需要注意|課題|🟡/,
+        name: '人生課題/需要注意',
+      },
+      {
+        pattern: /改善建議|改善方案|改善|優勢發揮|行動策略|行動方案|理財行動方案|人際改善方案|刻意練習|🔵/,
+        name: '改善建議/行動方案',
+      },
+      {
+        pattern: /寫給.*的話|總結.*指引|總結/,
+        name: '寫給你的話/總結',
+      },
     ]
     for (const sec of requiredSections) {
       if (!sec.pattern.test(reportContent)) {
         warnings.push(`缺少必要章節: ${sec.name}`)
       }
     }
-
-    // 2b. 每個命理系統章節必須包含「好的地方」「需要注意」「改善建議」
-    // regex 需涵蓋 AI 常見的各種用詞變體，避免誤報
-    const systemNames = [
-      '八字', '紫微', '奇門', '風水', '姓名學', '西洋占星', '吠陀占星',
-      '易經', '人類圖', '塔羅', '數字能量', '古典占星', '生肖', '生物節律', '南洋術數',
-    ]
-    // 按 ## 切分章節
-    const chapters = reportContent.split(/^## /m).slice(1)
-    let missingSubsectionCount = 0
-    for (const sysName of systemNames) {
-      const sysChapter = chapters.find(ch => ch.startsWith(sysName) || ch.includes(sysName))
-      if (!sysChapter) continue
-      const hasPositive = /好的地方|好的方面|優勢|優點|天賦|強項|亮點|有利|正面|長處|閃光點|值得肯定/.test(sysChapter)
-      const hasCaution = /需要注意|需注意|注意的地方|風險|挑戰|課題|考驗|提醒|留意|警示|弱點|不足|待改善|需要留意/.test(sysChapter)
-      const hasImprovement = /改善方案|改善建議|改善|建議|行動指南|行動方案|實踐|練習|調整|具體做法|操作建議|成長方向/.test(sysChapter)
-      if (!hasPositive) missingSubsectionCount++
-      if (!hasCaution) missingSubsectionCount++
-      if (!hasImprovement) missingSubsectionCount++
-    }
-    // 只在大量缺失時才警告（允許少數系統用詞不同）
-    if (missingSubsectionCount > 6) {
-      warnings.push(`${missingSubsectionCount} 個系統子章節缺少標準結構（好的地方/需要注意/改善建議）`)
-    }
+    // v5.3.6 移除：舊版「每個命理系統都要含好的地方/需要注意/改善建議」子章節檢查。
+    // 原因：Team Pipeline 起承轉合新結構不再按「15 命理系統」切章，
+    //   而是按人生主題整合交叉驗證；原檢查會 100% false-positive 誤判。
   }
 
   // 2c. E1 事件出門訣必要章節檢查（Top3 加乘時機）

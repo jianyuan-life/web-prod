@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* v5.3.6: 排除 Tailwind v4 content auto-detection 對非源碼目錄的掃描。
+   根因：scripts/r_audit_run.py 的 Windows raw-string path 含 `\c7ab35...`，被
+   Tailwind 誤當成 CSS escape 解析（0xc7ab35 > 0x10FFFF，觸發 Invalid code point），
+   導致 build 連續失敗 3 次（2026-04-18 P0）。 */
+@source not "./scripts/**";
+@source not "./llm_collab/**";
+@source not "./pdf_iteration/**";
+@source not "./g15_audit/**";
+@source not "./**/*.py";
+@source not "./**/*.md";
+
 @theme {
   /* === 星象科技配色：深空黑+品牌金+科技藍+靈性紫，現代宇宙感 === */
 

@@ -68,10 +68,14 @@ const REVIEWERS: Array<{
   provider: ProviderName
   model: string
   displayName: string
+  fallbackModel?: string
 }> = [
   { key: 'gpt',      provider: 'openai',    model: 'gpt-4o',              displayName: 'GPT-4o' },
   { key: 'qwen',     provider: 'alibaba',   model: 'qwen-max',            displayName: 'Qwen Max' },
-  { key: 'gemini',   provider: 'google',    model: 'gemini-2.5-pro',      displayName: 'Gemini 2.5 Pro' },
+  // v5.3.6：Gemini 2.5 Pro 推理最強但免費層 quota 極少（~5 RPM / 25 RPD）。
+  // 先主打 Pro，其下 five-llm-qa 執行時若遇到 429 會自動降級到 Flash（fallbackModel 屬性）。
+  // 升級成付費 Gemini API 之後，拔掉 fallbackModel 即可恢復純 Pro。
+  { key: 'gemini',   provider: 'google',    model: 'gemini-2.5-pro',      displayName: 'Gemini 2.5 Pro', fallbackModel: 'gemini-2.5-flash' },
   { key: 'kimi',     provider: 'moonshot',  model: 'moonshot-v1-32k',     displayName: 'Kimi (Moonshot)' },
   { key: 'deepseek', provider: 'deepseek',  model: 'deepseek-chat',       displayName: 'DeepSeek V3' },
 ]
@@ -154,11 +158,34 @@ export async function fiveLLMQualityReview(
     },
   }))
 
-  const responses = await generateParallel(jobs, {
+  const tracking = {
     reportId: reportId ?? null,
     planCode,
     callStage: 'qa_5llm',
-  })
+  }
+
+  const responses = await generateParallel(jobs, tracking)
+
+  // v5.3.6：若某 reviewer 有 fallbackModel 且第一輪失敗（通常是 Gemini 2.5 Pro 免費層 429），
+  // 自動用 fallbackModel 再試一輪（Pro → Flash）。老闆升級 Gemini 付費後可拔掉 fallbackModel。
+  const retryIndices: number[] = []
+  const retryJobs: typeof jobs = []
+  for (let i = 0; i < REVIEWERS.length; i++) {
+    const resp = responses[i]
+    const cfg = REVIEWERS[i]
+    if ('error' in resp && cfg.fallbackModel) {
+      retryIndices.push(i)
+      retryJobs.push({ ...jobs[i], model: cfg.fallbackModel })
+    }
+  }
+  if (retryJobs.length > 0) {
+    console.log(`[5 LLM QA] ${retryJobs.length} 家首輪失敗，用 fallback model 重試: ` +
+      retryIndices.map(i => `${REVIEWERS[i].displayName} → ${REVIEWERS[i].fallbackModel}`).join(', '))
+    const retryResps = await generateParallel(retryJobs, { ...tracking, callStage: 'qa_5llm_fallback' })
+    retryIndices.forEach((idx, rIdx) => {
+      responses[idx] = retryResps[rIdx]
+    })
+  }
 
   // 解析 5 個結果
   const reviewer_notes: ReviewerScore[] = responses.map((resp, i) => {
@@ -186,7 +213,12 @@ export async function fiveLLMQualityReview(
   // 聚合
   const scoreMap = {} as Record<ReviewerKey, number>
   for (const n of reviewer_notes) scoreMap[n.reviewer] = n.score
-  const values = reviewer_notes.map(n => n.score)
+  // v5.3.6：error/quota 失敗的 reviewer 排除計算。
+  //   原先：Gemini 429 → 降級給 85 → 納入 min → 永遠 min<95 → 全部報告 fail
+  //   改為：只有實際評分過的 reviewer 才算 min/avg，失敗的只列出警告
+  //   落單保底：至少 2 家有效才算數；少於 2 家視同 QA 失效降級 legacy 路徑
+  const validNotes = reviewer_notes.filter(n => !n.error)
+  const values = validNotes.map(n => n.score)
   const avg = values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0
   const min = values.length > 0 ? Math.min(...values) : 0
   const max = values.length > 0 ? Math.max(...values) : 0
@@ -198,8 +230,10 @@ export async function fiveLLMQualityReview(
   const uniqCritical = Array.from(new Set(allCritical)).slice(0, 20)
 
   // 判決：最低分 >= 95 且 平均 >= 93 才通過
-  const passed = min >= SCORE_THRESHOLD.HARD_MIN_PER_REVIEWER && avg >= SCORE_THRESHOLD.HARD_AVG
-  const needsRetry = !passed
+  // v5.3.6：若有效 reviewer < 2 家，視為 QA 本身失效，不阻擋（讓 legacy reviewerScore 接手判斷）
+  const tooFewValid = values.length < 2
+  const passed = !tooFewValid && min >= SCORE_THRESHOLD.HARD_MIN_PER_REVIEWER && avg >= SCORE_THRESHOLD.HARD_AVG
+  const needsRetry = !passed && !tooFewValid
   const severity: FiveLLMQualityResult['severity'] =
     avg < SCORE_THRESHOLD.RED_ALERT ? 'red'
     : avg < SCORE_THRESHOLD.HARD_AVG ? 'yellow'
