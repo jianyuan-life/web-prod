@@ -27,22 +27,15 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId }: { pd
 
   const handleShare = async () => {
     const url = window.location.href
-    // Web Share API（iOS/Android 原生分享選單）
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: '鑒源命理報告', text: '我的命理分析報告，分享給你看看', url })
-        return
-      } catch {
-        // 使用者取消或不支援，fallback 到複製
-      }
-    }
-    // Clipboard fallback
+    // v5.3.20：移除 navigator.share（桌面 Safari 有 bug，會彈出「無法為您顯示所有可分享的方式」
+    //   且不走 catch → fallback 失效）
+    //   直接 clipboard 複製 = 最穩 UX，點下去就看到「✓ 連結已複製！」
     try {
       await navigator.clipboard.writeText(url)
       setShareLabel('✓ 連結已複製！')
       setTimeout(() => setShareLabel('分享報告'), 2500)
     } catch {
-      // 最後手段：提示手動複製
+      // 最後手段：prompt 讓用戶手動複製（HTTPS 沒拿到或 permission 被拒）
       window.prompt('複製此連結分享給家人（無需登入即可查看）：', url)
     }
   }
