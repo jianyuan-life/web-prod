@@ -1,0 +1,144 @@
+{
+  "results": {
+    "kimi-128k": {
+      "content": "{\n  \"score\": 92,\n  \"strengths\": [\n    \"清晰的起承转合篇章结构，符合全方位落实要求。\",\n    \"良好的代码模块化，易于维护和扩展。\",\n    \"PDF规范详细，覆盖了版式、结构、引用等多个方面，有助于保持报告的专业性和一致性。\"\n  ],\n  \"improvements\": [\n    \"增加对异常情况的处理，例如无法归类的章节应有更明确的指引。\",\n    \"可以考虑在UI层面增加用户交互，允许用户自定义某些章节的起承转合分类。\",\n    \"PDF规范中对于特殊格式（如古籍引用）的实现细节可以进一步明确，以减少Python端实现的歧义。\"\n  ],\n  \"verdict\": \"PASS\"\n}",
+      "usage": {
+        "prompt_tokens": 9816,
+        "completion_tokens": 168,
+        "total_tokens": 9984
+      },
+      "model": "moonshot-v1-128k"
+    },
+    "gpt-4o": {
+      "content": "{\"score\": 97, \"strengths\": [\"完整落實起承轉合結構，UI 和 PDF 規範一致\", \"設計原則清晰，具備良好的擴充性\", \"詳細的 PDF 規範確保與 UI 對齊，確保交付一致性\"], \"improvements\": [\"增加對其他語言和字體的支持以提高國際化水平\", \"在 PDF 規範中考慮更多視覺元素以增強閱讀體驗\"], \"verdict\": \"PASS\"}",
+      "usage": {
+        "prompt_tokens": 9175,
+        "completion_tokens": 123,
+        "total_tokens": 9298,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "audio_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "audio_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        }
+      },
+      "model": "gpt-4o"
+    },
+    "deepseek": {
+      "content": "{\"score\": 97, \"strengths\": [\"起承轉合架構設計完整，涵蓋6方案並提供清晰的章節分類邏輯與視覺規範\", \"UI組件與PDF規範高度對齊，確保了網頁與下載文件體驗的一致性\", \"設計考慮了邊緣情況（如標題清理、預設歸類）並提供完整的交付檢核清單\"], \"improvements\": [\"PDF規範中應明確說明當篇章內無章節時（如E方案可能缺章）扉頁的處理邏輯\", \"建議在lib/report-structure.ts的classifyChapter函數中加入日誌輸出，方便後續除錯與驗證\", \"可考慮在PartSection組件中增加篇章順序的視覺提示（如進度條）以提升用戶導航體驗\"], \"verdict\": \"PASS\"}",
+      "usage": {
+        "prompt_tokens": 8680,
+        "completion_tokens": 187,
+        "total_tokens": 8867,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 8680
+      },
+      "model": "deepseek-chat"
+    },
+    "qwen-max": {
+      "content": "{\n  \"score\": 95,\n  \"strengths\": [\n    \"報告章節的分類邏輯清晰，且各方案的章節分配符合起承轉合的要求。\",\n    \"UI 和 PDF 的設計規範詳細且一致，確保了多平台的一致性體驗。\",\n    \"PDF 規範文檔詳盡，提供了具體的實作指南和自查清單，有助於後續開發和驗證。\"\n  ],\n  \"improvements\": [\n    \"考慮在 `lib/report-structure.ts` 中增加更多的章節變體匹配，以提高分類的準確性。\",\n    \"建議在 `components/PartSection.tsx` 中增加對章節內容長度的處理，避免內容過長時影響閱讀體驗。\",\n    \"在 `docs/PDF_STRUCTURE_SPEC_V529.md` 中明確標記出哪些部分是必須遵循的硬性規範，以便後續維護和更新。\"\n  ],\n  \"verdict\": \"PASS\"\n}",
+      "usage": {
+        "prompt_tokens": 9213,
+        "completion_tokens": 220,
+        "total_tokens": 9433,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "model": "qwen-max"
+    },
+    "gemini-2.5": {
+      "content": "```json\n{\n  \"score\": 98,\n  \"strengths\": [\n    \"「起承轉合」架構在 lib/report-structure.ts 中被精準定義與實作，涵蓋所有方案，並具備強大的標題清理與分類邏輯，確保了前後端一致性。\",\n    \"components/PartSection",
+      "usage": {
+        "promptTokenCount": 9284,
+        "candidatesTokenCount": 80,
+        "totalTokenCount": 11280,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 9284
+          }
+        ],
+        "thoughtsTokenCount": 1916
+      },
+      "model": "gemini-2.5-flash"
+    }
+  },
+  "parsed_scores": [
+    {
+      "name": "kimi-128k",
+      "data": {
+        "score": 92,
+        "strengths": [
+          "清晰的起承转合篇章结构，符合全方位落实要求。",
+          "良好的代码模块化，易于维护和扩展。",
+          "PDF规范详细，覆盖了版式、结构、引用等多个方面，有助于保持报告的专业性和一致性。"
+        ],
+        "improvements": [
+          "增加对异常情况的处理，例如无法归类的章节应有更明确的指引。",
+          "可以考虑在UI层面增加用户交互，允许用户自定义某些章节的起承转合分类。",
+          "PDF规范中对于特殊格式（如古籍引用）的实现细节可以进一步明确，以减少Python端实现的歧义。"
+        ],
+        "verdict": "PASS"
+      }
+    },
+    {
+      "name": "gpt-4o",
+      "data": {
+        "score": 97,
+        "strengths": [
+          "完整落實起承轉合結構，UI 和 PDF 規範一致",
+          "設計原則清晰，具備良好的擴充性",
+          "詳細的 PDF 規範確保與 UI 對齊，確保交付一致性"
+        ],
+        "improvements": [
+          "增加對其他語言和字體的支持以提高國際化水平",
+          "在 PDF 規範中考慮更多視覺元素以增強閱讀體驗"
+        ],
+        "verdict": "PASS"
+      }
+    },
+    {
+      "name": "deepseek",
+      "data": {
+        "score": 97,
+        "strengths": [
+          "起承轉合架構設計完整，涵蓋6方案並提供清晰的章節分類邏輯與視覺規範",
+          "UI組件與PDF規範高度對齊，確保了網頁與下載文件體驗的一致性",
+          "設計考慮了邊緣情況（如標題清理、預設歸類）並提供完整的交付檢核清單"
+        ],
+        "improvements": [
+          "PDF規範中應明確說明當篇章內無章節時（如E方案可能缺章）扉頁的處理邏輯",
+          "建議在lib/report-structure.ts的classifyChapter函數中加入日誌輸出，方便後續除錯與驗證",
+          "可考慮在PartSection組件中增加篇章順序的視覺提示（如進度條）以提升用戶導航體驗"
+        ],
+        "verdict": "PASS"
+      }
+    },
+    {
+      "name": "qwen-max",
+      "data": {
+        "score": 95,
+        "strengths": [
+          "報告章節的分類邏輯清晰，且各方案的章節分配符合起承轉合的要求。",
+          "UI 和 PDF 的設計規範詳細且一致，確保了多平台的一致性體驗。",
+          "PDF 規範文檔詳盡，提供了具體的實作指南和自查清單，有助於後續開發和驗證。"
+        ],
+        "improvements": [
+          "考慮在 `lib/report-structure.ts` 中增加更多的章節變體匹配，以提高分類的準確性。",
+          "建議在 `components/PartSection.tsx` 中增加對章節內容長度的處理，避免內容過長時影響閱讀體驗。",
+          "在 `docs/PDF_STRUCTURE_SPEC_V529.md` 中明確標記出哪些部分是必須遵循的硬性規範，以便後續維護和更新。"
+        ],
+        "verdict": "PASS"
+      }
+    }
+  ],
+  "average": 95.25
+}

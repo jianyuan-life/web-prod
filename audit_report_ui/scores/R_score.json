@@ -1,0 +1,147 @@
+{
+  "plan_code": "R",
+  "raw": {
+    "gemini/4o-mini": {
+      "content": "{\"score\": 96, \"strengths\": [\"整體配色與字體設計符合品牌識別，展現出專業感\",\"內容結構清晰，邏輯性強，起承轉合分類合理\",\"留白和段落間距設計得當，增強了可讀性\"], \"improvements\": [\"在部分標題與內文之間的間距可以略微增加，以提升視覺層次\",\"部分章節標題與內容的對比度稍顯不足，可以考慮提高字體顏色的對比度\",\"在手機版適配中，可考慮進一步調整字體大小，提升可讀性\"], \"verdict\": \"PASS\"}",
+      "usage": {
+        "prompt_tokens": 5520,
+        "completion_tokens": 160,
+        "total_tokens": 5680,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "audio_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "audio_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        }
+      },
+      "model": "gpt-4o"
+    },
+    "kimi": {
+      "content": "{\"score\": 96, \"strengths\": [\"1. 視覺層次分明，配色和字體選擇符合品牌識別，並且在暗色主題下保持了良好的可讀性。\", \"2. 邏輯結構清晰，起承轉合的章節分類合理，內容布局連貫。\", \"3. 整體專業度高，付費感和質感突出，符合高端付費報告的標準。\"], \"improvements\": [\"1. 手機版適配時，部分標題和文字可能需要進一步優化以提高閱讀體驗。\", \"2. 部分章節的TL;DR標籤在移動設備上可能顯得略長，考慮簡化或調整佈局。\"], \"verdict\": \"PASS\"}",
+      "usage": {
+        "prompt_tokens": 5694,
+        "completion_tokens": 217,
+        "total_tokens": 5911
+      },
+      "model": "moonshot-v1-128k"
+    },
+    "qwen": {
+      "content": "{\"score\": 96, \"strengths\": [\"配色和字體選擇恰當，整體視覺效果專業且符合品牌識別\", \"章節分類合理，起承轉合的邏輯清晰，內容組織有序\", \"資訊層次分明，標題、TL;DR、引用和內文對比清楚，閱讀體驗良好\"], \"improvements\": [\"部分章節標題（如「六、關係流年（2026-2028）」）在手機版上可能會被截斷，建議增加折行處理\", \"章節之間的間距可以稍微調整，以增加閱讀舒適度\", \"考慮在手機版上進一步優化按鈕和圖標的大小，以提高觸控友好性\"], \"verdict\": \"PASS\"}",
+      "usage": {
+        "prompt_tokens": 5919,
+        "completion_tokens": 177,
+        "total_tokens": 6096,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "model": "qwen-max"
+    },
+    "gpt-4o": {
+      "content": "{\"score\": 96, \"strengths\": [\"整體配色與品牌識別一致，視覺效果專業且吸引人\", \"段落與章節之間的留白和間距設計合理，閱讀體驗舒適\", \"資訊層次分明，標題、摘要及內文區分清晰，有助於快速理解內容\"], \"improvements\": [], \"verdict\": \"PASS\"}",
+      "usage": {
+        "prompt_tokens": 5520,
+        "completion_tokens": 94,
+        "total_tokens": 5614,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "audio_tokens": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "audio_tokens": 0,
+          "accepted_prediction_tokens": 0,
+          "rejected_prediction_tokens": 0
+        }
+      },
+      "model": "gpt-4o"
+    },
+    "deepseek": {
+      "content": "{\"score\": 96, \"strengths\": [\"美編層次分明：暗色主題搭配金色漸變與邊框，營造出高級、專業且神秘的付費報告質感，視覺權重分配得當。\", \"資訊架構清晰：起承轉合四大篇結構嚴謹，章節標題、摘要、內文、典據徽章層級分明，邏輯流暢，閱讀引導性強。\", \"響應式設計完善：手機版適配良好，字體大小、間距、留白調整得當，確保了跨裝置的閱讀體驗與專業觀感。\"], \"improvements\": [\"章節摘要視覺權重可微調：`.chapter-tldr` 的 `::before` 偽元素（「本章摘要」標籤）在視覺上略顯突出，可考慮降低其背景對比度或調整字重，使其更融入摘要內容。\", \"部分間距可優化：`.part-body` 左側的虛線分隔線（`::before`）在手機版（`padding-left: 16px`）下略顯擁擠，可考慮在窄螢幕下略微減少左側內距。\", \"進度條視覺反饋可增強：`.part-progress-fill` 的漸變色彩在部分螢幕上對比度可能不足，可考慮增加微弱的發光效果（`box-shadow`）或提高飽和度以更清晰指示進度。\"], \"verdict\": \"PASS\"}",
+      "usage": {
+        "prompt_tokens": 5362,
+        "completion_tokens": 338,
+        "total_tokens": 5700,
+        "prompt_tokens_details": {
+          "cached_tokens": 384
+        },
+        "prompt_cache_hit_tokens": 384,
+        "prompt_cache_miss_tokens": 4978
+      },
+      "model": "deepseek-chat"
+    }
+  },
+  "parsed": {
+    "gemini/4o-mini": {
+      "score": 96,
+      "strengths": [
+        "整體配色與字體設計符合品牌識別，展現出專業感",
+        "內容結構清晰，邏輯性強，起承轉合分類合理",
+        "留白和段落間距設計得當，增強了可讀性"
+      ],
+      "improvements": [
+        "在部分標題與內文之間的間距可以略微增加，以提升視覺層次",
+        "部分章節標題與內容的對比度稍顯不足，可以考慮提高字體顏色的對比度",
+        "在手機版適配中，可考慮進一步調整字體大小，提升可讀性"
+      ],
+      "verdict": "PASS"
+    },
+    "kimi": {
+      "score": 96,
+      "strengths": [
+        "1. 視覺層次分明，配色和字體選擇符合品牌識別，並且在暗色主題下保持了良好的可讀性。",
+        "2. 邏輯結構清晰，起承轉合的章節分類合理，內容布局連貫。",
+        "3. 整體專業度高，付費感和質感突出，符合高端付費報告的標準。"
+      ],
+      "improvements": [
+        "1. 手機版適配時，部分標題和文字可能需要進一步優化以提高閱讀體驗。",
+        "2. 部分章節的TL;DR標籤在移動設備上可能顯得略長，考慮簡化或調整佈局。"
+      ],
+      "verdict": "PASS"
+    },
+    "qwen": {
+      "score": 96,
+      "strengths": [
+        "配色和字體選擇恰當，整體視覺效果專業且符合品牌識別",
+        "章節分類合理，起承轉合的邏輯清晰，內容組織有序",
+        "資訊層次分明，標題、TL;DR、引用和內文對比清楚，閱讀體驗良好"
+      ],
+      "improvements": [
+        "部分章節標題（如「六、關係流年（2026-2028）」）在手機版上可能會被截斷，建議增加折行處理",
+        "章節之間的間距可以稍微調整，以增加閱讀舒適度",
+        "考慮在手機版上進一步優化按鈕和圖標的大小，以提高觸控友好性"
+      ],
+      "verdict": "PASS"
+    },
+    "gpt-4o": {
+      "score": 96,
+      "strengths": [
+        "整體配色與品牌識別一致，視覺效果專業且吸引人",
+        "段落與章節之間的留白和間距設計合理，閱讀體驗舒適",
+        "資訊層次分明，標題、摘要及內文區分清晰，有助於快速理解內容"
+      ],
+      "improvements": [],
+      "verdict": "PASS"
+    },
+    "deepseek": {
+      "score": 96,
+      "strengths": [
+        "美編層次分明：暗色主題搭配金色漸變與邊框，營造出高級、專業且神秘的付費報告質感，視覺權重分配得當。",
+        "資訊架構清晰：起承轉合四大篇結構嚴謹，章節標題、摘要、內文、典據徽章層級分明，邏輯流暢，閱讀引導性強。",
+        "響應式設計完善：手機版適配良好，字體大小、間距、留白調整得當，確保了跨裝置的閱讀體驗與專業觀感。"
+      ],
+      "improvements": [
+        "章節摘要視覺權重可微調：`.chapter-tldr` 的 `::before` 偽元素（「本章摘要」標籤）在視覺上略顯突出，可考慮降低其背景對比度或調整字重，使其更融入摘要內容。",
+        "部分間距可優化：`.part-body` 左側的虛線分隔線（`::before`）在手機版（`padding-left: 16px`）下略顯擁擠，可考慮在窄螢幕下略微減少左側內距。",
+        "進度條視覺反饋可增強：`.part-progress-fill` 的漸變色彩在部分螢幕上對比度可能不足，可考慮增加微弱的發光效果（`box-shadow`）或提高飽和度以更清晰指示進度。"
+      ],
+      "verdict": "PASS"
+    }
+  },
+  "average": 96.0,
+  "all_pass_95": true
+}

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>張佩珊 × 何柏翔的合否？報告</title>
+<style>
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%);
+  color: rgba(255,255,255,0.85);
+  font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+.container { max-width: 820px; margin: 0 auto; padding: 56px 28px; }
+.brand { text-align: center; color: rgba(197,150,58,0.85); font-size: 13px; letter-spacing: 7px; margin-bottom: 20px; font-weight: 600; }
+.header { background: linear-gradient(135deg, rgba(255,255,255,0.045), rgba(26,42,74,0.15)); border: 1px solid rgba(197,150,58,0.2); border-radius: 20px; padding: 60px 44px; text-align: center; margin-bottom: 48px; box-shadow: 0 12px 40px rgba(0,0,0,0.35); position: relative; }
+.header::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: min(25%, 180px); min-width: 80px; height: 3px; background: linear-gradient(90deg, transparent, #c9a84c 50%, transparent); border-radius: 0 0 3px 3px; }
+.header-plan { color: rgba(224,197,106,0.9); font-size: 11px; letter-spacing: 5px; text-transform: uppercase; margin-bottom: 14px; font-weight: 700; }
+.header-name { color: #faf6e9; font-size: 36px; font-weight: 700; margin: 0 0 14px 0; letter-spacing: 0.03em; }
+.header-divider { width: 72px; height: 2px; background: linear-gradient(90deg, transparent, #c9a84c 50%, transparent); margin: 0 auto 16px; border-radius: 2px; }
+.header-date { color: rgba(255,255,255,0.5); font-size: 13px; letter-spacing: 2px; }
+.part { margin-bottom: 48px; }
+.part-header { background: linear-gradient(135deg, rgba(197,150,58,0.16), rgba(26,42,74,0.35)); border: 1px solid rgba(197,150,58,0.35); border-radius: 18px; padding: 28px 30px; display: flex; gap: 20px; align-items: flex-start; cursor: pointer; margin-bottom: 24px; box-shadow: 0 6px 24px rgba(197,150,58,0.1); transition: all 0.3s ease; }
+.part-header:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(197,150,58,0.18); }
+.part-icon { width: 58px; height: 58px; background: rgba(197,150,58,0.25); border: 1.5px solid rgba(197,150,58,0.5); color: #e8ce7a; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 700; text-shadow: 0 0 14px rgba(197,150,58,0.5); flex-shrink: 0; }
+.part-meta { flex: 1; min-width: 0; }
+.part-labels { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+.part-label { color: rgba(224,197,106,0.9); font-size: 11px; letter-spacing: 4px; font-weight: 700; }
+.part-stage { background: rgba(197,150,58,0.22); color: #e8ce7a; border: 1px solid rgba(197,150,58,0.5); padding: 3px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.part-count { color: rgba(255,255,255,0.55); font-size: 11px; }
+.part-progress-text { color: rgba(224,197,106,0.75); font-size: 11px; margin-left: auto; font-weight: 700; letter-spacing: 1px; }
+.part-name { color: #f0deac; font-size: 23px; font-weight: 600; margin: 10px 0 8px 0; letter-spacing: 0.03em; line-height: 1.4; }
+.part-tldr { color: rgba(255,255,255,0.82); font-size: 14px; margin: 6px 0 0 0; line-height: 1.8; }
+.part-progress { margin-top: 14px; height: 4px; background: rgba(197,150,58,0.15); border-radius: 999px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.25); }
+.part-progress-fill { height: 100%; background: linear-gradient(90deg, rgba(197,150,58,0.6), rgba(232,206,122,0.95)); transition: width 0.4s ease; box-shadow: 0 0 12px rgba(197,150,58,0.4); }
+.part-body { padding-left: 24px; margin-left: 12px; position: relative; }
+.part-body::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; background: linear-gradient(180deg, rgba(197,150,58,0.42) 0%, rgba(197,150,58,0.22) 50%, rgba(197,150,58,0.08) 100%); border-radius: 2px; }
+.chapter { background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.11); border-left: 3px solid rgba(197,150,58,0.65); border-radius: 14px; padding: 32px 34px; margin-bottom: 28px; transition: all 0.25s ease; }
+.chapter:hover { background: rgba(255,255,255,0.06); border-left-color: rgba(232,206,122,0.85); }
+.chapter-title { color: #f0deac; font-size: 19px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: 0.03em; line-height: 1.45; }
+.chapter-tldr { color: rgba(245,228,181,0.92); font-size: 14px; line-height: 1.85; margin: 0 0 22px 0; padding: 14px 18px; background: rgba(197,150,58,0.12); border-left: 3px solid rgba(232,206,122,0.55); border-radius: 0 10px 10px 0; font-weight: 400; }
+.chapter-tldr::before { content: '本章摘要'; color: #c9a84c; font-weight: 700; letter-spacing: 1px; font-size: 11.5px; margin-right: 10px; padding: 2px 8px; background: rgba(197,150,58,0.18); border-radius: 4px; vertical-align: baseline; border: 1px solid rgba(197,150,58,0.3); }
+.chapter-body { color: rgba(255,255,255,0.88); font-size: 15.5px; line-height: 2.05; margin: 0; letter-spacing: 0.01em; }
+.citation { display: inline-block; margin: 0 5px; padding: 3px 12px; font-size: 11.5px; background: linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.08)); border: 1px solid rgba(201,168,76,0.6); border-radius: 10px; color: #f0deac; letter-spacing: 0.8px; font-weight: 600; vertical-align: middle; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.3); transition: all 0.2s ease; }
+.citation:hover { background: linear-gradient(135deg, rgba(201,168,76,0.28), rgba(201,168,76,0.15)); transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 8px rgba(0,0,0,0.4); }
+@media (max-width: 640px) {
+  .container { padding: 36px 20px; }
+  .header { padding: 40px 24px; margin-bottom: 36px; }
+  .header-name { font-size: 27px; letter-spacing: 0.02em; }
+  .header-plan { font-size: 11px; letter-spacing: 4px; }
+  .part { margin-bottom: 40px; }
+  .part-header { padding: 22px 20px; gap: 16px; border-radius: 16px; }
+  .part-icon { width: 50px; height: 50px; font-size: 24px; border-radius: 14px; }
+  .part-name { font-size: 20px; line-height: 1.45; }
+  .part-tldr { font-size: 13.5px; line-height: 1.8; }
+  .part-body { padding-left: 16px; margin-left: 8px; }
+  .chapter { padding: 24px 22px; border-radius: 12px; margin-bottom: 22px; }
+  .chapter-title { font-size: 17px; }
+  .chapter-tldr { font-size: 13.5px; padding: 14px 16px; line-height: 1.85; margin-bottom: 18px; }
+  .chapter-body { font-size: 14.5px; line-height: 1.95; }
+  .citation { font-size: 11px; padding: 2px 8px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="brand">鑑 源 命 理</div>
+  <div class="header">
+    <div class="header-plan">合否？</div>
+    <h1 class="header-name">張佩珊 × 何柏翔</h1>
+    <div class="header-date">2026年4月18日 · 預估閱讀 12 分鐘</div>
+  </div>
+
+  
+        <section class="part">
+          <div class="part-header">
+            <div class="part-icon">◆</div>
+            <div class="part-meta">
+              <div class="part-labels">
+                <span class="part-label">第一篇</span>
+                <span class="part-stage">起</span>
+                <span class="part-count">2 章</span>
+                <span class="part-progress-text">1 / 4</span>
+              </div>
+              <h2 class="part-name">生命藍圖 — 認識本我</h2>
+              <p class="part-tldr">建立「我是誰」的全面認知——本質特徵，與時間無關</p>
+              <div class="part-progress"><div class="part-progress-fill" style="width:25.0%"></div></div>
+            </div>
+          </div>
+          <div class="part-body">
+            
+            <div class="chapter">
+              <h3 class="chapter-title">你們的問題</h3>
+              <div class="chapter-tldr">交往三年，該不該進入婚姻？這是你們一起填表時選的焦點問題。</div>
+              <p class="chapter-body"> 交往三年，該不該進入婚姻？這是你們一起填表時選的焦點問題。</p>
+            </div>
+            <div class="chapter">
+              <h3 class="chapter-title">你們的答案</h3>
+              <div class="chapter-tldr">結論：合，但有一個致命雷區——你們都太「弱」，卻都太「硬」。</div>
+              <p class="chapter-body"> **結論：合，但有一個致命雷區——你們都太「弱」，卻都太「硬」。** 八字日柱天合地合（癸丑×戊午）<span class="citation">典據：《滴天髓·合神篇》</span>，天生吸引。但兩人都是紫微破軍坐命——外強內軟的配置 <span class="citation">典據：《紫微斗數全書·破軍星》</span>，吵架會演成冷戰。先說結論：你們合，但不能光靠「合」活下來，要靠「技術」。</p>
+            </div>
+          </div>
+        </section>
+        <section class="part">
+          <div class="part-header">
+            <div class="part-icon">◇</div>
+            <div class="part-meta">
+              <div class="part-labels">
+                <span class="part-label">第二篇</span>
+                <span class="part-stage">承</span>
+                <span class="part-count">1 章</span>
+                <span class="part-progress-text">2 / 4</span>
+              </div>
+              <h2 class="part-name">人生軌跡 — 發展與現況</h2>
+              <p class="part-tldr">將「本我」延伸至各領域現況——事業/財富/感情/健康</p>
+              <div class="part-progress"><div class="part-progress-fill" style="width:50.0%"></div></div>
+            </div>
+          </div>
+          <div class="part-body">
+            
+            <div class="chapter">
+              <h3 class="chapter-title">一、你們的化學反應</h3>
+              <div class="chapter-tldr">八字合盤：日柱天合地合 <span class="citation">典據：《滴天髓·夫妻篇》</span>。</div>
+              <p class="chapter-body"> 八字合盤：日柱天合地合 <span class="citation">典據：《滴天髓·夫妻篇》</span>。紫微合盤：夫妻宮交互拱照。西洋占星：金星合日。</p>
+            </div>
+          </div>
+        </section>
+        <section class="part">
+          <div class="part-header">
+            <div class="part-icon">◐</div>
+            <div class="part-meta">
+              <div class="part-labels">
+                <span class="part-label">第三篇</span>
+                <span class="part-stage">轉</span>
+                <span class="part-count">3 章</span>
+                <span class="part-progress-text">3 / 4</span>
+              </div>
+              <h2 class="part-name">時運流轉 — 未來展望</h2>
+              <p class="part-tldr">聚焦時間性分析——大運、流年、關鍵時機</p>
+              <div class="part-progress"><div class="part-progress-fill" style="width:75.0%"></div></div>
+            </div>
+          </div>
+          <div class="part-body">
+            
+            <div class="chapter">
+              <h3 class="chapter-title">二、最好的地方</h3>
+              <div class="chapter-tldr">你們互補的 6 個領域——一個建築、一個裝修，剛好一套完整的家。</div>
+              <p class="chapter-body"> 你們互補的 6 個領域——一個建築、一個裝修，剛好一套完整的家。</p>
+            </div>
+            <div class="chapter">
+              <h3 class="chapter-title">三、最該注意的地方</h3>
+              <div class="chapter-tldr">6 個你們互相激怒對方的按鈕，每個按鈕都附「解法」。</div>
+              <p class="chapter-body"> 6 個你們互相激怒對方的按鈕，每個按鈕都附「解法」。</p>
+            </div>
+            <div class="chapter">
+              <h3 class="chapter-title">六、關係流年（2026-2028）</h3>
+              <div class="chapter-tldr">2026 磨合、2027 決定、2028 扎根。</div>
+              <p class="chapter-body"> 2026 磨合、2027 決定、2028 扎根。</p>
+            </div>
+          </div>
+        </section>
+        <section class="part">
+          <div class="part-header">
+            <div class="part-icon">◈</div>
+            <div class="part-meta">
+              <div class="part-labels">
+                <span class="part-label">第四篇</span>
+                <span class="part-stage">合</span>
+                <span class="part-count">3 章</span>
+                <span class="part-progress-text">4 / 4</span>
+              </div>
+              <h2 class="part-name">行動指引 — 總結與實踐</h2>
+              <p class="part-tldr">融會貫通前三篇——具體行動、風險規避、心態調整、溫暖收尾</p>
+              <div class="part-progress"><div class="part-progress-fill" style="width:100.0%"></div></div>
+            </div>
+          </div>
+          <div class="part-body">
+            
+            <div class="chapter">
+              <h3 class="chapter-title">四、改善建議——你們的關係處方箋</h3>
+              
+              <p class="chapter-body"> 5 個具體可執行的溝通練習。</p>
+            </div>
+            <div class="chapter">
+              <h3 class="chapter-title">五、刻意練習</h3>
+              <div class="chapter-tldr">每週一次「三個問題」——不問近況，問內心。</div>
+              <p class="chapter-body"> 每週一次「三個問題」——不問近況，問內心。</p>
+            </div>
+            <div class="chapter">
+              <h3 class="chapter-title">寫給你們的話</h3>
+              
+              <p class="chapter-body"> 溫暖收尾。</p>
+            </div>
+          </div>
+        </section>
+</div>
+</body>
+</html>

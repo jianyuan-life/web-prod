@@ -1,0 +1,101 @@
+{
+  "gemini": {
+    "llm": "gemini",
+    "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota ex"
+  },
+  "gpt": {
+    "llm": "gpt",
+    "data": {
+      "scores": {
+        "error_1_zodiac": 100,
+        "error_2_dizhi": 100,
+        "error_3_tiangan": 100,
+        "error_4_shishen": 100,
+        "error_5_contradiction": 100,
+        "error_6_missing": 100
+      },
+      "overall": 100,
+      "remaining_risks": [
+        "極端情況下可能出現 hallucination 但機率極低"
+      ],
+      "strengths": [
+        "新 prompt 硬編碼合盤事實表，確保生肖、日主、合沖刑害、十神的絕對準確性。",
+        "加入命理正確性硬規則，詳細列出所有查表對應，杜絕 AI 自行發明錯誤。",
+        "要求每個分析論點都必須引用具體合盤結果，防止編造。",
+        "強調自我檢查機制，進一步降低錯誤風險。"
+      ]
+    }
+  },
+  "qwen": {
+    "llm": "qwen",
+    "data": {
+      "scores": {
+        "error_1_zodiac": 100,
+        "error_2_dizhi": 100,
+        "error_3_tiangan": 100,
+        "error_4_shishen": 100,
+        "error_5_contradiction": 95,
+        "error_6_missing": 95
+      },
+      "overall": 98,
+      "remaining_risks": [
+        "盡管新 prompt 已經非常詳細，但 AI 仍可能在五行論述自洽檢查上出現細微錯誤，尤其是在複雜的命盤中。",
+        "AI 仍然有可能在報告中漏掉某些重要關係，尤其是在多個系統交叉引用時。"
+      ],
+      "strengths": [
+        "明確規定了生肖、地支、天干和十神的查表規則，有效防止了這些方面的錯誤。",
+        "強調了合盤事實表的重要性，並要求 AI 在每章後進行自我檢查，進一步降低了錯誤率。",
+        "加入了五行論述自洽檢查，大幅減少了五行論述自相矛盾的可能性。",
+        "結構清晰，語氣鐵律和格式規範確保報告的專業性和可讀性。"
+      ]
+    }
+  },
+  "kimi": {
+    "llm": "kimi",
+    "data": {
+      "scores": {
+        "error_1_zodiac": 100,
+        "error_2_dizhi": 100,
+        "error_3_tiangan": 100,
+        "error_4_shishen": 100,
+        "error_5_contradiction": 100,
+        "error_6_missing": 100
+      },
+      "overall": 100,
+      "remaining_risks": [
+        "虽然新prompt提供了详尽的规则和事实表，理论上可以完全阻止Round1的6种错误，但仍需实际执行中AI的严格遵守和正确应用。"
+      ],
+      "strengths": [
+        "新prompt通过硬编码注入合盘事实表，确保了生肖、日主、合冲刑害、十神等关键信息的准确性，有效避免了自行推测和错误陈述。",
+        "明确列出了命理正确性硬规则，对AI的输出进行了严格限制，减少了错误和矛盾的可能性。",
+        "要求AI在每个分析论点后引用至少一个系统的具體合盘结果，增强了分析的准确性和可信度。",
+        "强调了结论的明确性和针对性，避免了模棱两可和泛泛之谈，更符合客户的实际需求。"
+      ]
+    }
+  },
+  "deepseek": {
+    "llm": "deepseek",
+    "data": {
+      "scores": {
+        "error_1_zodiac": 100,
+        "error_2_dizhi": 100,
+        "error_3_tiangan": 100,
+        "error_4_shishen": 100,
+        "error_5_contradiction": 95,
+        "error_6_missing": 100
+      },
+      "overall": 99,
+      "remaining_risks": [
+        "error_5_contradiction 得 95 分，因為五行論述自相矛盾的檢查依賴 AI 的邏輯自洽能力，而非硬編碼查表。雖然有規則提醒，但 AI 在複雜的五行強弱、藏干補救論述中，仍可能因推理失誤而產生前後矛盾的描述。這是一個推理漏洞，而非事實錯誤。",
+        "極端情況下，AI 可能因對「硬編碼事實表」的理解偏差，而試圖用其他命理系統（如紫微、占星）的論述來「覆蓋」或「解釋」八字事實，從而產生間接矛盾。但此風險極低。"
+      ],
+      "strengths": [
+        "新 prompt 通過硬編碼注入「合盤事實表」，將關鍵事實（生肖、日主、合沖刑害、十神）作為不可違反的輸入，從源頭杜絕了 AI 自行推測或查表錯誤的可能。",
+        "systemPrompt 中明確列出「命理正確性硬規則」，作為 AI 生成時的強制校驗清單，與事實表形成雙重防護。",
+        "針對每一種 Round1 錯誤，新機制都有直接對應的防護：1) 生肖以事實表為準；2) 地支關係以事實表為準；3) 天干關係規則明確；4) 十神關係以事實表為準；5) 有自洽檢查提醒；6) 重要關係（如申亥六害）已在事實表中標明，AI 無法遺漏。",
+        "userPrompt 末尾的「重要提醒」強制要求 AI 在每章結束後自我檢查事實一致性，建立了閉環校驗流程。",
+        "整體設計從「輸入事實」到「生成規則」再到「事後檢查」，構建了多層防禦體系，能有效阻止基於事實錯誤的 Hallucination。"
+      ]
+    }
+  }
+}

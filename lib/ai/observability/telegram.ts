@@ -188,3 +188,152 @@ export async function notify(title: string, body: string): Promise<boolean> {
   const msg = `<b>${esc(title)}</b>\n\n${esc(body)}`
   return sendTelegramMessage(msg)
 }
+
+// ============================================================
+// v5.3.2 監控告警系統擴充（2026-04-18）
+// ============================================================
+
+/**
+ * LLM 餘額不足警告（< $10）
+ */
+export async function notifyLLMBalanceLow(
+  provider: string,
+  balance: number,
+  currency: string = 'USD',
+): Promise<boolean> {
+  const sym = currency === 'CNY' ? '¥' : '$'
+  const msg =
+    `⚠️ <b>LLM 餘額不足</b>\n\n` +
+    `<b>Provider：</b>${esc(provider)}\n` +
+    `<b>目前餘額：</b>${sym}${balance.toFixed(2)} ${esc(currency)}\n` +
+    `<b>建議：</b>儘快充值（閾值 $10）\n\n` +
+    `<i>若繼續往下燒會切到 fallback provider，品質可能下降</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * LLM 餘額告急（< $3，紅色緊急）
+ */
+export async function notifyLLMBalanceCritical(
+  provider: string,
+  balance: number,
+  currency: string = 'USD',
+): Promise<boolean> {
+  const sym = currency === 'CNY' ? '¥' : '$'
+  const msg =
+    `🔴 <b>LLM 餘額告急（緊急）</b>\n\n` +
+    `<b>Provider：</b>${esc(provider)}\n` +
+    `<b>目前餘額：</b>${sym}${balance.toFixed(2)} ${esc(currency)}\n` +
+    `<b>狀態：</b>即將耗盡（閾值 $3）\n\n` +
+    `<i>立刻充值！再過幾份報告就會 402 無法生成</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * Stripe 付款失敗
+ */
+export async function notifyStripeFailed(
+  sessionId: string,
+  reason: string,
+  amount?: number,
+): Promise<boolean> {
+  const amountText = typeof amount === 'number' ? `<b>金額：</b>${fmtUsd(amount)}\n` : ''
+  const msg =
+    `💳 <b>Stripe 付款失敗</b>\n\n` +
+    `<b>Session：</b><code>${esc(sessionId)}</code>\n` +
+    amountText +
+    `<b>原因：</b>${esc(reason).slice(0, 400)}\n\n` +
+    `<i>客戶可能在結帳流程卡住，請查看 Stripe Dashboard</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * Resend 寄信失敗（客戶收不到報告連結）
+ */
+export async function notifyEmailFailed(
+  reportId: string,
+  toEmail: string,
+  reason: string,
+): Promise<boolean> {
+  const msg =
+    `📭 <b>Email 寄信失敗</b>\n\n` +
+    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>收件人：</b>${esc(toEmail)}\n` +
+    `<b>失敗原因：</b>${esc(reason).slice(0, 400)}\n\n` +
+    `<i>客戶將收不到報告通知，請手動補發</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * 報告卡住超過 N 分鐘（workflow 掛了沒發現）
+ */
+export async function notifyReportStuck(
+  reportId: string,
+  minutes: number,
+  clientName?: string,
+): Promise<boolean> {
+  const nameText = clientName ? `<b>客戶：</b>${esc(clientName)}\n` : ''
+  const msg =
+    `⏱ <b>報告生成卡住</b>\n\n` +
+    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    nameText +
+    `<b>已卡住：</b>${minutes} 分鐘\n\n` +
+    `<i>workflow 可能崩潰，建議到 /jamie/monitoring 查看並重試</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * 單日 AI 成本超預算
+ */
+export async function notifyAbnormalCost(
+  dailyCost: number,
+  budget: number,
+): Promise<boolean> {
+  const overBy = dailyCost - budget
+  const pct = budget > 0 ? ((overBy / budget) * 100).toFixed(1) : '∞'
+  const msg =
+    `💸 <b>單日 AI 成本超預算</b>\n\n` +
+    `<b>今日花費：</b>${fmtUsd(dailyCost)}\n` +
+    `<b>日預算：</b>${fmtUsd(budget)}\n` +
+    `<b>超出：</b>${fmtUsd(overBy)}（+${pct}%）\n\n` +
+    `<i>檢查是否有異常重試、prompt 爆量或被亂用</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * 客戶低評價（< 3 星）
+ */
+export async function notifyLowRating(
+  reportId: string,
+  stars: number,
+  comment?: string,
+): Promise<boolean> {
+  const commentText = comment
+    ? `<b>留言：</b>${esc(comment).slice(0, 600)}\n`
+    : ''
+  const msg =
+    `😞 <b>客戶低評價（${stars} 星）</b>\n\n` +
+    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>評分：</b>${'★'.repeat(stars)}${'☆'.repeat(Math.max(0, 5 - stars))}\n` +
+    commentText +
+    `\n<i>儘快跟客戶聯繫補救，避免退款或負評</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
+ * Workflow 崩潰（整個生成鏈爆炸）
+ */
+export async function notifyWorkflowFailed(
+  reportId: string,
+  errorMsg: string,
+  stage?: string,
+): Promise<boolean> {
+  const stageText = stage ? `<b>階段：</b>${esc(stage)}\n` : ''
+  const msg =
+    `💥 <b>Workflow 崩潰</b>\n\n` +
+    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    stageText +
+    `<b>錯誤：</b>${esc(errorMsg).slice(0, 500)}\n\n` +
+    `<i>Workflow 異常退出，系統會自動重試最多 3 次</i>`
+  return sendTelegramMessage(msg)
+}

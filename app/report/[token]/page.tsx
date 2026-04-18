@@ -10,6 +10,7 @@ import CollapsibleSection from '@/components/CollapsibleSection'
 import PartSection from '@/components/PartSection'
 import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
+import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
 
 // ============================================================
@@ -54,6 +55,7 @@ interface ReportData {
     members?: Array<{ name?: string; gender?: string }>
     relation_description?: string
     customer_note?: string       // D 方案：心之所惑的用戶提問
+    other_question?: string      // D 方案：結帳表單其他問題欄位
     analysis_topic?: string      // D 方案：分析主題（如「感情」「事業」）
     topic?: string               // D 方案：主題別名
     event_type?: string          // E1 方案：事件類型（如「面試」「簽約」）
@@ -669,6 +671,65 @@ function stripInline(s: string): string {
     .trim()
 }
 
+/**
+ * D 方案：依客戶主題推導主題配色（感情紅/事業藍/財運金/健康綠/人際紫/遷移靛/學業橙/其他金）
+ * 回傳：{ accent, glow, label, emoji }
+ */
+interface DTopicTheme { accent: string; soft: string; glow: string; label: string; emoji: string }
+function inferDTopicTheme(topic: string, question: string): DTopicTheme {
+  const t = `${topic || ''} ${question || ''}`
+  if (/(感情|戀愛|伴侶|婚姻|分手|曖昧|桃花)/.test(t)) return { accent: '#e85b7a', soft: 'rgba(232,91,122,0.12)', glow: 'rgba(232,91,122,0.25)', label: '感情', emoji: '♡' }
+  if (/(事業|工作|升遷|面試|離職|創業|老闆|升職)/.test(t)) return { accent: '#5b9fe8', soft: 'rgba(91,159,232,0.12)', glow: 'rgba(91,159,232,0.25)', label: '事業', emoji: '⚡' }
+  if (/(財運|財富|投資|理財|金錢|股票|賺錢|負債)/.test(t)) return { accent: '#c9a84c', soft: 'rgba(201,168,76,0.12)', glow: 'rgba(201,168,76,0.25)', label: '財運', emoji: '⟡' }
+  if (/(健康|身體|生病|失眠|焦慮|憂鬱|情緒)/.test(t)) return { accent: '#6ab04c', soft: 'rgba(106,176,76,0.12)', glow: 'rgba(106,176,76,0.25)', label: '健康', emoji: '✚' }
+  if (/(人際|朋友|同事|家人|親子|父母|小孩|溝通)/.test(t)) return { accent: '#a06ae4', soft: 'rgba(160,106,228,0.12)', glow: 'rgba(160,106,228,0.25)', label: '人際', emoji: '◉' }
+  if (/(搬家|遷移|移民|出國|出門|旅行|方位)/.test(t)) return { accent: '#4ec4d3', soft: 'rgba(78,196,211,0.12)', glow: 'rgba(78,196,211,0.25)', label: '遷移', emoji: '➤' }
+  if (/(學業|考試|讀書|升學|學校|成績)/.test(t)) return { accent: '#f0934a', soft: 'rgba(240,147,74,0.12)', glow: 'rgba(240,147,74,0.25)', label: '學業', emoji: '✎' }
+  return { accent: '#c9a84c', soft: 'rgba(201,168,76,0.12)', glow: 'rgba(201,168,76,0.25)', label: topic || '問事', emoji: '✦' }
+}
+
+/**
+ * D 方案：從 AI 內容抽取「命盤佐證」列表（括號內的具體命盤欄位）
+ * 例如：(八字：癸亥 庚申 庚辰 甲申；紫微命宮武曲天府祿存；吠陀水星處女旺位)
+ */
+interface DChartCite { system: string; detail: string }
+function extractDChartCitations(markdown: string): DChartCite[] {
+  if (!markdown) return []
+  const cites: DChartCite[] = []
+  const seen = new Set<string>()
+  // 只掃描「你的答案」+「深入解析」前 3000 字（不要掃全文），抓具體命盤引用
+  const head = markdown.slice(0, 5000)
+  // 關鍵命盤欄位 regex
+  const patterns: Array<[string, RegExp]> = [
+    ['八字日主', /日主(?:為|是|走)?\s*([甲乙丙丁戊己庚辛壬癸][金木水火土]?)/g],
+    ['八字格局', /([建祿|七殺|偏印|正印|食神|傷官|正財|偏財|比肩|劫財]+)格/g],
+    ['八字干支', /([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])(?:年|月|日|時)?柱?/g],
+    ['紫微命宮', /(?:紫微)?命宮[主星坐]*\s*([天紫廉武天太貪巨天文七破左右][微貞同陰微狼門機相廉同府殺軍輔弼曲昌微狼府相機同陰]{1,3})/g],
+    ['紫微化', /([武文天太貪巨天太祿][曲昌相陽狼門機陰存]?)(?:化)?(祿|權|科|忌)/g],
+    ['吠陀瑜伽', /([A-Z][a-z]+)\s*瑜伽/g],
+    ['大運', /(\d{1,2}[-–]\d{1,2}歲)(?:走)?([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])?大運/g],
+    ['流年', /202[5-9]\s*(?:年)?丙午|2026[^\n]{0,12}(?:流年|丙午)/g],
+    ['人類圖', /(顯示者|生產者|顯示生產者|投射者|反映者|情緒權威|薦骨權威|直覺權威|自我投射權威)/g],
+    ['空亡', /([子丑寅卯辰巳午未申酉戌亥])酉?([子丑寅卯辰巳午未申酉戌亥])?\s*空亡/g],
+  ]
+  for (const [sys, re] of patterns) {
+    let m
+    const copy = new RegExp(re.source, re.flags)
+    let guard = 0
+    while ((m = copy.exec(head)) !== null && guard++ < 15) {
+      const detail = m[0].trim()
+      if (!detail || detail.length > 40) continue
+      const key = `${sys}:${detail}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      cites.push({ system: sys, detail })
+      if (cites.length >= 12) break
+    }
+    if (cites.length >= 12) break
+  }
+  return cites
+}
+
 // 動態 OG metadata — 社群分享時顯示方案名稱與客戶名
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params
@@ -783,9 +844,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   // 報告內容完整性檢查 — 數據零容忍
   const isContentEmpty = !aiContent || aiContent.trim().length < 100
 
-  // D 方案：抽取「10 秒結論」大徽章
+  // D 方案：抽取「10 秒結論」大徽章 + 命盤佐證 + 主題配色
   const dQuickAnswer = report.plan_code === 'D' ? extractDAnswer(aiContent) : ''
   const dPathSteps: PathStep[] = report.plan_code === 'D' ? extractDSteps(aiContent) : []
+  const dChartCites: DChartCite[] = report.plan_code === 'D' ? extractDChartCitations(aiContent) : []
+  const dTheme: DTopicTheme = report.plan_code === 'D'
+    ? inferDTopicTheme(
+        String(report.birth_data?.analysis_topic || report.birth_data?.topic || ''),
+        String(report.birth_data?.customer_note || report.birth_data?.other_question || ''),
+      )
+    : { accent: '#c9a84c', soft: 'rgba(201,168,76,0.12)', glow: 'rgba(201,168,76,0.25)', label: '', emoji: '✦' }
 
   // 結構化解析 — 保留原始章節順序
   const allSections = parseStructuredContent(aiContent)
@@ -1089,8 +1157,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         </div>
 
-        {/* ──── D 方案：你的問題引言卡 ──── */}
-        {report.plan_code === 'D' && (report.birth_data?.customer_note || report.birth_data?.analysis_topic || report.birth_data?.topic) && (
+        {/* ──── R 方案：關係描述 + 客戶問題引言卡 ──── */}
+        {isRelationship && (report.birth_data?.relation_description || report.birth_data?.customer_note) && (
           <div className="rounded-2xl p-6 sm:p-8 mb-6 relative overflow-hidden" style={{
             background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.3))',
             border: '1px solid rgba(197,150,58,0.22)',
@@ -1099,37 +1167,183 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               background: 'linear-gradient(180deg, rgba(197,150,58,0.6), rgba(197,150,58,0.1))',
             }} />
             <div className="pl-3">
-              <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 uppercase">你的問題</div>
+              <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 uppercase">你們的問題</div>
+              {report.birth_data.relation_description ? (
+                <p className="text-cream/90 text-base sm:text-lg leading-8 italic mb-2" style={{ fontFamily: 'var(--font-sans)' }}>
+                  &ldquo;{report.birth_data.relation_description as string}&rdquo;
+                </p>
+              ) : null}
+              {report.birth_data.customer_note && report.birth_data.customer_note !== report.birth_data.relation_description ? (
+                <p className="text-cream/80 text-sm sm:text-base leading-7 italic">
+                  &ldquo;{report.birth_data.customer_note as string}&rdquo;
+                </p>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        {/* ──── R 方案：雙人命盤事實卡（八字 / 生肖 / 日主 / 合盤判定）──── */}
+        {isRelationship && report.birth_data?.members && report.birth_data.members.length >= 2 && (() => {
+          const m1 = report.birth_data.members[0] as { name?: string; gender?: string; year?: number; month?: number; day?: number; hour?: number }
+          const m2 = report.birth_data.members[1] as { name?: string; gender?: string; year?: number; month?: number; day?: number; hour?: number }
+          // 從 AI 報告前 8000 字找雙方八字（AI 會引用）
+          const aiHead = aiContent.slice(0, 9000)
+          const ganzhiRegex = /([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[,、\/／]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[,、\/／]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[,、\/／]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])/g
+          const matches = [...aiHead.matchAll(ganzhiRegex)]
+          const bazi1 = matches[0] ? `${matches[0][1]} ${matches[0][2]} ${matches[0][3]} ${matches[0][4]}` : ''
+          const bazi2 = matches[1] ? `${matches[1][1]} ${matches[1][2]} ${matches[1][3]} ${matches[1][4]}` : ''
+          const ZMAP: Record<string, string> = { 子: '鼠', 丑: '牛', 寅: '虎', 卯: '兔', 辰: '龍', 巳: '蛇', 午: '馬', 未: '羊', 申: '猴', 酉: '雞', 戌: '狗', 亥: '豬' }
+          if (!bazi1 || !bazi2) return null
+          const z1 = ZMAP[bazi1[1]] || ''
+          const z2 = ZMAP[bazi2[1]] || ''
+          const dayGan1 = bazi1[8]
+          const dayGan2 = bazi2[8]
+          // 檢查雙方年支生肖關係
+          const yz1 = bazi1[1], yz2 = bazi2[1]
+          const pair = [yz1, yz2].sort().join('')
+          const HE: Record<string, string> = { '丑子': '六合', '亥寅': '六合', '卯戌': '六合', '酉辰': '六合', '巳申': '六合', '午未': '六合' }
+          const CHONG: Record<string, string> = { '午子': '六沖', '丑未': '六沖', '申寅': '六沖', '卯酉': '六沖', '戌辰': '六沖', '亥巳': '六沖' }
+          const HAI: Record<string, string> = { '子未': '六害', '丑午': '六害', '巳寅': '六害', '卯辰': '六害', '申亥': '六害', '戌酉': '六害' }
+          const SANHE: Record<string, string[]> = { 水: ['申','子','辰'], 金: ['巳','酉','丑'], 火: ['寅','午','戌'], 木: ['亥','卯','未'] }
+          const rels: string[] = []
+          if (HE[pair]) rels.push(HE[pair])
+          if (CHONG[pair]) rels.push(CHONG[pair])
+          if (HAI[pair]) rels.push(HAI[pair])
+          for (const [k, v] of Object.entries(SANHE)) {
+            if (v.includes(yz1) && v.includes(yz2) && yz1 !== yz2) rels.push(`三合${k}局半合`)
+          }
+          if (yz1 === yz2 && ['辰','午','酉','亥'].includes(yz1)) rels.push('自刑')
+          if (rels.length === 0) rels.push('無合無沖無刑無害（中性）')
+          return (
+            <div className="rounded-2xl p-6 sm:p-8 mb-8 relative overflow-hidden" style={{
+              background: 'linear-gradient(135deg, rgba(26,42,74,0.6), rgba(15,22,40,0.8))',
+              border: '1px solid rgba(197,150,58,0.25)',
+            }}>
+              <div aria-hidden className="absolute top-0 right-0 w-40 h-40 opacity-[0.06]" style={{
+                background: 'radial-gradient(circle, rgba(201,168,76,1) 0%, transparent 70%)',
+              }} />
+              <div className="text-center mb-5 relative z-10">
+                <div className="text-gold/50 text-[10px] tracking-[3px] uppercase">雙人命盤對照</div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+                {[
+                  { name: m1.name, bazi: bazi1, zodiac: z1, dayGan: dayGan1, gender: m1.gender, year: m1.year, month: m1.month, day: m1.day },
+                  { name: m2.name, bazi: bazi2, zodiac: z2, dayGan: dayGan2, gender: m2.gender, year: m2.year, month: m2.month, day: m2.day },
+                ].map((p, i) => (
+                  <div key={i} className="rounded-xl p-5" style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(197,150,58,0.18)',
+                  }}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold" style={{
+                        background: 'rgba(197,150,58,0.2)',
+                        color: '#c9a84c',
+                        border: '1px solid rgba(197,150,58,0.35)',
+                      }}>
+                        {(p.name || '').slice(0, 1)}
+                      </div>
+                      <div>
+                        <div className="text-cream font-semibold text-sm">{p.name}</div>
+                        <div className="text-text-muted/60 text-[10px]">
+                          {p.gender === 'M' ? '男' : '女'} · {p.year}/{p.month}/{p.day}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-text-muted/60">生肖</span>
+                        <span className="text-gold font-semibold">{p.zodiac}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-text-muted/60">日主</span>
+                        <span className="text-gold font-semibold">{p.dayGan}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-text-muted/60">八字</span>
+                        <span className="text-cream/90 font-mono tracking-wider text-[11px]">{p.bazi}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* 雙方生肖關係 */}
+              <div className="mt-5 rounded-xl p-4 relative z-10" style={{
+                background: 'rgba(197,150,58,0.06)',
+                border: '1px solid rgba(197,150,58,0.18)',
+              }}>
+                <div className="flex items-center justify-center gap-3 flex-wrap text-sm">
+                  <span className="text-gold font-semibold">{z1}</span>
+                  <span className="text-text-muted/50" aria-hidden>&#10005;</span>
+                  <span className="text-gold font-semibold">{z2}</span>
+                  <span className="text-text-muted/50">=</span>
+                  <span className="text-cream font-medium">{rels.join(' · ')}</span>
+                </div>
+              </div>
+              <div className="text-center text-text-muted/50 text-[10px] mt-4 tracking-wide relative z-10">
+                命盤資料來自 lunar-python 精算，為合盤論述的客觀基礎
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ──── G15 家族藍圖：家族動力全貌圖（五行分佈 / 角色矩陣 / 關係網）──── */}
+        {isFamily && report.birth_data?.member_names && (report.birth_data.member_names as string[]).filter(Boolean).length >= 2 && (
+          <FamilyDynamicsPanel
+            members={(report.birth_data.member_names as string[]).filter(Boolean).map((name, i) => {
+              const gender = report.birth_data?.members?.[i]?.gender?.toLowerCase() || ''
+              let role = ''
+              if (i === 0 && gender === 'male') role = '父'
+              else if (i === 0 && gender === 'female') role = '母'
+              else if (gender === 'male') role = i === 1 ? '母' : '子'
+              else if (gender === 'female') role = i === 1 ? '父' : '女'
+              return { name, gender, role }
+            })}
+            aiContent={aiContent}
+          />
+        )}
+
+        {/* ──── D 方案：你的問題引言卡（依主題變色）──── */}
+        {report.plan_code === 'D' && (report.birth_data?.customer_note || report.birth_data?.other_question || report.birth_data?.analysis_topic || report.birth_data?.topic) && (
+          <div className="rounded-2xl p-6 sm:p-8 mb-6 relative overflow-hidden" style={{
+            background: `linear-gradient(135deg, ${dTheme.soft}, rgba(26,42,74,0.3))`,
+            border: `1px solid ${dTheme.accent}33`,
+          }}>
+            <div aria-hidden className="absolute top-0 left-0 w-1 h-full" style={{
+              background: `linear-gradient(180deg, ${dTheme.accent}99, ${dTheme.accent}1a)`,
+            }} />
+            <div className="pl-3">
+              <div className="text-[10px] tracking-[3px] mb-2 uppercase" style={{ color: `${dTheme.accent}b3` }}>你的問題</div>
               {(report.birth_data.analysis_topic || report.birth_data.topic) && (
-                <div className="inline-block px-3 py-1 mb-3 rounded-full text-xs font-medium" style={{
-                  background: 'rgba(197,150,58,0.12)',
-                  color: '#c9a84c',
-                  border: '1px solid rgba(197,150,58,0.2)',
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-3 rounded-full text-xs font-medium" style={{
+                  background: dTheme.soft,
+                  color: dTheme.accent,
+                  border: `1px solid ${dTheme.accent}33`,
                 }}>
-                  主題：{report.birth_data.analysis_topic || report.birth_data.topic}
+                  <span aria-hidden>{dTheme.emoji}</span>
+                  <span>主題：{dTheme.label || report.birth_data.analysis_topic || report.birth_data.topic}</span>
                 </div>
               )}
-              {report.birth_data.customer_note && (
+              {(report.birth_data.customer_note || report.birth_data.other_question) && (
                 <p className="text-cream/90 text-base sm:text-lg leading-8 italic" style={{ fontFamily: 'var(--font-sans)' }}>
-                  &ldquo;{report.birth_data.customer_note}&rdquo;
+                  &ldquo;{report.birth_data.customer_note || report.birth_data.other_question}&rdquo;
                 </p>
               )}
             </div>
           </div>
         )}
 
-        {/* ──── D 方案：10 秒結論大徽章 ──── */}
+        {/* ──── D 方案：10 秒結論大徽章（主題配色）──── */}
         {report.plan_code === 'D' && dQuickAnswer && (
           <div className="rounded-2xl p-8 mb-6 text-center relative overflow-hidden hover-lift" style={{
-            background: 'linear-gradient(135deg, rgba(197,150,58,0.14), rgba(26,42,74,0.5))',
-            border: '1.5px solid rgba(197,150,58,0.35)',
-            boxShadow: '0 4px 20px rgba(201,168,76,0.10)',
+            background: `linear-gradient(135deg, ${dTheme.soft}, rgba(26,42,74,0.5))`,
+            border: `1.5px solid ${dTheme.accent}59`,
+            boxShadow: `0 4px 20px ${dTheme.glow}`,
           }}>
-            <div aria-hidden className="absolute -top-10 -right-10 w-40 h-40 opacity-[0.10]" style={{
-              background: 'radial-gradient(circle, rgba(201,168,76,1) 0%, transparent 70%)',
+            <div aria-hidden className="absolute -top-10 -right-10 w-40 h-40 opacity-[0.12]" style={{
+              background: `radial-gradient(circle, ${dTheme.accent} 0%, transparent 70%)`,
             }} />
             <div className="relative z-10">
-              <div className="text-gold/70 text-[10px] tracking-[4px] mb-3 uppercase">10 秒結論</div>
+              <div className="text-[10px] tracking-[4px] mb-3 uppercase" style={{ color: `${dTheme.accent}cc` }}>10 秒結論</div>
               <p className="text-cream text-lg sm:text-xl font-semibold leading-9" style={{
                 fontFamily: 'var(--font-sans)',
                 letterSpacing: '0.02em',
@@ -1141,6 +1355,54 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             </div>
           </div>
+        )}
+
+        {/* ──── D 方案：命盤佐證摺疊區（讓細節派看具體引用的命盤欄位）──── */}
+        {report.plan_code === 'D' && dChartCites.length >= 3 && (
+          <details className="group rounded-2xl mb-6 relative overflow-hidden" style={{
+            background: 'linear-gradient(135deg, rgba(26,42,74,0.35), rgba(15,22,40,0.45))',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <summary className="list-none cursor-pointer p-4 sm:p-5 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors" style={{
+              userSelect: 'none',
+            }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-md flex items-center justify-center text-xs" style={{
+                  background: dTheme.soft,
+                  color: dTheme.accent,
+                }} aria-hidden>⟐</div>
+                <div>
+                  <div className="text-cream text-sm font-medium">命盤佐證（{dChartCites.length} 條）</div>
+                  <div className="text-text-muted/60 text-[11px] mt-0.5">點開查看這份報告引用的具體命盤欄位</div>
+                </div>
+              </div>
+              <div className="text-text-muted text-xs group-open:rotate-180 transition-transform" aria-hidden>▼</div>
+            </summary>
+            <div className="px-4 pb-5 sm:px-5">
+              <div className="h-px w-full mb-4" style={{ background: 'rgba(255,255,255,0.05)' }} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {dChartCites.map((c, i) => (
+                  <div key={i} className="flex items-start gap-2 p-2.5 rounded-lg" style={{
+                    background: 'rgba(255,255,255,0.025)',
+                    border: '1px solid rgba(255,255,255,0.04)',
+                  }}>
+                    <div className="text-[10px] tracking-wider shrink-0 px-1.5 py-0.5 rounded mt-0.5" style={{
+                      background: dTheme.soft,
+                      color: dTheme.accent,
+                    }}>
+                      {c.system}
+                    </div>
+                    <div className="text-cream/85 text-sm leading-6 font-mono">
+                      {c.detail}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-text-muted/50 text-[11px] mt-3 leading-5">
+                ※ 以上為 AI 從報告前段自動摘取的命盤欄位關鍵詞；每個論述都應該在括號中指明來自哪個系統的哪個欄位。
+              </div>
+            </div>
+          </details>
         )}
 
         {/* ──── D 方案：你的路 3 步驟卡（若有抽取到）──── */}

@@ -468,7 +468,8 @@ export async function generateReportWorkflow(reportId: string) {
     // 3a. 品質閘門硬檢查
     let gateResult: { passed: boolean; warnings: string[]; hardFailures?: string[]; softWarnings?: string[] } | null = null
     try {
-      gateResult = await qualityGate(reportContent, planCode, analyses.length)
+      // CHUMENJI DEEP AUDIT 2026-04-18：E1/E2 傳入 chumenjiTop 做硬比對
+      gateResult = await qualityGate(reportContent, planCode, analyses.length, chumenjiTop)
     } catch (e) {
       console.error('品質閘門執行失敗:', e)
       break  // 閘門本身壞了就不阻塞，避免永遠卡住

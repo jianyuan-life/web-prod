@@ -1,0 +1,313 @@
+{
+  "R3_紀萳×宥諄_母子": {
+    "gpt": {
+      "llm": "gpt",
+      "error": "HTTP 429: {\n    \"error\": {\n        \"message\": \"Rate limit reached for gpt-4o in organization org-zjDijEQAg9k8FCopdTXEgNX9 on tokens per min (TPM): Limit 30000, Used 18952, Requested 13381. Please try again in 4.666s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n        \"type\": \"token"
+    },
+    "kimi": {
+      "llm": "kimi",
+      "data": {
+        "scores": {
+          "correctness": 95,
+          "clarity": 90,
+          "readability": 95,
+          "value": 90
+        },
+        "overall": 92,
+        "critical_issues": [
+          "报告中将癸水日主与丙火日主的关系描述为正官合，但实际上癸见丙应为正财，而非正官合，这是一个命理上的错误。"
+        ],
+        "improvements": [
+          "修正癸水日主与丙火日主的正确关系，明确指出是正财而非正官合。",
+          "在八字合盘部分，应该更详细解释为何癸水和丙火的相互作用会导致传统管教方式无效，以及如何调整教育方法以适应双方的五行特性。"
+        ]
+      }
+    },
+    "deepseek": {
+      "llm": "deepseek",
+      "data": {
+        "scores": {
+          "correctness": 60,
+          "clarity": 90,
+          "readability": 85,
+          "value": 90
+        },
+        "overall": 60,
+        "critical_issues": [
+          "八字天干關係錯誤：報告中稱『癸水和丙火在八字裡的關係叫做「正官合」』。根據地面真相，癸見丙是『正財』，癸的正官是戊。『正官合』是嚴重命理錯誤。",
+          "生肖錯誤：報告中稱『你屬兔，他屬兔』。根據地面真相，母親何紀萳生肖為狗（甲戌年），兒子何宥諄生肖為兔（癸卯年）。報告將母親的生肖誤寫為兔。"
+        ],
+        "improvements": [
+          "必須修正八字十神基礎知識：癸水日主見丙火是正財，絕非正官合。此為根本性錯誤，嚴重影響報告可信度。",
+          "必須核對並修正客戶的基本資料（生肖），此類錯誤不應出現。",
+          "報告其他部分（如結論明確度、可讀性、具體建議）質量很高，但命理基礎錯誤是致命傷，必須優先修正。"
+        ]
+      }
+    },
+    "qwen": {
+      "llm": "qwen",
+      "data": {
+        "scores": {
+          "correctness": 85,
+          "clarity": 90,
+          "readability": 95,
+          "value": 90
+        },
+        "overall": 87,
+        "critical_issues": [
+          "報告中提到『癸見丙是正官合』，這是錯誤的。癸水日主見丙火應該是『正財』，不是『正官合』。",
+          "報告中提到「你們的用神完全一樣，都是金」，但實際上雙方八字喜神皆為土，這是一個誤導。"
+        ],
+        "improvements": [
+          "修正命理錯誤，確保所有八字和五行關係的描述準確無誤。",
+          "在結論部分更加明確地指出具體的建議和行動步驟，避免模糊詞。",
+          "增加更多具體的流年分析和建議，特別是在2026年的關鍵月份。",
+          "進一步強調和細化每個練習的具體操作步驟，以確保客戶能夠更容易執行。"
+        ]
+      }
+    },
+    "gemini": {
+      "llm": "gemini",
+      "parse_error": "Expecting ',' delimiter: line 1 column 739 (char 738)",
+      "raw": "{\"scores\":{\"correctness\":30,\"clarity\":95,\"readability\":95,\"value\":50},\"overall\":55,\"critical_issues\":[\"1. **八字天干關係錯誤：** 報告將癸丙關係描述為「正官合」，但天干五合為甲己、乙庚、丙辛、丁壬、戊癸，癸丙並不相合。對癸水日主而言，丙火是正財；對丙火日主而言，癸水是正官。將其誤稱為「正官"
+    }
+  },
+  "R4_紀萳×宣逸_夫妻": {
+    "gemini": {
+      "llm": "gemini",
+      "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota ex"
+    },
+    "gpt": {
+      "llm": "gpt",
+      "data": {
+        "scores": {
+          "correctness": 50,
+          "clarity": 85,
+          "readability": 90,
+          "value": 75
+        },
+        "overall": 60,
+        "critical_issues": [
+          "報告中提到的互動和合沖刑害有錯誤。報告中提到庚金生癸水，這是正確的，但忽略了庚金生癸水的情況中，庚金本身需要有足夠的力量才能生癸水，報告中未考慮庚金被火剋的情況。",
+          "報告中提到的三戌刑，天干丙火剋庚金，這些描述不夠精確，尤其是缺乏對於庚金在此情境下的具體影響分析。",
+          "報告中對於生肖三合及生肖關係的描述中，缺乏對於日支互動的詳細分析，特別是對於戌亥的描述有誤。"
+        ],
+        "improvements": [
+          "加強對於五行生剋制化的準確解讀，特別是如何影響個人情緒和行為的細節分析。",
+          "提供更為精確的八字合沖刑害分析，以避免對於日常互動的錯誤解讀。",
+          "在描述改善建議時，應該有更具體的行動步驟和情境應用，以確保客戶能夠有效執行。"
+        ]
+      }
+    },
+    "kimi": {
+      "llm": "kimi",
+      "data": {
+        "scores": {
+          "correctness": 95,
+          "clarity": 90,
+          "readability": 92,
+          "value": 98
+        },
+        "overall": 94,
+        "critical_issues": [
+          "在八字合盘中，提及的五行分布数值（如火3、土2.94等）未给出具体的计算方法或来源，可能存在命理解释上的歧义。"
+        ],
+        "improvements": [
+          "增加对五行数值计算方法的解释，以增强报告的透明度和可信度。",
+          "在流年分析中，对于塔羅牌和Mahabote预测的解释可以进一步增加命理依据，以提升专业性。"
+        ]
+      }
+    },
+    "qwen": {
+      "llm": "qwen",
+      "data": {
+        "scores": {
+          "correctness": 95,
+          "clarity": 90,
+          "readability": 95,
+          "value": 90
+        },
+        "overall": 92,
+        "critical_issues": [
+          "報告中提到的『他的八字完全沒有水和木』，這一點在八字命理中並不是絕對的錯誤，但需要進一步解釋。實際上，他的八字中雖然沒有直接的水和木，但通過地支藏干（如戌中藏辛金、丁火和戊土）可以補充一些五行元素。",
+          "報告中提到的『他的四柱有三個戌土（月支戌、日支戌、時支戌），形成「三戌刑」的格局』，這種說法在傳統八字命理中並無明確依據，應當更詳細地解釋其來源和意義。"
+        ],
+        "improvements": [
+          "建議在報告中增加對『三戌刑』格局的詳細解釋，包括其來源和具體影響，以增強報告的專業性和可信度。",
+          "建議在報告中增加更多具體的流年分析，特別是對於2026-2028年的每個月進行更詳細的預測，以便客戶更好地理解和規劃。",
+          "建議在報告結尾部分增加一個簡短的總結，將所有關鍵點和建議整合在一起，方便客戶快速回顧和行動。"
+        ]
+      }
+    },
+    "deepseek": {
+      "llm": "deepseek",
+      "data": {
+        "scores": {
+          "correctness": 60,
+          "clarity": 85,
+          "readability": 90,
+          "value": 95
+        },
+        "overall": 60,
+        "critical_issues": [
+          "八字命理存在嚴重錯誤。報告中多次將客戶何紀萳的生肖錯誤標記為『馬』（例如：『你屬馬（1994甲戌）』、『屬馬的你和屬馬的他』），但地面真相明確顯示其生肖為『狗』。此為基礎事實錯誤，直接導致生肖合盤分析部分結論無效。",
+          "八字五行分析存在錯誤。報告中稱男方八字『火和土的力量高達近6分』，並列出『火3、土2.94、金2.9、木0、水0』。此為錯誤的量化分析，且與其『完全沒有水和木』的描述矛盾（因土2.94分中藏有水木之氣）。標準八字論命不應使用此類不嚴謹的量化分數。",
+          "八字術語使用錯誤。報告中稱男方『兩個丙火（月干丙、時干丙）直接剋兩個庚金（年干庚、日干庚），形成『丙庚相沖』』。『丙火剋庚金』是『剋』的關係，並非『沖』。天干相沖僅有甲庚、乙辛、壬丙、癸丁四組，丙庚不存在相沖關係。此為專業術語誤用。",
+          "紫微斗數論斷與提供資料不符。報告詳細論述了雙方的紫微命盤（如夫妻宮、命宮、福德宮星曜），但用戶提供的『地面真相』僅包含八字資料，未提供任何紫微斗數排盤所需的農曆生日或時辰資料。報告中的紫微分析屬於無中生有，結論不可信。"
+        ],
+        "improvements": [
+          "必須嚴格校對基礎資料。報告中的所有個人資訊（如生肖）必須與客戶提供的『地面真相』完全一致，這是命理分析的生命線。",
+          "避免使用非標準的、容易引起誤解的量化系統（如五行力量打分）。應回歸傳統八字學的旺衰、調候、十神等分析框架。",
+          "確保使用的命理術語準確無誤。例如，明確區分『剋』、『沖』、『刑』、『害』等不同關係，避免混淆。",
+          "分析結論必須基於客戶提供的資料。如果客戶未提供某項術數（如紫微斗數）的排盤基礎資料，則不應在報告中包含該項分析，或應明確說明其為假設性示例。",
+          "報告的『結論明確度』和『可讀性』表現優秀，結構清晰，建議具體，具有很高的實用價值。若能修正命理基礎錯誤，將是一份非常出色的報告。"
+        ]
+      }
+    }
+  },
+  "R1_進壹×思齊": {
+    "gpt": {
+      "llm": "gpt",
+      "error": "HTTP 429: {\n    \"error\": {\n        \"message\": \"Rate limit reached for gpt-4o in organization org-zjDijEQAg9k8FCopdTXEgNX9 on tokens per min (TPM): Limit 30000, Used 27125, Requested 15571. Please try again in 25.392s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n        \"type\": \"toke"
+    },
+    "gemini": {
+      "llm": "gemini",
+      "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota ex"
+    },
+    "kimi": {
+      "llm": "kimi",
+      "data": {
+        "scores": {
+          "correctness": 95,
+          "clarity": 90,
+          "readability": 90,
+          "value": 95
+        },
+        "overall": 93,
+        "critical_issues": [
+          "报告中对生肖的描述存在一处错误，将李进一的生肖描述为狗，而根据提供的出生日期1995-01-05，生肖应为狗，但八字甲戌年对应的生肖是狗，此处描述正确。"
+        ],
+        "improvements": [
+          "报告在结论明确度方面表现良好，但部分段落的表述可以进一步精简，避免重复，使报告更加精炼。"
+        ]
+      }
+    },
+    "deepseek": {
+      "llm": "deepseek",
+      "data": {
+        "scores": {
+          "correctness": 60,
+          "clarity": 85,
+          "readability": 90,
+          "value": 95
+        },
+        "overall": 60,
+        "critical_issues": [
+          "生肖錯誤：報告中將李進壹（甲戌年生）的生肖誤寫為『鼠』，並與馮思齊（丙子年生）的生肖『鼠』進行合盤分析。地面真相為李進壹生肖為『狗』，馮思齊生肖為『鼠』。此為基礎事實錯誤。",
+          "地支關係錯誤：報告中錯誤論述『子戌相刑』。地面真相指出狗（戌）與鼠（子）之間無刑，但有『酉戌害』。報告中的『子戌相刑』是錯誤的命理概念。",
+          "日支關係論述不完整：報告正確指出申亥為六害，但論述為『申亥並不直接相沖，但申金生亥水』，未在五行生剋前優先強調『六害』的負面關係，論述重點有偏差。"
+        ],
+        "improvements": [
+          "必須嚴格校對客戶提供的八字與生肖等基礎資料，確保報告中的所有命理推論基於正確的事實。",
+          "在論述地支關係時，應優先明確合、沖、刑、害等關係，再論五行生剋。對於申亥這類明確的六害關係，應直接點明其負面影響。",
+          "可考慮在報告開頭列出雙方的基本資料（八字、生肖），供客戶和審核員快速核對，避免此類基礎錯誤。"
+        ]
+      }
+    },
+    "qwen": {
+      "llm": "qwen",
+      "data": {
+        "scores": {
+          "correctness": 95,
+          "clarity": 90,
+          "readability": 95,
+          "value": 90
+        },
+        "overall": 92,
+        "critical_issues": [
+          "報告中提到的『子戌相刑』是錯誤的，實際上應該是『酉戌害』。",
+          "報告中提到的『申亥六害』是正確的，但需要在報告中更明確地強調其重要性。"
+        ],
+        "improvements": [
+          "建議在報告中更詳細地解釋『申亥六害』對關係的具體影響，並提供更多的應對策略。",
+          "報告中的結論部分可以更加明確和堅定，避免使用模糊詞語。",
+          "建議增加更多具體的行為建議和練習，以幫助客戶更好地理解和應用報告中的內容。",
+          "考慮在報告中加入更多流年分析，特別是在關鍵年份（如2026年）的具體建議和預防措施。"
+        ]
+      }
+    }
+  },
+  "R2_宣逸×沅霖_合夥": {
+    "gpt": {
+      "llm": "gpt",
+      "error": "HTTP 429: {\n    \"error\": {\n        \"message\": \"Rate limit reached for gpt-4o in organization org-zjDijEQAg9k8FCopdTXEgNX9 on tokens per min (TPM): Limit 30000, Used 27992, Requested 13002. Please try again in 21.988s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n        \"type\": \"toke"
+    },
+    "gemini": {
+      "llm": "gemini",
+      "error": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota ex"
+    },
+    "kimi": {
+      "llm": "kimi",
+      "data": {
+        "scores": {
+          "correctness": 95,
+          "clarity": 98,
+          "readability": 97,
+          "value": 96
+        },
+        "overall": 96,
+        "critical_issues": [],
+        "improvements": [
+          "报告中对于八字、紫微斗数、西洋占星等命理分析的准确性非常高，能够准确把握两人的性格特点和合作中的互补与冲突点。",
+          "结论明确，直接给出了合作的建议和需要注意的问题，避免了模糊不清的表述。",
+          "报告的可读性很好，先是用白话解释，然后给出专业术语，最后以三段式总结，非常清晰。",
+          "报告的价值很高，不仅给出了具体的合作建议，还包括了流年分析和刻意练习的方法，对于客户来说非常实用。"
+        ]
+      }
+    },
+    "qwen": {
+      "llm": "qwen",
+      "data": {
+        "scores": {
+          "correctness": 95,
+          "clarity": 90,
+          "readability": 85,
+          "value": 95
+        },
+        "overall": 91,
+        "critical_issues": [
+          "報告中提到的八字、紫微斗數、人類圖、數字能量等多個系統的分析非常詳細，但需要確保所有命理數據的準確性。"
+        ],
+        "improvements": [
+          "建議在報告中加入更多具體的流年分析，特別是針對未來三年的每個月進行更詳細的指導。",
+          "增加一些具體的案例或成功故事，以增強報告的說服力和實用性。",
+          "考慮在報告中加入更多的視覺元素（如表格、圖表）來提高可讀性和信息呈現的清晰度。"
+        ]
+      }
+    },
+    "deepseek": {
+      "llm": "deepseek",
+      "data": {
+        "scores": {
+          "correctness": 85,
+          "clarity": 95,
+          "readability": 90,
+          "value": 95
+        },
+        "overall": 91,
+        "critical_issues": [
+          "報告中生肖部分將宣逸的生肖誤寫為『雞』，與地面真相的『馬』不符。報告中『宣逸屬雞（午），沅霖屬雞（酉）』及『馬和雞在生肖關係中沒有直接的合或沖』等描述存在矛盾與錯誤。",
+          "報告中提及『戌丑未構成刑的可能性需留意』，但沅霖地支為巳、酉、丑、辰，並無『未』，此為錯誤引用。",
+          "報告中提及『宣逸的八字五行完全缺水缺木』，但根據八字庚午/丙戌/庚戌/丙戌，地支戌中藏戊辛丁，午中藏丁己，五行有火、土、金，確實缺水木，此處正確。但報告中『沅霖的命局水氣充足（癸水年干、壬水時干，水力量2.4）』，其八字為癸酉/丁巳/辛丑/壬辰，水力量計算需專業，此處未提供計算依據，但方向正確，不扣大分。",
+          "報告中『宣逸2026年值太歲+刑太歲（生肖：雞午年）』，此處生肖再次錯誤（應為馬），且『雞午年』表述不準確。2026年為丙午年，生肖馬值太歲，與報告中『宣逸』的生肖馬相符，但報告文字描述錯誤。"
+        ],
+        "improvements": [
+          "嚴格校對所有基礎資料，特別是客戶提供的性別、生日、八字、生肖，確保報告內文前後一致且與地面真相相符。",
+          "在引用地支關係（如刑、沖、合、害）時，需精確對照雙方八字，避免引入不存在的字（如未）。",
+          "在描述生肖關係時，應直接使用正確生肖（馬 vs 雞），並準確描述其關係（無合無沖無刑無害，中性）。",
+          "流年分析中涉及生肖運勢時，應使用正確的生肖進行推論，避免混淆。"
+        ]
+      }
+    }
+  }
+}

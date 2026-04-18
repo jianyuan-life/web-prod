@@ -560,6 +560,59 @@ export function validateReportAgainstData(
       found: '多人各有不同生肖，跳過全局替換',
       corrected: false,
     })
+
+    // R 方案：針對當前這位成員，檢查 AI 是否在該姓名附近說錯生肖
+    // 例：「李進壹屬鼠」應被改為「李進壹屬狗」（若其真實生肖不同）
+    if (planCode === 'R' && birthData?.name) {
+      const name = String(birthData.name).slice(0, 8)
+      // 搜尋「{姓名}...屬X」「{姓名}屬X」模式，區間內 40 字
+      const nameZodiacPattern = new RegExp(`(${name}[^\\n]{0,40}?屬\\s*)([鼠牛虎兔龍蛇馬羊猴雞狗豬])`, 'g')
+      const beforeLen = content.length
+      content = content.replace(nameZodiacPattern, (match, pre, wrong) => {
+        if (wrong !== mainShengxiao) {
+          corrections.push({
+            field: `生肖（${name}）`,
+            expected: mainShengxiao,
+            found: wrong,
+            corrected: true,
+          })
+          return `${pre}${mainShengxiao}`
+        }
+        return match
+      })
+      if (content.length !== beforeLen) {
+        // 可能整體長度有變，但我們主要是替換同等長度字元
+      }
+    }
+  }
+
+  // ────────────────────────────────────────────
+  // 9. R 方案專屬：合盤禁忌語檢查（不存在的地支關係）
+  // ────────────────────────────────────────────
+  if (planCode === 'R') {
+    const forbiddenRelations: [RegExp, string][] = [
+      [/子戌相刑|戌子相刑/g, '(禁用詞：子戌無刑，地支三刑為寅巳申、丑戌未、子卯、自刑)'],
+      [/丙庚相沖|庚丙相沖/g, '(禁用詞：天干無丙庚沖，只有甲庚/乙辛/壬丙/癸丁四沖)'],
+      [/狗鼠相害|鼠狗相害/g, '(禁用詞：狗鼠無害，地支六害為子未、丑午、寅巳、卯辰、申亥、酉戌)'],
+      [/狗兔相沖/g, '(禁用詞：狗兔為卯戌六合，非相沖)'],
+      [/馬雞相沖|午酉相沖/g, '(禁用詞：馬雞中性，無合無沖)'],
+    ]
+    let violations = 0
+    for (const [pat, note] of forbiddenRelations) {
+      const m = content.match(pat)
+      if (m) {
+        violations += m.length
+        corrections.push({
+          field: 'R方案禁忌關係',
+          expected: note,
+          found: m[0],
+          corrected: false,
+        })
+      }
+    }
+    if (violations > 0) {
+      console.warn(`[QA] R 方案發現 ${violations} 處禁忌關係語（未自動修正，需改 prompt 重生）`)
+    }
   }
 
   // ────────────────────────────────────────────
@@ -1450,8 +1503,29 @@ ${analyses.length}套系統排盤完整數據：
     userPrompt += `${'='.repeat(60)}\n\n`
   }
 
-  if (topic) userPrompt += `\n分析方向：${topic}\n`
-  if (question) userPrompt += `客戶問題描述：${question}\n`
+  // D 方案：強制注入客戶原始問題 + 老闆鐵律（每條論述必須引用具體命盤欄位）
+  const bdAny = birthData as Record<string, unknown>
+  const isDPlan = birthData.plan_code === 'D'
+  const dTopic = (topic || bdAny.analysis_topic || bdAny.topic || '') as string
+  const dQuestion = (question || bdAny.customer_note || bdAny.other_question || bdAny.question || '') as string
+  if (isDPlan) {
+    userPrompt += `\n${'='.repeat(60)}\n`
+    userPrompt += `【D 方案「心之所惑」$39 — 客戶的具體問題（整份報告必須 100% 圍繞此展開）】\n`
+    if (dTopic) userPrompt += `主題：${dTopic}\n`
+    if (dQuestion) userPrompt += `客戶原文：「${dQuestion}」\n`
+    if (!dQuestion && dTopic) userPrompt += `（客戶只填了主題沒有詳細描述，你要根據主題給出有衝擊力的具體解答，而不是泛泛分析整個命格）\n`
+    userPrompt += `\n【強制規則——違反一條直接重寫】\n`
+    userPrompt += `1. 「你的問題」章節必須一字不改引用客戶原文（或主題）。\n`
+    userPrompt += `2. 「你的答案」必須 10 秒內給明確方向，且每句話都要括號標明具體命盤欄位（日主X干/X宮X主星/X大運/X格局），禁止用「命盤顯示...」這類空話。\n`
+    userPrompt += `3. 字數嚴格 6,000-9,000 字（不是 C 方案的 15,000+），精簡到每句都是重點。\n`
+    userPrompt += `4. 只用 5-8 套最相關系統，跟問題無關的系統一個字都不寫。\n`
+    userPrompt += `5. 好的地方/需要注意/改善建議各 3-4 條（不是 6-7 條），精選不灌水。\n`
+    userPrompt += `6. 改善建議不得出現「佩戴X飾品/穿X顏色/在家擺X方位/換姓名」等民俗擺設建議——$39 客戶要行為改變，不是民俗周邊。\n`
+    userPrompt += `${'='.repeat(60)}\n`
+  } else {
+    if (dTopic) userPrompt += `\n分析方向：${dTopic}\n`
+    if (dQuestion) userPrompt += `客戶問題描述：${dQuestion}\n`
+  }
   if (additionalPeople?.length) {
     userPrompt += `\n其他人資料：\n`
     for (const p of additionalPeople) {
@@ -1804,6 +1878,121 @@ export async function aiGenerateG15(
 }
 aiGenerateG15.maxRetries = 2
 
+// ── R 方案專用：命理事實計算助手（硬編碼查表，不靠 AI） ──
+// 從八字字串（例「甲戌 丙子 丙申 乙未」或「甲戌丙子丙申乙未」）抽取年支、日干、日支
+function parseBazi(bazi: string): { yearGan: string; yearZhi: string; dayGan: string; dayZhi: string } | null {
+  if (!bazi) return null
+  const clean = bazi.replace(/\s+/g, '')
+  if (clean.length < 8) return null
+  return {
+    yearGan: clean[0], yearZhi: clean[1],
+    dayGan: clean[4], dayZhi: clean[5],
+  }
+}
+
+// 地支→生肖
+const ZHI_TO_ZODIAC: Record<string, string> = {
+  子: '鼠', 丑: '牛', 寅: '虎', 卯: '兔', 辰: '龍', 巳: '蛇',
+  午: '馬', 未: '羊', 申: '猴', 酉: '雞', 戌: '狗', 亥: '豬',
+}
+
+// 地支合沖刑害查表
+function dizhiRelation(a: string, b: string): string[] {
+  const rels: string[] = []
+  const pair = [a, b].sort().join('')
+  const liuhe: Record<string, string> = {
+    '丑子': '六合', '亥寅': '六合', '卯戌': '六合',
+    '酉辰': '六合', '巳申': '六合', '午未': '六合',
+  }
+  const liuchong: Record<string, string> = {
+    '午子': '六沖', '丑未': '六沖', '申寅': '六沖',
+    '卯酉': '六沖', '戌辰': '六沖', '亥巳': '六沖',
+  }
+  const liuhai: Record<string, string> = {
+    '子未': '六害', '丑午': '六害', '巳寅': '六害',
+    '卯辰': '六害', '申亥': '六害', '戌酉': '六害',
+  }
+  if (liuhe[pair]) rels.push(liuhe[pair])
+  if (liuchong[pair]) rels.push(liuchong[pair])
+  if (liuhai[pair]) rels.push(liuhai[pair])
+  const sanhe: Record<string, string[]> = {
+    水: ['申', '子', '辰'], 金: ['巳', '酉', '丑'],
+    火: ['寅', '午', '戌'], 木: ['亥', '卯', '未'],
+  }
+  for (const [type, set] of Object.entries(sanhe)) {
+    if (set.includes(a) && set.includes(b) && a !== b) {
+      rels.push(`三合${type}局半合`)
+    }
+  }
+  if (a === b && ['辰', '午', '酉', '亥'].includes(a)) rels.push('自刑')
+  if ((a === '子' && b === '卯') || (a === '卯' && b === '子')) rels.push('相刑（子卯無禮）')
+  if (rels.length === 0) return ['中性（無合無沖無刑無害）']
+  return rels
+}
+
+// 天干合沖剋查表
+function tianganRelation(a: string, b: string): string[] {
+  const rels: string[] = []
+  const p = [a, b].sort().join('')
+  const wuhe: Record<string, string> = {
+    '己甲': '甲己合化土', '乙庚': '乙庚合化金',
+    '丙辛': '丙辛合化水', '丁壬': '丁壬合化木', '戊癸': '戊癸合化火',
+  }
+  if (wuhe[p]) rels.push(wuhe[p])
+  const chong: Record<string, string> = {
+    '甲庚': '甲庚沖', '乙辛': '乙辛沖',
+    '丙壬': '丙壬沖', '丁癸': '丁癸沖',
+  }
+  if (chong[p]) rels.push(chong[p])
+  if (rels.length === 0) {
+    const wuxing: Record<string, string> = {
+      甲: '木', 乙: '木', 丙: '火', 丁: '火',
+      戊: '土', 己: '土', 庚: '金', 辛: '金',
+      壬: '水', 癸: '水',
+    }
+    const xa = wuxing[a], xb = wuxing[b]
+    const shengKe: Record<string, Record<string, string>> = {
+      木: { 火: '生', 土: '剋', 金: '被剋', 水: '被生', 木: '同類' },
+      火: { 土: '生', 金: '剋', 水: '被剋', 木: '被生', 火: '同類' },
+      土: { 金: '生', 水: '剋', 木: '被剋', 火: '被生', 土: '同類' },
+      金: { 水: '生', 木: '剋', 火: '被剋', 土: '被生', 金: '同類' },
+      水: { 木: '生', 火: '剋', 土: '被剋', 金: '被生', 水: '同類' },
+    }
+    const rel = shengKe[xa]?.[xb]
+    if (rel) rels.push(`${a}(${xa})${rel}${b}(${xb})`)
+  }
+  return rels
+}
+
+// 十神關係（日主看對方天干）
+function shishen(myDayGan: string, otherGan: string): string {
+  const wuxing: Record<string, string> = {
+    甲: '木', 乙: '木', 丙: '火', 丁: '火',
+    戊: '土', 己: '土', 庚: '金', 辛: '金',
+    壬: '水', 癸: '水',
+  }
+  const yinYang: Record<string, boolean> = {
+    甲: true, 丙: true, 戊: true, 庚: true, 壬: true,
+    乙: false, 丁: false, 己: false, 辛: false, 癸: false,
+  }
+  const myX = wuxing[myDayGan], oX = wuxing[otherGan]
+  const sameYY = yinYang[myDayGan] === yinYang[otherGan]
+  if (!myX || !oX) return '未知'
+  if (myX === oX) return sameYY ? '比肩' : '劫財'
+  const rel = ({
+    木: { 火: 'sheng', 土: 'ke', 金: 'keFromMe', 水: 'beSheng' },
+    火: { 土: 'sheng', 金: 'ke', 水: 'keFromMe', 木: 'beSheng' },
+    土: { 金: 'sheng', 水: 'ke', 木: 'keFromMe', 火: 'beSheng' },
+    金: { 水: 'sheng', 木: 'ke', 火: 'keFromMe', 土: 'beSheng' },
+    水: { 木: 'sheng', 火: 'ke', 土: 'keFromMe', 金: 'beSheng' },
+  } as Record<string, Record<string, string>>)[myX]?.[oX]
+  if (rel === 'sheng') return sameYY ? '食神' : '傷官'
+  if (rel === 'ke') return sameYY ? '偏財' : '正財'
+  if (rel === 'keFromMe') return sameYY ? '七殺' : '正官'
+  if (rel === 'beSheng') return sameYY ? '偏印' : '正印'
+  return '未知'
+}
+
 // ── R 方案「合否？」：為每位成員分別排盤，合併後 AI 生成合盤分析 ──
 export async function aiGenerateR(
   memberResults: CalcResult[], birthData: BirthData, systemPrompt: string, reportId?: string,
@@ -1827,6 +2016,40 @@ export async function aiGenerateR(
   // 客戶備注/想了解的問題
   if (customerNote) {
     userPrompt += `【客戶想了解的問題】${customerNote}\n\n`
+  }
+
+  // ── 強制注入「合盤事實表」— AI 絕對不可違反（Windada/lunar-python 精算）──
+  const parsedList = memberResults.map((calc, i) => {
+    const bazi = (calc.client_data?.bazi as string) || ''
+    const p = parseBazi(bazi)
+    return {
+      name: members[i]?.name || `成員${i + 1}`,
+      bazi,
+      parsed: p,
+      zodiac: p ? ZHI_TO_ZODIAC[p.yearZhi] || '未知' : '未知',
+    }
+  })
+  if (parsedList.length >= 2 && parsedList[0].parsed && parsedList[1].parsed) {
+    const A = parsedList[0], B = parsedList[1]
+    const pa = A.parsed!, pb = B.parsed!
+    userPrompt += `\n════════════════════════════════════════════\n`
+    userPrompt += `【合盤事實表（違反即不合格，所有論述必須以此為準）】\n`
+    userPrompt += `════════════════════════════════════════════\n`
+    userPrompt += `${A.name}：八字「${A.bazi}」\n`
+    userPrompt += `  → 日主：${pa.dayGan}  日支：${pa.dayZhi}\n`
+    userPrompt += `  → 年支：${pa.yearZhi}  生肖：${A.zodiac}\n`
+    userPrompt += `${B.name}：八字「${B.bazi}」\n`
+    userPrompt += `  → 日主：${pb.dayGan}  日支：${pb.dayZhi}\n`
+    userPrompt += `  → 年支：${pb.yearZhi}  生肖：${B.zodiac}\n\n`
+
+    userPrompt += `【雙方年支生肖關係】${pa.yearZhi}(${A.zodiac}) × ${pb.yearZhi}(${B.zodiac}) = ${dizhiRelation(pa.yearZhi, pb.yearZhi).join('、')}\n`
+    userPrompt += `【雙方日支關係】${pa.dayZhi} × ${pb.dayZhi} = ${dizhiRelation(pa.dayZhi, pb.dayZhi).join('、')}\n`
+    userPrompt += `【雙方日干關係】${pa.dayGan} × ${pb.dayGan} = ${tianganRelation(pa.dayGan, pb.dayGan).join('、')}\n`
+    userPrompt += `【十神（以${A.name}為我）】${pa.dayGan}見${pb.dayGan} = ${shishen(pa.dayGan, pb.dayGan)}\n`
+    userPrompt += `【十神（以${B.name}為我）】${pb.dayGan}見${pa.dayGan} = ${shishen(pb.dayGan, pa.dayGan)}\n`
+    userPrompt += `\n※ 所有事實來自 lunar-python 精算，禁止 AI 自行推測生肖、日主、十神、合沖刑害。\n`
+    userPrompt += `※ 若你寫的論述與此事實表衝突，你必須立刻修正。\n`
+    userPrompt += `════════════════════════════════════════════\n\n`
   }
 
   // 逐一列出每位成員的排盤數據
@@ -1884,11 +2107,13 @@ export async function aiGenerateR(
   userPrompt += `\n請根據以上所有成員的排盤數據，撰寫完整的關係合盤分析報告。
 重要提醒：
 1. 所有分析必須基於排盤數據中的具體結果，不得編造。
-2. 每個分析論點都必須引用至少一個系統的具體合盤結果。
-3. 禁止任何評分或分數——關係不該有分數，用文字描述而非數字。
-4. 現在是2026年丙午年。
-5. 好的地方和需要注意的地方都必須涉及雙方互動，不是個人特質描述。
-6. 先給明確結論（合/不合/合但有致命雷區），再展開分析。`
+2. 【最高優先】合盤事實表（生肖、日主、合沖刑害、十神）為絕對事實，違反即不合格。
+3. 每個分析論點都必須引用至少一個系統的具體合盤結果。
+4. 禁止任何評分或分數——關係不該有分數，用文字描述而非數字。
+5. 現在是2026年丙午年。
+6. 好的地方和需要注意的地方都必須涉及雙方互動，不是個人特質描述。
+7. 先給明確結論（合/不合/合但有致命雷區），再展開分析。
+8. 寫完每章後，請自我檢查：「我剛寫的生肖是否與事實表一致？合沖刑害是否與事實表一致？十神是否與事實表一致？」如有不符立刻修正。`
 
   const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
 
@@ -2023,6 +2248,7 @@ generatePDF.maxRetries = 2
 // 檢查報告完整性：15 系統覆蓋、禁止字眼、句子截斷
 export async function qualityGate(
   reportContent: string, planCode: string, systemsCount: number,
+  chumenjiTop?: ChumenjiTopResult | null,
 ) {
   "use step";
   await emitProgress({ step: '品質檢查', progress: 70, message: '正在執行品質閘門檢查...' })
@@ -2151,6 +2377,71 @@ export async function qualityGate(
     }
   }
 
+  // 2c-4. [CHUMENJI DEEP AUDIT 2026-04-18] 引擎硬比對：AI 輸出的 JSON 必須等於 chumenjiTop
+  // 這是 P0 級修復 — 歷史發現 Claude Opus 4.6 在 E1/E2 偶爾覆寫引擎結果（自己編 date/time/door）
+  // 從這裡起，AI JSON 的 (date, time_start, direction) 必須與引擎輸出 100% 一致，否則觸發 retry
+  if ((planCode === 'E1' || planCode === 'E2') && chumenjiTop?.results?.length) {
+    try {
+      // 抽取 AI 寫的 JSON 區塊
+      const aiJsonMatches: Array<{ date?: string; time_start?: string; direction?: string; title?: string }> = []
+      // TOP3_JSON 區塊（E1 可能是陣列）
+      const top3Block = reportContent.match(/===TOP3_JSON_START===\s*([\s\S]*?)\s*===TOP3_JSON_END===/)
+      if (top3Block) {
+        try {
+          const parsed = JSON.parse(top3Block[1])
+          if (Array.isArray(parsed)) aiJsonMatches.push(...parsed)
+          else aiJsonMatches.push(parsed)
+        } catch { /* noop */ }
+      }
+      // TOP1_JSON 區塊（E2 每週一個，可能多個）
+      const top1Regex = /===TOP1_JSON_START===\s*([\s\S]*?)\s*===TOP1_JSON_END===/g
+      let m: RegExpExecArray | null
+      while ((m = top1Regex.exec(reportContent)) !== null) {
+        try {
+          const parsed = JSON.parse(m[1])
+          aiJsonMatches.push(parsed)
+        } catch { /* noop */ }
+      }
+      // 舊版 TOP5_JSON（相容）
+      const top5Block = reportContent.match(/===TOP5_JSON_START===\s*([\s\S]*?)\s*===TOP5_JSON_END===/)
+      if (top5Block) {
+        try {
+          const parsed = JSON.parse(top5Block[1])
+          if (Array.isArray(parsed)) aiJsonMatches.push(...parsed)
+        } catch { /* noop */ }
+      }
+
+      // 比對：AI 的每一筆都必須有對應的引擎結果（date + time_start 符合）
+      const engineList = chumenjiTop.results
+      const mismatches: string[] = []
+      for (const aj of aiJsonMatches) {
+        if (!aj.date || !aj.time_start) continue
+        const match = engineList.find(r => {
+          if (r.date !== aj.date) return false
+          // time_start 比對（HH:MM）
+          const rStart = (r.time_range || '').split('-')[0].trim().padStart(5, '0')
+          return rStart === aj.time_start || r.shichen === (aj as { shichen?: string }).shichen
+        })
+        if (!match) {
+          mismatches.push(`AI 輸出 ${aj.date} ${aj.time_start}（${aj.direction || ''}）不在引擎計算結果內`)
+        } else {
+          // date 對上，再比對 direction
+          if (aj.direction && match.direction && aj.direction !== match.direction) {
+            mismatches.push(`AI ${aj.date} ${aj.time_start} 方位=${aj.direction}，引擎=${match.direction}（不符）`)
+          }
+        }
+      }
+      if (mismatches.length > 0) {
+        warnings.push(`[硬門檻] 出門訣引擎硬比對失敗（${mismatches.length} 項）：${mismatches.slice(0, 3).join('；')}`)
+      } else if (aiJsonMatches.length === 0) {
+        warnings.push(`[硬門檻] 出門訣缺少 AI JSON 輸出區塊，無法驗證是否遵守引擎結果`)
+      }
+    } catch (e) {
+      console.error('chumenjiTop 硬比對異常（降級為警告）:', e)
+      warnings.push('[軟性] 出門訣引擎硬比對異常，已降級')
+    }
+  }
+
   // 2d. R 方案「合否？」必要章節檢查
   if (planCode === 'R') {
     const rRequired = [
@@ -2214,8 +2505,23 @@ export async function qualityGate(
         warnings.push(`心之所惑缺少必要章節: ${sec.name}`)
       }
     }
-    if (reportContent.length < 8000) {
-      warnings.push(`心之所惑內容偏短: ${reportContent.length} 字（期望 > 8,000 字）`)
+    // D 方案字數嚴格範圍：6,000-9,000 字（物超所值鐵律）
+    if (reportContent.length < 5500) {
+      warnings.push(`心之所惑內容偏短: ${reportContent.length} 字（期望 6,000-9,000 字）`)
+    }
+    if (reportContent.length > 11000) {
+      warnings.push(`[軟性] 心之所惑內容過長: ${reportContent.length} 字（D 方案應 6,000-9,000 字，不是 C 方案的百科全書）`)
+    }
+    // 老闆鐵律：禁止「命盤顯示」這類空話——要求每個論述引用具體命盤欄位
+    const vagueHitCount = (reportContent.match(/命盤顯示[^，。？！\n]{0,10}[你妳]?(很|有|能|會|需要)/g) || []).length
+    if (vagueHitCount >= 3) {
+      warnings.push(`[軟性] 心之所惑「命盤顯示」類空話出現 ${vagueHitCount} 次，應改為具體命盤欄位（日主X金/X宮X星/X格局）`)
+    }
+    // 「好的地方」條數檢查（應 3-4 項，不應灌水到 6+）
+    const goodPartsMatch = reportContent.match(/##?\s*(?:[一二三四五六七八九十]+、\s*)?好的地方[\s\S]*?(?=\n##?\s|$)/)
+    if (goodPartsMatch) {
+      const goodItems = (goodPartsMatch[0].match(/^\*\*\d+\./gm) || []).length
+      if (goodItems > 6) warnings.push(`[軟性] 心之所惑「好的地方」${goodItems} 條偏多（建議 3-4 條精選）`)
     }
   }
 

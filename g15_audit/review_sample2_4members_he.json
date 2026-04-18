@@ -1,0 +1,33 @@
+{
+  "sample_id": "sample2_4members_he",
+  "results": {
+    "GPT-4o": {
+      "score": -1,
+      "text": "HTTP 429: {\n    \"error\": {\n        \"message\": \"Rate limit reached for gpt-4o in organization org-zjDijEQAg9k8FCopdTXEgNX9 on tokens per min (TPM): Limit 30000, Used 28343, Requested 18112. Please try again in 32.91s. Visit https://platform.openai.com/account/rate-limits to learn more.\",\n        \"type\": \"tokens\",\n        \"param\": null,\n        \"code\": \"rate_limit_exceeded\"\n    }\n}\n",
+      "tag": "family_psychology"
+    },
+    "Qwen-Max": {
+      "score": 92,
+      "text": "SCORE: 92\nKEY_ISSUES:\n1. 命理論述深度與正確性方面，報告中對某些命理元素的解釋略顯簡化，例如對於何則興的廉貞天相帶擎羊鈴星的描述，可以更深入地探討其内在矛盾和外在表現。\n2. 互動分析針對性方面，部分段落仍然偏向個人分析，尤其是在成員之間的衝突模式描述上，有時會偏重於單一成員的情緒反應，而未充分展現雙方的互動動態。\n3. 建議可執行性方面，雖然提供了具體行動步驟，但有些建議如「夫妻充電站」和「家庭天氣預報」可能需要更多的細節指導，以確保實際操作中的可行性。\n\nSHORT_COMMENT: 這是一份非常全面且深入的家庭藍圖報告，但在仍有提升空間，特別是在命理深度和互動分析的平衡上。",
+      "tag": "chinese_metaphysics"
+    },
+    "Gemini-2.5": {
+      "score": -1,
+      "text": "HTTP 429: {\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 5.692168428s.\",\n    \"status\": \"RESOURCE_EXHAUSTED\",\n    \"d",
+      "tag": "information_arch"
+    },
+    "Kimi-128k": {
+      "score": 92,
+      "text": "SCORE: 92\nKEY_ISSUES:\n1. 互動分析針對性方面，部分分析可能过于抽象，缺乏具体的日常行为示例。\n2. 建議可執行性方面，部分建议虽然具体，但未充分考虑家庭成员的个性差异和接受程度。\n3. 敘事節奏與一針見血方面，报告在某些部分稍显冗长，影响了节奏和冲击力。\n\nSHORT_COMMENT: 该报告在深度分析和建议的实用性上表现出色，但在针对性和节奏控制上有改进空间。",
+      "tag": "narrative"
+    },
+    "DeepSeek-R1": {
+      "score": 65,
+      "text": "SCORE: 65\nKEY_ISSUES:\n1. 命理模型混杂与论证跳跃：报告混杂人类图、西洋/吠陀占星、紫微、八字、生命灵数、塔罗等多体系术语（如“西洋月亮巨蟹”与“吠陀日水瑜伽”并置），但未说明理论兼容性与数据支撑。核心论断（如“月冥对分让她成为情绪雷达”）缺乏命理规则到现实行为的严谨推演，多属直接断言，存在“因为命格A所以行为B”的论证跳跃。\n2. 核心建议存在逻辑悖论或执行矛盾：例如“家庭暂停机制”要求情绪上头的成员理性发起暂停，这与报告所述李禹乐、何亮緯的暴衝特质（情绪洪水时前额叶下线）存在执行矛盾；“吵架熔断机制”中何则兴沉默后由李禹乐写消息，但何则兴的“文字表达优势”需其主动发起，逻辑闭环断裂。\n3. 分析存在“循环论证”与“过度决定论”倾向：用命理配置解释行为（如何芊郳压抑因太阳四分土星），又用同一行为反证命理有效，缺乏外部观察维度。对2026年运势的断言（如“何芊郳子女宫链条提示花钱不当→影响健康”）近乎宿命论，未考虑变量与干预可能，易引发焦虑且不可证伪。\nSHORT_COMMENT: 报告内容详尽且叙事生动，但命理基础混杂脆弱、关键建议存在逻辑硬伤，整体论证严谨性不足，不符合付费专业分析标准。",
+      "tag": "logical"
+    }
+  },
+  "avg": 83.0,
+  "min": 65,
+  "passed": false
+}

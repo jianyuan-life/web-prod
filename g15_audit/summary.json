@@ -1,0 +1,13 @@
+{
+  "samples": 1,
+  "passed": 0,
+  "failed": 1,
+  "details": [
+    {
+      "id": "sample2_4members_he",
+      "avg": 83.0,
+      "min": 65,
+      "passed": false
+    }
+  ]
+}
