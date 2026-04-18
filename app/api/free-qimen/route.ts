@@ -51,14 +51,20 @@ function transformApiData(data: Record<string, unknown>): Record<string, unknown
   const yinyang = juMatch ? juMatch[1] : (data.dun_type as string) || ''
   const juNumber = juMatch ? parseInt(juMatch[2]) : (data.ju_num as number) || 0
 
-  // 收集吉格和凶格
+  // 收集吉格和凶格（硬化：geju 元素可能是 string 或 object）
   const jiGeju: string[] = []
   const xiongGeju: string[] = []
   for (const p of Object.values(palaces)) {
-    const geju = (p.geju as string[]) || []
-    for (const g of geju) {
+    const geju = (p.geju as unknown[]) || []
+    for (const gRaw of geju) {
+      // 兼容 string 或 object（如 {name: '伏干格'}）
+      const g = typeof gRaw === 'string'
+        ? gRaw.trim()
+        : String((gRaw as { name?: string; title?: string })?.name
+              || (gRaw as { title?: string })?.title
+              || '').trim()
       if (!g) continue
-      // 簡單判斷：含「格」的多為凶格關鍵字
+      // 含「格」的多為凶格關鍵字
       if (['六儀擊刑', '門迫', '入墓', '反吟', '伏吟'].some(k => g.includes(k))) {
         if (!xiongGeju.includes(g)) xiongGeju.push(g)
       } else {

@@ -706,8 +706,17 @@ export default function QimenToolPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {(() => {
-                    const jiList = (result.geju_summary.ji || []).filter((g: string) => g && g.trim())
-                    const xiongList = (result.geju_summary.xiong || []).filter((g: string) => g && g.trim())
+                    // 硬化：陣列元素可能不是純字串
+                    const toStr = (g: unknown): string => {
+                      if (typeof g === 'string') return g.trim()
+                      if (g && typeof g === 'object') {
+                        const obj = g as { name?: string; title?: string }
+                        return String(obj.name || obj.title || '').trim()
+                      }
+                      return ''
+                    }
+                    const jiList = ((result.geju_summary.ji || []) as unknown[]).map(toStr).filter(Boolean)
+                    const xiongList = ((result.geju_summary.xiong || []) as unknown[]).map(toStr).filter(Boolean)
                     return (
                       <>
                         {jiList.length > 0 && (
