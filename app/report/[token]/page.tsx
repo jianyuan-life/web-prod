@@ -341,10 +341,20 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
 function parseStructuredContent(markdown: string): ContentSection[] {
   const sections: ContentSection[] = []
 
-  // 支援兩種格式：
-  // 新版主題式：## 一、命格名片  或  ## 二、你是什麼樣的人
-  // 舊版系統式：## 八字分析  或  ## 紫微斗數
-  const parts = markdown.split(/^## /gm).filter(Boolean)
+  // v5.3.27：支援三種格式
+  // 1. 新版主題式：## 一、命格名片  或  ## 二、你是什麼樣的人
+  // 2. 舊版系統式：## 八字分析  或  ## 紫微斗數
+  // 3. 認可版 H3 主體：### 思維模式/行動模式/情感模式（Claude 認可版常用）
+  //    → 如果 ## 章節 < 4，自動降級用 ### 切分
+  let parts = markdown.split(/^## /gm).filter(Boolean)
+
+  // v5.3.27：如果 ## 章節太少，改用 ### 切分（認可版 Claude 寫法）
+  if (parts.length < 4) {
+    const h3Parts = markdown.split(/^### /gm).filter(Boolean)
+    if (h3Parts.length >= 4) {
+      parts = h3Parts
+    }
+  }
 
   for (const part of parts) {
     const newlineIdx = part.indexOf('\n')
