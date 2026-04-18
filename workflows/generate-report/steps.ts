@@ -2354,27 +2354,23 @@ export async function qualityGate(
     warnings.push(`排盤系統不足: 期望 15 套，實際 ${systemsCount} 套`)
   }
 
-  // v5.3.23：C 方案改為結構性檢查（移除 regex 章節名硬匹配）
-  // 根因：prompt 一改章節名（例：「人生速覽」→「你最大的天賦」），
-  //   regex 沒同步 → 4 次 C 方案都誤判「缺少必要章節」hardFail 老闆燒 $400
-  // 修：結構性檢查 — 字數+章節數+結尾完整，不檢查特定標題名
-  //   讓 Claude 可自由發揮章節命名，只要結構對就放行
+  // v5.3.26：C 方案結構性檢查放寬（修 v5.3.23 的誤判 bug）
+  //   v5.3.23 用「## 章節數 >= 5」→ 但 Claude 認可版用 ### 為主（## 只 1-3 個）
+  //   → 重新生成後又 fail「章節數過少」→ 老闆又燒 $5
+  //   修：計算 ## + ### 總數，降門檻到 8（認可版通常 30+ 個 ###）
   if (planCode === 'C') {
-    // 章節數：C 方案期望至少 5 個 ## 章節（實際通常 11-15 章）
     const h2Matches = reportContent.match(/^## [^\n]+/gm) || []
-    const chapterCount = h2Matches.length
-    if (chapterCount < 5) {
-      warnings.push(`C 方案章節數過少: ${chapterCount} 個 ## 章節（期望 >= 5）`)
+    const h3Matches = reportContent.match(/^### [^\n]+/gm) || []
+    const totalHeadings = h2Matches.length + h3Matches.length
+    if (totalHeadings < 8) {
+      warnings.push(`[軟性] C 方案章節數偏少: ## ${h2Matches.length} + ### ${h3Matches.length} = ${totalHeadings}（期望 >= 8）`)
     }
 
-    // 結尾完整性：最後 500 字必須有結尾符號（。！？」）
+    // 結尾完整性：最後 500 字必須有結尾符號（軟性不擋）
     const tail = reportContent.slice(-500).trim()
     if (tail.length > 0 && !/[。！？」\]]\s*$/.test(tail)) {
       warnings.push(`[軟性] C 方案結尾可能被截斷: "${tail.slice(-80)}"`)
     }
-    // v5.3.23 移除：舊的硬編碼章節名 regex 匹配。
-    //   Claude 可自由命名章節（「你最大的天賦」「力量宣告」等都 OK）
-    //   品質靠「字數 + 章節數 + 6 LLM QA + 結尾完整」多層把關
   }
 
   // 2c. E1 事件出門訣必要章節檢查（Top3 加乘時機）
