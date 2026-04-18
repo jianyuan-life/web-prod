@@ -43,8 +43,7 @@ async function callUpstash(
   const url = `${cfg.url}/${path}`
 
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 3000)
+    // v5.3.17：Vercel Workflow 沙箱沒 AbortController 全域，改 AbortSignal.timeout
     const res = await fetch(url, {
       method: opts.method || 'GET',
       headers: {
@@ -52,9 +51,8 @@ async function callUpstash(
         ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
       },
       body: opts.body,
-      signal: controller.signal,
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 3000),
     })
-    clearTimeout(timeout)
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
@@ -114,8 +112,7 @@ export async function setCache(
   if (!cfg) return false
 
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
+    // v5.3.17：Workflow 沙箱相容
     const res = await fetch(`${cfg.url}/SET/${encodeURIComponent(key)}?EX=${Math.floor(ttlSeconds)}`, {
       method: 'POST',
       headers: {
@@ -123,9 +120,8 @@ export async function setCache(
         'Content-Type': 'text/plain',
       },
       body: serialized,
-      signal: controller.signal,
+      signal: AbortSignal.timeout(3000),
     })
-    clearTimeout(timeout)
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')

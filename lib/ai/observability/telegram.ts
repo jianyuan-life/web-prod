@@ -53,22 +53,20 @@ async function sendTelegramMessage(text: string, opts: SendOptions = {}): Promis
   }
 
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-
+    // v5.3.17：Vercel Workflow step 沙箱沒 AbortController 全域，改用 AbortSignal.timeout
+    //   原 new AbortController() → ReferenceError 導致告警全掛
     const res = await fetch(`${TELEGRAM_API_BASE}/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text: text.slice(0, 4000), // Telegram 上限 4096，留 buffer
+        text: text.slice(0, 4000),
         parse_mode: opts.parseMode || 'HTML',
         disable_notification: opts.disableNotification || false,
         disable_web_page_preview: opts.disableWebPagePreview ?? true,
       }),
-      signal: controller.signal,
+      signal: AbortSignal.timeout(5000),
     })
-    clearTimeout(timeout)
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')

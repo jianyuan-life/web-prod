@@ -461,10 +461,17 @@ function renderInlineMarkdown(text: string): string {
     .replace(/→\s*具體應對[：:]\s*(?=\n\n|\n[0-9]|\n[一二三四五])/g, '')
     // 清理所有 H1 標題（# 開頭）— 前端不顯示 H1 原始 markdown
     .replace(/^# .+$/gm, '')
-    // 清理出門訣 JSON 標記（正常情況下已在後端移除，這是安全網）
-    .replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '')
-    .replace(/===TOP5_JSON_START===/g, '')
-    .replace(/===TOP5_JSON_END===/g, '')
+    // v5.3.17：清理所有 TOPx_JSON 標記（E1=TOP3、E2=TOP1），含整區塊和落單標記
+    .replace(/===TOP\d+_JSON_START===[\s\S]*?===TOP\d+_JSON_END===/g, '')
+    .replace(/===TOP\d+_JSON_START===/g, '')
+    .replace(/===TOP\d+_JSON_END===/g, '')
+    // 防 AI 沒加 === 直接輸出裸 JSON 物件（E2 實測）
+    .replace(/\{\s*"week"\s*:\s*\d+[\s\S]*?"zhishi_info"\s*:[^}]*\}\s*/g, '')
+    .replace(/\{\s*"week"\s*:\s*\d+[\s\S]*?\}\s*(?=\{\s*"week"|\s*$)/g, '')
+    .replace(
+      /\{\s*"(?:week|rank|title|date|time_start|time_end|direction|reason|confidence|shensha_warning|zhishi_info|boost_explanation|plain_advantage|plain_purpose)"[\s\S]{0,3000}?\}\s*/g,
+      '',
+    )
     .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
     // 斜體（排除已被粗體處理的 **）
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
@@ -1884,14 +1891,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     )
                   })()}
 
-                  {/* 命理依據（摺疊，給專業人士驗證盤）*/}
-                  <details className="mb-4 group">
-                    <summary className="cursor-pointer text-xs text-text-muted/50 hover:text-text-muted select-none transition-colors flex items-center gap-1">
+                  {/* 奇門依據（v5.3.17 改：預設展開，展現專業性）
+                      老闆：專業度要展現出來，客戶看不懂沒關係，但我看得懂可以跟客戶解釋
+                      例：玉女守門這種好格局不顯示老闆就無從得知 */}
+                  <details className="mb-4 group" open>
+                    <summary className="cursor-pointer text-xs text-gold/60 hover:text-gold select-none transition-colors flex items-center gap-1 mb-2">
                       <span className="group-open:rotate-90 transition-transform">▸</span>
-                      {report.plan_code === 'E1' ? '進階：為什麼這個時間能加乘（命理依據）' : '進階：命理依據（給專業人士驗盤）'}
+                      <span className="font-medium">🔮 奇門依據{report.plan_code === 'E1' ? '（為什麼這個時間能加乘）' : ''}</span>
                     </summary>
-                    <div className="mt-2 px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid rgba(197,150,58,0.3)' }}>
-                      <p className="text-text-muted/80 text-sm leading-7">{
+                    <div className="px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid rgba(197,150,58,0.5)' }}>
+                      <p className="text-text-muted/90 text-sm leading-7">{
                         String(timing.reason || '')
                           .replace(/[（(]基礎\d+[×x][\s\S]*?[）)]/g, '')
                           .replace(/[（(][+-]\d+[）)]/g, '')

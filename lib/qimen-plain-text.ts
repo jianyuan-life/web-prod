@@ -119,15 +119,34 @@ const BASHEN_FLAVOR: Record<string, string> = {
 }
 
 /**
- * 從 title（如「開門+天心+值符」）解析出主門、星、神
+ * 從 title 解析出主門、星、神
+ * 支援兩種格式：
+ *   - 有分隔符：「開門+天心+值符」「開門、天心、值符」
+ *   - 連字串：「天輔開門」「天任休門」「開門天心值符」
+ * v5.3.17 修：之前只支援 split，連字串（老闆截圖格式）全走 fallback
  */
 function parseTitle(title: string): { bamen?: string; jiuxing?: string; bashen?: string } {
-  const parts = title.split(/[+＋、]/).map(s => s.trim())
   const result: { bamen?: string; jiuxing?: string; bashen?: string } = {}
-  for (const p of parts) {
-    if (p.endsWith('門') && BAMEN_PLAIN[p]) result.bamen = p
-    else if (p.startsWith('天') && JIUXING_FLAVOR[p]) result.jiuxing = p
-    else if (BASHEN_FLAVOR[p]) result.bashen = p
+  if (!title) return result
+
+  // 用 includes 掃描所有已知 keys（不依賴分隔符）
+  for (const bamen of Object.keys(BAMEN_PLAIN)) {
+    if (title.includes(bamen)) {
+      result.bamen = bamen
+      break
+    }
+  }
+  for (const jiuxing of Object.keys(JIUXING_FLAVOR)) {
+    if (title.includes(jiuxing)) {
+      result.jiuxing = jiuxing
+      break
+    }
+  }
+  for (const bashen of Object.keys(BASHEN_FLAVOR)) {
+    if (title.includes(bashen)) {
+      result.bashen = bashen
+      break
+    }
   }
   return result
 }
