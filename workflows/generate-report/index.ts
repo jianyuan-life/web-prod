@@ -500,10 +500,13 @@ export async function generateReportWorkflow(reportId: string) {
   //   新：5 LLM (GPT/Qwen/Gemini/Kimi/DeepSeek) 並行評分
   //       min < 95 或 avg < 93 → hardFailure 觸發 retry
   //       連續 3 次失敗 → status = 'needs_human_review' + Telegram 告警
-  const MAX_QUALITY_RETRIES = 3
+  // v5.3.12：降門檻到實際可達水平（老闆今天被 retry 死循環燒 $100+ 的根因修復）
+  //   原設 min≥95 avg≥93 → 實測 4 輪 QA 都在 avg 85-86 / min 80 → 永遠過不了 → 無限 retry
+  //   降到 min≥80 avg≥88 + 降 retry 上限（3→1 次）避免連鎖燒錢
+  const MAX_QUALITY_RETRIES = 1       // 原 3，避免 retry 死循環燒 $15-20/份
   const LEGACY_HARD_MIN_SCORE = 75    // 舊分數門檻（5 LLM 失敗降級時用）
-  const FIVE_LLM_MIN_PER_REVIEWER = 95 // 新門檻：單 reviewer 最低
-  const FIVE_LLM_AVG = 93              // 新門檻：5 位平均
+  const FIVE_LLM_MIN_PER_REVIEWER = 80 // 原 95 不可達 → 實測天花板 80-84
+  const FIVE_LLM_AVG = 88              // 原 93 不可達 → 實測天花板 86-90
 
   type FiveLLMSnapshot = {
     scores: Record<string, number>

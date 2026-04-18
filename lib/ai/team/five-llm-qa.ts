@@ -80,10 +80,19 @@ const REVIEWERS: Array<{
 ]
 
 // 評分門檻
+// v5.3.12：降門檻到實際可達水平（止血老闆 $100/天的 retry 死循環）
+//   原設 min≥95 avg≥93 結構性不可達：
+//     - Gemini 2.5 Pro 對中文命理天生保守（觀察 4 輪 C 方案 QA 都給 80）
+//     - Qwen Max 對報告格式吹毛求疵，天花板 ~90
+//     - Kimi 穩定 ~92
+//   實測 4 輪 10054e37 分數：avg 85.4 / 85.8 / 86.4 / 85.6（門檻 93）
+//     → 永遠過不了 → 無限 retry → 每輪燒 $3-5 → 一份報告就燒 $15-20
+//   新門檻基於實測：min≥80（擋真正嚴重問題）avg≥88（確保整體品質）
+//   若未來 prompt 品質提升，可再調回 min≥85 avg≥90
 export const SCORE_THRESHOLD = {
-  HARD_MIN_PER_REVIEWER: 95,   // 單一 reviewer 最低分
-  HARD_AVG: 93,                // 5 位平均分
-  RED_ALERT: 85,               // 紅色警報門檻（avg < 85）
+  HARD_MIN_PER_REVIEWER: 80,   // 單一 reviewer 最低分（原 95 不可達）
+  HARD_AVG: 88,                // 5 位平均分（原 93 不可達）
+  RED_ALERT: 75,               // 紅色警報門檻（avg < 75）
 }
 
 // ── 統一 system prompt（5 LLM 共用）─────────────────────────
