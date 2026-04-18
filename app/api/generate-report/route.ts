@@ -129,6 +129,7 @@ async function callClaudeStreaming(
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
+      // v5.3.9：Claude Opus 4.7 不接受 temperature 參數（400: deprecated for this model）
       body: JSON.stringify({
         model: 'claude-opus-4-7',
         max_tokens: maxTokens,
@@ -137,7 +138,6 @@ async function callClaudeStreaming(
           { role: 'user', content: userPrompt },
         ],
         system: systemPrompt,
-        temperature: 0.7,
       }),
       signal: controller.signal,
     })

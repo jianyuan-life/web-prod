@@ -1174,13 +1174,13 @@ async function claudeStreamingCall(
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
+      // v5.3.9：Claude Opus 4.7 不接受 temperature 參數（API 400: deprecated for this model）
       body: JSON.stringify({
         model: 'claude-opus-4-7',
         max_tokens: maxTokens,
         stream: true,
         messages: [{ role: 'user', content: actualUserPrompt }],
         system: systemPrompt,
-        temperature: 0.7,
       }),
       signal: controller.signal,
     })
@@ -2804,6 +2804,7 @@ export async function aiReviewReportLegacy(
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
+      // v5.3.9：Claude Opus 4.7 不接受 temperature 參數
       body: JSON.stringify({
         model: 'claude-opus-4-7',
         max_tokens: 2000,
@@ -2812,8 +2813,8 @@ export async function aiReviewReportLegacy(
           content: `你是一個花了真金白銀買命理報告的客戶。你剛讀完整份報告。請從客戶角度評分。
 
 評分標準（每項 20 分，總分 100）：
-1. **一���見血**（20分）：讀第一段就有「靠，這也太準了」的衝擊感嗎？每章開頭的結論夠犀利嗎？
-2. **重點清晰**（20分）：只看粗體就能抓到 80% 重點嗎？三段式���結（好的/注意/改善）齊全嗎？
+1. **一針見血**（20分）：讀第一段就有「靠，這也太準了」的衝擊感嗎？每章開頭的結論夠犀利嗎？
+2. **重點清晰**（20分）：只看粗體就能抓到 80% 重點嗎？三段式總結（好的/注意/改善）齊全嗎？
 3. **具體可行**（20分）：改善建議夠具體嗎？有「做什麼、什麼時候做」嗎？不是泛泛的「注意健康」？
 4. **命理依據**（20分）：每個結論都有標明來自哪個系統嗎？多系統交叉驗證有做到嗎？
 5. **物超所值**（20分）：整體讀完覺得物超所值嗎？會推薦給朋友嗎？
@@ -2823,7 +2824,6 @@ export async function aiReviewReportLegacy(
 報告全文（${reportContent.length} 字）：
 ${reportContent}`
         }],
-        temperature: 0.3,
       })
     })
 
