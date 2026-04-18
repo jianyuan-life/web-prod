@@ -155,11 +155,9 @@ function DashboardContent() {
       return data.reports || []
     }
 
-    // 非 200/401：伺服器錯誤時也標記 authFailed，讓用戶看到重新登入選項而非誤導的「還沒有報告」
-    if (res.status >= 500) {
-      console.error('fetchReports 伺服器錯誤', res.status)
-    }
-    setAuthFailed(true)
+    // 非 200/401 的其他錯誤（5xx、403 等）：只記 log 不標 authFailed
+    // 避免用戶明明登入成功卻看到「登入過期」誤導訊息
+    console.error(`fetchReports 非預期狀態 ${res.status}`, await res.text().catch(() => ''))
     return []
   }
 
