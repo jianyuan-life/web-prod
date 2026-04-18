@@ -130,7 +130,7 @@ async function callClaudeStreaming(
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model: 'claude-opus-4-7',
         max_tokens: maxTokens,
         stream: true,
         messages: [
@@ -146,7 +146,7 @@ async function callClaudeStreaming(
     // v5.3.5 記帳：連線失敗
     try {
       await recordAIUsage({
-        provider: 'anthropic', model: 'claude-opus-4-6',
+        provider: 'anthropic', model: 'claude-opus-4-7',
         promptTokens: 0, completionTokens: 0,
         reportId: tracking?.reportId, planCode: tracking?.planCode,
         callStage: tracking?.callStage || 'fallback_route',
@@ -167,7 +167,7 @@ async function callClaudeStreaming(
     console.error(`Claude API 回傳 HTTP ${res.status}，回應內容: ${errText.slice(0, 500)}`)
     try {
       await recordAIUsage({
-        provider: 'anthropic', model: 'claude-opus-4-6',
+        provider: 'anthropic', model: 'claude-opus-4-7',
         promptTokens: 0, completionTokens: 0,
         reportId: tracking?.reportId, planCode: tracking?.planCode,
         callStage: tracking?.callStage || 'fallback_route',
@@ -223,7 +223,7 @@ async function callClaudeStreaming(
     // v5.3.5 記帳：串流失敗（可能已消耗 tokens，用字元粗估）
     try {
       await recordAIUsage({
-        provider: 'anthropic', model: 'claude-opus-4-6',
+        provider: 'anthropic', model: 'claude-opus-4-7',
         promptTokens: estPromptTokens,
         completionTokens: estimateTokens(result),
         reportId: tracking?.reportId, planCode: tracking?.planCode,
@@ -247,7 +247,7 @@ async function callClaudeStreaming(
   // 標 status=incomplete 但 metadata 說明是成功，讓後台查帳時知道是估算值
   try {
     await recordAIUsage({
-      provider: 'anthropic', model: 'claude-opus-4-6',
+      provider: 'anthropic', model: 'claude-opus-4-7',
       promptTokens: estPromptTokens,
       completionTokens: estimateTokens(result),
       reportId: tracking?.reportId, planCode: tracking?.planCode,
@@ -1009,7 +1009,7 @@ ${analyses.length}套系統排盤完整數據：
 
           // Fallback 單次呼叫，清理後直接使用
           reportContent = cleanAIResponse(rawResult)
-          aiModelUsed = 'claude-opus-4-6'
+          aiModelUsed = 'claude-opus-4-7'
           console.info(`C 方案 Fallback Claude 單次呼叫完成：${reportContent.length} 字`)
         } catch (e) {
           console.error('C 方案 Claude 多步生成失敗，嘗試 DeepSeek fallback:', e)
@@ -1045,7 +1045,7 @@ ${analyses.length}套系統排盤完整數據：
           reportContent = cleanAIResponse(await callClaudeStreaming(systemPrompt, userPrompt, 32768, 200000, {
             reportId, planCode, callStage: `${planCode}_fallback_single`,
           }))
-          aiModelUsed = 'claude-opus-4-6'
+          aiModelUsed = 'claude-opus-4-7'
           console.info(`方案 ${planCode} Claude 回覆：${reportContent.length} 字`)
         } catch (e) {
           console.error(`方案 ${planCode} Claude 呼叫失敗，嘗試 DeepSeek fallback:`, e)

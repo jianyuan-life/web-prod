@@ -72,10 +72,9 @@ const REVIEWERS: Array<{
 }> = [
   { key: 'gpt',      provider: 'openai',    model: 'gpt-4o',              displayName: 'GPT-4o' },
   { key: 'qwen',     provider: 'alibaba',   model: 'qwen-max',            displayName: 'Qwen Max' },
-  // v5.3.6：Gemini 2.5 Pro 推理最強但免費層 quota 極少（~5 RPM / 25 RPD）。
-  // 先主打 Pro，其下 five-llm-qa 執行時若遇到 429 會自動降級到 Flash（fallbackModel 屬性）。
-  // 升級成付費 Gemini API 之後，拔掉 fallbackModel 即可恢復純 Pro。
-  { key: 'gemini',   provider: 'google',    model: 'gemini-2.5-pro',      displayName: 'Gemini 2.5 Pro', fallbackModel: 'gemini-2.5-flash' },
+  // v5.3.7：Gemini API 已升級付費（2026-04-18），quota 從 5 RPM → 1000 RPM，
+  // 純用 2.5 Pro 不再需要 Flash fallback 接住。付費後 Pro 穩定可用。
+  { key: 'gemini',   provider: 'google',    model: 'gemini-2.5-pro',      displayName: 'Gemini 2.5 Pro' },
   { key: 'kimi',     provider: 'moonshot',  model: 'moonshot-v1-32k',     displayName: 'Kimi (Moonshot)' },
   { key: 'deepseek', provider: 'deepseek',  model: 'deepseek-chat',       displayName: 'DeepSeek V3' },
 ]

@@ -1175,7 +1175,7 @@ async function claudeStreamingCall(
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model: 'claude-opus-4-7',
         max_tokens: maxTokens,
         stream: true,
         messages: [{ role: 'user', content: actualUserPrompt }],
@@ -1552,7 +1552,7 @@ async function callClaudeOnly(
   systemPrompt: string, userPrompt: string, maxTokens: number, label: string,
   reportId?: string,
 ): Promise<{ content: string; model: string }> {
-  const model = 'claude-opus-4-6'
+  const model = 'claude-opus-4-7'
   const start = Date.now()
 
   if (getClaudeApiKeys().length === 0) {
@@ -1698,8 +1698,8 @@ export async function aiGenerateGeneric(
   // 付費報告只用 Claude Opus，不降級（透過 callClaudeOnly 同步記錄成本）
   const { content } = await callClaudeOnly(localizedPrompt, userPrompt, 128000, `${planCode}_main`, reportId)
   const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
-  console.log(`方案 ${planCode} AI 完成 (claude-opus-4-6): ${cleaned.length} 字`)
-  return { content: cleaned, model: 'claude-opus-4-6' }
+  console.log(`方案 ${planCode} AI 完成 (claude-opus-4-7): ${cleaned.length} 字`)
+  return { content: cleaned, model: 'claude-opus-4-7' }
 }
 aiGenerateGeneric.maxRetries = 2
 
@@ -1876,7 +1876,7 @@ export async function aiGenerateG15(
   const { content } = await callClaudeOnly(localizedPrompt, userPrompt, 128000, 'G15_main', reportId)
   const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
   console.log(`G15 家族藍圖 AI 完成: ${cleaned.length} 字`)
-  return { content: cleaned, model: 'claude-opus-4-6' }
+  return { content: cleaned, model: 'claude-opus-4-7' }
 }
 aiGenerateG15.maxRetries = 2
 
@@ -2122,7 +2122,7 @@ export async function aiGenerateR(
   const { content } = await callClaudeOnly(localizedPrompt, userPrompt, 128000, 'R_main', reportId)
   const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
   console.log(`R 方案合否 AI 完成: ${cleaned.length} 字`)
-  return { content: cleaned, model: 'claude-opus-4-6' }
+  return { content: cleaned, model: 'claude-opus-4-7' }
 }
 aiGenerateR.maxRetries = 2
 
@@ -2805,7 +2805,7 @@ export async function aiReviewReportLegacy(
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model: 'claude-opus-4-7',
         max_tokens: 2000,
         messages: [{
           role: 'user',
@@ -2832,7 +2832,7 @@ ${reportContent}`
       try {
         await recordAIUsage({
           provider: 'anthropic',
-          model: 'claude-opus-4-6',
+          model: 'claude-opus-4-7',
           promptTokens: 0,
           completionTokens: 0,
           reportId,
@@ -2854,7 +2854,7 @@ ${reportContent}`
     try {
       await recordAIUsage({
         provider: 'anthropic',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus-4-7',
         promptTokens,
         completionTokens,
         reportId,
@@ -2878,7 +2878,7 @@ ${reportContent}`
     try {
       await recordAIUsage({
         provider: 'anthropic',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus-4-7',
         promptTokens: 0,
         completionTokens: 0,
         reportId,
