@@ -50,7 +50,13 @@ export const claudeProvider: LLMProvider = {
         messages: [{ role: 'user', content: req.user }],
         max_tokens: Math.min(req.maxTokens ?? 4096, 8192),
       }
-      if (typeof req.temperature === 'number') body.temperature = req.temperature
+      // v5.3.8 hotfix：Claude Opus 4.7 及更新 reasoning 模型不再接受 temperature 參數
+      //   API 會回 400: "`temperature` is deprecated for this model."
+      //   只對舊模型（opus-4-6 及以前）傳 temperature
+      const isModernOpus = typeof model === 'string' && /claude-opus-4-[7-9]/.test(model)
+      if (typeof req.temperature === 'number' && !isModernOpus) {
+        body.temperature = req.temperature
+      }
 
       const res = await fetch(BASE_URL, {
         method: 'POST',
