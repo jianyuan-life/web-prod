@@ -31,7 +31,27 @@ export default function CheckoutHeader({
       <h1 className="text-3xl font-bold text-center mb-2">
         <span className="text-gradient-gold">確認訂單</span>
       </h1>
-      <p className="text-center text-text-muted mb-6">{PLAN_DESCRIPTIONS[planCode] || '填寫出生資料，完成付款後自動生成報告'}</p>
+      <p className="text-center text-text-muted mb-5">{PLAN_DESCRIPTIONS[planCode] || '填寫出生資料，完成付款後自動生成報告'}</p>
+
+      {/* 步驟進度指示器（4 步，含 ARIA 無障礙） */}
+      <ol aria-label="結帳流程進度" className="flex items-center justify-center gap-1.5 sm:gap-2 mb-6 text-[11px]">
+        {[
+          { n: 1, label: '選方案', active: false, done: true },
+          { n: 2, label: '填資料', active: true, done: false },
+          { n: 3, label: '安全付款', active: false, done: false },
+          { n: 4, label: '收到報告', active: false, done: false },
+        ].map((s, i, arr) => (
+          <li key={s.n} className="flex items-center" aria-current={s.active ? 'step' : undefined}>
+            <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold transition-all ${
+              s.done ? 'bg-gold text-dark' : s.active ? 'bg-gold/25 text-gold ring-2 ring-gold/70 ring-offset-1 ring-offset-[#0a0e1a]' : 'bg-white/5 text-text-muted/50'
+            }`} aria-label={s.done ? `已完成：${s.label}` : s.active ? `當前步驟：${s.label}` : `尚未開始：${s.label}`}>
+              {s.done ? '✓' : s.n}
+            </span>
+            <span className={`ml-1 mr-1 ${s.active ? 'text-gold font-semibold' : s.done ? 'text-text-muted' : 'text-text-muted/50'}`}>{s.label}</span>
+            {i < arr.length - 1 && <span aria-hidden="true" className={`w-3 sm:w-6 h-px mx-0.5 ${s.done ? 'bg-gold/40' : 'bg-white/10'}`} />}
+          </li>
+        ))}
+      </ol>
 
       {/* 安全保證 */}
       <div className="flex flex-wrap justify-center gap-4 mb-8 text-[10px] text-text-muted/60">

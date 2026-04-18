@@ -229,13 +229,25 @@ export default function NameToolPage() {
   }
 
   return (
-    <div className="py-16 overflow-x-hidden max-w-full">
+    <div className="py-12 md:py-20 overflow-x-hidden max-w-full">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 break-words">
-          <span className="text-gradient-gold">姓名學速算</span>
-        </h1>
-        <p className="text-center text-text-muted mb-2">五格剖象法 + 三才配置 + 數理吉凶分析</p>
-        <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+        {/* Hero */}
+        <div className="text-center mb-10 md:mb-14">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/10 border border-gold/25 text-gold/90 text-[11px] sm:text-xs font-semibold tracking-[0.25em] uppercase mb-5">
+            <span className="text-[10px]">&#10022;</span>
+            <span>XingMing &middot; 康熙筆畫</span>
+            <span className="text-[10px]">&#10022;</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-center mb-4 break-words tracking-tight leading-[1.1]">
+            <span className="text-gradient-gold">姓名學速算</span>
+          </h1>
+          <p className="text-center text-sm sm:text-base text-text tracking-[0.02em] mb-2">
+            五格剖象法 <span className="text-gold/50 mx-1">&middot;</span> 三才配置 <span className="text-gold/50 mx-1">&middot;</span> 數理吉凶分析
+          </p>
+          <p className="text-center text-xs text-text-muted/60 tracking-wider">
+            不需註冊 &middot; 即時出結果 &middot; 完全免費
+          </p>
+        </div>
 
         {/* 姓名學由來與說明 */}
         <div className="max-w-2xl mx-auto mb-10">
@@ -255,7 +267,7 @@ export default function NameToolPage() {
         {loading && !result && (
           <div className="max-w-lg mx-auto">
             <div className="glass rounded-2xl p-8">
-              <h3 className="text-lg font-bold text-cream mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
+              <h3 className="text-2xl md:text-3xl font-black text-cream tracking-tight mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
                 正在分析「<span className="text-gold">{form.surname}{form.givenName}</span>」的姓名能量
               </h3>
               <div className="space-y-2">
@@ -287,7 +299,7 @@ export default function NameToolPage() {
         {/* 表單 */}
         {!result && !loading && (
           <div className="max-w-lg mx-auto">
-            <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
+            <form onSubmit={handleSubmit} className="glass rounded-2xl px-6 py-8 md:p-10 space-y-6">
               {/* 從家人選擇 */}
               <FamilyMemberPicker onSelect={handleFamilySelect} />
 
@@ -472,69 +484,75 @@ export default function NameToolPage() {
             </div>
 
             {/* 綜合評分 */}
-            <div className="glass rounded-2xl p-8">
-              <div className="text-center mb-6">
-                <div className="inline-block px-4 py-1.5 rounded-full bg-gold/20 text-gold text-sm font-semibold mb-3">
+            <div className="relative glass rounded-2xl p-8 md:p-10 overflow-hidden">
+              {/* 金色裝飾光暈 */}
+              <div className="absolute -top-24 -right-24 w-72 h-72 bg-gold/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
+              <div className="relative text-center mb-8">
+                <div className="inline-block px-5 py-2 rounded-full bg-gold/15 border border-gold/30 text-gold text-xs sm:text-sm font-semibold mb-4 tracking-wide">
                   姓名能量分析
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-4">「{result.fullName}」</h2>
-                <div className="flex justify-center mb-4">
+                <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-6 leading-tight">
+                  「<span className="text-gradient-gold">{result.fullName}</span>」
+                </h2>
+                <div className="flex justify-center mb-5">
                   <ScoreRing score={result.totalScore} />
                 </div>
-                <p className="text-sm text-text-muted">
-                  綜合評分 &middot; 三才配置：
-                  <span style={{ color: WX_COLORS[result.sancai.tian] }}>{result.sancai.tian}</span>
-                  <span style={{ color: WX_COLORS[result.sancai.ren] }}>{result.sancai.ren}</span>
-                  <span style={{ color: WX_COLORS[result.sancai.di] }}>{result.sancai.di}</span>
+                <div className="mx-auto my-4 h-px w-24 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+                <p className="text-sm text-text-muted/90 tracking-wide">
+                  綜合評分<span className="mx-2 text-text-muted/40">&middot;</span>三才配置：
+                  <span className="font-bold ml-1" style={{ color: WX_COLORS[result.sancai.tian] }}>{result.sancai.tian}</span>
+                  <span className="font-bold" style={{ color: WX_COLORS[result.sancai.ren] }}>{result.sancai.ren}</span>
+                  <span className="font-bold" style={{ color: WX_COLORS[result.sancai.di] }}>{result.sancai.di}</span>
                 </p>
               </div>
 
               {/* 筆畫拆解 */}
-              <div className="flex justify-center gap-4 mb-6">
+              <div className="relative flex flex-wrap justify-center gap-3 sm:gap-4 mb-2">
                 {[...result.surname].map((char, i) => (
-                  <div key={`s-${i}`} className="text-center">
-                    <div className="text-3xl font-bold text-gold mb-1">{char}</div>
-                    <div className="text-xs text-text-muted">{result.surnameStrokes[i]} 畫</div>
+                  <div key={`s-${i}`} className="text-center min-w-[3.5rem] rounded-xl px-3 py-3 bg-gold/5 border border-gold/15">
+                    <div className="text-3xl sm:text-4xl font-extrabold text-gold mb-1 leading-none">{char}</div>
+                    <div className="text-[11px] text-text-muted">{result.surnameStrokes[i]} 畫</div>
                   </div>
                 ))}
                 {[...result.givenName].map((char, i) => (
-                  <div key={`g-${i}`} className="text-center">
-                    <div className="text-3xl font-bold text-white mb-1">{char}</div>
-                    <div className="text-xs text-text-muted">{result.givenStrokes[i]} 畫</div>
+                  <div key={`g-${i}`} className="text-center min-w-[3.5rem] rounded-xl px-3 py-3 bg-white/3 border border-white/10">
+                    <div className="text-3xl sm:text-4xl font-extrabold text-white mb-1 leading-none">{char}</div>
+                    <div className="text-[11px] text-text-muted">{result.givenStrokes[i]} 畫</div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* 五格數理 */}
-            <div className="glass rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-gold rounded-full" />
-                <h2 className="text-lg font-bold text-white">五格數理分析</h2>
+            <div className="glass rounded-2xl p-6 md:p-8 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-1 h-7 bg-gradient-to-b from-gold to-gold/40 rounded-full" />
+                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">五格數理分析</h2>
+                <span className="text-xs text-text-muted/50 ml-2">（康熙字典筆畫）</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {[
                   { name: '天格', data: result.tiange, desc: '先天運勢（由姓氏決定，不可改）' },
                   { name: '人格', data: result.renge, desc: '性格與人際（最重要的格數）' },
-                  { name: '地格', data: result.dige, desc: '前運與基礎（36歲前影響最大）' },
+                  { name: '地格', data: result.dige, desc: '前運與基礎（36 歲前影響最大）' },
                   { name: '外格', data: result.waige, desc: '社交與外在助力' },
-                  { name: '總格', data: result.zongge, desc: '後運與一生總結（36歲後影響最大）' },
+                  { name: '總格', data: result.zongge, desc: '後運與一生總結（36 歲後影響最大）' },
                 ].map(({ name, data, desc }) => {
                   const lc = LEVEL_COLORS[data.level] || LEVEL_COLORS['凶']
                   return (
-                    <div key={name} className={`rounded-xl border p-4 ${lc.border} ${lc.bg}`}>
-                      <div className="flex items-center justify-between mb-2">
+                    <div key={name} className={`rounded-xl border p-5 transition-all ${lc.border} ${lc.bg}`}>
+                      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                         <div className="flex items-center gap-3">
-                          <span className="text-base font-bold text-white">{name}</span>
-                          <span className="text-sm text-text-muted">{data.value}</span>
-                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ color: WX_COLORS[data.wuxing], background: `${WX_COLORS[data.wuxing]}20` }}>
+                          <span className="text-lg font-bold text-white tracking-wide">{name}</span>
+                          <span className="text-base font-semibold text-cream/70 tabular-nums">{data.value}</span>
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ color: WX_COLORS[data.wuxing], background: `${WX_COLORS[data.wuxing]}22`, border: `1px solid ${WX_COLORS[data.wuxing]}55` }}>
                             {data.wuxing}
                           </span>
                         </div>
-                        <span className={`text-sm font-bold ${lc.text}`}>{data.level}</span>
+                        <span className={`text-sm font-bold px-3 py-1 rounded-full ${lc.text}`} style={{background:'rgba(255,255,255,0.05)'}}>{data.level}</span>
                       </div>
-                      <p className="text-xs text-text-muted mb-1">{desc}</p>
-                      <p className="text-sm text-text leading-relaxed">{data.desc}</p>
+                      <p className="text-[11px] text-text-muted/70 mb-2 uppercase tracking-wider">{desc}</p>
+                      <p className="text-sm md:text-[15px] text-text/90 leading-[1.85]">{data.desc}</p>
                     </div>
                   )
                 })}
@@ -546,36 +564,40 @@ export default function NameToolPage() {
               const sancaiJx = getSancaiJixiong(result.sancai.config)
               const sancaiLc = LEVEL_COLORS[sancaiJx.level] || { text: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' }
               return (
-                <div className={`rounded-2xl p-6 border ${sancaiLc.border} ${sancaiLc.bg}`}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1 h-6 bg-purple-500 rounded-full" />
-                    <h2 className="text-lg font-bold text-cream">三才配置</h2>
-                    <span className={`ml-auto text-sm font-bold ${sancaiLc.text}`}>{sancaiJx.level}</span>
+                <div className={`rounded-2xl p-6 md:p-8 border ${sancaiLc.border} ${sancaiLc.bg}`}>
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="w-1 h-7 bg-gradient-to-b from-purple-400 to-purple-600 rounded-full" />
+                    <h2 className="text-2xl md:text-3xl font-black text-cream tracking-tight">三才配置</h2>
+                    <span className={`ml-auto text-sm font-bold px-3 py-1 rounded-full ${sancaiLc.text}`} style={{background:'rgba(255,255,255,0.05)'}}>{sancaiJx.level}</span>
                   </div>
-                  <div className="flex items-center justify-center gap-6 mb-4">
+                  <div className="flex items-center justify-center gap-4 md:gap-6 mb-5 flex-wrap">
                     {[
                       { label: '天格', wx: result.sancai.tian, sub: '父輩、長上' },
                       { label: '人格', wx: result.sancai.ren, sub: '性格、本我' },
                       { label: '地格', wx: result.sancai.di, sub: '妻兒、晚輩' },
                     ].map((item, i, arr) => (
-                      <div key={i} className="flex items-center gap-2">
+                      <div key={i} className="flex items-center gap-3 md:gap-4">
                         <div className="text-center">
-                          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full border-2 flex items-center justify-center mb-1"
-                            style={{ borderColor: WX_COLORS[item.wx], background: `${WX_COLORS[item.wx]}15` }}>
-                            <span className="text-xl md:text-2xl font-bold" style={{ color: WX_COLORS[item.wx] }}>{item.wx}</span>
+                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(255,255,255,0.05)]"
+                            style={{ borderColor: WX_COLORS[item.wx], background: `${WX_COLORS[item.wx]}18` }}>
+                            <span className="text-2xl md:text-3xl font-extrabold" style={{ color: WX_COLORS[item.wx] }}>{item.wx}</span>
                           </div>
-                          <div className="text-xs text-cream font-semibold">{item.label}</div>
-                          <div className="text-[9px] text-text-muted/60">{item.sub}</div>
+                          <div className="text-sm text-cream font-bold">{item.label}</div>
+                          <div className="text-[10px] text-text-muted/70 mt-0.5">{item.sub}</div>
                         </div>
                         {i < arr.length - 1 && (
-                          <div className="text-text-muted/30 text-xl">→</div>
+                          <div className="text-gold/30 text-2xl font-light">&rarr;</div>
                         )}
                       </div>
                     ))}
                   </div>
-                  <p className="text-center text-sm text-text">
-                    <strong className="text-white">「{result.sancai.config}」三才</strong> — {sancaiJx.desc}
-                  </p>
+                  <div className="text-center px-4 py-3 rounded-xl bg-white/3 border border-white/5">
+                    <p className="text-sm md:text-[15px] text-text leading-[1.85]">
+                      <strong className="text-white text-base">「{result.sancai.config}」三才</strong>
+                      <span className="mx-2 text-text-muted/40">—</span>
+                      {sancaiJx.desc}
+                    </p>
+                  </div>
                 </div>
               )
             })()}
@@ -594,10 +616,10 @@ export default function NameToolPage() {
                 if (prefer.dislikes.some(dk => c.includes(dk))) matchedDislikes.push(c)
               })
               return (
-                <div className="glass rounded-2xl p-6">
+                <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1 h-6 bg-amber-500 rounded-full" />
-                    <h2 className="text-lg font-bold text-cream">生肖派：屬{shengxiao}姓名喜忌</h2>
+                    <div className="w-1 h-7 bg-gradient-to-b from-amber-300 to-amber-600/40 rounded-full" />
+                    <h2 className="text-2xl md:text-3xl font-black text-cream tracking-tight">生肖派：屬{shengxiao}姓名喜忌</h2>
                   </div>
                   <p className="text-sm text-text/80 leading-relaxed mb-4">
                     {prefer.note}
@@ -655,8 +677,8 @@ export default function NameToolPage() {
               return (
                 <div className="glass rounded-2xl p-6 border border-orange-500/20 bg-orange-500/[0.03]">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-1 h-6 bg-orange-500 rounded-full" />
-                    <h2 className="text-lg font-bold text-cream">補救建議</h2>
+                    <div className="w-1 h-7 bg-gradient-to-b from-orange-400 to-orange-600/40 rounded-full" />
+                    <h2 className="text-2xl md:text-3xl font-black text-cream tracking-tight">補救建議</h2>
                   </div>
                   <p className="text-xs text-text-muted mb-3">
                     命中五格有 {xiongCount} 項需留意的地方。姓名只是命格補救的一部分，真正化解需配合完整八字用神。

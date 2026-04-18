@@ -113,10 +113,14 @@ export default function PointsRedeem({
         </div>
       ) : (
         <>
+          <label className="flex items-center gap-1 text-[11px] text-text-muted/70 mb-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
+            積分折抵（1 點 = 1 美元，共 {balance} 點可用）
+          </label>
           <div className="flex gap-2">
             <input
               type="number" min={1} max={maxPoints}
-              placeholder={`積分折抵（${balance}點可用）`}
+              placeholder={`最多 ${maxPoints} 點`}
               value={pointsInput}
               onChange={(e) => { setPointsInput(e.target.value); setError('') }}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyPoints())}

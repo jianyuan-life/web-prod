@@ -194,7 +194,7 @@ function PalaceCell({
     <button
       type="button"
       onClick={onClick}
-      className={`relative text-left p-2 sm:p-3 rounded-lg border transition-all min-h-[120px] sm:min-h-[140px] flex flex-col ${
+      className={`relative text-left p-2.5 sm:p-3 rounded-lg border transition-all min-h-[140px] sm:min-h-[150px] flex flex-col ${
         isActive
           ? 'border-gold bg-gold/[0.12] shadow-[0_0_16px_rgba(201,168,76,0.3)] ring-1 ring-gold/40'
           : isCurrentDaxian
@@ -243,7 +243,7 @@ function PalaceCell({
       {/* 主星 */}
       <div className="flex-1">
         {mainStarsStr ? (
-          <div className="text-[11px] sm:text-sm font-bold text-gold/90 leading-tight mb-0.5">
+          <div className="text-[13px] sm:text-sm font-bold text-gold/95 leading-snug mb-1">
             {mainStarsStr.split(/[、\/]/).map((star, i) => (
               <span key={i}>
                 {i > 0 && <span className="text-text-muted/30"> </span>}
@@ -252,12 +252,12 @@ function PalaceCell({
             ))}
           </div>
         ) : (
-          <div className="text-[10px] sm:text-xs text-text-muted/50 italic">借對宮星</div>
+          <div className="text-[11px] sm:text-xs text-text-muted/60 italic">無主星（借對宮）</div>
         )}
 
         {/* 輔星（縮小顯示） */}
         {minorStarsStr && (
-          <div className="text-[9px] sm:text-[10px] text-text-muted/60 leading-tight mt-0.5 line-clamp-2">
+          <div className="text-[10px] sm:text-[11px] text-text-muted/70 leading-snug mt-1 line-clamp-2">
             {minorStarsStr}
           </div>
         )}
@@ -483,13 +483,25 @@ export default function ZiweiToolPage() {
   }
 
   return (
-    <div className="py-16 overflow-x-hidden max-w-full">
+    <div className="py-12 md:py-20 overflow-x-hidden max-w-full">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 break-words">
-          <span className="text-gradient-gold">紫微斗數速算</span>
-        </h1>
-        <p className="text-center text-text-muted mb-2">排列紫微命盤 + 十四主星解讀 + 十二宮位分析</p>
-        <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+        {/* Hero */}
+        <div className="text-center mb-10 md:mb-14">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/10 border border-gold/25 text-gold/90 text-[11px] sm:text-xs font-semibold tracking-[0.25em] uppercase mb-5">
+            <span className="text-[10px]">&#10022;</span>
+            <span>ZiWei &middot; 帝王之學</span>
+            <span className="text-[10px]">&#10022;</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-center mb-4 break-words tracking-tight leading-[1.1]">
+            <span className="text-gradient-gold">紫微斗數速算</span>
+          </h1>
+          <p className="text-center text-sm sm:text-base text-text tracking-[0.02em] mb-2">
+            排列紫微命盤 <span className="text-gold/50 mx-1">&middot;</span> 十四主星解讀 <span className="text-gold/50 mx-1">&middot;</span> 十二宮位分析
+          </p>
+          <p className="text-center text-xs text-text-muted/60 tracking-wider">
+            不需註冊 &middot; 即時出結果 &middot; 完全免費
+          </p>
+        </div>
 
         {/* 紫微斗數由來說明 */}
         <div className="max-w-2xl mx-auto mb-10">
@@ -509,7 +521,7 @@ export default function ZiweiToolPage() {
         {loading && !result && (
           <div className="max-w-lg mx-auto">
             <div className="glass rounded-2xl p-8">
-              <h3 className="text-lg font-bold text-cream mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
+              <h3 className="text-2xl md:text-3xl font-black text-cream tracking-tight mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
                 正在為 <span className="text-gold">{form.name}</span> 排列紫微命盤
               </h3>
               <div className="space-y-2">
@@ -541,7 +553,7 @@ export default function ZiweiToolPage() {
         {/* 表單 */}
         {!result && !loading && (
           <div className="max-w-lg mx-auto">
-            <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
+            <form onSubmit={handleSubmit} className="glass rounded-2xl px-6 py-8 md:p-10 space-y-6">
               {/* 從家人選擇 */}
               <FamilyMemberPicker onSelect={handleFamilySelect} />
 
@@ -731,27 +743,39 @@ export default function ZiweiToolPage() {
             </div>
 
             {/* 命宮主星 — 人格封號 */}
-            <div className="glass rounded-2xl p-8">
-              <div className="text-center mb-6">
-                <div className="inline-block px-4 py-1.5 rounded-full bg-gold/20 text-gold text-sm font-semibold mb-3">
+            <div className="relative glass rounded-2xl p-8 md:p-10 overflow-hidden">
+              {/* 金色裝飾光暈 */}
+              <div className="absolute -top-20 -right-20 w-72 h-72 bg-gold/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
+              <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-purple-500/8 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
+              <div className="relative text-center mb-8">
+                <div className="inline-block px-5 py-2 rounded-full bg-gold/15 border border-gold/30 text-gold text-xs sm:text-sm font-semibold mb-4 tracking-wide">
                   {form.name} 的紫微命盤
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-1">
+                <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-2 leading-tight">
                   您是「<span className="text-gradient-gold">{result.starTitle}</span>」型人格
                 </h2>
-                <p className="text-sm text-text-muted">
-                  命宮主星：{result.mainStar}（{result.starNature}）&middot; {result.yearTG}年生 &middot; {getWuxingJuName(result.wuxingju)}
+                <div className="mx-auto my-4 h-px w-24 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+                <p className="text-sm text-text-muted/90 tracking-wide">
+                  命宮主星：<span className="text-gold font-semibold">{result.mainStar}</span>（{result.starNature}）
+                  <span className="mx-2 text-text-muted/40">&middot;</span>{result.yearTG}年生
+                  <span className="mx-2 text-text-muted/40">&middot;</span>{getWuxingJuName(result.wuxingju)}
                 </p>
               </div>
-              <p className="text-base text-text leading-[1.9] mb-6">{result.personality}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-5">
-                  <h4 className="text-sm font-bold text-green-400 mb-2">&#10003; 您的天生優勢</h4>
-                  <p className="text-sm text-text leading-relaxed">{result.strengths}</p>
+              <p className="relative text-base md:text-lg text-text leading-[2] mb-8 tracking-[0.02em]">{result.personality}</p>
+              <div className="relative grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="rounded-xl bg-green-500/8 border border-green-500/25 p-6">
+                  <h4 className="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/20">&#10003;</span>
+                    您的天生優勢
+                  </h4>
+                  <p className="text-sm md:text-[15px] text-text leading-[1.9]">{result.strengths}</p>
                 </div>
-                <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-5">
-                  <h4 className="text-sm font-bold text-orange-400 mb-2">&#9888; 需要留意的地方</h4>
-                  <p className="text-sm text-text leading-relaxed">{result.challenges}</p>
+                <div className="rounded-xl bg-orange-500/8 border border-orange-500/25 p-6">
+                  <h4 className="text-sm font-bold text-orange-400 mb-3 flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-500/20">&#9888;</span>
+                    需要留意的地方
+                  </h4>
+                  <p className="text-sm md:text-[15px] text-text leading-[1.9]">{result.challenges}</p>
                 </div>
               </div>
             </div>
@@ -761,10 +785,10 @@ export default function ZiweiToolPage() {
               const board = buildBoardData() || buildBoardFallback()
               if (!board) return null
               return (
-                <div className="glass rounded-2xl p-4 sm:p-6">
+                <div className="glass rounded-2xl p-4 sm:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-1 h-6 bg-gold rounded-full" />
-                    <h2 className="text-lg font-bold text-white">紫微命盤</h2>
+                    <div className="w-1 h-7 bg-gradient-to-b from-gold to-gold/30 rounded-full shadow-[0_0_8px_rgba(201,168,76,0.4)]" />
+                    <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">紫微命盤</h2>
                     <span className="text-xs text-text-muted/50 ml-2">點擊宮位查看詳情</span>
                   </div>
 
@@ -935,10 +959,10 @@ export default function ZiweiToolPage() {
 
             {/* 三方四正 + 運限資訊 */}
             {(result.currentDaxian || result.triplePairs?.length || result.daxianStars) && (
-              <div className="glass rounded-2xl p-6">
+              <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-cyan-500 rounded-full" />
-                  <h2 className="text-lg font-bold text-cream">運限與三方四正</h2>
+                  <div className="w-1 h-7 bg-gradient-to-b from-cyan-400 to-cyan-600/40 rounded-full" />
+                  <h2 className="text-2xl md:text-3xl font-black text-cream tracking-tight">運限與三方四正</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {result.currentDaxian && (
@@ -1014,34 +1038,34 @@ export default function ZiweiToolPage() {
             )}
 
             {/* 六大維度分析 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {[
-                { title: '事業方向', text: result.career, icon: '&#128188;', color: 'border-blue-500/20 bg-blue-500/5' },
-                { title: '感情特質', text: result.love, icon: '&#10084;&#65039;', color: 'border-pink-500/20 bg-pink-500/5' },
-                { title: '健康提醒', text: result.health, icon: '&#127973;', color: 'border-green-500/20 bg-green-500/5' },
-                { title: '2026年運勢', text: result.year2026, icon: '&#9733;', color: 'border-yellow-500/20 bg-yellow-500/5' },
+                { title: '事業方向', text: result.career, icon: '&#128188;', color: 'border-blue-500/25 bg-blue-500/5 hover:border-blue-500/40', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-400' },
+                { title: '感情特質', text: result.love, icon: '&#10084;&#65039;', color: 'border-pink-500/25 bg-pink-500/5 hover:border-pink-500/40', iconBg: 'bg-pink-500/15', iconColor: 'text-pink-400' },
+                { title: '健康提醒', text: result.health, icon: '&#127973;', color: 'border-green-500/25 bg-green-500/5 hover:border-green-500/40', iconBg: 'bg-green-500/15', iconColor: 'text-green-400' },
+                { title: '2026年運勢', text: result.year2026, icon: '&#9733;', color: 'border-yellow-500/25 bg-yellow-500/5 hover:border-yellow-500/40', iconBg: 'bg-yellow-500/15', iconColor: 'text-yellow-400' },
               ].map(item => (
-                <div key={item.title} className={`rounded-xl border p-5 ${item.color}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg" dangerouslySetInnerHTML={{ __html: item.icon }} />
-                    <h4 className="text-base font-bold text-white">{item.title}</h4>
+                <div key={item.title} className={`rounded-2xl border p-6 transition-all ${item.color}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-lg ${item.iconBg} ${item.iconColor}`} dangerouslySetInnerHTML={{ __html: item.icon }} />
+                    <h4 className="text-base font-bold text-white tracking-wide">{item.title}</h4>
                   </div>
-                  <p className="text-sm text-text leading-[1.8]">{item.text}</p>
+                  <p className="text-sm md:text-[15px] text-text/90 leading-[1.9]">{item.text}</p>
                 </div>
               ))}
             </div>
 
             {/* 幸運元素 — 開運指南 */}
-            <div className="glass rounded-2xl p-6">
+            <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
               <h3 className="text-base font-bold text-gold mb-3">&#128161; 您的開運指南</h3>
               <p className="text-base text-text leading-[1.8]">{result.lucky}</p>
             </div>
 
             {/* 四化星 */}
-            <div className="glass rounded-2xl p-6">
+            <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-1 h-6 bg-purple-500 rounded-full" />
-                <h2 className="text-lg font-bold text-cream">四化飛星（{result.yearTG}年）</h2>
+                <div className="w-1 h-7 bg-gradient-to-b from-purple-400 to-purple-600/40 rounded-full" />
+                <h2 className="text-2xl md:text-3xl font-black text-cream tracking-tight">四化飛星（{result.yearTG}年）</h2>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {result.sihua.map((sh, i) => {

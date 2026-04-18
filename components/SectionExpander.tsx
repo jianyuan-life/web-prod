@@ -80,19 +80,34 @@ export default function SectionExpander({ fullHtml, sectionTitle }: SectionExpan
       <div dangerouslySetInnerHTML={{ __html: expanded ? fullHtml : highlightHtml }} />
       <button
         onClick={() => setExpanded(!expanded)}
-        className="mt-3 text-xs text-gold/70 hover:text-gold transition-colors flex items-center gap-1"
+        aria-expanded={expanded}
+        className="mt-4 inline-flex items-center gap-2 text-sm font-medium transition-all px-4 py-2 rounded-lg no-print"
+        style={{
+          color: '#c9a84c',
+          background: expanded ? 'rgba(197,150,58,0.10)' : 'rgba(197,150,58,0.04)',
+          border: '1px solid rgba(197,150,58,0.32)',
+          cursor: 'pointer',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(197,150,58,0.15)'
+          e.currentTarget.style.transform = 'translateY(-1px)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = expanded ? 'rgba(197,150,58,0.10)' : 'rgba(197,150,58,0.04)'
+          e.currentTarget.style.transform = 'translateY(0)'
+        }}
       >
-        {expanded ? (
-          <>
-            <span style={{ transform: 'rotate(180deg)', display: 'inline-block' }}>&#9660;</span>
-            收起詳細分析
-          </>
-        ) : (
-          <>
-            <span>&#9660;</span>
-            展開完整分析（含命理佐證）
-          </>
-        )}
+        <span
+          style={{
+            display: 'inline-block',
+            transition: 'transform 0.3s ease',
+            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}
+          aria-hidden
+        >
+          &#9660;
+        </span>
+        {expanded ? '收起詳細分析' : '展開完整分析（含命理佐證）'}
       </button>
     </div>
   )

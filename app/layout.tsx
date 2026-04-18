@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import LocaleContent from '@/components/LocaleContent'
 import Tracker from '@/components/Tracker'
 import ReferralHandler from '@/components/ReferralHandler'
+import GlobalBackToTop from '@/components/GlobalBackToTop'
 import './globals.css'
 
 const notoSerif = Noto_Serif_TC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' })
@@ -159,6 +160,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LocaleContent>
         <Navbar />
         <main className="pt-16">{children}</main>
+        <GlobalBackToTop />
         </LocaleContent>
         <footer className="border-t border-gold/10 mt-20">
           <div className="max-w-6xl mx-auto px-6 py-16">

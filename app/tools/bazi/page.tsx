@@ -484,11 +484,25 @@ export default function FreeToolPage() {
   }, [result, form.gender, form.year])
 
   return (
-    <div className="py-16 overflow-x-hidden max-w-full">
+    <div className="py-12 md:py-20 overflow-x-hidden max-w-full">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 break-words"><span className="text-gradient-gold">八字命理速算</span></h1>
-        <p className="text-center text-text-muted mb-2">四柱排盤 + 五行十神 + 大運流年</p>
-        <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+        {/* Hero */}
+        <div className="text-center mb-10 md:mb-14">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/10 border border-gold/25 text-gold/90 text-[11px] sm:text-xs font-semibold tracking-[0.25em] uppercase mb-5">
+            <span className="text-[10px]">&#10022;</span>
+            <span>BaZi &middot; 四柱八字</span>
+            <span className="text-[10px]">&#10022;</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-center mb-4 break-words tracking-tight leading-[1.1]">
+            <span className="text-gradient-gold">八字命理速算</span>
+          </h1>
+          <p className="text-center text-sm sm:text-base text-text tracking-[0.02em] mb-2">
+            四柱排盤 <span className="text-gold/50 mx-1">&middot;</span> 五行十神 <span className="text-gold/50 mx-1">&middot;</span> 大運流年
+          </p>
+          <p className="text-center text-xs text-text-muted/60 tracking-wider">
+            不需註冊 &middot; 即時出結果 &middot; 完全免費
+          </p>
+        </div>
 
         {/* 八字由來說明 */}
         <div className="max-w-2xl mx-auto mb-10">
@@ -508,7 +522,7 @@ export default function FreeToolPage() {
         {loading && !result && (
           <div className="max-w-lg mx-auto">
             <div className="glass rounded-2xl p-8">
-              <h3 className="text-lg font-bold text-cream mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
+              <h3 className="text-2xl md:text-3xl font-black text-cream tracking-tight mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
                 正在為 <span className="text-gold">{form.name}</span> 進行命格分析
               </h3>
               <div className="space-y-2">
@@ -539,7 +553,7 @@ export default function FreeToolPage() {
 
         {!result && !loading && (
           <div className="max-w-lg mx-auto">
-            <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
+            <form onSubmit={handleSubmit} className="glass rounded-2xl px-6 py-8 md:p-10 space-y-6">
               {/* 從家人選擇 */}
               <FamilyMemberPicker onSelect={handleFamilySelect} />
 
@@ -735,8 +749,8 @@ export default function FreeToolPage() {
             {result.has_ai && result.ai_sections['2026整體運勢'] && (
               <div className="rounded-2xl p-8 border border-gold/30" style={{background:'linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,22,40,0.4))'}}>
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-gold rounded-full" />
-                  <h2 className="text-lg font-bold text-gradient-gold">2026 丙午年 — {form.name} 的整體運勢</h2>
+                  <div className="w-1 h-7 bg-gradient-to-b from-gold to-gold/30 rounded-full shadow-[0_0_8px_rgba(201,168,76,0.4)]" />
+                  <h2 className="text-xl md:text-2xl font-extrabold text-gradient-gold tracking-tight">2026 丙午年 — {form.name} 的整體運勢</h2>
                 </div>
                 <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['2026整體運勢']}</p>
               </div>
@@ -744,27 +758,27 @@ export default function FreeToolPage() {
 
             {/* ═══ 校正提示 ═══ */}
             {(result.solar_time || result.lunar_converted || result.time_unknown || result.is_fallback) && (
-              <div className="glass rounded-xl p-4 text-xs text-text-muted space-y-1">
+              <div className="glass rounded-xl px-5 py-4 text-xs text-text-muted/80 space-y-2 border border-white/5">
                 {result.lunar_converted && (
-                  <p>&#9672; 已將農曆日期自動轉換為國曆進行排盤計算</p>
+                  <p className="flex items-start gap-2"><span className="text-gold mt-0.5">&#9881;</span><span>已將農曆日期自動轉換為國曆進行排盤計算</span></p>
                 )}
                 {result.solar_time && (
-                  <p>&#9672; 已根據出生地經度（{result.solar_time.longitude.toFixed(1)}°）進行真太陽時校正：{result.solar_time.original} → <strong className="text-gold">{result.solar_time.corrected}</strong>（{result.solar_time.diff_minutes > 0 ? '+' : ''}{result.solar_time.diff_minutes} 分鐘）</p>
+                  <p className="flex items-start gap-2"><span className="text-gold mt-0.5">&#128337;</span><span>已根據出生地經度（{result.solar_time.longitude.toFixed(1)}°）進行真太陽時校正：{result.solar_time.original} → <strong className="text-gold">{result.solar_time.corrected}</strong>（{result.solar_time.diff_minutes > 0 ? '+' : ''}{result.solar_time.diff_minutes} 分鐘）</span></p>
                 )}
                 {result.time_unknown && (
-                  <p>&#9888; 未提供出生時間，以午時（12:00）預設。八字時柱、上升星座等可能有偏差。</p>
+                  <p className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">&#9888;</span><span>未提供出生時間，以午時（12:00）預設。八字時柱、上升星座等可能有偏差。</span></p>
                 )}
                 {result.is_fallback && (
-                  <p>&#9888; 此為速算結果（精確度約 95%），完整精確排盤請查看付費報告</p>
+                  <p className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">&#9432;</span><span>此為速算結果（精確度約 95%），完整精確排盤請查看付費報告</span></p>
                 )}
               </div>
             )}
 
             {/* ═══ 傳統四柱排盤 ═══ */}
-            <div className="glass rounded-2xl p-6 md:p-8">
+            <div className="glass rounded-2xl p-6 md:p-8 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
               <div className="flex items-center gap-2 mb-6">
-                <div className="w-1 h-6 bg-gold rounded-full" />
-                <h2 className="text-lg font-bold text-white">八字排盤</h2>
+                <div className="w-1 h-7 bg-gradient-to-b from-gold to-gold/30 rounded-full shadow-[0_0_8px_rgba(201,168,76,0.4)]" />
+                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">八字排盤</h2>
                 <span className="text-xs text-text-muted ml-2">（傳統四柱格式）</span>
               </div>
 
@@ -819,68 +833,83 @@ export default function FreeToolPage() {
                 </div>
               </div>
 
-              {/* 手機版 — 從上到下 */}
+              {/* 手機版 — 垂直堆疊（藏干/納音獨立行以避免擠壓） */}
               <div className="md:hidden space-y-3">
-                {derivedData.pillarDetails.map((p) => (
-                  <div key={p.col} className={`rounded-xl p-4 transition-all ${
-                    p.isDay ? 'border-2 border-gold/40 bg-gold/[0.06]' : 'glass'
+                {derivedData.pillarDetails.map((p, idx) => (
+                  <div key={p.col} className={`relative rounded-xl p-4 transition-all ${
+                    p.isDay ? 'border-2 border-gold/40 bg-gold/[0.06] shadow-[0_0_20px_rgba(201,168,76,0.1)]' : 'glass'
                   }`}>
+                    {derivedData.pillarKongwang[idx] && (
+                      <span className="absolute -top-1.5 -right-1.5 text-[10px] px-2 py-0.5 rounded-full bg-gray-600/90 text-white border border-gray-500/50 font-bold">空亡</span>
+                    )}
+                    {/* 頂部：柱名 + 天干地支 + 十神 */}
                     <div className="flex items-center gap-4">
-                      {/* 柱名+十神 */}
-                      <div className="w-16 text-center shrink-0">
-                        <div className="text-xs text-text-muted">{p.label}</div>
+                      <div className="w-[60px] text-center shrink-0">
+                        <div className="text-[11px] text-text-muted mb-0.5">{p.label}</div>
                         <div className={`text-xs font-semibold ${p.isDay ? 'text-gold' : 'text-gold/70'}`}>{p.shishen}</div>
                       </div>
-                      {/* 天干地支 */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4 flex-1 justify-center">
                         <div className="text-center">
-                          <div className="text-2xl font-bold" style={{ color: WX_COLORS[p.tgWx] }}>{p.tg}</div>
-                          <div className="text-[10px]" style={{ color: WX_COLORS[p.tgWx] }}>{p.tgWx}</div>
+                          <div className="text-3xl font-bold leading-none mb-1" style={{ color: WX_COLORS[p.tgWx] }}>{p.tg}</div>
+                          <div className="text-[10px] opacity-80" style={{ color: WX_COLORS[p.tgWx] }}>{p.tgWx}</div>
                         </div>
+                        <div className="w-px h-10 bg-gold/15" aria-hidden="true" />
                         <div className="text-center">
-                          <div className="text-2xl font-bold" style={{ color: WX_COLORS[p.dzWx] }}>{p.dz}</div>
-                          <div className="text-[10px]" style={{ color: WX_COLORS[p.dzWx] }}>{p.dzWx}</div>
+                          <div className="text-3xl font-bold leading-none mb-1" style={{ color: WX_COLORS[p.dzWx] }}>{p.dz}</div>
+                          <div className="text-[10px] opacity-80" style={{ color: WX_COLORS[p.dzWx] }}>{p.dzWx}</div>
                         </div>
                       </div>
-                      {/* 藏干 */}
-                      <div className="flex-1 text-right">
-                        <div className="text-[10px] text-text-muted/60">
-                          藏干：{p.canggan.map((cg, i) => (
-                            <span key={i} className="inline-block mx-0.5">
-                              <span style={{ color: WX_COLORS[WX_TG[cg]] }}>{cg}</span>
-                              <span className="text-gold/40">({p.cangganShishen[i]})</span>
+                    </div>
+                    {/* 藏干（獨立行，充足呼吸） */}
+                    {p.canggan.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gold/10">
+                        <div className="text-[11px] text-text-muted/70 mb-1.5">藏干</div>
+                        <div className="flex flex-wrap gap-2">
+                          {p.canggan.map((cg, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-white/5 border border-white/10">
+                              <span className="text-[10px] text-text-muted/60">{CANGGAN_LABELS[i]}</span>
+                              <span className="font-bold" style={{ color: WX_COLORS[WX_TG[cg]] }}>{cg}</span>
+                              <span className="text-gold/70 text-[10px]">{p.cangganShishen[i]}</span>
                             </span>
                           ))}
                         </div>
-                        <div className="text-[10px] text-text-muted/30 mt-0.5">{p.nayin}</div>
                       </div>
-                    </div>
+                    )}
+                    {/* 納音 */}
+                    {p.nayin && (
+                      <div className="mt-2 text-[11px] text-text-muted/50">
+                        <span className="text-text-muted/40">納音：</span>{p.nayin}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
 
               {/* 命盤概要 */}
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">
-                {[
-                  {l:'日主',v:`${result.day_master}（${result.day_master_wuxing}）`, highlight: true},
-                  {l:'身強弱',v:result.strength}, {l:'格局',v:result.geju},
-                  {l:'用神',v:result.yongshen, gold:true}, {l:'喜神',v:result.xishen, gold:true},
-                  {l:'生肖',v:result.shengxiao?`${result.shengxiao}（${result.pillars.year}）`:result.pillars.year},
-                ].map(({l,v,gold,highlight})=>(
-                  <div key={l} className={`rounded-lg p-3 ${highlight ? 'bg-gold/10 border border-gold/20' : 'glass'}`}>
-                    <div className="text-[10px] text-text-muted">{l}</div>
-                    <div className={`text-sm font-semibold mt-0.5 ${gold?'text-gold':highlight?'text-gold':'text-white'}`}>{v}</div>
-                  </div>
-                ))}
+              <div className="mt-8 pt-6 border-t border-gold/10">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-text-muted/50 mb-3 text-center">核心參數</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    {l:'日主',v:`${result.day_master}（${result.day_master_wuxing}）`, highlight: true},
+                    {l:'身強弱',v:result.strength}, {l:'格局',v:result.geju},
+                    {l:'用神',v:result.yongshen, gold:true}, {l:'喜神',v:result.xishen, gold:true},
+                    {l:'生肖',v:result.shengxiao?`${result.shengxiao}（${result.pillars.year}）`:result.pillars.year},
+                  ].map(({l,v,gold,highlight})=>(
+                    <div key={l} className={`rounded-xl px-4 py-3 transition-all ${highlight ? 'bg-gradient-to-br from-gold/15 to-gold/5 border border-gold/30 shadow-[0_0_15px_rgba(201,168,76,0.08)]' : 'glass border border-white/5'}`}>
+                      <div className="text-[10px] uppercase tracking-wider text-text-muted/70">{l}</div>
+                      <div className={`text-[15px] font-bold mt-1 ${gold?'text-gold':highlight?'text-gold':'text-white'}`}>{v}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* ═══ 地支關係 ═══ */}
             {derivedData.dzRelations.length > 0 && (
-              <div className="glass rounded-2xl p-6">
+              <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-purple-accent rounded-full" />
-                  <h2 className="text-lg font-bold text-white">地支關係</h2>
+                  <div className="w-1 h-7 bg-gradient-to-b from-purple-400 to-purple-600/40 rounded-full" />
+                  <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">地支關係</h2>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   {derivedData.dzRelations.map((rel, i) => (
@@ -899,10 +928,10 @@ export default function FreeToolPage() {
 
             {/* ═══ 神煞 ═══ */}
             {derivedData.shensha.length > 0 && (
-              <div className="glass rounded-2xl p-6">
+              <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-amber-500 rounded-full" />
-                  <h2 className="text-lg font-bold text-white">命中神煞</h2>
+                  <div className="w-1 h-7 bg-gradient-to-b from-amber-300 to-amber-600/40 rounded-full" />
+                  <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">命中神煞</h2>
                   <span className="text-xs text-text-muted/50 ml-2">（傳統四柱神煞，影響命格特質）</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -943,10 +972,10 @@ export default function FreeToolPage() {
 
             {/* ═══ 近 5 年流年（Python API 提供） ═══ */}
             {result.liunian && result.liunian.length > 0 && (
-              <div className="glass rounded-2xl p-6">
+              <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-red-500 rounded-full" />
-                  <h2 className="text-lg font-bold text-white">流年運勢</h2>
+                  <div className="w-1 h-7 bg-gradient-to-b from-red-400 to-red-600/40 rounded-full" />
+                  <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">流年運勢</h2>
                   <span className="text-xs text-text-muted/50 ml-2">（近 3 年）</span>
                 </div>
                 <div className="space-y-3">
@@ -981,10 +1010,10 @@ export default function FreeToolPage() {
             )}
 
             {/* ═══ 五行能量分佈（圓餅圖 + 進度條） ═══ */}
-            <div className="glass rounded-2xl p-6 md:p-8">
+            <div className="glass rounded-2xl p-6 md:p-8 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
               <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-gold rounded-full" />
-                <h2 className="text-lg font-bold text-white">五行能量分佈</h2>
+                <div className="w-1 h-7 bg-gradient-to-b from-gold to-gold/30 rounded-full shadow-[0_0_8px_rgba(201,168,76,0.4)]" />
+                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">五行能量分佈</h2>
               </div>
               <div className="flex flex-col md:flex-row items-center gap-6">
                 {/* 圓餅圖 */}
@@ -1004,15 +1033,15 @@ export default function FreeToolPage() {
                           const pct = total > 0 ? Math.round((val/total)*100) : 0
                           return (
                             <div key={elem} className="flex items-center gap-3">
-                              <span className="w-8 text-base font-bold" style={{color:WX_COLORS[elem]}}>{elem}</span>
-                              <div className="flex-1 h-6 bg-white/5 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full flex items-center pl-3 transition-all duration-700" style={{width:`${Math.max(pct,5)}%`,background:WX_COLORS[elem]}}>
-                                  <span className="text-[10px] font-bold text-white">{typeof val==='number'&&val%1!==0?val.toFixed(1):val}</span>
+                              <span className="w-9 text-lg font-bold tracking-wide" style={{color:WX_COLORS[elem]}}>{elem}</span>
+                              <div className="flex-1 h-7 bg-white/5 rounded-full overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]">
+                                <div className="h-full rounded-full flex items-center pl-3 transition-all duration-700 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]" style={{width:`${Math.max(pct,5)}%`,background:`linear-gradient(90deg, ${WX_COLORS[elem]}dd, ${WX_COLORS[elem]})`}}>
+                                  <span className="text-[11px] font-bold text-white drop-shadow-sm">{typeof val==='number'&&val%1!==0?val.toFixed(1):val}</span>
                                 </div>
                               </div>
-                              <span className="w-12 text-right text-sm text-text-muted">{pct}%</span>
-                              {val===0&&<span className="text-xs text-red-400 font-semibold">缺</span>}
-                              {elem === strongest && val > 0 && <span className="text-xs text-gold font-semibold">旺</span>}
+                              <span className="w-14 text-right text-base font-semibold text-cream/90 tabular-nums">{pct}%</span>
+                              {val===0&&<span className="text-xs text-red-400 font-semibold px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">缺</span>}
+                              {elem === strongest && val > 0 && <span className="text-xs text-gold font-semibold px-2 py-0.5 rounded-full bg-gold/10 border border-gold/20">旺</span>}
                             </div>
                           )
                         })}
@@ -1029,10 +1058,10 @@ export default function FreeToolPage() {
             </div>
 
             {/* ═══ 大運時間軸 ═══ */}
-            <div className="glass rounded-2xl p-6 md:p-8">
+            <div className="glass rounded-2xl p-6 md:p-8 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
               <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-gold rounded-full" />
-                <h2 className="text-lg font-bold text-white">大運走勢</h2>
+                <div className="w-1 h-7 bg-gradient-to-b from-gold to-gold/30 rounded-full shadow-[0_0_8px_rgba(201,168,76,0.4)]" />
+                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">大運走勢</h2>
                 <span className="text-xs text-text-muted ml-2">（每十年一運）</span>
               </div>
 
@@ -1113,56 +1142,67 @@ export default function FreeToolPage() {
             </div>
 
             {/* ═══ 命格概述（核心：讓客戶覺得準） ═══ */}
-            <div className="glass rounded-2xl p-8">
-              <div className="text-center mb-6">
-                <div className="inline-block px-4 py-1.5 rounded-full bg-gold/20 text-gold text-sm font-semibold mb-3">
+            <div className="relative glass rounded-2xl p-8 md:p-10 overflow-hidden">
+              {/* 金色裝飾光暈 */}
+              <div className="absolute -top-20 -right-20 w-64 h-64 bg-gold/10 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
+              <div className="relative text-center mb-8">
+                <div className="inline-block px-5 py-2 rounded-full bg-gold/15 border border-gold/30 text-gold text-xs sm:text-sm font-semibold mb-4 tracking-wide">
                   {form.name} 的命格密碼
                 </div>
-                <h2 className="text-2xl font-bold text-white">您是「{result.profile.title}」型人格</h2>
+                <h2 className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
+                  您是「<span className="text-gradient-gold">{result.profile.title}</span>」型人格
+                </h2>
+                <div className="mx-auto mt-4 h-px w-24 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
               </div>
-              <p className="text-base text-text leading-[1.9] mb-6">{result.profile.personality}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-5">
-                  <h4 className="text-sm font-bold text-green-400 mb-2">&#10003; 您的天生優勢</h4>
-                  <p className="text-sm text-text leading-relaxed">{result.profile.strengths}</p>
+              <p className="relative text-base md:text-lg text-text leading-[2] mb-8 tracking-[0.02em]">{result.profile.personality}</p>
+              <div className="relative grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="rounded-xl bg-green-500/8 border border-green-500/25 p-6">
+                  <h4 className="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/20">&#10003;</span>
+                    您的天生優勢
+                  </h4>
+                  <p className="text-sm md:text-[15px] text-text leading-[1.9]">{result.profile.strengths}</p>
                 </div>
-                <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-5">
-                  <h4 className="text-sm font-bold text-orange-400 mb-2">&#9888; 需要留意的地方</h4>
-                  <p className="text-sm text-text leading-relaxed">{result.profile.challenges}</p>
+                <div className="rounded-xl bg-orange-500/8 border border-orange-500/25 p-6">
+                  <h4 className="text-sm font-bold text-orange-400 mb-3 flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-500/20">&#9888;</span>
+                    需要留意的地方
+                  </h4>
+                  <p className="text-sm md:text-[15px] text-text leading-[1.9]">{result.profile.challenges}</p>
                 </div>
               </div>
             </div>
 
             {/* ═══ 六大維度分析 ═══ */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {[
-                { title:'事業方向', text:result.profile.career, icon:'&#128188;', color:'border-blue-500/20 bg-blue-500/5' },
-                { title:'感情特質', text:result.profile.love, icon:'&#10084;&#65039;', color:'border-pink-500/20 bg-pink-500/5' },
-                { title:'健康提醒', text:result.profile.health, icon:'&#127973;', color:'border-green-500/20 bg-green-500/5' },
-                { title:'2026年運勢', text:result.profile.year2026, icon:'&#9733;', color:'border-yellow-500/20 bg-yellow-500/5' },
+                { title:'事業方向', text:result.profile.career, icon:'&#128188;', color:'border-blue-500/25 bg-blue-500/5 hover:border-blue-500/40', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-400' },
+                { title:'感情特質', text:result.profile.love, icon:'&#10084;&#65039;', color:'border-pink-500/25 bg-pink-500/5 hover:border-pink-500/40', iconBg: 'bg-pink-500/15', iconColor: 'text-pink-400' },
+                { title:'健康提醒', text:result.profile.health, icon:'&#127973;', color:'border-green-500/25 bg-green-500/5 hover:border-green-500/40', iconBg: 'bg-green-500/15', iconColor: 'text-green-400' },
+                { title:'2026年運勢', text:result.profile.year2026, icon:'&#9733;', color:'border-yellow-500/25 bg-yellow-500/5 hover:border-yellow-500/40', iconBg: 'bg-yellow-500/15', iconColor: 'text-yellow-400' },
               ].map(item=>(
-                <div key={item.title} className={`rounded-xl border p-5 ${item.color}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg" dangerouslySetInnerHTML={{__html:item.icon}} />
-                    <h4 className="text-base font-bold text-white">{item.title}</h4>
+                <div key={item.title} className={`rounded-2xl border p-6 transition-all ${item.color}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className={`inline-flex items-center justify-center w-9 h-9 rounded-xl text-lg ${item.iconBg} ${item.iconColor}`} dangerouslySetInnerHTML={{__html:item.icon}} />
+                    <h4 className="text-base font-bold text-white tracking-wide">{item.title}</h4>
                   </div>
-                  <p className="text-sm text-text leading-[1.8]">{item.text}</p>
+                  <p className="text-sm md:text-[15px] text-text/90 leading-[1.9]">{item.text}</p>
                 </div>
               ))}
             </div>
 
             {/* ═══ 幸運元素 ═══ */}
-            <div className="glass rounded-2xl p-6">
+            <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
               <h3 className="text-base font-bold text-gold mb-3">&#128161; 您的開運指南</h3>
               <p className="text-base text-text leading-[1.8]">{result.profile.lucky}</p>
             </div>
 
             {/* ═══ 太陽星座 ═══ */}
             {result.sun_sign && (
-              <div className="glass rounded-2xl p-6">
+              <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-purple-500 rounded-full" />
-                  <h2 className="text-lg font-bold text-cream">西洋占星：{result.sun_sign.name}</h2>
+                  <div className="w-1 h-7 bg-gradient-to-b from-purple-400 to-purple-600/40 rounded-full" />
+                  <h2 className="text-2xl md:text-3xl font-black text-cream tracking-tight">西洋占星：{result.sun_sign.name}</h2>
                   <span className="text-xs text-purple-400/70">{result.sun_sign.element}</span>
                 </div>
                 <p className="text-base text-text leading-[1.9]">{result.sun_sign.trait}</p>
@@ -1172,10 +1212,10 @@ export default function FreeToolPage() {
 
             {/* ═══ 生命靈數 ═══ */}
             {result.life_path && (
-              <div className="glass rounded-2xl p-6">
+              <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-cyan-500 rounded-full" />
-                  <h2 className="text-lg font-bold text-cream">生命靈數：{result.life_path.number} 號 — {result.life_path.title}</h2>
+                  <div className="w-1 h-7 bg-gradient-to-b from-cyan-400 to-cyan-600/40 rounded-full" />
+                  <h2 className="text-2xl md:text-3xl font-black text-cream tracking-tight">生命靈數：{result.life_path.number} 號 — {result.life_path.title}</h2>
                 </div>
                 <p className="text-base text-text leading-[1.9]">{result.life_path.desc}</p>
               </div>
@@ -1183,10 +1223,10 @@ export default function FreeToolPage() {
 
             {/* ═══ 生肖詳細年運 ═══ */}
             {result.shengxiao_fortune && (
-              <div className="glass rounded-2xl p-6">
+              <div className="glass rounded-2xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.25)]">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-red-accent rounded-full" />
-                  <h2 className="text-lg font-bold text-cream">屬{result.shengxiao} — 2026 丙午年運勢</h2>
+                  <div className="w-1 h-7 bg-gradient-to-b from-red-400 to-red-600/40 rounded-full" />
+                  <h2 className="text-2xl md:text-3xl font-black text-cream tracking-tight">屬{result.shengxiao} — 2026 丙午年運勢</h2>
                 </div>
                 <p className="text-base text-text leading-[1.9]">{result.shengxiao_fortune}</p>
               </div>

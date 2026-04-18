@@ -235,7 +235,9 @@ export function useCheckoutForm() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
         sessionStorage.setItem('pending_plan', planCode)
-        window.location.href = '/auth/login'
+        // 帶 redirect 參數，登入後回到同樣的 checkout 頁
+        const redirect = encodeURIComponent(`/checkout?plan=${planCode}`)
+        window.location.href = `/auth/login?redirect=${redirect}`
       } else {
         const fullName = data.user.user_metadata?.full_name || ''
         if (fullName && !params.get('name')) setForm(f => ({ ...f, name: fullName }))

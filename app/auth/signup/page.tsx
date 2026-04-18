@@ -141,7 +141,31 @@ export default function SignupPage() {
                 )}
               </button>
             </div>
-            <p className="text-[10px] text-text-muted/60 mt-1">密碼至少 8 個字元</p>
+            {/* 密碼強度指示器 */}
+            {form.password && (() => {
+              const hasLen = form.password.length >= 8
+              const hasLetter = /[a-zA-Z]/.test(form.password)
+              const hasNumber = /\d/.test(form.password)
+              const hasSymbol = /[^a-zA-Z0-9]/.test(form.password)
+              const score = [hasLen, hasLetter, hasNumber, hasSymbol].filter(Boolean).length
+              const labels = ['太弱', '一般', '不錯', '強', '非常強']
+              const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-emerald-500']
+              const textColors = ['text-red-400', 'text-orange-400', 'text-yellow-400', 'text-green-400', 'text-emerald-400']
+              return (
+                <div className="mt-1.5">
+                  <div className="flex gap-1 mb-1">
+                    {[0,1,2,3].map(i => (
+                      <div key={i} className={`flex-1 h-1 rounded-full transition-colors ${i < score ? colors[Math.min(score-1, 4)] : 'bg-white/5'}`} />
+                    ))}
+                  </div>
+                  <p className={`text-[10px] ${textColors[Math.min(score, 4)]}`}>
+                    強度：{labels[Math.min(score, 4)]}
+                    {!hasLen && '（需至少 8 字元）'}
+                  </p>
+                </div>
+              )
+            })()}
+            {!form.password && <p className="text-[10px] text-text-muted/60 mt-1">密碼至少 8 個字元，建議包含英數字</p>}
           </div>
           <div>
             <label htmlFor="signup-confirm-password" className="block text-xs text-text-muted mb-1">確認密碼 <span className="text-red-400">*</span></label>

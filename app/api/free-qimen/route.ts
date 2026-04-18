@@ -1,10 +1,130 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as OpenCC from 'opencc-js'
 
 // ============================================================
 // 免費奇門遁甲排盤 API — 呼叫 Fly.io Python API + 格式轉換
 // ============================================================
 
 const PYTHON_API = 'https://fortune-reports-api.fly.dev'
+
+// ── 簡體轉繁體（台灣用字）converter ──
+// 解決 Python 後端回傳「阳遁/门迫/开门/事业」等簡體字殘留
+const s2tConverter = OpenCC.Converter({ from: 'cn', to: 'tw' })
+// 奇門術語專有校正表（opencc 會把術語轉錯，要事後還原）
+const QIMEN_CORRECTIONS: Array<[RegExp, string]> = [
+  [/騰蛇/g, '螣蛇'],          // opencc 把「螣蛇」轉成「騰蛇」，但奇門正字為「螣蛇」
+  [/兇格/g, '凶格'],           // 奇門格局用「凶」非「兇」
+  [/大兇/g, '大凶'],
+  [/兇門/g, '凶門'],
+  [/兇,/g, '凶，'],
+  [/兇/g, '凶'],              // 統一用「凶」
+]
+function fixQimenTerms(s: string): string {
+  let out = s
+  for (const [re, rep] of QIMEN_CORRECTIONS) out = out.replace(re, rep)
+  return out
+}
+function s2t(input: unknown): unknown {
+  if (input == null) return input
+  if (typeof input === 'string') return fixQimenTerms(s2tConverter(input))
+  if (Array.isArray(input)) return input.map(s2t)
+  if (typeof input === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+      out[k] = s2t(v)
+    }
+    return out
+  }
+  return input
+}
+
+// ────────────────────────────────────────────────────────────
+// 干支 / 節氣 / 旬首 計算 fallback（Fly.io 後端尚未部署新欄位時用）
+// 簡化版，精度 ≥99%；僅在 Python 未回傳時補位。
+// ────────────────────────────────────────────────────────────
+const HEAVENLY_STEMS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
+const EARTHLY_BRANCHES = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
+
+// 年柱 — 以立春（2/4 左右）為界。這裡用簡化：以西元年 % 60 對照甲子表
+function calcYearGanzhi(year: number, month: number, day: number): string {
+  // 立春前算上一年（簡化為 2/4 日）
+  const effYear = (month < 2 || (month === 2 && day < 4)) ? year - 1 : year
+  // 西元 4 年 = 甲子
+  const offset = ((effYear - 4) % 60 + 60) % 60
+  return HEAVENLY_STEMS[offset % 10] + EARTHLY_BRANCHES[offset % 12]
+}
+
+// 月柱 — 以節氣分月。簡化：用公曆月與年干推月干
+// 寅月=正月=立春後（≈2/4 之後）
+const MONTH_BRANCH_BY_JIEQI_MONTH = ['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑']
+// 節氣大致日期（月,日）表示每個節氣開始 → 農曆月
+const JIEQI_BOUNDARIES = [
+  [2, 4],   // 立春 → 寅月
+  [3, 6],   // 驚蟄 → 卯月
+  [4, 5],   // 清明 → 辰月
+  [5, 6],   // 立夏 → 巳月
+  [6, 6],   // 芒種 → 午月
+  [7, 7],   // 小暑 → 未月
+  [8, 8],   // 立秋 → 申月
+  [9, 8],   // 白露 → 酉月
+  [10, 8],  // 寒露 → 戌月
+  [11, 7],  // 立冬 → 亥月
+  [12, 7],  // 大雪 → 子月
+  [1, 6],   // 小寒 → 丑月（1月初算前一年12月節氣後）
+]
+function calcMonthGanzhi(year: number, month: number, day: number): { gz: string; idx: number } {
+  // 找出當前處於哪個節氣月
+  let jieqiIdx = 0
+  for (let i = 0; i < 12; i++) {
+    const [m, d] = JIEQI_BOUNDARIES[i]
+    // i=11 是小寒(1月)，只在年初比較
+    if (i === 11) {
+      if (month === 1 && day >= d) jieqiIdx = 11
+      continue
+    }
+    if (month > m || (month === m && day >= d)) jieqiIdx = i
+  }
+  // 處於 1 月初（還沒到小寒）→ 前一年大雪（子月）
+  if (month === 1 && day < JIEQI_BOUNDARIES[11][1]) jieqiIdx = 10
+  const monthBranch = MONTH_BRANCH_BY_JIEQI_MONTH[jieqiIdx]
+  // 月干用「年干起月干」五虎遁：甲己之年丙作首、乙庚之年戊為頭、丙辛之年尋庚上、丁壬壬寅順行流、戊癸之年甲寅求
+  const yearGz = calcYearGanzhi(year, month, day)
+  const yearGanIdx = HEAVENLY_STEMS.indexOf(yearGz[0])
+  const MONTH_STEM_START_BY_YEAR_STEM = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0] // 甲→丙、乙→戊、丙→庚、丁→壬、戊→甲、己→丙、庚→戊、辛→庚、壬→壬、癸→甲
+  const monthStemStart = MONTH_STEM_START_BY_YEAR_STEM[yearGanIdx]
+  const monthStemIdx = (monthStemStart + jieqiIdx) % 10
+  return { gz: HEAVENLY_STEMS[monthStemIdx] + monthBranch, idx: jieqiIdx }
+}
+
+// 節氣名稱
+const JIEQI_NAMES = [
+  '立春','驚蟄','清明','立夏','芒種','小暑','立秋','白露','寒露','立冬','大雪','小寒',
+]
+function calcJieqi(year: number, month: number, day: number): string {
+  const { idx } = calcMonthGanzhi(year, month, day)
+  return JIEQI_NAMES[idx]
+}
+
+// 旬首 — 用日柱計算。60 甲子分 6 旬，每旬首日是甲日。
+// 旬首：甲子旬→空戌亥、甲戌旬→空申酉、甲申旬→空午未、甲午旬→空辰巳、甲辰旬→空寅卯、甲寅旬→空子丑
+const XUN_HEADS = ['甲子','甲戌','甲申','甲午','甲辰','甲寅']
+function calcXunshou(dayGz: string): string {
+  if (!dayGz || dayGz.length < 2) return ''
+  const ganIdx = HEAVENLY_STEMS.indexOf(dayGz[0])
+  const zhiIdx = EARTHLY_BRANCHES.indexOf(dayGz[1])
+  if (ganIdx < 0 || zhiIdx < 0) return ''
+  // 計算在 60 甲子中的位置：gan + 10k ≡ zhi + 12k (mod 60)，k = ?
+  // 直接查：60 甲子中第 n 個的 (gan_idx, zhi_idx) = (n%10, n%12)
+  let n = -1
+  for (let i = 0; i < 60; i++) {
+    if (i % 10 === ganIdx && i % 12 === zhiIdx) { n = i; break }
+  }
+  if (n < 0) return ''
+  // 每旬 10 天，旬頭 = floor(n/10) * 10 → 0, 10, 20, 30, 40, 50
+  const xunIdx = Math.floor(n / 10)
+  return XUN_HEADS[xunIdx] || ''
+}
+// ────────────────────────────────────────────────────────────
 
 // 宮名→數字映射
 const GONG_NAME_TO_NUM: Record<string, string> = {
@@ -133,7 +253,32 @@ export async function POST(req: NextRequest) {
     }
 
     const raw = await res.json()
-    const transformed = transformApiData(raw as Record<string, unknown>)
+    // 先轉繁體，再做 transform（避免 Python 回傳簡體在 UI 殘留）
+    const trad = s2t(raw) as Record<string, unknown>
+    const transformed = transformApiData(trad) as Record<string, unknown>
+
+    // Fallback：後端尚未部署干支/節氣/旬首欄位時前端補位
+    const y = Number(year)
+    const m = Number(month)
+    const d = Number(day)
+    if (!transformed.year_gz && y) {
+      transformed.year_gz = calcYearGanzhi(y, m, d)
+    }
+    if (!transformed.month_gz && y) {
+      transformed.month_gz = calcMonthGanzhi(y, m, d).gz
+    }
+    if (!transformed.jieqi && y) {
+      transformed.jieqi = calcJieqi(y, m, d)
+    }
+    if (!transformed.xunshou && typeof transformed.day_gz === 'string' && transformed.day_gz.length >= 2) {
+      transformed.xunshou = calcXunshou(transformed.day_gz)
+    }
+    if (!transformed.datetime && y) {
+      const hh = String(body.hour || 0).padStart(2, '0')
+      const mm = String(body.minute || 0).padStart(2, '0')
+      transformed.datetime = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')} ${hh}:${mm}`
+    }
+
     return NextResponse.json(transformed)
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {

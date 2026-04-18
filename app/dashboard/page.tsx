@@ -521,10 +521,17 @@ function DashboardContent() {
                           )}
                           {r.access_token && (
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                const btn = e.currentTarget
                                 const url = `${window.location.origin}/report/${r.access_token}`
                                 navigator.clipboard.writeText(url).then(() => {
-                                  alert('報告連結已複製到剪貼簿')
+                                  const original = btn.textContent
+                                  btn.textContent = '已複製 ✓'
+                                  btn.classList.add('text-green-400', 'bg-green-500/10')
+                                  setTimeout(() => {
+                                    btn.textContent = original
+                                    btn.classList.remove('text-green-400', 'bg-green-500/10')
+                                  }, 1500)
                                 }).catch(() => {
                                   window.prompt('複製此連結分享：', url)
                                 })

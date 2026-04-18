@@ -19,10 +19,14 @@ export default function CouponInput({
 }: CouponInputProps) {
   return (
     <div>
+      <label className="flex items-center gap-1 text-[11px] text-text-muted/70 mb-1">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
+        優惠碼（輸入後套用享折扣）
+      </label>
       <div className="flex gap-2">
         <input
           type="text"
-          placeholder="輸入優惠碼"
+          placeholder="例：WELCOME10"
           value={couponInput}
           onChange={(e) => { setCouponInput(e.target.value); setCouponError(''); if (couponApplied) setCouponApplied(null) }}
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyCoupon())}

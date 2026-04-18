@@ -32,58 +32,56 @@ const PALACE_NAMES: Record<number, { name: string; direction: string }> = {
   9: { name: '離九宮', direction: '南' },
 }
 
-// ── 八門吉凶配色 ──
-const BAMEN_COLORS: Record<string, { bg: string; text: string; border: string; level: string }> = {
-  '開門': { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', level: '大吉' },
-  '休門': { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', level: '大吉' },
-  '生門': { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', level: '大吉' },
-  '景門': { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', level: '中平' },
-  '杜門': { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', level: '中平' },
-  '傷門': { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', level: '凶' },
-  '驚門': { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', level: '凶' },
-  '死門': { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', level: '大凶' },
+// ── 八門吉凶配色（精簡：吉/中/凶三級，避免色雜）──
+const BAMEN_COLORS: Record<string, { dot: string; text: string; ring: string; level: string }> = {
+  '開門': { dot: 'bg-emerald-400', text: 'text-emerald-300', ring: 'ring-emerald-400/40', level: '大吉' },
+  '休門': { dot: 'bg-emerald-400', text: 'text-emerald-300', ring: 'ring-emerald-400/40', level: '大吉' },
+  '生門': { dot: 'bg-emerald-400', text: 'text-emerald-300', ring: 'ring-emerald-400/40', level: '大吉' },
+  '景門': { dot: 'bg-slate-400', text: 'text-slate-300', ring: 'ring-slate-400/30', level: '中平' },
+  '杜門': { dot: 'bg-slate-400', text: 'text-slate-300', ring: 'ring-slate-400/30', level: '中平' },
+  '傷門': { dot: 'bg-rose-400', text: 'text-rose-300', ring: 'ring-rose-400/30', level: '凶' },
+  '驚門': { dot: 'bg-rose-400', text: 'text-rose-300', ring: 'ring-rose-400/30', level: '凶' },
+  '死門': { dot: 'bg-red-500', text: 'text-red-300', ring: 'ring-red-500/40', level: '大凶' },
 }
 
-// ── 九星配色 ──
+// ── 九星配色（統一為中性暖金調，不再五花八門）──
 const JIUXING_COLORS: Record<string, string> = {
-  '天蓬': 'text-blue-400',   // 水
-  '天芮': 'text-yellow-500',  // 土
-  '天衝': 'text-green-400',   // 木
-  '天輔': 'text-green-400',   // 木
-  '天禽': 'text-yellow-500',  // 土
-  '天心': 'text-amber-400',   // 金
-  '天柱': 'text-amber-400',   // 金
-  '天任': 'text-yellow-500',  // 土
-  '天英': 'text-red-400',     // 火
+  '天蓬': 'text-slate-300',
+  '天芮': 'text-slate-300',
+  '天衝': 'text-slate-300',
+  '天輔': 'text-slate-300',
+  '天禽': 'text-slate-300',
+  '天心': 'text-slate-300',
+  '天柱': 'text-slate-300',
+  '天任': 'text-slate-300',
+  '天英': 'text-slate-300',
 }
 
-// ── 八神配色 ──
+// ── 八神配色（統一淡金調）──
 const BASHEN_COLORS: Record<string, string> = {
-  '值符': 'text-amber-400',
-  '螣蛇': 'text-red-400',
-  '太陰': 'text-purple-400',
-  '六合': 'text-green-400',
-  '白虎': 'text-slate-200',
-  '玄武': 'text-blue-400',
-  '九地': 'text-yellow-600',
-  '九天': 'text-teal-400',
+  '值符': 'text-amber-300',
+  '螣蛇': 'text-slate-400',
+  '太陰': 'text-slate-400',
+  '六合': 'text-slate-400',
+  '白虎': 'text-slate-400',
+  '玄武': 'text-slate-400',
+  '九地': 'text-slate-400',
+  '九天': 'text-slate-400',
 }
 
-// ── 格局標籤配色 ──
-function getGejuStyle(geju: string): { bg: string; text: string; border: string } {
-  // 凶格關鍵字
-  const xiongKeywords = ['入墓', '反吟', '伏吟', '擊刑', '大格', '飛宮', '跌穴', '凶']
-  // 特殊格局關鍵字
-  const specialKeywords = ['門迫', '空亡', '六儀擊刑', '時干入墓']
+// ── 格局標籤配色（簡化：吉=金、凶=紅、其他=灰；不再用紫色）──
+function getGejuStyle(geju: string): { bg: string; text: string; border: string; isKi: boolean } {
+  const xiongKeywords = ['入墓', '反吟', '伏吟', '擊刑', '大格', '飛宮', '跌穴', '門迫', '刑', '凶']
   if (xiongKeywords.some(k => geju.includes(k))) {
-    return { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/20' }
+    return { bg: 'bg-red-500/10', text: 'text-red-300', border: 'border-red-500/30', isKi: false }
   }
-  if (specialKeywords.some(k => geju.includes(k))) {
-    return { bg: 'bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/20' }
-  }
-  // 預設吉格
-  return { bg: 'bg-green-500/15', text: 'text-green-400', border: 'border-green-500/20' }
+  return { bg: 'bg-gold/10', text: 'text-gold-light', border: 'border-gold/30', isKi: true }
 }
+
+// ── 八門完整對照（不在 API 時 fallback 用）──
+const BAMEN_ALL = ['休門', '生門', '傷門', '杜門', '景門', '死門', '驚門', '開門']
+const JIUXING_ALL = ['天蓬', '天芮', '天衝', '天輔', '天禽', '天心', '天柱', '天任', '天英']
+const BASHEN_ALL = ['值符', '螣蛇', '太陰', '六合', '白虎', '玄武', '九地', '九天']
 
 // ── 分析步驟動畫 ──
 const ANALYSIS_STEPS = [
@@ -249,126 +247,179 @@ export default function QimenToolPage() {
     const isZhifuGong = result?.zhifu_gong && GONG_NAME_TO_NUM[result.zhifu_gong] === palaceNum
     const isZhishiGong = result?.zhishi_gong && GONG_NAME_TO_NUM[result.zhishi_gong] === palaceNum
 
+    // ══ 中宮（帝王之術核心）══
     if (isCenterPalace) {
       return (
-        <div key={palaceNum} className="relative border border-amber-500/30 rounded-xl bg-amber-500/[0.04] p-3 min-h-[150px] sm:min-h-[180px] flex flex-col justify-center items-center">
-          <div className="absolute top-1.5 left-2 text-[10px] text-text-muted/60">{info.name}</div>
-          <div className="text-center space-y-2">
-            <div className="text-xs text-text-muted">值符</div>
-            <div className="text-base font-bold text-amber-400">{result?.zhifu || '-'}</div>
-            <div className="text-xs text-text-muted">值使</div>
-            <div className="text-base font-bold text-amber-400">{result?.zhishi || '-'}</div>
-            <div className="h-px bg-gold/20 my-1" />
-            <div className="text-xs text-text-muted">
-              {result?.yinyang || '-'} {result?.ju_number ? `${result.ju_number}局` : ''}
+        <div key={palaceNum} className="relative rounded-2xl p-4 sm:p-5 min-h-[160px] sm:min-h-[200px] flex flex-col justify-center items-center overflow-hidden"
+          style={{
+            background: 'radial-gradient(circle at center, rgba(201,168,76,0.18) 0%, rgba(201,168,76,0.06) 55%, rgba(10,14,26,0.9) 100%)',
+            boxShadow: 'inset 0 0 0 1px rgba(201,168,76,0.45), 0 0 32px rgba(201,168,76,0.15)',
+          }}>
+          {/* 角落裝飾（四個角）*/}
+          <div className="absolute top-1.5 left-1.5 w-3 h-3 border-t border-l border-gold/50" />
+          <div className="absolute top-1.5 right-1.5 w-3 h-3 border-t border-r border-gold/50" />
+          <div className="absolute bottom-1.5 left-1.5 w-3 h-3 border-b border-l border-gold/50" />
+          <div className="absolute bottom-1.5 right-1.5 w-3 h-3 border-b border-r border-gold/50" />
+
+          <div className="absolute top-1.5 left-1/2 -translate-x-1/2 text-[9px] tracking-[0.4em] text-gold/70 font-serif whitespace-nowrap">中宮</div>
+
+          <div className="text-center space-y-2 pt-3">
+            <div className="flex items-center justify-center gap-4">
+              <div>
+                <div className="text-[9px] text-gold/55 tracking-[0.2em] mb-0.5">值符</div>
+                <div className="text-2xl sm:text-3xl font-bold text-gold-light font-serif leading-none drop-shadow-[0_0_10px_rgba(201,168,76,0.55)]">{result?.zhifu || '—'}</div>
+              </div>
+              <div className="w-px h-12 bg-gradient-to-b from-transparent via-gold/40 to-transparent" />
+              <div>
+                <div className="text-[9px] text-gold/55 tracking-[0.2em] mb-0.5">值使</div>
+                <div className="text-2xl sm:text-3xl font-bold text-gold-light font-serif leading-none drop-shadow-[0_0_10px_rgba(201,168,76,0.55)]">{result?.zhishi || '—'}</div>
+              </div>
             </div>
-            <div className="text-[10px] text-text-muted/60">
-              旬首：{result?.xunshou || '-'}
+
+            <div className="flex items-center gap-2 justify-center pt-2">
+              <div className="w-8 h-px bg-gradient-to-r from-transparent to-gold/50" />
+              <span className="text-[8px] text-gold/55 tracking-[0.3em]">DUN</span>
+              <div className="w-8 h-px bg-gradient-to-l from-transparent to-gold/50" />
             </div>
-            {palace && (
-              <>
-                <div className="text-[10px] text-text-muted/60">天盤：{palace.tianpan_gan} / 地盤：{palace.dipan_gan}</div>
-                {palace.jiuxing && <div className="text-[10px] text-text-muted/60">九星：{palace.jiuxing}</div>}
-              </>
-            )}
+
+            <div className="text-[13px] font-bold text-gold tracking-widest">
+              {result?.yinyang || '—'}{result?.ju_number ? ` ${result.ju_number} 局` : ''}
+            </div>
+            <div className="text-[9px] text-text-muted/80 tracking-wider">旬首 {result?.xunshou || '—'}</div>
           </div>
         </div>
       )
     }
 
-    if (!palace) {
-      return (
-        <div key={palaceNum} className="border border-white/10 rounded-xl bg-white/[0.02] p-3 min-h-[150px] sm:min-h-[180px] flex items-center justify-center">
-          <span className="text-xs text-text-muted/40">{info.name}</span>
-        </div>
-      )
-    }
+    // 以下 palace 不存在時仍要填位元（fallback）
+    const bamen = palace?.bamen || '—'
+    const jiuxing = palace?.jiuxing || '—'
+    const bashen = palace?.bashen || '—'
+    const tianpan = palace?.tianpan_gan || '—'
+    const dipan = palace?.dipan_gan || '—'
 
-    const bamenStyle = BAMEN_COLORS[palace.bamen] || { bg: 'bg-white/10', text: 'text-text-muted', border: 'border-white/20', level: '' }
-    const jiuxingColor = JIUXING_COLORS[palace.jiuxing] || 'text-text-muted'
-    const bashenColor = BASHEN_COLORS[palace.bashen] || 'text-text-muted'
+    const bamenStyle = BAMEN_COLORS[bamen] || { dot: 'bg-slate-500', text: 'text-slate-300', ring: 'ring-slate-500/20', level: '' }
+    const jiuxingColor = JIUXING_COLORS[jiuxing] || 'text-slate-300'
+    const bashenColor = BASHEN_COLORS[bashen] || 'text-slate-300'
 
     // 狀態標記
     const statusTags: { label: string; color: string }[] = []
-    if (palace.kong) statusTags.push({ label: '空亡', color: 'text-purple-400 bg-purple-500/15 border-purple-500/20' })
-    if (palace.fuyin) statusTags.push({ label: '伏吟', color: 'text-orange-400 bg-orange-500/15 border-orange-500/20' })
-    if (palace.fanyin) statusTags.push({ label: '反吟', color: 'text-red-400 bg-red-500/15 border-red-500/20' })
-    if (palace.menpo) statusTags.push({ label: '門迫', color: 'text-purple-400 bg-purple-500/15 border-purple-500/20' })
+    if (palace?.kong) statusTags.push({ label: '空亡', color: 'text-slate-300 bg-slate-500/10 border-slate-500/30' })
+    if (palace?.fuyin) statusTags.push({ label: '伏吟', color: 'text-rose-300 bg-rose-500/10 border-rose-500/30' })
+    if (palace?.fanyin) statusTags.push({ label: '反吟', color: 'text-red-300 bg-red-500/10 border-red-500/40' })
+    if (palace?.menpo) statusTags.push({ label: '門迫', color: 'text-rose-300 bg-rose-500/10 border-rose-500/30' })
 
-    // 特殊宮高亮邊框
-    const specialBorder = isZhifuGong
-      ? 'border-amber-500/50 ring-1 ring-amber-500/30'
+    // 顯示格局：最多 2 個 chip，其餘用 +N 顯示
+    // 去除格局說明（冒號後的說明文），只保留格局名本身
+    const cleanGeju = (g: string): string => {
+      // 去冒號後半：「開門+天心+太陰：門星神三吉全備」→「開門+天心+太陰」
+      let s = g.split(/[::]/)[0].trim()
+      // 若超長（>12 中文字）強制截斷
+      if (s.length > 12) s = s.slice(0, 11) + '…'
+      return s
+    }
+    const gejuRaw = (palace?.geju || []).map(g => typeof g === 'string' ? g : String(g)).filter(Boolean)
+    // 去重（避免「伏吟」被列兩次）
+    const gejuList: string[] = []
+    const seen = new Set<string>()
+    for (const g of gejuRaw) {
+      const c = cleanGeju(g)
+      if (c && !seen.has(c)) { seen.add(c); gejuList.push(c) }
+    }
+    const visibleGeju = gejuList.slice(0, 2)
+    const extraGejuCount = Math.max(0, gejuList.length - 2)
+
+    // 特殊宮樣式
+    const isSpecial = isZhifuGong || isZhishiGong
+    const cardBorder = isZhifuGong
+      ? 'ring-1 ring-gold/60'
       : isZhishiGong
-      ? 'border-emerald-500/50 ring-1 ring-emerald-500/30'
-      : isTianyi
-      ? 'border-yellow-500/40'
-      : isNianming
-      ? 'border-cyan-500/40'
-      : isYima
-      ? 'border-teal-500/40'
-      : isKongwang
-      ? 'border-purple-500/30 opacity-75'
-      : 'border-white/10'
+      ? 'ring-1 ring-emerald-400/50'
+      : 'ring-1 ring-white/5 hover:ring-gold/30'
+
+    const cardBg = isSpecial
+      ? 'bg-gradient-to-br from-gold/[0.06] to-transparent'
+      : 'bg-white/[0.015]'
 
     return (
-      <div key={palaceNum} className={`relative border rounded-xl bg-white/[0.02] p-3 min-h-[150px] sm:min-h-[180px] hover:border-gold/30 hover:bg-gold/[0.02] transition-all group ${specialBorder}`}>
-        {/* 特殊宮標記 */}
-        <div className="absolute -top-1.5 left-1 flex gap-1 flex-wrap">
-          {isZhifuGong && <span className="text-[8px] px-1 py-0.5 rounded bg-amber-500 text-dark font-bold">值符</span>}
-          {isZhishiGong && <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-500 text-dark font-bold">值使</span>}
-          {isTianyi && !isZhifuGong && <span className="text-[8px] px-1 py-0.5 rounded bg-yellow-500/80 text-dark font-bold">天乙</span>}
-          {isNianming && <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500 text-dark font-bold">年命</span>}
-          {isYima && <span className="text-[8px] px-1 py-0.5 rounded bg-teal-500 text-dark font-bold">驛馬</span>}
+      <div key={palaceNum}
+        className={`relative rounded-2xl ${cardBg} ${cardBorder} p-3 pt-5 sm:p-3.5 sm:pt-5 min-h-[170px] sm:min-h-[210px] transition-all duration-300 hover:bg-gold/[0.03] group overflow-visible ${isKongwang ? 'opacity-80' : ''}`}
+      >
+        {/* 角色徽章（值符/值使/天乙/年命/驛馬）— 右上角（卡片內避免被裁切）*/}
+        <div className="absolute top-1 right-1.5 flex gap-1 flex-wrap justify-end max-w-[75%]">
+          {isZhifuGong && (
+            <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-gold text-dark font-bold tracking-wider shadow shadow-gold/30">值符</span>
+          )}
+          {isZhishiGong && (
+            <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-emerald-400 text-dark font-bold tracking-wider shadow shadow-emerald-400/30">值使</span>
+          )}
+          {isTianyi && !isZhifuGong && (
+            <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-gold/80 text-dark font-bold tracking-wider">天乙</span>
+          )}
+          {isNianming && (
+            <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-sky-400 text-dark font-bold tracking-wider">年命</span>
+          )}
+          {isYima && (
+            <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-teal-400 text-dark font-bold tracking-wider">驛馬</span>
+          )}
         </div>
 
-        {/* 宮名 + 方位 */}
-        <div className="flex justify-between items-start mb-2 mt-1">
-          <span className="text-[10px] text-text-muted/60">{info.name}</span>
-          <span className={`text-[10px] ${bashenColor} font-medium`}>{palace.bashen}</span>
+        {/* 宮名（左上角襯線） */}
+        <div className="mb-1">
+          <span className="text-[10px] text-text-muted/80 font-serif tracking-wider">{info.name}</span>
+          <span className="text-[9px] text-text-muted/40 ml-1.5">· {info.direction}</span>
         </div>
 
-        {/* 天盤干（主焦點） */}
-        <div className="text-center mb-1">
-          <div className="text-2xl font-bold text-amber-400 leading-tight">{palace.tianpan_gan}</div>
-          <div className="text-base text-cream/80 leading-tight">{palace.dipan_gan}</div>
-          <div className="text-[10px] text-text-muted/50 mt-0.5">天/地盤</div>
-        </div>
-
-        {/* 九星 + 八門 */}
-        <div className="flex justify-between items-center mt-2 mb-1">
-          <span className={`text-xs font-medium ${jiuxingColor}`}>{palace.jiuxing}</span>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${bamenStyle.bg} ${bamenStyle.text} ${bamenStyle.border}`}>
-            {palace.bamen}
-          </span>
-        </div>
-
-        {/* 狀態標記 */}
-        {statusTags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {statusTags.map(tag => (
-              <span key={tag.label} className={`text-[9px] px-1.5 py-0.5 rounded border ${tag.color}`}>
-                {tag.label}
-              </span>
-            ))}
+        {/* 天盤干（主焦點）+ 地盤干（副焦點） */}
+        <div className="text-center mb-2.5 relative">
+          <div className="text-3xl sm:text-4xl font-bold text-gold-light font-serif leading-none drop-shadow-[0_0_6px_rgba(201,168,76,0.3)]">
+            {tianpan}
           </div>
-        )}
+          <div className="text-lg text-cream/70 font-serif leading-none mt-1">{dipan}</div>
+        </div>
 
-        {/* 格局標籤 */}
-        {palace.geju && palace.geju.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {palace.geju.map((g, idx) => {
+        {/* 九星 + 八神（次要資訊，置中小字）*/}
+        <div className="flex justify-center items-center gap-2 text-[10px] mb-2">
+          <span className={`${jiuxingColor}`}>{jiuxing}</span>
+          <span className="text-text-muted/30">·</span>
+          <span className={`${bashenColor}`}>{bashen}</span>
+        </div>
+
+        {/* 八門（帶色點）居中顯示 */}
+        <div className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-full bg-black/30 ${bamenStyle.ring} ring-1`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${bamenStyle.dot}`} />
+          <span className={`text-xs font-bold ${bamenStyle.text}`}>{bamen}</span>
+          {bamenStyle.level && <span className="text-[9px] text-text-muted/60">· {bamenStyle.level}</span>}
+        </div>
+
+        {/* 狀態標記 + 格局（最多 2 個 chip，其餘 +N 彙總）*/}
+        {(statusTags.length > 0 || visibleGeju.length > 0) && (
+          <div className="flex flex-wrap gap-0.5 mt-2 justify-center">
+            {statusTags.slice(0, 2).map(tag => (
+              <span key={tag.label} className={`text-[9px] px-1.5 py-0.5 rounded ${tag.color} whitespace-nowrap`}>{tag.label}</span>
+            ))}
+            {visibleGeju.slice(0, Math.max(0, 2 - statusTags.length)).map((g, idx) => {
               const style = getGejuStyle(g)
               return (
-                <span key={idx} className={`text-[9px] px-1.5 py-0.5 rounded border ${style.bg} ${style.text} ${style.border}`}>
+                <span key={idx} className={`text-[9px] px-1.5 py-0.5 rounded ${style.bg} ${style.text} border ${style.border} whitespace-nowrap`}>
                   {g}
                 </span>
               )
             })}
+            {(extraGejuCount + Math.max(0, statusTags.length - 2)) > 0 && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-text-muted/70 whitespace-nowrap">
+                +{extraGejuCount + Math.max(0, statusTags.length - 2)}
+              </span>
+            )}
           </div>
         )}
 
-        {/* 方位角標 */}
-        <div className="absolute bottom-1.5 right-2 text-[9px] text-text-muted/30 font-mono">{info.direction}</div>
+        {/* 若什麼格局/狀態都沒有，顯示低調佔位（保持視覺填滿）*/}
+        {statusTags.length === 0 && gejuList.length === 0 && palace && (
+          <div className="text-center mt-2">
+            <span className="text-[9px] text-text-muted/30 tracking-wide">無特殊格局</span>
+          </div>
+        )}
       </div>
     )
   }
@@ -641,58 +692,133 @@ export default function QimenToolPage() {
               )}
             </div>
 
-            {/* ═══ 九宮格排盤 ═══ */}
-            <div className="glass rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-1 h-6 bg-gold rounded-full" />
-                <h2 className="text-lg font-bold text-white">奇門遁甲排盤</h2>
-                <span className="text-xs text-text-muted/50 ml-2">（洛書九宮）</span>
-              </div>
-
-              {/* 方位指示 */}
-              <div className="text-center text-xs text-text-muted/40 mb-3">
-                <span>&#9650; 南</span>
-              </div>
-
-              {/* 手機版提示 */}
-              <p className="text-center text-[10px] text-text-muted/40 mb-2 md:hidden">左右滑動查看完整排盤</p>
-
-              {/* 九宮格：手機版縮小至 360px 寬度直接塞進去，桌機版維持較寬 */}
-              <div className="overflow-x-auto pb-2 -mx-2 px-2">
-                <div className="grid grid-cols-3 gap-1 sm:gap-2 min-w-[320px] sm:min-w-[480px] max-w-full">
-                  {LUOSHU_ORDER.map(num => renderPalace(num))}
+            {/* ═══ 九宮格排盤（帝王之術版） ═══ */}
+            <div className="glass rounded-2xl p-5 sm:p-8"
+              style={{
+                background: 'linear-gradient(135deg, rgba(15,22,40,0.6) 0%, rgba(10,14,26,0.8) 100%)',
+                boxShadow: 'inset 0 1px 0 rgba(201,168,76,0.08)',
+              }}>
+              <div className="flex items-end justify-between mb-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-6 bg-gradient-to-b from-gold to-gold/30 rounded-full" />
+                    <h2 className="text-lg sm:text-xl font-bold text-cream font-serif">奇門遁甲九宮</h2>
+                  </div>
+                  <p className="text-[11px] text-text-muted/60 mt-1 ml-3 tracking-wider">洛書九宮 · 天地盤 · 九星八門八神</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-[11px] text-gold tracking-widest font-serif">
+                    {result.yinyang}{result.ju_number ? ` ${result.ju_number}局` : ''}
+                  </div>
+                  <div className="text-[9px] text-text-muted/50 mt-0.5">旬首 {result.xunshou || '—'}</div>
                 </div>
               </div>
 
-              {/* 方位指示 */}
-              <div className="flex justify-between text-xs text-text-muted/40 mt-3 px-4">
-                <span>東 &#9664;</span>
-                <span>&#9654; 西</span>
-              </div>
-              <div className="text-center text-xs text-text-muted/40 mt-1">
-                <span>&#9660; 北</span>
+              {/* 手機版滑動提示 */}
+              <p className="text-center text-[10px] text-text-muted/40 mb-3 md:hidden">左右滑動查看完整排盤</p>
+
+              {/* 九宮 + 四正方位的外框 */}
+              <div className="relative">
+                {/* 上方位（南） */}
+                <div className="flex justify-center mb-3">
+                  <div className="flex items-center gap-2 px-4 py-1 rounded-full bg-gold/5 border border-gold/20">
+                    <span className="text-gold/80 text-xs">▲</span>
+                    <span className="text-xs tracking-[0.3em] text-gold font-serif">南</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  {/* 左方位（東） */}
+                  <div className="hidden sm:flex flex-col items-center gap-2 mr-3">
+                    <div className="flex flex-col items-center gap-1 px-2 py-3 rounded-full bg-gold/5 border border-gold/20">
+                      <span className="text-gold/80 text-xs">◀</span>
+                      <span className="text-xs tracking-[0.3em] text-gold font-serif writing-vertical">東</span>
+                    </div>
+                  </div>
+
+                  {/* 九宮格 */}
+                  <div className="flex-1 overflow-x-auto pb-1 -mx-2 px-2">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-[320px] sm:min-w-[520px] max-w-full">
+                      {LUOSHU_ORDER.map(num => renderPalace(num))}
+                    </div>
+                  </div>
+
+                  {/* 右方位（西） */}
+                  <div className="hidden sm:flex flex-col items-center gap-2 ml-3">
+                    <div className="flex flex-col items-center gap-1 px-2 py-3 rounded-full bg-gold/5 border border-gold/20">
+                      <span className="text-gold/80 text-xs">▶</span>
+                      <span className="text-xs tracking-[0.3em] text-gold font-serif">西</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 下方位（北） */}
+                <div className="flex justify-center mt-3">
+                  <div className="flex items-center gap-2 px-4 py-1 rounded-full bg-gold/5 border border-gold/20">
+                    <span className="text-gold/80 text-xs">▼</span>
+                    <span className="text-xs tracking-[0.3em] text-gold font-serif">北</span>
+                  </div>
+                </div>
+
+                {/* 手機版左右方位（下方橫排）*/}
+                <div className="sm:hidden flex justify-between mt-3 text-xs px-1">
+                  <span className="text-gold tracking-[0.3em]">◀ 東</span>
+                  <span className="text-gold tracking-[0.3em]">西 ▶</span>
+                </div>
               </div>
 
-              {/* 圖例 */}
-              <div className="mt-6 pt-4 border-t border-white/5">
-                <p className="text-[10px] text-text-muted/50 mb-2">圖例</p>
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-green-500/60" />
-                    <span className="text-[10px] text-text-muted/60">吉門（開/休/生）</span>
+              {/* 圖例（完整、大字、分區）*/}
+              <div className="mt-8 pt-6 border-t border-gold/10">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-[10px] tracking-[0.3em] text-gold/70 font-serif">LEGEND · 圖例</span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-gold/20 to-transparent" />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-lg px-3 py-2 bg-emerald-400/5 border border-emerald-400/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span className="text-xs text-emerald-300 font-bold">大吉</span>
+                    </div>
+                    <p className="text-[10px] text-text-muted/70">開門 · 休門 · 生門</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500/60" />
-                    <span className="text-[10px] text-text-muted/60">中平（景/杜）</span>
+                  <div className="rounded-lg px-3 py-2 bg-slate-400/5 border border-slate-400/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2 h-2 rounded-full bg-slate-400" />
+                      <span className="text-xs text-slate-300 font-bold">中平</span>
+                    </div>
+                    <p className="text-[10px] text-text-muted/70">景門 · 杜門</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-orange-500/60" />
-                    <span className="text-[10px] text-text-muted/60">凶門（傷/驚）</span>
+                  <div className="rounded-lg px-3 py-2 bg-rose-400/5 border border-rose-400/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2 h-2 rounded-full bg-rose-400" />
+                      <span className="text-xs text-rose-300 font-bold">凶</span>
+                    </div>
+                    <p className="text-[10px] text-text-muted/70">傷門 · 驚門</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500/60" />
-                    <span className="text-[10px] text-text-muted/60">大凶（死門）</span>
+                  <div className="rounded-lg px-3 py-2 bg-red-500/5 border border-red-500/20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2 h-2 rounded-full bg-red-500" />
+                      <span className="text-xs text-red-300 font-bold">大凶</span>
+                    </div>
+                    <p className="text-[10px] text-text-muted/70">死門</p>
                   </div>
+                </div>
+                {/* 徽章圖例 */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-gold text-dark font-bold tracking-wider">值符</span>
+                  <span className="text-[9px] text-text-muted/60 self-center">天盤主導的宮</span>
+                  <span className="mx-1 text-text-muted/30">·</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-400 text-dark font-bold tracking-wider">值使</span>
+                  <span className="text-[9px] text-text-muted/60 self-center">人事落宮</span>
+                  <span className="mx-1 text-text-muted/30">·</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-gold/80 text-dark font-bold tracking-wider">天乙</span>
+                  <span className="text-[9px] text-text-muted/60 self-center">貴人方</span>
+                  <span className="mx-1 text-text-muted/30">·</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-sky-400 text-dark font-bold tracking-wider">年命</span>
+                  <span className="text-[9px] text-text-muted/60 self-center">本命宮</span>
+                  <span className="mx-1 text-text-muted/30">·</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-teal-400 text-dark font-bold tracking-wider">驛馬</span>
+                  <span className="text-[9px] text-text-muted/60 self-center">動方</span>
                 </div>
               </div>
             </div>
@@ -782,7 +908,8 @@ export default function QimenToolPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           {palace?.bamen && bamenStyle && (
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${bamenStyle.bg} ${bamenStyle.text} ${bamenStyle.border}`}>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full bg-black/30 ${bamenStyle.text} ring-1 ${bamenStyle.ring} inline-flex items-center gap-1`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${bamenStyle.dot}`} />
                               {palace.bamen}
                             </span>
                           )}

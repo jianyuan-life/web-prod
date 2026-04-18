@@ -79,15 +79,15 @@ export default function HomePage() {
         <StarField />
         <Astrolabe />
 
-        <div className="relative z-10 text-center max-w-[720px] mx-auto px-6 animate-[fade-up_1s_ease-out]">
+        <div className="relative z-10 text-center max-w-[820px] mx-auto px-6 animate-[fade-up_1s_ease-out]">
           <div className="text-[13px] tracking-[0.3em] text-gold/50 mb-8" style={{ fontFamily: 'var(--font-body)' }}>
             鑒源 &middot; JianYuan
           </div>
-          <h1 className="text-4xl md:text-[52px] leading-[1.3] mb-6" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h1 className="text-4xl md:text-[48px] lg:text-[52px] leading-[1.3] mb-6" style={{ fontFamily: 'var(--font-sans)' }}>
             <span className="text-cream/90 block text-xl md:text-[32px] font-normal mb-2">
               也許你正在尋找一個答案
             </span>
-            <span className="text-gradient-gold font-semibold">
+            <span className="text-gradient-gold font-semibold whitespace-nowrap">
               用十五個維度，重新認識你自己
             </span>
           </h1>
@@ -99,11 +99,21 @@ export default function HomePage() {
             {/* A/B 測試：Hero CTA 文案（experimentKey: hero_cta_20260417） */}
             <HeroCTAExperiment />
             <a href="/pricing"
-              className="inline-flex items-center gap-2 px-8 py-3.5 glass text-cream font-semibold rounded-[10px] text-[15px] hover:bg-surface-hover transition-colors">
+              className="inline-flex items-center gap-2 px-8 py-3.5 border border-gold/40 text-gold font-semibold rounded-[10px] text-[15px] hover:bg-gold/10 hover:border-gold/70 transition-all">
               探索完整方案
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </a>
           </div>
-          <p className="text-xs text-text-muted/50 tracking-wide">不需註冊 &middot; 完全免費 &middot; <LiveCounter /> 人已體驗</p>
+          <p className="text-xs text-text-muted/60 tracking-wide flex items-center justify-center gap-3 flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <LiveCounter /> 人已體驗
+            </span>
+            <span className="text-text-muted/30">·</span>
+            <span>不需註冊</span>
+            <span className="text-text-muted/30">·</span>
+            <span>完全免費</span>
+          </p>
         </div>
 
         {/* 向下箭頭 */}

@@ -83,7 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white mb-4 focus:border-amber-500 focus:outline-none" />
           {loginError && <p className="text-red-400 text-sm mb-3">{loginError}</p>}
           <button onClick={handleLogin} disabled={loading}
-            className="w-full py-3 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-500 disabled:opacity-50">
+            className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-[#1a1a1a] font-bold rounded-lg hover:from-amber-400 hover:to-yellow-400 disabled:opacity-50 transition-all">
             {loading ? '驗證中...' : '進入後台'}
           </button>
         </div>

@@ -7,7 +7,10 @@ import ReportFeedback from '@/components/ReportFeedback'
 import ShareCard from '@/components/ShareCard'
 import SectionExpander from '@/components/SectionExpander'
 import CollapsibleSection from '@/components/CollapsibleSection'
+import PartSection from '@/components/PartSection'
 import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
+import ScrollSpy from '@/components/ScrollSpy'
+import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -50,6 +53,14 @@ interface ReportData {
     member_emails?: string[]
     members?: Array<{ name?: string; gender?: string }>
     relation_description?: string
+    customer_note?: string       // D 方案：心之所惑的用戶提問
+    analysis_topic?: string      // D 方案：分析主題（如「感情」「事業」）
+    topic?: string               // D 方案：主題別名
+    event_type?: string          // E1 方案：事件類型（如「面試」「簽約」）
+    event_description?: string   // E1 方案：事件描述
+    event_start_date?: string    // E1/E2 方案：時間範圍
+    event_end_date?: string      // E1 方案：時間結束
+    target_month?: string        // E2 方案：目標月份（YYYY-MM）
   }
   report_result: {
     ai_content: string
@@ -456,6 +467,9 @@ function renderInlineMarkdown(text: string): string {
     .replace(/🟡/g, '<span style="color:#e0963a">🟡</span>')
     .replace(/🔵/g, '<span style="color:#5b9bd5">🔵</span>')
     .replace(/📌/g, '<span style="color:#c9a84c">📌</span>')
+    // 引用古籍標註：[出處：《XXX》]、（出處：《XXX》卷Y）—— 灰底金邊小徽章
+    .replace(/[\[［]\s*出處[：:]\s*([^\]］\n]+?)\s*[\]］]/g, '<span style="display:inline-block;margin:0 2px;padding:1px 8px;font-size:0.72rem;background:rgba(245,240,232,0.08);border:1px solid rgba(201,168,76,0.35);border-radius:10px;color:#c9a84c;letter-spacing:0.5px;vertical-align:0.1em;">典據：$1</span>')
+    .replace(/[（(]\s*出處[：:]\s*([^）)\n]+?)\s*[）)]/g, '<span style="display:inline-block;margin:0 2px;padding:1px 8px;font-size:0.72rem;background:rgba(245,240,232,0.08);border:1px solid rgba(201,168,76,0.35);border-radius:10px;color:#c9a84c;letter-spacing:0.5px;vertical-align:0.1em;">典據：$1</span>')
     // __TABLE__ 安全網：如果後處理沒清乾淨，在渲染時轉成可讀格式
     .replace(/^__TABLE__\s+(.+)$/gm, (_m: string, content: string) => {
       const parts = content.trim().split(/\s{2,}/)
@@ -480,9 +494,10 @@ function renderInlineMarkdown(text: string): string {
 }
 
 // 彩色框樣式（與 PDF 對應）
+// 品牌一致性：三色框均為「深藍/金/綠」系，caution 改為深藍（而非橙色）避免品牌衝突
 const SUB_BOX_STYLES: Record<string, { bg: string; border: string; titleColor: string; icon: string }> = {
   positive:    { bg: 'rgba(106,176,76,0.07)',  border: '1.5px solid rgba(106,176,76,0.25)',  titleColor: '#6ab04c', icon: '✦' },
-  caution:     { bg: 'rgba(26,42,74,0.15)',    border: '1.5px solid rgba(26,42,74,0.35)',    titleColor: '#7a9fcf', icon: '⚡' },
+  caution:     { bg: 'rgba(26,42,74,0.22)',    border: '1.5px solid rgba(122,159,207,0.32)', titleColor: '#7a9fcf', icon: '⚡' },
   improvement: { bg: 'rgba(197,150,58,0.07)',  border: '1.5px solid rgba(197,150,58,0.25)', titleColor: '#c9a84c', icon: '🔑' },
 }
 
@@ -568,6 +583,90 @@ function formatTimingDate(dateStr: string): string {
   const date = new Date(Number(y), Number(m) - 1, Number(d))
   const weekdays = ['日', '一', '二', '三', '四', '五', '六']
   return `${y}年${Number(m)}月${Number(d)}日（${weekdays[date.getDay()]}）`
+}
+
+/**
+ * D 方案：從「你的路」章節抽取 3 步驟（若存在）
+ * 格式：1. XXX / ①XXX / - 第一步：XXX
+ */
+interface PathStep { title: string; desc: string }
+
+function extractDSteps(markdown: string): PathStep[] {
+  if (!markdown) return []
+  const pathSection = markdown.match(/##?\s*(?:[一二三四五六七八九十]+、\s*)?你的路[\s\S]*?(?=\n##?\s|$)/m)
+  if (!pathSection) return []
+  const body = pathSection[0]
+  const steps: PathStep[] = []
+
+  // 嘗試匹配多種格式：1. XXX：YYY / 第一步：XXX / ① XXX
+  // 1. 先抓粗體標題 + 接續描述
+  const numberedPattern = /(?:^|\n)\s*(?:(?:[①②③④⑤])|(?:[1-5])[\.\、]|第[一二三四五]步[：:]?)\s*\*{0,2}(.+?)\*{0,2}(?:[：:—–])?\s*(?:\n|$)([\s\S]*?)(?=\n\s*(?:[①②③④⑤]|[1-5][\.\、]|第[一二三四五]步|##?\s|$))/gm
+  let m
+  while ((m = numberedPattern.exec(body)) !== null) {
+    const title = stripInline(m[1] || '').slice(0, 50)
+    const desc = stripInline((m[2] || '').replace(/\n/g, ' ').replace(/[*]+/g, ''))
+      .replace(/^[：:—–]\s*/, '')
+      .slice(0, 150)
+    if (title) steps.push({ title, desc })
+    if (steps.length >= 3) break
+  }
+
+  // Fallback：如果上面沒抓到，試 bullet
+  if (steps.length === 0) {
+    const bullets = body.match(/^\s*[-*•]\s*(.+?)$/gm) || []
+    for (const b of bullets.slice(0, 3)) {
+      const clean = stripInline(b.replace(/^\s*[-*•]\s*/, ''))
+      const colon = clean.match(/^(.+?)[：:](.+)$/)
+      if (colon) steps.push({ title: colon[1].trim().slice(0, 50), desc: colon[2].trim().slice(0, 150) })
+      else steps.push({ title: clean.slice(0, 50), desc: '' })
+    }
+  }
+
+  return steps.slice(0, 3)
+}
+
+/**
+ * D 方案：從 AI 內容抽取「10 秒結論」
+ * 優先順序：
+ * 1. 「10 秒內結論」章節內引言框
+ * 2. 「你的答案」章節第一段
+ * 3. 第一段非空文字（fallback）
+ * 回傳 ≤ 120 字的純文字結論
+ */
+function extractDAnswer(markdown: string): string {
+  if (!markdown) return ''
+  // 1. 10 秒內結論 > 引言框
+  const quickSection = markdown.match(/##?\s*(?:[一二三四五六七八九十]+、\s*)?(?:10\s*秒內?結論|你的答案|快速結論)[\s\S]*?(?=\n##?\s|$)/m)
+  if (quickSection) {
+    const body = quickSection[0]
+    // 找引言框
+    const quote = body.match(/^>\s*\**(.+?)\**\s*$/m)
+    if (quote) {
+      return stripInline(quote[1]).slice(0, 120)
+    }
+    // 找第一個非標題、非列表的段落
+    const lines = body.split('\n').slice(1)
+    for (const raw of lines) {
+      const line = raw.trim()
+      if (!line) continue
+      if (line.startsWith('#')) continue
+      if (line.startsWith('>')) continue
+      if (line.startsWith('-') || line.startsWith('*')) continue
+      if (line.startsWith('|')) continue
+      const clean = stripInline(line)
+      if (clean.length >= 8) return clean.slice(0, 120)
+    }
+  }
+  return ''
+}
+
+function stripInline(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^[「"」"']+|[「"」"']+$/g, '')
+    .trim()
 }
 
 // 動態 OG metadata — 社群分享時顯示方案名稱與客戶名
@@ -684,6 +783,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   // 報告內容完整性檢查 — 數據零容忍
   const isContentEmpty = !aiContent || aiContent.trim().length < 100
 
+  // D 方案：抽取「10 秒結論」大徽章
+  const dQuickAnswer = report.plan_code === 'D' ? extractDAnswer(aiContent) : ''
+  const dPathSteps: PathStep[] = report.plan_code === 'D' ? extractDSteps(aiContent) : []
+
   // 結構化解析 — 保留原始章節順序
   const allSections = parseStructuredContent(aiContent)
 
@@ -776,12 +879,45 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       <style>{`
         ${isSimplified ? `.locale-cn { font-family: var(--font-body-sc), var(--font-body), "Noto Sans SC", sans-serif; }
         .locale-cn .report-h3, .locale-cn h1, .locale-cn h2, .locale-cn h3 { font-family: var(--font-sans-sc), var(--font-sans), "Noto Serif SC", serif; }` : ''}
-        .report-h3 { font-size: 1.05rem; font-weight: 600; color: var(--color-gold); margin: 1.5rem 0 0.6rem; font-family: var(--font-sans); }
+        /* 章節標題層次強化（DeepSeek 建議：H3 左金條 4px 85% 不透明） */
+        .report-h3 { font-size: 1.05rem; font-weight: 600; color: var(--color-gold); margin: 1.5rem 0 0.6rem; font-family: var(--font-sans); padding-left: 12px; border-left: 4px solid rgba(201,168,76,0.85); line-height: 1.5; }
         .report-bold { color: var(--color-cream); font-weight: 600; }
         .report-li { margin-left: 1.5rem; color: var(--color-text-muted); list-style: disc; margin-bottom: 0.5rem; line-height: 1.9; font-size: 0.9rem; }
         .report-li-num { margin-left: 1.5rem; color: var(--color-text-muted); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.9; font-size: 0.9rem; }
         .report-p { color: var(--color-text-muted); line-height: 1.9; margin-bottom: 0.85rem; font-size: 0.9rem; }
-        .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; }
+        .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        /* 目錄連結 hover/active/scrollspy 態 */
+        .toc-link { position: relative; transition: all 0.18s ease; border-left: 2px solid transparent; }
+        .toc-link:hover { transform: translateX(3px); }
+        .toc-link:active { transform: translateX(3px) scale(0.98); background: rgba(201,168,76,0.10) !important; }
+        /* 當前章節高亮 (ScrollSpy) */
+        .toc-link[data-active="true"] {
+          border-left-color: rgba(201,168,76,0.8);
+          background: rgba(201,168,76,0.08);
+          color: var(--color-gold) !important;
+          font-weight: 600;
+          padding-left: calc(0.75rem - 2px);
+        }
+        .toc-link[data-active="true"] span:last-child { color: var(--color-gold) !important; }
+        .toc-link:focus-visible { outline: 2px solid rgba(201,168,76,0.5); outline-offset: 2px; }
+        /* 金色小徽章 hover 放大（Top1 卡片等） */
+        .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(201,168,76,0.15); }
+        .hover-lift:active { transform: translateY(0) scale(0.99); }
+        /* D 方案 3 步驟圓徽章 */
+        .step-badge { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: linear-gradient(135deg, #c9a84c, #e8c87a); color: #0a0e1a; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(201,168,76,0.3); }
+        /* 手機版適配（390px / iPhone SE-14 base） */
+        @media (max-width: 640px) {
+          .section-card { padding: 18px; margin-bottom: 16px; }
+          .report-p { font-size: 0.88rem; line-height: 1.85; }
+          .report-h3 { font-size: 1rem !important; padding-left: 8px; }
+          h1 { font-size: 1.6rem !important; }
+          h2 { font-size: 1.15rem !important; }
+        }
+        /* 平板版（641-1024px） */
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .section-card { padding: 22px; }
+        }
         @media print {
           body, html { background: white !important; color: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           nav, footer, .no-print { display: none !important; }
@@ -805,6 +941,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       <ReadingProgressBar />
       {/* #13 回到頂部浮動按鈕 */}
       <BackToTopButton />
+      {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
+      <ScrollSpy />
 
       <div className="max-w-3xl mx-auto px-6 pt-12">
 
@@ -814,16 +952,79 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         </div>
 
         {/* ──── 報告頭部 ──── */}
-        <div className="glass rounded-2xl p-10 mb-8 text-center">
-          <div className="text-gold/60 text-xs tracking-[3px] mb-2 uppercase">
+        <div className="glass rounded-2xl p-8 sm:p-10 mb-8 text-center relative overflow-hidden">
+          {/* 頂部金色裝飾光帶 */}
+          <div aria-hidden className="absolute top-0 left-0 right-0 h-[2px]" style={{
+            background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.6), transparent)',
+          }} />
+          {/* 右上角徑向光暈 */}
+          <div aria-hidden className="absolute -top-16 -right-16 w-48 h-48 opacity-[0.08]" style={{
+            background: 'radial-gradient(circle, rgba(201,168,76,1) 0%, transparent 70%)',
+          }} />
+
+          <div className="text-gold/60 text-xs tracking-[3px] mb-2 uppercase relative z-10">
             {PLAN_NAMES[report.plan_code] || '命理分析報告'}
           </div>
-          <h1 className="text-3xl font-bold text-cream mb-1" style={{ fontFamily: 'var(--font-sans)' }}>
-            {isFamily && report.birth_data?.member_names
-              ? (report.birth_data.member_names as string[]).filter(Boolean).join('、') + ' 家族'
-              : report.client_name}
-          </h1>
-          <div className="text-text-muted/40 text-xs mt-2 flex items-center justify-center gap-3">
+
+          {/* R 方案：雙人姓名大字，中間「×」分隔 */}
+          {isRelationship && report.birth_data?.members && report.birth_data.members.length >= 2 ? (
+            <div className="flex items-center justify-center gap-4 sm:gap-6 mb-2 relative z-10 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+                {report.birth_data.members[0]?.name || report.client_name}
+              </h1>
+              <span className="text-xl sm:text-2xl text-gold/70 font-light" aria-hidden>&#10005;</span>
+              <h1 className="text-2xl sm:text-3xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+                {report.birth_data.members[1]?.name || '合盤對象'}
+              </h1>
+            </div>
+          ) : (
+            <h1 className="text-3xl sm:text-4xl font-bold text-cream mb-1 relative z-10" style={{ fontFamily: 'var(--font-sans)' }}>
+              {isFamily && report.birth_data?.member_names
+                ? (report.birth_data.member_names as string[]).filter(Boolean).join('、') + ' 家族'
+                : report.client_name}
+            </h1>
+          )}
+
+          {/* G15 家族：成員徽章（首字大圓 32px + 角色標籤）*/}
+          {isFamily && report.birth_data?.member_names && (report.birth_data.member_names as string[]).filter(Boolean).length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2.5 mt-5 relative z-10">
+              {(report.birth_data.member_names as string[]).filter(Boolean).slice(0, 8).map((name, i) => {
+                // 從 members 陣列推斷角色（gender 推 父/母/子/女，若 relation_description 有就優先）
+                const member = report.birth_data?.members?.[i]
+                const gender = member?.gender?.toLowerCase() || ''
+                // 根據位置推斷角色（多數家庭第一個為父/母）
+                let role = ''
+                if (i === 0 && gender === 'male') role = '父'
+                else if (i === 0 && gender === 'female') role = '母'
+                else if (gender === 'male') role = i === 1 ? '母' : '子'
+                else if (gender === 'female') role = i === 1 ? '父' : '女'
+                return (
+                <div key={i} className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full" style={{
+                  background: 'rgba(197,150,58,0.08)',
+                  border: '1px solid rgba(197,150,58,0.22)',
+                }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{
+                    background: 'rgba(197,150,58,0.28)',
+                    color: '#c9a84c',
+                    border: '1px solid rgba(197,150,58,0.35)',
+                  }}>
+                    {name.slice(0, 1)}
+                  </div>
+                  <div className="flex flex-col items-start leading-tight">
+                    <span className="text-xs text-cream/85 font-medium">{name}</span>
+                    {role && (
+                      <span className="text-[9px] text-text-muted/70 tracking-wider">
+                        {role}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="text-text-muted/50 text-xs mt-3 flex items-center justify-center gap-3 relative z-10">
             {/* P0-6（2026-04-17）：用固定 ISO 格式避免 server/client timezone 差異觸發 hydration error */}
             <span suppressHydrationWarning>{(() => {
               const d = new Date(report.created_at)
@@ -836,25 +1037,219 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <ReadingTime textLength={report.report_result?.ai_content?.length || 0} />
           </div>
 
-          {/* R 方案專屬：相容度文字描述（不顯示分數） */}
+          {/* R 方案專屬：相容度結論大徽章（最醒目，品牌金色系統一配色） */}
           {isRelationship && compatibilityVerdict && (
-            <div className="mt-6">
+            <div className="mt-6 relative z-10">
               <div
-                className="inline-block px-5 py-1.5 rounded-full text-sm font-bold tracking-wider"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-base font-bold tracking-wider"
                 style={{
-                  background: 'rgba(197,150,58,0.15)',
+                  // 以品牌金為基調的單色系變化，避免多色衝突
+                  background: compatibilityVerdict === '互補互助'
+                    ? 'linear-gradient(135deg, rgba(197,150,58,0.22), rgba(232,200,122,0.14))'
+                    : compatibilityVerdict === '合，但有雷區'
+                    ? 'linear-gradient(135deg, rgba(197,150,58,0.18), rgba(26,42,74,0.28))'
+                    : 'linear-gradient(135deg, rgba(197,150,58,0.10), rgba(122,159,207,0.20))',
                   color: '#c9a84c',
-                  border: '1px solid rgba(197,150,58,0.3)',
+                  border: '1px solid rgba(197,150,58,0.35)',
+                  boxShadow: '0 4px 16px rgba(201,168,76,0.12)',
                 }}
               >
+                <span className="text-lg" aria-hidden>
+                  {compatibilityVerdict === '互補互助' ? '\u2726' : compatibilityVerdict === '合，但有雷區' ? '\u26A1' : '\u25CE'}
+                </span>
                 {compatibilityVerdict}
+              </div>
+              <div className="text-text-muted/60 text-xs mt-2 tracking-wide">根據七大命理系統綜合判定</div>
+            </div>
+          )}
+
+          {/* E1/E2 專屬：事件/月份徽章 */}
+          {isChumenji && (
+            <div className="mt-5 relative z-10 flex flex-wrap justify-center gap-2">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium" style={{
+                background: 'rgba(197,150,58,0.10)',
+                border: '1px solid rgba(197,150,58,0.25)',
+                color: '#c9a84c',
+              }}>
+                <span aria-hidden>&#9733;</span>
+                {report.plan_code === 'E1' ? 'Top3 加乘時機' : '整月四週出行時機'}
+              </div>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-text-muted" style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}>
+                25 層評分體系
               </div>
             </div>
           )}
 
           {/* 操作按鈕（Client Component 處理 onClick）*/}
-          <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} reportId={report.id} />
+          <div className="relative z-10">
+            <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} reportId={report.id} />
+          </div>
         </div>
+
+        {/* ──── D 方案：你的問題引言卡 ──── */}
+        {report.plan_code === 'D' && (report.birth_data?.customer_note || report.birth_data?.analysis_topic || report.birth_data?.topic) && (
+          <div className="rounded-2xl p-6 sm:p-8 mb-6 relative overflow-hidden" style={{
+            background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.3))',
+            border: '1px solid rgba(197,150,58,0.22)',
+          }}>
+            <div aria-hidden className="absolute top-0 left-0 w-1 h-full" style={{
+              background: 'linear-gradient(180deg, rgba(197,150,58,0.6), rgba(197,150,58,0.1))',
+            }} />
+            <div className="pl-3">
+              <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 uppercase">你的問題</div>
+              {(report.birth_data.analysis_topic || report.birth_data.topic) && (
+                <div className="inline-block px-3 py-1 mb-3 rounded-full text-xs font-medium" style={{
+                  background: 'rgba(197,150,58,0.12)',
+                  color: '#c9a84c',
+                  border: '1px solid rgba(197,150,58,0.2)',
+                }}>
+                  主題：{report.birth_data.analysis_topic || report.birth_data.topic}
+                </div>
+              )}
+              {report.birth_data.customer_note && (
+                <p className="text-cream/90 text-base sm:text-lg leading-8 italic" style={{ fontFamily: 'var(--font-sans)' }}>
+                  &ldquo;{report.birth_data.customer_note}&rdquo;
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ──── D 方案：10 秒結論大徽章 ──── */}
+        {report.plan_code === 'D' && dQuickAnswer && (
+          <div className="rounded-2xl p-8 mb-6 text-center relative overflow-hidden hover-lift" style={{
+            background: 'linear-gradient(135deg, rgba(197,150,58,0.14), rgba(26,42,74,0.5))',
+            border: '1.5px solid rgba(197,150,58,0.35)',
+            boxShadow: '0 4px 20px rgba(201,168,76,0.10)',
+          }}>
+            <div aria-hidden className="absolute -top-10 -right-10 w-40 h-40 opacity-[0.10]" style={{
+              background: 'radial-gradient(circle, rgba(201,168,76,1) 0%, transparent 70%)',
+            }} />
+            <div className="relative z-10">
+              <div className="text-gold/70 text-[10px] tracking-[4px] mb-3 uppercase">10 秒結論</div>
+              <p className="text-cream text-lg sm:text-xl font-semibold leading-9" style={{
+                fontFamily: 'var(--font-sans)',
+                letterSpacing: '0.02em',
+              }}>
+                {dQuickAnswer}
+              </p>
+              <div className="text-text-muted/60 text-xs mt-4 tracking-wider">
+                繼續往下閱讀，了解完整命理分析
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ──── D 方案：你的路 3 步驟卡（若有抽取到）──── */}
+        {report.plan_code === 'D' && dPathSteps.length > 0 && (
+          <div className="rounded-2xl p-6 sm:p-8 mb-8 relative overflow-hidden" style={{
+            background: 'linear-gradient(135deg, rgba(106,176,76,0.08), rgba(26,42,74,0.3))',
+            border: '1px solid rgba(106,176,76,0.22)',
+          }}>
+            <div className="mb-4 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm" style={{
+                background: 'rgba(106,176,76,0.18)',
+                color: '#6ab04c',
+              }} aria-hidden>&#10003;</div>
+              <h3 className="text-lg font-semibold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+                你的路 — 3 步驟行動
+              </h3>
+            </div>
+            <div className="space-y-4 sm:space-y-5">
+              {dPathSteps.map((step, i) => (
+                <div key={i} className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl" style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                }}>
+                  <div className="flex items-center gap-3 sm:block sm:shrink-0">
+                    <div className="step-badge" aria-label={`第 ${i + 1} 步`}>
+                      {i + 1}
+                    </div>
+                    {/* 手機版：徽章旁直接顯示步驟標題 */}
+                    <div className="sm:hidden text-cream font-semibold text-base">
+                      {step.title}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {/* 桌機版才顯示獨立標題 */}
+                    <div className="hidden sm:block text-cream font-semibold mb-1.5" style={{ fontFamily: 'var(--font-sans)' }}>
+                      {step.title}
+                    </div>
+                    {step.desc && (
+                      <p className="text-text-muted text-sm leading-7">
+                        {step.desc}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ──── E1 方案：事件資訊卡 ──── */}
+        {report.plan_code === 'E1' && (report.birth_data?.event_type || report.birth_data?.event_description) && (
+          <div className="rounded-2xl p-6 sm:p-8 mb-8 relative overflow-hidden" style={{
+            background: 'linear-gradient(135deg, rgba(197,150,58,0.08), rgba(26,42,74,0.3))',
+            border: '1px solid rgba(197,150,58,0.22)',
+          }}>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{
+                background: 'rgba(197,150,58,0.18)',
+                border: '1px solid rgba(197,150,58,0.3)',
+              }} aria-hidden>&#9876;</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-gold/60 text-[10px] tracking-[3px] mb-1 uppercase">本次事件</div>
+                {report.birth_data.event_type && (
+                  <div className="text-cream text-lg font-semibold mb-1" style={{ fontFamily: 'var(--font-sans)' }}>
+                    {report.birth_data.event_type}
+                  </div>
+                )}
+                {report.birth_data.event_description && (
+                  <p className="text-text-muted text-sm leading-7">
+                    {report.birth_data.event_description}
+                  </p>
+                )}
+                {(report.birth_data.event_start_date || report.birth_data.event_end_date) && (
+                  <div className="text-gold/70 text-xs mt-2 tracking-wider">
+                    時間範圍：{report.birth_data.event_start_date || '—'}
+                    {report.birth_data.event_end_date ? ` ~ ${report.birth_data.event_end_date}` : ''}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ──── E2 方案：月份卡 ──── */}
+        {report.plan_code === 'E2' && report.birth_data?.target_month && (
+          <div className="rounded-2xl p-6 sm:p-8 mb-8 relative overflow-hidden text-center" style={{
+            background: 'linear-gradient(135deg, rgba(197,150,58,0.10), rgba(26,42,74,0.4))',
+            border: '1px solid rgba(197,150,58,0.25)',
+          }}>
+            <div aria-hidden className="absolute -top-8 -right-8 w-32 h-32 opacity-[0.08]" style={{
+              background: 'radial-gradient(circle, rgba(201,168,76,1) 0%, transparent 70%)',
+            }} />
+            <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 uppercase">月度出行規劃</div>
+            <div className="text-3xl sm:text-4xl font-bold text-gold tracking-wider" style={{
+              fontFamily: 'var(--font-sans)',
+              textShadow: '0 0 20px rgba(197,150,58,0.25)',
+            }}>
+              {(() => {
+                const m = report.birth_data.target_month
+                if (/^\d{4}-\d{2}$/.test(m)) {
+                  const [y, mm] = m.split('-')
+                  return `${y} 年 ${Number(mm)} 月`
+                }
+                return m
+              })()}
+            </div>
+            <div className="text-text-muted/70 text-xs mt-2">共 4 週 · 每週 Top1 最佳出行時機</div>
+          </div>
+        )}
 
         {/* ──── 命格名片卡片（主題式報告專屬）──── */}
         {personalityCard && (
@@ -1000,22 +1395,66 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 目錄導航 ──── */}
+        {/* ──── 目錄導航（起承轉合四篇分組）──── */}
         {sections.length > 3 && (
           <div className="glass rounded-xl p-6 mb-8 no-print">
-            <div className="text-gold/70 text-xs tracking-[2px] mb-4">{isShowingSummary ? '重點摘要目錄' : '目錄'}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {sections.map((sec, i) => {
-                const typeIcons: Record<string, string> = { positive: '&#10003;', caution: '&#9888;', improvement: '&#9881;', general: '&#9672;' }
-                return (
-                  <a key={i} href={`#sec-${i}`}
-                    className="flex items-center gap-2 text-sm text-text-muted hover:text-gold transition-colors py-1.5 px-3 rounded-lg hover:bg-white/5">
-                    <span className="text-xs text-gold/50" dangerouslySetInnerHTML={{ __html: typeIcons[sec.type] || '&#9672;' }} />
-                    <span>{sec.title}</span>
-                  </a>
-                )
-              })}
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-gold/70 text-xs tracking-[2px]">{isShowingSummary ? '重點摘要目錄' : '目錄'}</div>
+              <div className="text-text-muted/50 text-[10px] tracking-wider">
+                共 {sections.length} 章
+              </div>
             </div>
+            {(() => {
+              const typeIcons: Record<string, string> = { positive: '&#10003;', caution: '&#9888;', improvement: '&#9881;', general: '&#9672;' }
+              // 出門訣或章節少：維持扁平目錄
+              if (isChumenji || sections.length < 4) {
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {sections.map((sec, i) => (
+                      <a key={i} href={`#sec-${i}`}
+                        className="toc-link flex items-center gap-2 text-sm text-text-muted hover:text-gold py-1.5 px-3 rounded-lg hover:bg-white/5">
+                        <span className="text-xs text-gold/50" dangerouslySetInnerHTML={{ __html: typeIcons[sec.type] || '&#9672;' }} />
+                        <span>{sec.title}</span>
+                      </a>
+                    ))}
+                  </div>
+                )
+              }
+              // 付費方案：按起承轉合分組
+              const grouped = groupChaptersByParts(report.plan_code, sections)
+              const indexMap = new Map<ContentSection, number>()
+              sections.forEach((s, i) => indexMap.set(s, i))
+              return (
+                <div className="space-y-4">
+                  {grouped.map(group => (
+                    <div key={group.part.key}>
+                      <div
+                        className="text-[11px] mb-2 flex items-center gap-2"
+                        style={{ color: 'rgba(197,150,58,0.75)', letterSpacing: '2px' }}
+                      >
+                        <span style={{ fontSize: '14px' }}>{group.part.icon}</span>
+                        <span>{group.part.label} · {group.part.stage}</span>
+                        <span style={{ color: '#e6d89a', fontSize: '12px', letterSpacing: 'normal' }}>
+                          {group.part.name}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
+                        {group.chapters.map(sec => {
+                          const i = indexMap.get(sec) ?? 0
+                          return (
+                            <a key={i} href={`#sec-${i}`}
+                              className="toc-link flex items-center gap-2 text-sm text-text-muted hover:text-gold py-1.5 px-3 rounded-lg hover:bg-white/5">
+                              <span className="text-xs text-gold/50" dangerouslySetInnerHTML={{ __html: typeIcons[sec.type] || '&#9672;' }} />
+                              <span>{sec.title}</span>
+                            </a>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         )}
 
@@ -1065,11 +1504,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6 sm:space-y-8">
               {top5Timings.map((timing) => (
                 <div
                   key={timing.rank}
-                  className="section-card"
+                  className="section-card hover-lift"
                   style={{
                     background: timing.rank === 1
                       ? 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(15,22,40,0.6))'
@@ -1077,6 +1516,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     border: timing.rank === 1
                       ? '1px solid rgba(197,150,58,0.3)'
                       : '1px solid rgba(255,255,255,0.08)',
+                    // Top1 加金色光暈強化視覺優先級
+                    boxShadow: timing.rank === 1 ? '0 4px 20px rgba(201,168,76,0.12)' : undefined,
                   }}
                 >
                   {/* 卡片頂部：排名 + 日期時間 */}
@@ -1230,31 +1671,64 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </CollapsibleSection>
         ))}
 
-        {/* ──── 報告章節（保留原始順序，依類型套用不同視覺 + 折疊/展開）──── */}
-        {sections.map((sec, i) => {
-          // 三大核心區塊的視覺配置
+        {/* ──── 報告章節（起承轉合四大篇摺疊結構）──── */}
+        {(() => {
+          // 三大核心區塊的視覺配置（深藍/金/綠三色系，符合品牌一致性）
           const sectionStyles: Record<string, { bg: string; border: string; iconBg: string; icon: string; titleColor: string }> = {
-            positive: { bg: 'rgba(106, 176, 76, 0.06)', border: '1px solid rgba(106, 176, 76, 0.15)', iconBg: 'rgba(106, 176, 76, 0.15)', icon: '✦', titleColor: '#6ab04c' },
-            caution: { bg: 'rgba(224, 150, 58, 0.06)', border: '1px solid rgba(224, 150, 58, 0.15)', iconBg: 'rgba(224, 150, 58, 0.15)', icon: '⚡', titleColor: '#e0963a' },
-            improvement: { bg: 'rgba(197, 150, 58, 0.06)', border: '1px solid rgba(197, 150, 58, 0.15)', iconBg: 'rgba(197, 150, 58, 0.15)', icon: '🔑', titleColor: 'var(--color-gold)' },
+            positive: { bg: 'rgba(106, 176, 76, 0.06)', border: '1px solid rgba(106, 176, 76, 0.18)', iconBg: 'rgba(106, 176, 76, 0.15)', icon: '\u2726', titleColor: '#6ab04c' },
+            // caution 改為深藍（品牌一致性，避免橙色與金色衝突）— DeepSeek 反饋修正
+            caution: { bg: 'rgba(26, 42, 74, 0.20)', border: '1px solid rgba(122, 159, 207, 0.25)', iconBg: 'rgba(122, 159, 207, 0.15)', icon: '\u26A1', titleColor: '#7a9fcf' },
+            improvement: { bg: 'rgba(197, 150, 58, 0.06)', border: '1px solid rgba(197, 150, 58, 0.18)', iconBg: 'rgba(197, 150, 58, 0.15)', icon: '\u273F', titleColor: 'var(--color-gold)' },
           }
-          const sStyle = sectionStyles[sec.type]
-          const chapterNum = i + 1
 
-          if (sStyle) {
-            // 三大核心區塊：有圖標、有色彩背景
+          // 單章節渲染（抽出來讓分篇/不分篇都能用）
+          const renderChapter = (sec: ContentSection, globalIdx: number, chapterNum: number) => {
+            const sStyle = sectionStyles[sec.type]
+            const tldr = extractTLDR(sec.content, 70)
+
+            // 章節標題下的 TL;DR 灰字摘要
+            const tldrNode = tldr ? (
+              <div
+                className="text-xs mt-1 leading-6"
+                style={{ color: 'rgba(255,255,255,0.48)', fontStyle: 'italic' }}
+              >
+                {tldr}
+              </div>
+            ) : null
+
+            if (sStyle) {
+              return (
+                <CollapsibleSection
+                  key={globalIdx}
+                  id={`sec-${globalIdx}`}
+                  title={sec.title}
+                  titleColor={sStyle.titleColor}
+                  icon={
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: sStyle.iconBg }}>{sStyle.icon}</div>
+                  }
+                  defaultExpanded={true}
+                  style={{ background: sStyle.bg, border: sStyle.border }}
+                >
+                  {tldrNode}
+                  <div className="report-p">
+                    <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
+                  </div>
+                </CollapsibleSection>
+              )
+            }
+
             return (
               <CollapsibleSection
-                key={i}
-                id={`sec-${i}`}
+                key={globalIdx}
+                id={`sec-${globalIdx}`}
                 title={sec.title}
-                titleColor={sStyle.titleColor}
-                icon={
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: sStyle.iconBg }}>{sStyle.icon}</div>
-                }
+                titleColor="var(--color-gold)"
+                chapterLabel={<span className="text-xs text-gold/40 font-mono font-bold">{String(chapterNum).padStart(2, '0')}</span>}
                 defaultExpanded={true}
-                style={{ background: sStyle.bg, border: sStyle.border }}
+                className="glass"
+                style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
               >
+                {tldrNode}
                 <div className="report-p">
                   <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
                 </div>
@@ -1262,24 +1736,43 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             )
           }
 
-          // 一般章節：glass card，左側金色豎條
-          return (
-            <CollapsibleSection
-              key={i}
-              id={`sec-${i}`}
-              title={sec.title}
-              titleColor="var(--color-gold)"
-              chapterLabel={<span className="text-xs text-gold/40 font-mono font-bold">{String(chapterNum).padStart(2, '0')}</span>}
-              defaultExpanded={true}
-              className="glass"
-              style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
-            >
-              <div className="report-p">
-                <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
-              </div>
-            </CollapsibleSection>
-          )
-        })}
+          // 付費方案（非出門訣）才啟用起承轉合分篇
+          // C 方案（完整 15 章）/D/G15/R 章節結構固定，可安全分篇
+          const eligibleForParts = !isChumenji && sections.length >= 4
+          if (!eligibleForParts) {
+            // 出門訣或章節太少：維持原本扁平渲染
+            return sections.map((sec, i) => renderChapter(sec, i, i + 1))
+          }
+
+          // 起承轉合分篇渲染
+          const grouped = groupChaptersByParts(report.plan_code, sections)
+          // 建立全域索引對應（保留 sec-${i} 錨點）
+          const indexMap = new Map<ContentSection, number>()
+          sections.forEach((s, i) => indexMap.set(s, i))
+
+          return grouped.map((group, gIdx) => {
+            // 起/承預設展開（核心認知、首屏即讀），轉/合預設摺疊（深入探索、點擊展開）
+            // D 方案短報告則全展開（只有 7 章）
+            const defaultExpanded = report.plan_code === 'D'
+              ? true
+              : (group.part.key === 'qi' || group.part.key === 'cheng')
+            return (
+              <PartSection
+                key={`part-${group.part.key}`}
+                part={group.part}
+                chapterCount={group.chapters.length}
+                defaultExpanded={defaultExpanded}
+                currentOrder={gIdx + 1}
+                totalParts={grouped.length}
+              >
+                {group.chapters.map((sec) => {
+                  const globalIdx = indexMap.get(sec) ?? 0
+                  return renderChapter(sec, globalIdx, globalIdx + 1)
+                })}
+              </PartSection>
+            )
+          })
+        })()}
 
         {/* ──── 出門訣推廣 ──── */}
         {!['E1', 'E2'].includes(report.plan_code) && (

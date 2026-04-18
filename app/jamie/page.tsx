@@ -160,7 +160,13 @@ export default function AdminOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* 收入折線圖 */}
         <div className="lg:col-span-2 bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <h3 className="text-sm font-semibold text-white mb-4">收入趨勢</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <span className="w-1 h-4 bg-amber-400 rounded-full" />
+              收入趨勢
+            </h3>
+            <span className="text-[10px] text-gray-500">USD / 日</span>
+          </div>
           {data.daily_revenue && data.daily_revenue.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={data.daily_revenue}>
@@ -179,7 +185,10 @@ export default function AdminOverview() {
 
         {/* 方案圓餅圖 */}
         <div className="bg-[#1a1a1a] rounded-xl p-5 border border-white/5">
-          <h3 className="text-sm font-semibold text-white mb-4">方案分佈</h3>
+          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 bg-amber-400 rounded-full" />
+            方案分佈
+          </h3>
           {pieData.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={180}>
