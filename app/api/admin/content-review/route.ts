@@ -36,49 +36,77 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabase()
 
+  // 實際 moderation_log schema 較精簡，只查實際存在的欄位
+  // action_taken / admin_override / notes / categories / ai_scores / severity / layer / content_sample
   let query = supabase
     .from('moderation_log')
     .select(`
       id,
       report_id,
-      plan_code,
-      action,
-      blocked,
-      reason,
-      hits,
+      action_taken,
+      admin_override,
+      severity,
+      layer,
+      categories,
       ai_scores,
-      content_preview,
-      retry_attempt,
-      status,
-      admin_note,
-      reviewed_by,
-      reviewed_at,
+      content_sample,
+      admin_id,
+      notes,
       created_at,
-      paid_reports(client_name, customer_email, plan_code, status)
+      updated_at
     `)
     .order('created_at', { ascending: false })
     .limit(limit)
 
+  // status 改用 action_taken 對應（flagged → action_taken is null；其他 → action_taken）
   if (status && status !== 'all') {
-    query = query.eq('status', status)
-  }
-  if (planCode) {
-    query = query.eq('plan_code', planCode)
+    if (status === 'flagged') {
+      query = query.is('action_taken', null)
+    } else {
+      query = query.eq('action_taken', status)
+    }
   }
 
   const { data, error } = await query
   if (error) {
+    if (String(error.code) === '42P01') {
+      return NextResponse.json({
+        items: [],
+        stats: { total_flagged: 0 },
+        note: 'moderation_log 表未建立',
+      })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // 附帶總數統計（for dashboard header）
+  // 回傳時把實際欄位 shim 成前端預期的 shape
+  const items = (data || []).map((row: Record<string, unknown>) => ({
+    id: row.id,
+    report_id: row.report_id || null,
+    plan_code: '',
+    action: (row.action_taken as string) || 'flagged',
+    blocked: row.severity === 'block',
+    reason: (row.notes as string) || (row.severity as string) || '',
+    hits: Array.isArray(row.categories) ? row.categories : [],
+    ai_scores: row.ai_scores || {},
+    content_preview: (row.content_sample as string) || '',
+    retry_attempt: 0,
+    status: (row.action_taken as string) || 'flagged',
+    admin_note: (row.notes as string) || null,
+    reviewed_by: (row.admin_id as string) || null,
+    reviewed_at: row.updated_at || null,
+    created_at: row.created_at,
+    paid_reports: null,
+  }))
+
+  // 附帶總數統計（for dashboard header）— 用 action_taken IS NULL 代表待審
   const { count: totalFlagged } = await supabase
     .from('moderation_log')
     .select('*', { count: 'exact', head: true })
-    .eq('status', 'flagged')
+    .is('action_taken', null)
 
   return NextResponse.json({
-    items: data || [],
+    items,
     stats: {
       total_flagged: totalFlagged || 0,
     },
@@ -122,7 +150,7 @@ export async function POST(req: NextRequest) {
   // 取得 moderation_log 紀錄 + 對應 report
   const { data: logRow, error: readErr } = await supabase
     .from('moderation_log')
-    .select('id, report_id, plan_code, status, action')
+    .select('id, report_id, action_taken, severity')
     .eq('id', logId)
     .maybeSingle()
 
@@ -135,10 +163,10 @@ export async function POST(req: NextRequest) {
     const { error: updErr } = await supabase
       .from('moderation_log')
       .update({
-        status: 'dismissed',
-        admin_note: note || null,
-        reviewed_by: 'admin',
-        reviewed_at: new Date().toISOString(),
+        action_taken: 'dismissed',
+        notes: note || null,
+        admin_id: 'admin',
+        updated_at: new Date().toISOString(),
       })
       .eq('id', logId)
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
@@ -155,11 +183,11 @@ export async function POST(req: NextRequest) {
     const { error: updErr } = await supabase
       .from('moderation_log')
       .update({
-        status: 'force_passed',
-        action: 'force_pass',
-        admin_note: note || null,
-        reviewed_by: 'admin',
-        reviewed_at: new Date().toISOString(),
+        action_taken: 'force_passed',
+        admin_override: 'force_pass',
+        notes: note || null,
+        admin_id: 'admin',
+        updated_at: new Date().toISOString(),
       })
       .eq('id', logId)
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
@@ -188,11 +216,11 @@ export async function POST(req: NextRequest) {
     await supabase
       .from('moderation_log')
       .update({
-        status: 'regenerated',
-        action: 'regenerated',
-        admin_note: note || null,
-        reviewed_by: 'admin',
-        reviewed_at: new Date().toISOString(),
+        action_taken: 'regenerated',
+        admin_override: 'regenerated',
+        notes: note || null,
+        admin_id: 'admin',
+        updated_at: new Date().toISOString(),
       })
       .eq('id', logId)
 

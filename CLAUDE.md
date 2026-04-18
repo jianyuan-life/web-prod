@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.2.6（2026-04-17）
+**網站版本：** v5.2.8（2026-04-18）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,29 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.2.7（2026-04-18 免費工具權威稽核修復：9 P0 + 4 P1）
+
+**P0 前端/資料綁定修復：**
+- ✅ 紫微「五行局顯示「局」」+「11 宮借對宮星」：改用 `/api/free-ziwei` 端點取代 `/api/calculate`（後者經 interpreter 後沒 raw_data）
+- ✅ 紫微 AI 解讀要求台灣繁體 + 禁止 Markdown（prompt 強化 + AIAnalysisCard fallback 用 traditional）
+- ✅ 八字旬空公式錯位：`calcKongwang` 改用枚舉 k 找 60 甲子位置（庚戌→寅卯 ✓、辛丑→辰巳 ✓）
+- ✅ 手機版水平溢出：四個 tools 頁面加 `overflow-x-hidden max-w-full` + 響應式 padding/字體
+
+**P0 後端（Fly.io 待部署）：**
+- ✅ 紫微閏月處理：`ziwei_basic_chart` 加入「前半月算本月 / 後半月算下月」邏輯
+- ✅ 紫微 hour_idx 修正：`(hour+1)//2` 取代 `hour//2`（加 23/0 時子時處理）
+- ✅ 紫微新增欄位：`wuxing_ju_num` / `year_gan` / `year_zhi` / `year_ganzhi`
+- ✅ 奇門年/月/日柱 + 節氣 + 旬首補齊：`hourly_qimen_chart` return 補 `year_gz / month_gz / day_gz / day_dz / jieqi / xun_shou`
+- ✅ 八字流年偏移一年：改用 6/1 取年柱（避開立春前），`LNSolar(yr, 6, 1, 12, 0, 0)`
+- ✅ 八字納音簡體殘留：改用繁體 `NAYIN_TABLE` 取代 `ba.getYearNaYin()`（四柱 + 命宮 + 身宮 + 胎元）
+
+**P1：**
+- ✅ AI Markdown `**` 殘留：`stripMd` 擴大清理 + bullets label 也過濾 + fallback 用 traditional（紫微/姓名/八字通用）
+- ✅ CSP 白名單加入 `https://www.googletagmanager.com`（修復 GA4 td API 被擋）
+- ✅ 奇門九宮手機版過擠：`min-w-[480px]` → `min-w-[320px] sm:min-w-[480px]`，`min-h-[180px]` → responsive
+
+**Type-check：** 零錯誤  **修復紀錄：** `FREE_TOOLS_FIX_LOG_0417.md`
 
 ### v5.2.2（2026-04-17 L5 推薦積分致命 bug 修復）
 

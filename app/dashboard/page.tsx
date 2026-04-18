@@ -155,6 +155,11 @@ function DashboardContent() {
       return data.reports || []
     }
 
+    // 非 200/401：伺服器錯誤時也標記 authFailed，讓用戶看到重新登入選項而非誤導的「還沒有報告」
+    if (res.status >= 500) {
+      console.error('fetchReports 伺服器錯誤', res.status)
+    }
+    setAuthFailed(true)
     return []
   }
 
@@ -463,15 +468,17 @@ function DashboardContent() {
             <div className="w-8 h-8 border-2 border-gold/50 border-t-gold rounded-full animate-spin mx-auto mb-4" />
             <p className="text-text-muted">載入中...</p>
           </div>
-        ) : authFailed && paymentSuccess && !stripeSessionId ? (
+        ) : authFailed && !stripeSessionId ? (
           <div className="glass rounded-2xl p-10 text-center">
             <div className="text-4xl mb-4">&#128274;</div>
             <h3 className="text-lg font-semibold text-cream mb-2">登入狀態已過期</h3>
             <p className="text-sm text-text-muted mb-2">
-              付款已成功！但從 Stripe 返回時登入狀態中斷。
+              {paymentSuccess
+                ? '付款已成功！但從 Stripe 返回時登入狀態中斷。'
+                : '您的登入憑證已過期，或需要重新登入才能看到報告。'}
             </p>
             <p className="text-sm text-text-muted mb-6">
-              請重新登入即可查看您的報告，報告正在生成中不受影響。
+              請重新登入即可查看您的報告，報告資料完全保留。
             </p>
             <a href="/auth/login?redirect=/dashboard"
               className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow inline-block">

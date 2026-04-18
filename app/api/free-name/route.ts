@@ -259,7 +259,11 @@ export async function POST(req: NextRequest) {
 4. 感情和家庭運
 5. 改善建議（如果有凶格）
 
-語氣要溫暖親切。不要用「您好」開頭，直接進入分析。`
+【格式要求】
+- 全篇必須使用台灣繁體中文
+- 不要使用 Markdown 語法：不要 ** 粗體、不要 # 標題、不要 - 符號、不要任何星號
+- 不要用「您好」開頭，直接進入分析
+- 語氣要溫暖親切`
 
       const aiRes = await fetch(DEEPSEEK_API, {
         method: 'POST',
@@ -267,7 +271,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           model: 'deepseek-chat', temperature: 0.8, max_tokens: 2000,
           messages: [
-            { role: 'system', content: '你是專業的姓名學命理師，善於用溫暖的語言解讀姓名五格。回答必須使用繁體中文。' },
+            { role: 'system', content: '你是專業的姓名學命理師，善於用溫暖的語言解讀姓名五格。回答必須使用台灣繁體中文，且不可使用 Markdown 語法（禁用 **粗體** # 標題 - 符號）。' },
             { role: 'user', content: prompt },
           ],
         }),
@@ -285,7 +289,7 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             model: 'moonshot-v1-auto', temperature: 0.8, max_tokens: 2000,
             messages: [
-              { role: 'system', content: '你是專業的姓名學命理師。回答必須使用繁體中文。' },
+              { role: 'system', content: '你是專業的姓名學命理師。回答必須使用台灣繁體中文，不可使用 Markdown 語法。' },
               { role: 'user', content: `請為「${fullName}」（人格${wuge.renge}${rengeJx.level}、總格${wuge.zongge}${zonggeJx.level}）做600字姓名學解讀。` },
             ],
           }),

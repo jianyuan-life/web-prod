@@ -8,6 +8,7 @@ import { FatalError, RetryableError } from 'workflow'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
+import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import {
   getAgeGroup,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
@@ -1084,10 +1085,11 @@ async function savePartialContent(reportId: string, callLabel: string, content: 
 }
 
 // ── Claude 串流呼叫（內部輔助，非 step）——含 600s 超時 + 串流存檔 ──
+// 回傳 content + usage（input/output tokens）以供 ai-cost-tracker 記錄
 async function claudeStreamingCall(
   systemPrompt: string, userPrompt: string, maxTokens: number,
   reportId?: string, callLabel?: string,
-): Promise<string> {
+): Promise<{ content: string; inputTokens: number; outputTokens: number }> {
   const checkpointKey = callLabel || 'default'
 
   // 串流存檔：檢查是否有上次中斷的部分內容，用「從這裡繼續」的 prompt
@@ -1171,6 +1173,9 @@ async function claudeStreamingCall(
   let result = ''
   let buffer = ''
   let lastCheckpoint = 0
+  // token 計量（從 SSE message_start / message_delta 事件收集）
+  let inputTokens = 0
+  let outputTokens = 0
 
   try {
     while (true) {
@@ -1187,6 +1192,18 @@ async function claudeStreamingCall(
           const event = JSON.parse(data)
           if (event.type === 'content_block_delta' && event.delta?.text) {
             result += event.delta.text
+          } else if (event.type === 'message_start' && event.message?.usage) {
+            inputTokens = event.message.usage.input_tokens || 0
+            // message_start 也可能帶初始 output_tokens（通常為 0~少量）
+            outputTokens = event.message.usage.output_tokens || outputTokens
+          } else if (event.type === 'message_delta' && event.usage) {
+            // Anthropic 串流：message_delta 的 usage.output_tokens 是累積值
+            if (typeof event.usage.output_tokens === 'number') {
+              outputTokens = event.usage.output_tokens
+            }
+            if (typeof event.usage.input_tokens === 'number' && event.usage.input_tokens > 0) {
+              inputTokens = event.usage.input_tokens
+            }
           }
         } catch { /* 忽略 */ }
       }
@@ -1231,7 +1248,7 @@ async function claudeStreamingCall(
     }
   }
 
-  return finalResult
+  return { content: finalResult, inputTokens, outputTokens }
 }
 
 // ── DeepSeek 呼叫（內部輔助，非 step）——含 180s 超時 ──
@@ -1454,16 +1471,75 @@ ${analyses.length}套系統排盤完整數據：
 
 // ── 付費報告 AI 呼叫（只用 Claude Opus，不降級）──
 // 客戶付了錢，就必須給最高品質。Claude 沒額度就報錯，不給次級品質。
+// 每次呼叫（成功/失敗）都會寫一筆到 ai_cost_log，方便查帳與異常分析。
 async function callClaudeOnly(
   systemPrompt: string, userPrompt: string, maxTokens: number, label: string,
   reportId?: string,
 ): Promise<{ content: string; model: string }> {
+  const model = 'claude-opus-4-6'
+  const start = Date.now()
+
   if (getClaudeApiKeys().length === 0) {
+    // 缺 key：記一筆 error，讓後台也能看到是環境設定問題
+    try {
+      await recordAIUsage({
+        provider: 'claude',
+        model,
+        promptTokens: 0,
+        completionTokens: 0,
+        reportId,
+        callStage: label,
+        latencyMs: Date.now() - start,
+        status: 'error',
+        errorMessage: 'missing CLAUDE_API_KEY',
+      })
+    } catch { /* ai_cost_log 壞了不能擋主流程 */ }
     throw new FatalError(`${label}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
   }
-  const content = await claudeStreamingCall(systemPrompt, userPrompt, maxTokens, reportId, label)
-  console.log(`${label} 完成 (claude-opus-4-6): ${content.length} 字`)
-  return { content, model: 'claude-opus-4-6' }
+
+  try {
+    const { content, inputTokens, outputTokens } = await claudeStreamingCall(
+      systemPrompt, userPrompt, maxTokens, reportId, label,
+    )
+
+    // 成功：寫一筆 success log（含 token 用量與 latency）
+    try {
+      await recordAIUsage({
+        provider: 'claude',
+        model,
+        promptTokens: inputTokens,
+        completionTokens: outputTokens,
+        reportId,
+        callStage: label,
+        latencyMs: Date.now() - start,
+        status: 'success',
+      })
+    } catch { /* 記錄失敗不影響主流程 */ }
+
+    console.log(`${label} 完成 (${model}): ${content.length} 字, tokens=${inputTokens}/${outputTokens}`)
+    return { content, model }
+  } catch (err) {
+    // 失敗（429/529/超時/AbortError 等）：寫一筆 error log，
+    // 即使 tokens 未知也保留一筆紀錄以便後台統計失敗率
+    try {
+      const status: 'timeout' | 'error' | 'retry' =
+        err instanceof RetryableError
+          ? (err.message?.includes('超時') ? 'timeout' : 'retry')
+          : 'error'
+      await recordAIUsage({
+        provider: 'claude',
+        model,
+        promptTokens: 0,
+        completionTokens: 0,
+        reportId,
+        callStage: label,
+        latencyMs: Date.now() - start,
+        status,
+        errorMessage: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+      })
+    } catch { /* 記錄失敗不影響主流程 */ }
+    throw err
+  }
 }
 
 // ── Step 2a: C 方案 AI 生成 — Call 1（命格名片+你是什麼樣的人+事業+財運） ──
@@ -1543,11 +1619,8 @@ export async function aiGenerateGeneric(
   const userPrompt = buildGenericUserPrompt(birthData, calcResult.client_data, calcResult.analyses, topic, question, undefined, chumenjiTop)
   const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
 
-  // 付費報告只用 Claude Opus，不降級
-  if (getClaudeApiKeys().length === 0) {
-    throw new FatalError(`方案 ${planCode}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
-  }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 128000, reportId, `${planCode}_main`)
+  // 付費報告只用 Claude Opus，不降級（透過 callClaudeOnly 同步記錄成本）
+  const { content } = await callClaudeOnly(localizedPrompt, userPrompt, 128000, `${planCode}_main`, reportId)
   const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
   console.log(`方案 ${planCode} AI 完成 (claude-opus-4-6): ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
@@ -1724,10 +1797,7 @@ export async function aiGenerateG15(
 
   const localizedPrompt = localizePrompt(systemPrompt, familyReports[0]?.birthData?.locale)
 
-  if (getClaudeApiKeys().length === 0) {
-    throw new FatalError('G15 家族藍圖：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
-  }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 128000, reportId, 'G15_main')
+  const { content } = await callClaudeOnly(localizedPrompt, userPrompt, 128000, 'G15_main', reportId)
   const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
   console.log(`G15 家族藍圖 AI 完成: ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
@@ -1822,10 +1892,7 @@ export async function aiGenerateR(
 
   const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
 
-  if (getClaudeApiKeys().length === 0) {
-    throw new FatalError('R 方案合否：缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。')
-  }
-  const content = await claudeStreamingCall(localizedPrompt, userPrompt, 128000, reportId, 'R_main')
+  const { content } = await callClaudeOnly(localizedPrompt, userPrompt, 128000, 'R_main', reportId)
   const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
   console.log(`R 方案合否 AI 完成: ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
@@ -2642,6 +2709,14 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
     error_message: errorMessage,
   }).eq('id', reportId)
   console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
+
+  // Telegram 即時告警給老闆
+  try {
+    const { notifyFailed } = await import('@/lib/ai/observability/telegram')
+    await notifyFailed(reportId, errorMessage)
+  } catch (e) {
+    console.warn('Telegram 告警失敗（不阻塞）:', e)
+  }
 
   const resend = new Resend(process.env.RESEND_API_KEY || '')
 

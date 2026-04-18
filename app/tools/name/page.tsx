@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { searchCities, searchLocations, type LocationSearchResult } from '@/lib/cities'
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
+import AIAnalysisCard from '@/components/AIAnalysisCard'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -228,9 +229,9 @@ export default function NameToolPage() {
   }
 
   return (
-    <div className="py-16">
-      <div className="max-w-5xl mx-auto px-6">
-        <h1 className="text-3xl font-bold text-center mb-2">
+    <div className="py-16 overflow-x-hidden max-w-full">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 break-words">
           <span className="text-gradient-gold">姓名學速算</span>
         </h1>
         <p className="text-center text-text-muted mb-2">五格剖象法 + 三才配置 + 數理吉凶分析</p>
@@ -674,13 +675,7 @@ export default function NameToolPage() {
 
             {/* AI 深度解讀 */}
             {result.hasAi && result.aiAnalysis && (
-              <div className="glass rounded-2xl p-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-gold rounded-full" />
-                  <h2 className="text-lg font-bold text-cream">姓名深度解讀</h2>
-                </div>
-                <p className="text-base text-text leading-[2] whitespace-pre-line">{result.aiAnalysis}</p>
-              </div>
+              <AIAnalysisCard text={result.aiAnalysis} title="姓名深度解讀" accentColor="amber" />
             )}
 
             {/* 速算提示 */}
@@ -723,7 +718,7 @@ export default function NameToolPage() {
                   </div>
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60">
                     <span>&#128274; Stripe 安全支付</span>
-                    <span>&#9889; 5 分鐘出報告</span>
+                    <span>&#9889; 約 30-60 分鐘出報告</span>
                     <span>&#128230; PDF 永久保存</span>
                   </div>
                 </div>

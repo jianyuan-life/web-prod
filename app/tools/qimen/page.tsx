@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
+import AIAnalysisCard from '@/components/AIAnalysisCard'
 
 // ── 十二時辰 ──
 const SHICHEN = [
@@ -250,7 +251,7 @@ export default function QimenToolPage() {
 
     if (isCenterPalace) {
       return (
-        <div key={palaceNum} className="relative border border-amber-500/30 rounded-xl bg-amber-500/[0.04] p-3 min-h-[180px] flex flex-col justify-center items-center">
+        <div key={palaceNum} className="relative border border-amber-500/30 rounded-xl bg-amber-500/[0.04] p-3 min-h-[150px] sm:min-h-[180px] flex flex-col justify-center items-center">
           <div className="absolute top-1.5 left-2 text-[10px] text-text-muted/60">{info.name}</div>
           <div className="text-center space-y-2">
             <div className="text-xs text-text-muted">值符</div>
@@ -277,7 +278,7 @@ export default function QimenToolPage() {
 
     if (!palace) {
       return (
-        <div key={palaceNum} className="border border-white/10 rounded-xl bg-white/[0.02] p-3 min-h-[180px] flex items-center justify-center">
+        <div key={palaceNum} className="border border-white/10 rounded-xl bg-white/[0.02] p-3 min-h-[150px] sm:min-h-[180px] flex items-center justify-center">
           <span className="text-xs text-text-muted/40">{info.name}</span>
         </div>
       )
@@ -310,7 +311,7 @@ export default function QimenToolPage() {
       : 'border-white/10'
 
     return (
-      <div key={palaceNum} className={`relative border rounded-xl bg-white/[0.02] p-3 min-h-[180px] hover:border-gold/30 hover:bg-gold/[0.02] transition-all group ${specialBorder}`}>
+      <div key={palaceNum} className={`relative border rounded-xl bg-white/[0.02] p-3 min-h-[150px] sm:min-h-[180px] hover:border-gold/30 hover:bg-gold/[0.02] transition-all group ${specialBorder}`}>
         {/* 特殊宮標記 */}
         <div className="absolute -top-1.5 left-1 flex gap-1 flex-wrap">
           {isZhifuGong && <span className="text-[8px] px-1 py-0.5 rounded bg-amber-500 text-dark font-bold">值符</span>}
@@ -373,10 +374,10 @@ export default function QimenToolPage() {
   }
 
   return (
-    <div className="py-16">
-      <div className="max-w-5xl mx-auto px-6">
+    <div className="py-16 overflow-x-hidden max-w-full">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* ═══ 標題 ═══ */}
-        <h1 className="text-3xl font-bold text-center mb-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 break-words">
           <span className="text-gradient-gold">奇門遁甲排盤</span>
         </h1>
         <p className="text-center text-text-muted mb-2">天地盤 + 九星八門八神 + 格局判斷</p>
@@ -656,9 +657,9 @@ export default function QimenToolPage() {
               {/* 手機版提示 */}
               <p className="text-center text-[10px] text-text-muted/40 mb-2 md:hidden">左右滑動查看完整排盤</p>
 
-              {/* 九宮格 */}
-              <div className="overflow-x-auto pb-2">
-                <div className="grid grid-cols-3 gap-2 min-w-[480px]">
+              {/* 九宮格：手機版縮小至 360px 寬度直接塞進去，桌機版維持較寬 */}
+              <div className="overflow-x-auto pb-2 -mx-2 px-2">
+                <div className="grid grid-cols-3 gap-1 sm:gap-2 min-w-[320px] sm:min-w-[480px] max-w-full">
                   {LUOSHU_ORDER.map(num => renderPalace(num))}
                 </div>
               </div>
@@ -704,53 +705,49 @@ export default function QimenToolPage() {
                   <h2 className="text-lg font-bold text-white">本盤格局</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {result.geju_summary.ji && result.geju_summary.ji.length > 0 && (
-                    <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-5">
-                      <h4 className="text-sm font-bold text-green-400 mb-3">&#10003; 吉格</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {result.geju_summary.ji.map((g, i) => (
-                          <span key={i} className="text-xs px-2 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">
-                            {g}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {result.geju_summary.xiong && result.geju_summary.xiong.length > 0 && (
-                    <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-5">
-                      <h4 className="text-sm font-bold text-red-400 mb-3">&#9888; 凶格</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {result.geju_summary.xiong.map((g, i) => (
-                          <span key={i} className="text-xs px-2 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">
-                            {g}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {(() => {
+                    const jiList = (result.geju_summary.ji || []).filter((g: string) => g && g.trim())
+                    const xiongList = (result.geju_summary.xiong || []).filter((g: string) => g && g.trim())
+                    return (
+                      <>
+                        {jiList.length > 0 && (
+                          <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-5">
+                            <h4 className="text-sm font-bold text-green-400 mb-3">&#10003; 吉格</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {jiList.map((g: string, i: number) => (
+                                <span key={i} className="text-xs px-2 py-1 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">
+                                  {g}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {xiongList.length > 0 && (
+                          <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-5">
+                            <h4 className="text-sm font-bold text-red-400 mb-3">&#9888; 凶格</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {xiongList.map((g: string, i: number) => (
+                                <span key={i} className="text-xs px-2 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">
+                                  {g}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             )}
 
             {/* ═══ AI 解讀 ═══ */}
             {result.has_ai && result.ai_overview && (
-              <div className="glass rounded-2xl p-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-purple-500 rounded-full" />
-                  <h2 className="text-lg font-bold text-cream">整體能量場解讀</h2>
-                </div>
-                <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_overview}</p>
-              </div>
+              <AIAnalysisCard text={result.ai_overview} title="整體能量場解讀" accentColor="purple" />
             )}
 
             {result.has_ai && result.ai_directions && (
-              <div className="glass rounded-2xl p-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-teal-500 rounded-full" />
-                  <h2 className="text-lg font-bold text-cream">方位吉凶提示</h2>
-                </div>
-                <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_directions}</p>
-              </div>
+              <AIAnalysisCard text={result.ai_directions} title="方位吉凶提示" accentColor="emerald" />
             )}
 
             {/* ═══ 宮位列表（手機友好） ═══ */}
@@ -850,7 +847,7 @@ export default function QimenToolPage() {
                   </div>
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#9200;</div>
-                    <h4 className="font-bold text-white mb-1">Top 5 吉時推薦</h4>
+                    <h4 className="font-bold text-white mb-1">Top 3 吉時推薦</h4>
                     <p className="text-sm text-text-muted">從所有可用時段中挑選最佳出門時間，含日曆邀約</p>
                   </div>
                   <div className="glass rounded-xl p-5 text-center">

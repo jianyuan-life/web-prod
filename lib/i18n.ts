@@ -32,7 +32,7 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
     nav_blog: '知識',
     hero_title_1: '十五套系統交叉驗證',
     hero_title_2: '一份報告，看清自己',
-    hero_desc: '不再依賴單一命理師的主觀判斷。鑒源整合八字、紫微、奇門遁甲等最多15套系統，以數萬條專業規則交叉分析，給你經得起驗證的命格報告。',
+    hero_desc: '不再依賴單一命理師的主觀判斷。鑒源整合八字、紫微、奇門遁甲等最多15套系統，以 4,600+ 條專業規則交叉分析，給你經得起驗證的命格報告。',
     cta_free: '免費體驗命理速算',
     cta_pricing: '查看完整方案',
     cta_no_card: '不需註冊 · 30 秒出結果 · 完全免費',

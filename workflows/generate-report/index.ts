@@ -312,36 +312,98 @@ export async function generateReportWorkflow(reportId: string) {
 
   try {
     if (planCode === 'C') {
-      // ── C 方案：3 個 AI call 順序執行 + 附錄自動生成 ──
-      console.log('C 方案開始：3-call 順序執行')
       // C 方案也要讀取 customer_note（客戶在結帳時填的備注/問題）
       const clientQuestion = (birthData.question || birthData.customer_note || birthData.topic || undefined) as string | undefined
-      const r1 = await aiGenerateCall1(calcResult, birthData, clientQuestion, reportId)
-      const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
-      const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
 
-      // Call 3 完整性檢查
-      let call3Content = r3.content
-      const hasDeliberatePractice = call3Content.includes('刻意練習')
-      const hasClosingLetter = call3Content.includes('寫給') && (call3Content.includes('的話') || call3Content.includes('們的話'))
+      // ── 新 Team Pipeline（feature flag 控制，老闆選 B 方案：C 先試水）──
+      const useTeamPipeline = process.env.USE_TEAM_PIPELINE_FOR_C === 'true'
+      let pipelineSuccess = false
 
-      if (!hasDeliberatePractice || !hasClosingLetter) {
-        const missingParts: string[] = []
-        if (!hasDeliberatePractice) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
-        if (!hasClosingLetter) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
+      if (useTeamPipeline) {
+        console.log('C 方案：啟用 Team Pipeline（5 LLM 協作 + 96 分閘門）')
+        try {
+          const { runTeamPipeline } = await import('@/lib/ai/pipeline')
+          const { retrieveRulesFromChart } = await import('@/lib/ai/rag')
+          const { notifyQualityGate } = await import('@/lib/ai/observability/telegram')
 
-        // 重試 Call 3
-        const retryR3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, true, missingParts, reportId)
-        call3Content = retryR3.content
+          // RAG 檢索（失敗時退化為空陣列）
+          let rules: Array<{ id: string; text: string; source: string; similarity: number }> = []
+          try {
+            const r = await retrieveRulesFromChart(calcResult as unknown as Record<string, unknown>, null, 30)
+            rules = r.rules.map((x) => ({
+              id: x.id,
+              text: x.content || '',
+              source: x.source || '',
+              similarity: x.similarity || 0,
+            }))
+            console.log(`  → RAG 檢索 ${rules.length} 條規則`)
+          } catch (ragErr) {
+            console.warn('  → RAG 檢索失敗，degraded to 0 rules:', ragErr)
+          }
+
+          const outcome = await runTeamPipeline({
+            reportId,
+            planCode: 'C',
+            planPrompt: PLAN_SYSTEM_PROMPT['C'],
+            birthData: birthData as Record<string, unknown>,
+            chartData: calcResult as unknown as Record<string, unknown>,
+            retrievedRules: rules,
+            customerNote: clientQuestion,
+          })
+
+          if (outcome.success && outcome.finalContent) {
+            const appendix = buildAppendix(calcResult.analyses)
+            reportContent = cleanFinalReport(outcome.finalContent + '\n\n' + appendix, birthData.name)
+            aiModelUsed = 'team-pipeline'
+            pipelineSuccess = true
+            console.log(
+              `C 方案 Team Pipeline 完成：${reportContent.length} 字、` +
+              `Peer Review ${outcome.metrics.finalPeerReviewScore}/100、` +
+              `修訂 ${outcome.metrics.revisionRounds} 輪、$${outcome.metrics.totalCostUsd.toFixed(4)}`,
+            )
+          } else {
+            console.warn(`C 方案 Team Pipeline 未通過（${outcome.errorReason}），降級到舊 3-call 流程`)
+            if (outcome.needsHumanReview) {
+              try {
+                await notifyQualityGate(reportId, outcome.metrics.finalPeerReviewScore)
+              } catch { /* 不阻塞 */ }
+            }
+          }
+        } catch (teamErr) {
+          console.error('C 方案 Team Pipeline 異常，降級到舊 3-call:', teamErr)
+        }
       }
 
-      // 附錄由程式碼自動生成（不走 AI）
-      const appendix = buildAppendix(calcResult.analyses)
+      // ── 舊 3-call 流程（fallback 或 feature flag 關閉時）──
+      if (!pipelineSuccess) {
+        console.log('C 方案開始：3-call 順序執行（legacy）')
+        const r1 = await aiGenerateCall1(calcResult, birthData, clientQuestion, reportId)
+        const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
+        const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
 
-      const rawContent = [r1.content, r2.content, call3Content, appendix].join('\n\n')
-      reportContent = cleanFinalReport(rawContent, birthData.name)
-      aiModelUsed = r1.model
-      console.log(`C 方案完成：${reportContent.length} 字（含附錄）`)
+        // Call 3 完整性檢查
+        let call3Content = r3.content
+        const hasDeliberatePractice = call3Content.includes('刻意練習')
+        const hasClosingLetter = call3Content.includes('寫給') && (call3Content.includes('的話') || call3Content.includes('們的話'))
+
+        if (!hasDeliberatePractice || !hasClosingLetter) {
+          const missingParts: string[] = []
+          if (!hasDeliberatePractice) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
+          if (!hasClosingLetter) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
+
+          // 重試 Call 3
+          const retryR3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, true, missingParts, reportId)
+          call3Content = retryR3.content
+        }
+
+        // 附錄由程式碼自動生成（不走 AI）
+        const appendix = buildAppendix(calcResult.analyses)
+
+        const rawContent = [r1.content, r2.content, call3Content, appendix].join('\n\n')
+        reportContent = cleanFinalReport(rawContent, birthData.name)
+        aiModelUsed = r1.model
+        console.log(`C 方案完成：${reportContent.length} 字（含附錄）`)
+      }
     } else {
       // ── 其他方案：單次 AI 呼叫 ──
       const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']

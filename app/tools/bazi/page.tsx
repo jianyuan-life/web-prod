@@ -6,6 +6,7 @@ import * as fbpixel from '@/lib/fbpixel'
 import { searchCities, searchLocations, type City, type LocationSearchResult } from '@/lib/cities'
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
+import AIAnalysisCard from '@/components/AIAnalysisCard'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -77,16 +78,22 @@ const WENCHANG_MAP: Record<string,string> = { 甲:'巳',乙:'午',丙:'申',丁:
 // 天乙貴人：日干 → 兩個地支
 const TIANYI_MAP: Record<string,string[]> = { 甲:['丑','未'],戊:['丑','未'],庚:['丑','未'], 乙:['子','申'],己:['子','申'], 丙:['亥','酉'],丁:['亥','酉'], 辛:['寅','午'], 壬:['卯','巳'],癸:['卯','巳'] }
 // 空亡（旬空）：日柱干支 → 空亡兩地支
+// v5.2.7 修正：找出日柱在六十甲子中的 n（n%10=tgIdx, n%12=dzIdx），
+// 再由 Math.floor(n/10) 得到旬首 idx（0=甲子旬...5=甲寅旬）
 function calcKongwang(dayPillar: string): string[] {
   const tgIdx = TG.indexOf(dayPillar[0])
   const dzIdx = DZ.indexOf(dayPillar[1])
   if (tgIdx < 0 || dzIdx < 0) return []
-  // 旬首：日柱的甲起點（如甲子旬，甲戌旬…）
-  // 空亡 = 旬首+10 和 旬首+11 的地支
-  // 6個旬首（甲子/甲戌/甲申/甲午/甲辰/甲寅），每旬對應 10 天，空亡為剩下 2 個地支
-  const dayOrder = ((dzIdx - tgIdx) % 12 + 12) % 12  // 0=子旬 2=戌旬 4=申旬...
-  const xunIdx = Math.floor(dayOrder / 2)  // 0~5
-  // 每旬的空亡地支
+  // 枚舉 k=0..5，找 n = tgIdx + 10*k 滿足 n%12 = dzIdx
+  let xunIdx = -1
+  for (let k = 0; k < 6; k++) {
+    if ((tgIdx + 10 * k) % 12 === dzIdx) {
+      xunIdx = k
+      break
+    }
+  }
+  if (xunIdx < 0) return []
+  // 每旬的空亡地支（固定對照表）
   const kongMap: Record<number, string[]> = {
     0: ['戌', '亥'],  // 甲子旬空戌亥
     1: ['申', '酉'],  // 甲戌旬空申酉
@@ -477,9 +484,9 @@ export default function FreeToolPage() {
   }, [result, form.gender, form.year])
 
   return (
-    <div className="py-16">
-      <div className="max-w-5xl mx-auto px-6">
-        <h1 className="text-3xl font-bold text-center mb-2"><span className="text-gradient-gold">八字命理速算</span></h1>
+    <div className="py-16 overflow-x-hidden max-w-full">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 break-words"><span className="text-gradient-gold">八字命理速算</span></h1>
         <p className="text-center text-text-muted mb-2">四柱排盤 + 五行十神 + 大運流年</p>
         <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
 
@@ -1189,46 +1196,23 @@ export default function FreeToolPage() {
             {result.has_ai && (
               <>
                 {result.ai_sections['性格深度剖析'] && (
-                  <div className="glass rounded-2xl p-8">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1 h-6 bg-purple-500 rounded-full" />
-                      <h2 className="text-lg font-bold text-cream">性格深度剖析</h2>
-                    </div>
-                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['性格深度剖析']}</p>
-                  </div>
+                  <AIAnalysisCard text={result.ai_sections['性格深度剖析']} title="性格深度剖析" accentColor="purple" />
                 )}
 
                 {result.ai_sections['財運方向'] && (
-                  <div className="glass rounded-2xl p-8 border-l-2 border-green-500/30">
-                    <h2 className="text-lg font-bold text-cream mb-4">財運方向</h2>
-                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['財運方向']}</p>
-                  </div>
+                  <AIAnalysisCard text={result.ai_sections['財運方向']} title="財運方向" accentColor="emerald" />
                 )}
 
                 {result.ai_sections['人際與貴人'] && (
-                  <div className="glass rounded-2xl p-8 border-l-2 border-cyan-500/30">
-                    <h2 className="text-lg font-bold text-cream mb-4">人際與貴人</h2>
-                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['人際與貴人']}</p>
-                  </div>
+                  <AIAnalysisCard text={result.ai_sections['人際與貴人']} title="人際與貴人" accentColor="blue" />
                 )}
 
                 {result.ai_sections['未來機會窗口'] && (
-                  <div className="rounded-2xl p-8 border border-gold/20" style={{background:'linear-gradient(135deg, rgba(197,150,58,0.06), rgba(15,22,40,0.3))'}}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1 h-6 bg-gold rounded-full" />
-                      <h2 className="text-lg font-bold text-gradient-gold">未來機會窗口</h2>
-                    </div>
-                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['未來機會窗口']}</p>
-                    <p className="text-sm text-gold/50 mt-4 italic">完整報告包含逐年大運走勢分析、未來機會窗口解讀、具體的行動方案與時機建議...</p>
-                  </div>
+                  <AIAnalysisCard text={result.ai_sections['未來機會窗口']} title="未來機會窗口" accentColor="amber" />
                 )}
 
                 {result.ai_sections['需要留意的地方'] && (
-                  <div className="glass rounded-2xl p-8 border-l-2 border-orange-500/30">
-                    <h2 className="text-lg font-bold text-orange-300/80 mb-4">需要留意的地方</h2>
-                    <p className="text-base text-text leading-[2] whitespace-pre-line">{result.ai_sections['需要留意的地方']}</p>
-                    <p className="text-sm text-orange-400/50 mt-4 italic">完整報告包含具體的調整方案與行動建議...</p>
-                  </div>
+                  <AIAnalysisCard text={result.ai_sections['需要留意的地方']} title="需要留意的地方" accentColor="rose" />
                 )}
               </>
             )}
@@ -1257,7 +1241,7 @@ export default function FreeToolPage() {
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#128218;</div>
                     <h4 className="font-bold text-white mb-1">千年古籍精髓</h4>
-                    <p className="text-sm text-text-muted">融合數十部命理經典核心理論，數萬條專業規則</p>
+                    <p className="text-sm text-text-muted">融合數十部命理經典核心理論，4,600+ 條專業規則</p>
                   </div>
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#129302;</div>

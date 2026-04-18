@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     default: '鑒源 JianYuan — 十五大命理系統精準分析',
     template: '%s | 鑒源 JianYuan',
   },
-  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十五大命理系統，以數萬條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十五大命理系統，以 4,600+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
   keywords: '鑒源, JianYuan, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命理分析, 命格分析, 命盤, 算命, 姓名學, 風水, 出門訣, 人類圖, 吠陀占星, 運勢',
   metadataBase: new URL('https://jianyuan.life'),
   openGraph: {

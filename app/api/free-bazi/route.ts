@@ -194,7 +194,7 @@ function localBazi(year: number, month: number, day: number, hour: number) {
 // ── AI 呼叫（DeepSeek 主力 + Kimi 備用） ──
 async function callAI(bazi: ReturnType<typeof localBazi>, name: string, year: number, month: number, day: number, hour: number, gender: string): Promise<Record<string,string>> {
   const age = 2026 - year
-  const systemPrompt = '你是資深命理師。根據八字數據用繁體中文給簡短精準的分析。每段2-3句，語氣溫暖專業。注意：現在是2026年丙午年，所有預測要從2026年開始往後看，不要提到2024或2025。'
+  const systemPrompt = '你是資深命理師。根據八字數據用台灣繁體中文給簡短精準的分析。每段2-3句，語氣溫暖專業。禁止使用 Markdown 語法（不要 **粗體** # 標題 - 符號）。注意：現在是2026年丙午年，所有預測要從2026年開始往後看，不要提到2024或2025。'
   const userPrompt = `${name}，${gender==='M'?'男':'女'}，${age}歲，八字${bazi.pillars.year} ${bazi.pillars.month} ${bazi.pillars.day} ${bazi.pillars.time}，日主${bazi.day_master}${bazi.day_master_wuxing}${bazi.strength}，${bazi.geju}，用神${bazi.yongshen}，五行金${bazi.wuxing_count['金']}木${bazi.wuxing_count['木']}水${bazi.wuxing_count['水']}火${bazi.wuxing_count['火']}土${bazi.wuxing_count['土']}
 
 回覆格式（第一段最重要，要寫6-8句話；其他段各2-3句）：

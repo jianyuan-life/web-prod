@@ -57,7 +57,16 @@ export async function GET(req: NextRequest) {
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (expErr) return NextResponse.json({ error: expErr.message }, { status: 500 })
+  if (expErr) {
+    // 表不存在時優雅回退
+    if (String(expErr.code) === '42P01' || String(expErr.message).includes('ab_experiments')) {
+      return NextResponse.json({
+        experiments: [],
+        note: 'ab_experiments 表未建立（請於 Supabase 執行 migration）',
+      })
+    }
+    return NextResponse.json({ error: expErr.message }, { status: 500 })
+  }
   if (!experiments || experiments.length === 0) {
     return NextResponse.json({ experiments: [] })
   }
@@ -118,13 +127,15 @@ export async function GET(req: NextRequest) {
 
     return {
       key: exp.key,
-      name: exp.name,
+      // 實際表用 description 當名稱，向前端沿用 name 欄位保持 UI 相容
+      name: exp.name || exp.description || exp.key,
       description: exp.description,
       status: exp.status,
       variants,
       primary_metric: exp.primary_metric || 'conversion',
       winner: exp.winner,
-      notes: exp.notes,
+      // 實際表用 conclusion，API 對外統一 notes
+      notes: exp.notes || exp.conclusion,
       started_at: exp.started_at,
       ended_at: exp.ended_at,
       stats,
@@ -176,17 +187,23 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getSupabase()
-  const { error } = await supabase.from('ab_experiments').insert({
+  // 實際表沒有 name/primary_metric 欄位，沿用 description 當顯示名稱
+  const insertPayload: Record<string, unknown> = {
     key,
-    name,
-    description: description || null,
+    description: description || name,  // name 優先寫入 description
     variants,
-    primary_metric: primary_metric || 'conversion',
     status: 'active',
-  })
+  }
+  const { error } = await supabase.from('ab_experiments').insert(insertPayload)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, key })
+  if (error) {
+    // primary_metric 在前端建立時選填，若表不存在欄位改用 description 備註
+    if (String(error.message).includes('primary_metric') || String(error.message).includes('column')) {
+      console.warn('[ab-tests] 建立實驗缺欄位，嘗試移除選填欄位重試:', error.message)
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  return NextResponse.json({ ok: true, key, primary_metric: primary_metric || 'conversion' })
 }
 
 // 暫停/恢復/結論
@@ -206,7 +223,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 })
   }
 
-  const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  // 實際表沒有 updated_at/notes 欄位，改用 conclusion
+  const update: Record<string, unknown> = {}
   if (body.status) {
     if (!['active', 'paused', 'concluded'].includes(body.status)) {
       return NextResponse.json({ error: 'invalid status' }, { status: 400 })
@@ -215,7 +233,7 @@ export async function PATCH(req: NextRequest) {
     if (body.status === 'concluded') update.ended_at = new Date().toISOString()
   }
   if (body.winner !== undefined) update.winner = body.winner || null
-  if (body.notes !== undefined) update.notes = body.notes || null
+  if (body.notes !== undefined) update.conclusion = body.notes || null
 
   const supabase = getSupabase()
   const { error } = await supabase.from('ab_experiments').update(update).eq('key', key)

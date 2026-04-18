@@ -56,144 +56,76 @@ export async function POST(req: NextRequest) {
     }
 
     // 紫微斗數必須走 Python API — TS 無法正確排盤
+    // v5.2.7：改用輕量 /api/free-ziwei 端點（正確回傳 palaces + wuxing_ju，不會 11 宮借星）
     let pythonData: Record<string, unknown> | null = null
     let mainStar = ''
     let yearTG = TG_LIST[((year - 4) % 10 + 10) % 10]
     let sihua = SIHUA[yearTG] || SIHUA['甲']
-    // 十二宮位星曜資料：從 Python API tables 中提取
-    // palaceGan：宮干（從 detail 解析）、sihuaTag：該宮四化（祿權科忌）
+    // 十二宮位星曜資料：從 ziwei_basic_chart.palaces 轉換
     const palaceData: Record<string, { branch: string; mainStars: string; minorStars: string; palaceGan?: string; sihuaTag?: string[] }> = {}
-    // 命主/身主/五行局/大限/流年等進階資料
-    let mingZhu = ''          // 命主
-    let shenZhu = ''          // 身主
-    let currentDaxian = ''    // 當前大限宮 (如「田宅宮 35-44歲」)
-    let currentXiaoxian = '' // 小限宮
-    let yearFlow = ''         // 流年宮
-    let daxianStars = ''      // 當前大限四化
-    let triplePairs: string[] = [] // 三方四正
-    let extraAnalyses = ''    // 財運/事業/婚姻/健康
+    // 命主/身主/五行局/大限/流年等進階資料（/api/free-ziwei 不提供，保留空字串）
+    let mingZhu = ''
+    let shenZhu = ''
+    let currentDaxian = ''
+    let currentXiaoxian = ''
+    let yearFlow = ''
+    let daxianStars = ''
+    const triplePairs: string[] = []
+    const extraAnalyses = ''
+    let wuxingJuNum = 0
 
     try {
-      const pyRes = await fetch(`${PYTHON_API}/api/calculate`, {
+      const pyRes = await fetch(`${PYTHON_API}/api/free-ziwei`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name || '用戶',
-          year, month, day, hour, minute, gender,
-          calendar_type, lunar_leap, time_unknown, time_mode,
-          latitude, longitude, timezone_offset,
+          year, month, day, hour, gender,
         }),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(30000),
       })
       if (pyRes.ok) {
         const pyJson = await pyRes.json()
-        // Python API 返回 analyses 陣列，找到紫微斗數的項目
-        const analyses = pyJson?.analyses || []
-        const ziweiAnalysis = analyses.find((a: { system: string }) => a.system === '紫微斗數')
-        if (ziweiAnalysis) {
-          pythonData = ziweiAnalysis
-          // 從 tables 中找十二宮位資料
-          // 表格格式：['命宮', '宮位地支', '主星（頓號分隔）', '輔星']
-          const tables = ziweiAnalysis.tables || []
-          const PALACE_NAMES = ['命宮', '兄弟宮', '夫妻宮', '子女宮', '財帛宮', '疾厄宮', '遷移宮', '交友宮', '事業宮', '田宅宮', '福德宮', '父母宮']
-          for (const table of tables) {
-            if (table.title?.includes('十二宮') || table.title?.includes('命盤') || table.title?.includes('主星')) {
-              const rows = table.rows || []
-              for (const row of rows) {
-                const palaceName = String(row[0] || '').trim()
-                if (PALACE_NAMES.includes(palaceName) && row.length > 2) {
-                  const mainStarsCell = String(row[2] || '').trim()
-                  const minorStarsCell = row.length > 3 ? String(row[3] || '').trim() : ''
-                  const branchCell = String(row[1] || '').trim()
-                  palaceData[palaceName] = {
-                    branch: branchCell,
-                    mainStars: mainStarsCell === '—' || mainStarsCell === '-' ? '' : mainStarsCell,
-                    minorStars: minorStarsCell === '—' || minorStarsCell === '-' ? '' : minorStarsCell,
-                  }
-                  // 從命宮提取主星
-                  if (palaceName === '命宮' && !mainStar) {
-                    mainStar = mainStarsCell.split('、')[0].split('/')[0].split('（')[0].trim()
-                    if (mainStar === '—' || mainStar === '-') mainStar = ''
-                  }
-                }
-              }
+        pythonData = pyJson
+        // 五行局數（2/3/4/5/6）
+        if (typeof pyJson.wuxing_ju_num === 'number') {
+          wuxingJuNum = pyJson.wuxing_ju_num
+        }
+        // 生年干支
+        if (pyJson.year_gan) {
+          yearTG = String(pyJson.year_gan)
+          sihua = SIHUA[yearTG] || sihua
+        }
+        // 十二宮位
+        const palaces = (pyJson.palaces || {}) as Record<string, {
+          dizhi: string
+          tiangan?: string
+          main_stars?: Array<{ name: string; brightness?: string }>
+          sihua?: string[]
+        }>
+        for (const [palaceName, p] of Object.entries(palaces)) {
+          const mainStarNames = (p.main_stars || []).map(s => s.name).filter(Boolean)
+          const sihuaTags: string[] = []
+          for (const s of (p.sihua || [])) {
+            for (const t of ['祿', '權', '科', '忌']) {
+              if (s.includes(`化${t}`) && !sihuaTags.includes(t)) sihuaTags.push(t)
             }
           }
-          // 備用：從 details 或 summary 中提取主星
-          if (!mainStar && ziweiAnalysis.summary) {
-            const match = String(ziweiAnalysis.summary).match(/命宮主星[：:]\s*(\S+)/)
-            if (match) mainStar = match[1]
+          palaceData[palaceName] = {
+            branch: p.dizhi || '',
+            mainStars: mainStarNames.join('、'),
+            minorStars: '',
+            palaceGan: p.tiangan || '',
+            sihuaTag: sihuaTags.length ? sihuaTags : undefined,
           }
-          // 再備用：從全文中找
-          if (!mainStar) {
-            const allText = JSON.stringify(ziweiAnalysis)
-            const starNames = Object.keys(STAR_NATURE)
-            for (const star of starNames) {
-              if (allText.includes(`命宮`) && allText.includes(star)) {
-                mainStar = star
-                break
-              }
-            }
+          // 命宮主星
+          if (palaceName === '命宮' && mainStarNames.length > 0) {
+            mainStar = mainStarNames[0]
           }
-
-          // ── 從 detail 解析進階資訊 ──
-          const detail = String(ziweiAnalysis.detail || '')
-          if (detail) {
-            // 命主 / 身主
-            const mzMatch = detail.match(/命主[：:]\s*(\S+?)(?=[\s，,。]|身主|$)/)
-            const szMatch = detail.match(/身主[：:]\s*(\S+?)(?=[\s，,。]|$)/)
-            if (mzMatch) mingZhu = mzMatch[1].trim()
-            if (szMatch) shenZhu = szMatch[1].trim()
-
-            // 當前大限 / 小限 / 流年
-            const dxMatch = detail.match(/當前大限[：:]\s*(.+?)[\n，,。]/)
-            const xxMatch = detail.match(/小限[：:]\s*(.+?)(?=[\n，,。])/)
-            const yrMatch = detail.match(/(\d{4})年流年[：:]\s*(.+?)[\n，,。]/)
-            const dsMatch = detail.match(/大限飛星[：:]\s*(.+?)[\n，,。]/)
-            if (dxMatch) currentDaxian = dxMatch[1].trim()
-            if (xxMatch) currentXiaoxian = xxMatch[1].trim()
-            if (yrMatch) yearFlow = `${yrMatch[1]}年：${yrMatch[2].trim()}`
-            if (dsMatch) daxianStars = dsMatch[1].trim()
-
-            // 三方四正
-            const triRegex = /三方四正[：:]\s*(.+?)(?=[\n]|$)/g
-            let m: RegExpExecArray | null
-            while ((m = triRegex.exec(detail)) !== null) {
-              triplePairs.push(m[1].trim())
-            }
-
-            // 從「十二宮分佈」區塊提取宮干 (如「命宮（巳）」)
-            const palaceBlock = detail.match(/十二宮分[布佈][：:]([\s\S]*?)(?=當前大限|副系統|={5,}|$)/)
-            if (palaceBlock) {
-              const block = palaceBlock[1]
-              for (const palaceName of Object.keys(palaceData)) {
-                // 比對 如「命宮（巳）：紫微、天府」或「命宮（庚巳）：紫微」
-                const palaceRegex = new RegExp(`${palaceName}\\(?（?([甲乙丙丁戊己庚辛壬癸]?)[子丑寅卯辰巳午未申酉戌亥]\\)?）?[:：]`, 'u')
-                const pm = block.match(palaceRegex)
-                if (pm && pm[1]) {
-                  palaceData[palaceName].palaceGan = pm[1]
-                }
-                // 四化標記（例：[紫微化祿] 或 [太陰化祿，太陰化忌]）
-                const huaPattern = new RegExp(`${palaceName}[^\\n]*\\[([^\\]]+)\\]`, 'u')
-                const hm = block.match(huaPattern)
-                if (hm) {
-                  const huaTxt = hm[1]
-                  const tags: string[] = []
-                  for (const t of ['化祿', '化權', '化科', '化忌']) {
-                    if (huaTxt.includes(t)) tags.push(t.replace('化', ''))
-                  }
-                  if (tags.length) palaceData[palaceName].sihuaTag = tags
-                }
-              }
-            }
-
-            // 額外分析（副系統：財運/事業/婚姻/健康）——抽成簡短中文描述
-            const subRegex = /副系統[^\n]*[：:]([\s\S]*?)(?=單宮特性|={5,}|$)/
-            const subMatch = detail.match(subRegex)
-            if (subMatch) {
-              extraAnalyses = subMatch[1].trim().slice(0, 400)
-            }
-          }
+        }
+        // 備用：從 ming_stars_text 取命宮主星
+        if (!mainStar && pyJson.ming_stars_text) {
+          const firstStar = String(pyJson.ming_stars_text).split('、')[0].trim()
+          if (firstStar && firstStar !== '無主星（借對宮）') mainStar = firstStar
         }
       }
     } catch {
@@ -229,7 +161,11 @@ export async function POST(req: NextRequest) {
 4. 感情和人際關係建議
 5. 2026丙午年運勢提點
 
-語氣要像一位關心晚輩的長者，溫暖但有見地。不要用「您好」開頭，直接進入分析。`
+【格式要求】
+- 全篇必須使用台灣繁體中文，不可出現任何簡體字（例如「稳/财/难/关/风/爱」等）
+- 不要使用 Markdown 語法：不要有 ** 粗體、不要有 # 標題、不要有 - 符號
+- 不要用「您好」或「親愛的」開頭，直接進入分析
+- 語氣要像一位關心晚輩的長者，溫暖但有見地`
 
       const aiRes = await fetch(DEEPSEEK_API, {
         method: 'POST',
@@ -237,7 +173,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           model: 'deepseek-chat', temperature: 0.8, max_tokens: 2000,
           messages: [
-            { role: 'system', content: '你是專業的紫微斗數命理師，善於用溫暖的語言解讀命盤。回答必須使用繁體中文。' },
+            { role: 'system', content: '你是專業的紫微斗數命理師，善於用溫暖的語言解讀命盤。回答必須使用台灣繁體中文（不可出現簡體字），且不可使用 Markdown 語法（不要 **粗體** 不要 # 標題）。' },
             { role: 'user', content: prompt },
           ],
         }),
@@ -256,8 +192,8 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             model: 'moonshot-v1-auto', temperature: 0.8, max_tokens: 2000,
             messages: [
-              { role: 'system', content: '你是專業的紫微斗數命理師。回答必須使用繁體中文。' },
-              { role: 'user', content: `請為命宮${mainStar}（${starNature}）、${yearTG}年生的${gender === 'M' ? '男' : '女'}性做800字紫微斗數解讀。` },
+              { role: 'system', content: '你是專業的紫微斗數命理師。回答必須使用台灣繁體中文（不可出現簡體字），不可使用 Markdown 語法。' },
+              { role: 'user', content: `請為命宮${mainStar}（${starNature}）、${yearTG}年生的${gender === 'M' ? '男' : '女'}性做800字紫微斗數解讀（不要用 Markdown 粗體/標題符號）。` },
             ],
           }),
           signal: AbortSignal.timeout(30000),
@@ -299,7 +235,7 @@ export async function POST(req: NextRequest) {
       palaceData,
       sihua,
       yearTG,
-      wuxingju: (pythonData as Record<string, unknown>)?.wuxing_ju || '',
+      wuxingju: wuxingJuNum || 0,
       // 進階欄位（從 Python detail 解析）
       mingZhu,
       shenZhu,
