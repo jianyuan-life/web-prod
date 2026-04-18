@@ -1,36 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthEmail } from '@/lib/auth-helper'
 
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   )
-}
-
-// 從 cookie 驗證 Supabase Auth 登入狀態
-async function getAuthEmail(req: NextRequest): Promise<string | null> {
-  try {
-    let token: string | null = null
-    const authHeader = req.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7)
-    }
-    if (!token) {
-      const cookies = req.headers.get('cookie') || ''
-      const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
-      if (match) {
-        const tokenData = JSON.parse(decodeURIComponent(match[1]))
-        token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
-      }
-    }
-    if (!token || typeof token !== 'string' || token.length < 20) return null
-    const supabase = getSupabase()
-    const { data } = await supabase.auth.getUser(token)
-    return data?.user?.email || null
-  } catch {
-    return null
-  }
 }
 
 // 驗證每個 email 是否有已完成的人生藍圖（C 方案）報告

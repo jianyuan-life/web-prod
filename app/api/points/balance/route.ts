@@ -1,42 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthUserId } from '@/lib/auth-helper'
 
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   )
-}
-
-// 從 Authorization header 或 cookie 取得已認證的 user_id
-async function getAuthUserId(req: NextRequest): Promise<string | null> {
-  try {
-    let token: string | null = null
-
-    // 優先用 Authorization header
-    const authHeader = req.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7)
-    }
-
-    // fallback: cookie
-    if (!token) {
-      const cookies = req.headers.get('cookie') || ''
-      const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
-      if (match) {
-        const tokenData = JSON.parse(decodeURIComponent(match[1]))
-        token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
-      }
-    }
-
-    if (!token || typeof token !== 'string' || token.length <= 20) return null
-
-    const supabase = getSupabase()
-    const { data } = await supabase.auth.getUser(token)
-    return data?.user?.id || null
-  } catch {
-    return null
-  }
 }
 
 export async function GET(req: NextRequest) {
@@ -49,19 +19,27 @@ export async function GET(req: NextRequest) {
     const supabase = getSupabase()
 
     // 查詢點數餘額
-    const { data: points } = await supabase
+    const { data: points, error: pointsErr } = await supabase
       .from('user_points')
       .select('balance, total_earned, total_used')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
+
+    if (pointsErr) {
+      console.error('[points/balance] 查詢 user_points 失敗:', pointsErr.message, 'userId:', userId)
+    }
 
     // 查詢最近 10 筆交易記錄
-    const { data: transactions } = await supabase
+    const { data: transactions, error: txErr } = await supabase
       .from('point_transactions')
       .select('id, type, amount, balance_after, description, expires_at, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(10)
+
+    if (txErr) {
+      console.error('[points/balance] 查詢交易失敗:', txErr.message, 'userId:', userId)
+    }
 
     // 計算 30 天內即將到期的點數
     const now = new Date()
@@ -92,7 +70,8 @@ export async function GET(req: NextRequest) {
         createdAt: t.created_at,
       })),
     })
-  } catch {
+  } catch (e) {
+    console.error('[points/balance] 未預期錯誤:', e instanceof Error ? e.message : String(e))
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }

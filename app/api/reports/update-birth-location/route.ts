@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthEmail } from '@/lib/auth-helper'
 
 const MAX_SELF_UPDATES = 2  // 每份報告最多 2 次自助更新
 
@@ -33,19 +34,13 @@ function isValidIanaTimezone(tz: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  // 1. 驗證用戶身份
-  const authHeader = req.headers.get('authorization') || ''
-  if (!authHeader.startsWith('Bearer ') || authHeader.length < 30) {
-    return NextResponse.json({ error: '未登入' }, { status: 401 })
-  }
-  const token = authHeader.slice(7)
-
-  const supabase = getSupabase()
-  const { data: authData, error: authErr } = await supabase.auth.getUser(token)
-  if (authErr || !authData?.user?.email) {
+  // 1. 驗證用戶身份（雙層 fallback：admin.getUser + JWT decode）
+  const userEmail = await getAuthEmail(req)
+  if (!userEmail) {
     return NextResponse.json({ error: '登入狀態失效' }, { status: 401 })
   }
-  const userEmail = authData.user.email.toLowerCase()
+
+  const supabase = getSupabase()
 
   // 2. 解析 body
   type Body = {

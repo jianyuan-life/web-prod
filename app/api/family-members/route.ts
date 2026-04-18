@@ -1,26 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthUserId } from '@/lib/auth-helper'
 
 function getServiceSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   )
-}
-
-// 從 Authorization header 驗證用戶身份，回傳 user_id
-async function getAuthUserId(req: NextRequest): Promise<string | null> {
-  try {
-    const authHeader = req.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) return null
-    const token = authHeader.slice(7)
-    if (!token || token.length < 20) return null
-    const supabase = getServiceSupabase()
-    const { data } = await supabase.auth.getUser(token)
-    return data?.user?.id || null
-  } catch {
-    return null
-  }
 }
 
 // GET — 取得用戶的所有家人

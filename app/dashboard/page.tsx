@@ -65,6 +65,8 @@ function DashboardContent() {
   const [userEmail, setUserEmail] = useState<string>('')
   const [authToken, setAuthToken] = useState<string>('')
   const [authFailed, setAuthFailed] = useState(false)
+  // v5.3.1：API 失敗時顯示錯誤訊息，避免客戶以為「沒有報告」
+  const [fetchError, setFetchError] = useState<string | null>(null)
   // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
   // 付款成功事件只觸發一次
@@ -155,10 +157,12 @@ function DashboardContent() {
       return data.reports || []
     }
 
-    // 非 200/401 的其他錯誤（5xx、403 等）：只記 log 不標 authFailed
-    // 避免用戶明明登入成功卻看到「登入過期」誤導訊息
-    console.error(`fetchReports 非預期狀態 ${res.status}`, await res.text().catch(() => ''))
-    return []
+    // 非 200/401 的其他錯誤（5xx、403 等）：
+    // 關鍵修復：丟例外讓呼叫端知道「API 失敗」而非「沒有報告」
+    // 避免客戶看到「還沒有報告」誤導訊息（v5.3.1 自檢修復）
+    const errText = await res.text().catch(() => '')
+    console.error(`fetchReports 非預期狀態 ${res.status}`, errText)
+    throw new Error(`API_ERROR_${res.status}`)
   }
 
   // 取得用戶 email + auth token（多種方式確保取到）
@@ -284,6 +288,7 @@ function DashboardContent() {
     fetchReports()
       .then(rpts => {
         setReports(rpts)
+        setFetchError(null)
         setLoading(false)
         // 有 pending/generating 報告時，請求通知權限
         const hasPendingReports = rpts.some((r: Report) => r.status === 'pending' || r.status === 'generating')
@@ -291,7 +296,13 @@ function DashboardContent() {
           Notification.requestPermission()
         }
       })
-      .catch(() => setLoading(false))
+      .catch((err) => {
+        // v5.3.1：API 失敗時標記錯誤，避免顯示「還沒有報告」誤導
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('[dashboard] 查詢報告失敗:', msg)
+        setFetchError('系統暫時無法查詢您的報告，請稍後重新整理。若問題持續請聯絡 support@jianyuan.life')
+        setLoading(false)
+      })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail, stripeSessionId])
 
@@ -668,6 +679,19 @@ function DashboardContent() {
                 )}
               </div>
             ))}
+          </div>
+        ) : fetchError ? (
+          /* v5.3.1：API 失敗時顯示具體錯誤，避免客戶誤以為報告消失 */
+          <div className="glass rounded-2xl p-16 text-center border border-red-500/30">
+            <div className="text-4xl mb-4">&#9888;</div>
+            <h3 className="text-lg font-semibold text-cream mb-2">暫時無法載入您的報告</h3>
+            <p className="text-sm text-text-muted mb-6 max-w-md mx-auto">{fetchError}</p>
+            <button
+              onClick={() => { setLoading(true); setFetchError(null); fetchReports().then(setReports).catch(() => {}).finally(() => setLoading(false)) }}
+              className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow"
+            >
+              重新整理
+            </button>
           </div>
         ) : (
           <div className="glass rounded-2xl p-16 text-center">

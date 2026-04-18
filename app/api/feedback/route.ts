@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthUser as getAuthUserHelper } from '@/lib/auth-helper'
 
 function getServiceSupabase() {
   return createClient(
@@ -8,20 +9,11 @@ function getServiceSupabase() {
   )
 }
 
-// 從 Authorization header 驗證用戶身份，回傳 user_id 和 email
+// 從 Authorization header 或 cookie 驗證用戶身份，回傳 user_id 和 email
 async function getAuthUser(req: NextRequest): Promise<{ id: string; email: string } | null> {
-  try {
-    const authHeader = req.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) return null
-    const token = authHeader.slice(7)
-    if (!token || token.length < 20) return null
-    const supabase = getServiceSupabase()
-    const { data } = await supabase.auth.getUser(token)
-    if (!data?.user?.id || !data?.user?.email) return null
-    return { id: data.user.id, email: data.user.email }
-  } catch {
-    return null
-  }
+  const { email, userId } = await getAuthUserHelper(req)
+  if (!email || !userId) return null
+  return { id: userId, email }
 }
 
 // 驗證用戶是否為此報告的付費客戶

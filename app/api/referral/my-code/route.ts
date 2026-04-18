@@ -1,42 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthUserId } from '@/lib/auth-helper'
 
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   )
-}
-
-// 從 Authorization header 或 cookie 取得已認證的 user_id
-async function getAuthUserId(req: NextRequest): Promise<string | null> {
-  try {
-    let token: string | null = null
-
-    // 優先用 Authorization header
-    const authHeader = req.headers.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7)
-    }
-
-    // fallback: cookie
-    if (!token) {
-      const cookies = req.headers.get('cookie') || ''
-      const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
-      if (match) {
-        const tokenData = JSON.parse(decodeURIComponent(match[1]))
-        token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
-      }
-    }
-
-    if (!token || typeof token !== 'string' || token.length <= 20) return null
-
-    const supabase = getSupabase()
-    const { data } = await supabase.auth.getUser(token)
-    return data?.user?.id || null
-  } catch {
-    return null
-  }
 }
 
 // 生成推薦碼：JY-XXXXX（排除容易混淆的字元 O/0/I/1）
@@ -59,11 +29,15 @@ export async function GET(req: NextRequest) {
     const supabase = getSupabase()
 
     // 查詢現有推薦碼
-    const { data: existing } = await supabase
+    const { data: existing, error: queryErr } = await supabase
       .from('referral_codes')
       .select('code, total_referrals, is_active')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
+
+    if (queryErr) {
+      console.error('[referral/my-code] 查詢現有推薦碼失敗:', queryErr.message, 'userId:', userId)
+    }
 
     if (existing) {
       return NextResponse.json({
@@ -117,7 +91,8 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ error: '生成推薦碼失敗，請稍後再試' }, { status: 500 })
-  } catch {
+  } catch (e) {
+    console.error('[referral/my-code] 未預期錯誤:', e instanceof Error ? e.message : String(e))
     return NextResponse.json({ error: '伺服器錯誤' }, { status: 500 })
   }
 }
