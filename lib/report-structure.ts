@@ -79,33 +79,43 @@ function normalizeTitle(title: string): string {
 function classifyC(title: string): ChapterPart {
   const t = normalizeTitle(title)
 
-  // 起：01-04（命盤全觀/性格特質/天賦潛能/人生課題）
+  // v5.3.25 按「老闆認可版」章節擴充起承轉合
+  //   認可版 = Bryant/何宣逸/汝/林沅霖/宋宜臻/施俊光 等 37-48KB 報告風格
+
+  // 起：「你是誰」— 命格根基 + 個人特質 + 事業/財務/感情/健康本質
   if (/命盤全觀|命盤總觀|全觀|總觀|整體命盤|命盤主軸|命盤鳥瞰|命格.*全景/.test(t)) return 'qi'
   if (/性格特質|人格特質|內在特質|性格剖析|人格剖析|你的性格|內在驅動/.test(t)) return 'qi'
-  if (/天賦潛能|天賦|核心優勢|天生強項|潛能|你的優勢|你的天賦/.test(t)) return 'qi'
-  if (/人生課題|核心課題|成長課題|生命課題|內在衝突|人生難題/.test(t)) return 'qi'
-  if (/命格名片|你是誰|命格角色|命格總覽/.test(t)) return 'qi'
+  if (/天賦潛能|天賦|核心優勢|天生強項|潛能|你的優勢|你的天賦|天賦武器|天賦.*Top/.test(t)) return 'qi'
+  if (/人生課題|核心課題|成長課題|生命課題|內在衝突|人生難題|課題.*Top/.test(t)) return 'qi'
+  if (/命格名片|命格封號|你是誰|命格角色|命格總覽/.test(t)) return 'qi'
+  if (/一句話定義|關鍵字/.test(t)) return 'qi'
+  if (/第一印象.*真實|落差|外表.*內在/.test(t)) return 'qi'
+  if (/思維模式|行動模式|情感模式|價值觀/.test(t)) return 'qi'
+  if (/事業發展|事業方向|事業.*天賦|事業陷阱|職涯|職業|工作方向|事業規劃|最佳事業時機/.test(t)) return 'qi'
+  if (/賺錢模式|破財陷阱|財富運勢|財運|財富|理財|金錢觀|投資風格/.test(t)) return 'qi'
+  if (/感情.*模式|人際吸引|感情關係|感情與人際|感情|戀愛|婚姻|人際|社交/.test(t)) return 'qi'
+  if (/體質地圖|健康風險|養生時間|健康|身心|福祉|養生|身體|體質/.test(t)) return 'qi'
 
-  // 承：05-08（事業/財富/感情/健康）
-  if (/事業發展|事業方向|事業與天賦|職涯|職業|工作方向|事業規劃/.test(t)) return 'cheng'
-  if (/財富運勢|財運|財富|理財|金錢觀|投資風格/.test(t)) return 'cheng'
-  if (/感情關係|感情與人際|感情|戀愛|婚姻|人際|社交/.test(t)) return 'cheng'
-  if (/健康|身心|福祉|養生|身體|體質/.test(t)) return 'cheng'
+  // 承：過去 10 年回顧 + 時間表的「過去/現在」部分
+  if (/過去.*10.*年|過去十年|過去.*回顧|回顧.*過去|人生節奏表|人生回顧|成長軌跡/.test(t)) return 'cheng'
+  if (/財運時間表|感情時間表|事業時間表/.test(t)) return 'cheng'
 
-  // 轉：09-11（大運/流年）
-  if (/十年大運|大運總覽|未來.*10.*年|未來十年/.test(t)) return 'zhuan'
+  // 轉：未來 10 年 + 大運總覽 + 流年規劃
+  if (/未來.*10.*年|未來十年|未來.*預告|未來展望/.test(t)) return 'zhuan'
+  if (/十年大運|大運總覽|大運走勢|人生節奏總覽/.test(t)) return 'zhuan'
   if (/當前大運|現行大運|大運詳解|本大運/.test(t)) return 'zhuan'
-  if (/流年運勢|流年重點|流年聚焦|今年|明年|2026|2027|當年運勢/.test(t)) return 'zhuan'
-  if (/時運|時機|未來展望|運勢走勢|運勢/.test(t)) return 'zhuan'
+  if (/流年運勢|時運|時機|運勢走勢|運勢/.test(t)) return 'zhuan'
   if (/大運|流年/.test(t)) return 'zhuan'  // fallback
 
-  // 合：12-15（行動/風險/心態/總結）
-  if (/優勢發揮|行動策略|刻意練習|具體行動|行動方案|實踐|落地/.test(t)) return 'he'
+  // 合：2026 + 行動 + 練習 + 寫給你的話 + CTA
+  if (/年度總論|年度.*主題|年度.*行動|2026.*年度|2026.*主題/.test(t)) return 'he'
+  if (/月.*逐月分析|逐月分析|12.*月|每月|流月/.test(t)) return 'he'
+  if (/優勢發揮|行動策略|刻意練習|具體行動|行動方案|實踐|落地|練習一|練習二|練習三|練習四|練習五|練習六|練習七/.test(t)) return 'he'
   if (/風險規避|潛在陷阱|避雷|預防|陷阱|地雷/.test(t)) return 'he'
   if (/心態調整|成長路徑|成長|心態重建|自省|每日練習/.test(t)) return 'he'
-  if (/總結|進階|寫給|收尾|結語|給你的一句話|給你的|一封信/.test(t)) return 'he'
+  if (/總結|進階|寫給|收尾|結語|給你的一句話|給你的|一封信|力量宣告|系統.*關鍵發現/.test(t)) return 'he'
 
-  return 'he' // 預設丟合（避免漏章）
+  return 'qi' // 預設丟起（認可版內容量以起篇為主）
 }
 
 /**
