@@ -2,7 +2,38 @@
 import { useState } from 'react'
 import { trackFunnelClient } from '@/lib/funnel-tracker'
 
-export default function ReportClientButtons({ pdfUrl, planCode, reportId }: { pdfUrl: string | null; planCode?: string; reportId?: string }) {
+// v5.3.20：PDF 下載檔名建構（方案名_客戶名.pdf）
+// Supabase Storage 支援 ?download=filename 強制設定 Content-Disposition
+const PLAN_NAME_MAP: Record<string, string> = {
+  C: '人生藍圖',
+  D: '心之所惑',
+  G15: '家族藍圖',
+  R: '合否',
+  E1: '事件出門訣',
+  E2: '月度出門訣',
+}
+
+export function buildPdfDownloadUrl(pdfUrl: string, planCode?: string, clientName?: string): string {
+  if (!pdfUrl) return pdfUrl
+  const planName = (planCode && PLAN_NAME_MAP[planCode]) || '命理報告'
+  const cleanName = (clientName || '客戶').replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 30) || '客戶'
+  const filename = `${planName}_${cleanName}.pdf`
+  const sep = pdfUrl.includes('?') ? '&' : '?'
+  return `${pdfUrl}${sep}download=${encodeURIComponent(filename)}`
+}
+
+export function buildPdfDownloadFilename(planCode?: string, clientName?: string): string {
+  const planName = (planCode && PLAN_NAME_MAP[planCode]) || '命理報告'
+  const cleanName = (clientName || '客戶').replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 30) || '客戶'
+  return `${planName}_${cleanName}.pdf`
+}
+
+export default function ReportClientButtons({ pdfUrl, planCode, reportId, clientName }: {
+  pdfUrl: string | null
+  planCode?: string
+  reportId?: string
+  clientName?: string
+}) {
   const [shareLabel, setShareLabel] = useState('分享報告')
   const [generating, setGenerating] = useState(false)
   const [generateMsg, setGenerateMsg] = useState<string | null>(null)
@@ -72,7 +103,8 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId }: { pd
     if (pdfUrl) {
       return (
         <a
-          href={pdfUrl}
+          href={buildPdfDownloadUrl(pdfUrl, planCode, clientName)}
+          download={buildPdfDownloadFilename(planCode, clientName)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={trackPdfDownload}

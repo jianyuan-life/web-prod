@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import ReportClientButtons from './ReportClientButtons'
+import ReportClientButtons, { buildPdfDownloadUrl, buildPdfDownloadFilename } from './ReportClientButtons'
 import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
 import ShareCard from '@/components/ShareCard'
@@ -1191,7 +1191,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
           {/* 操作按鈕（Client Component 處理 onClick）*/}
           <div className="relative z-10">
-            <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} reportId={report.id} />
+            <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} reportId={report.id} clientName={report.client_name} />
           </div>
         </div>
 
@@ -1681,7 +1681,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <div className="text-gold font-semibold mb-1">以下為報告重點摘要</div>
                 <p className="text-text-muted text-sm">完整報告（含 {allSections.length} 個章節、{analysesSummary.length} 套系統逐一分析）請下載 PDF 版本</p>
               </div>
-              <a href={report.pdf_url} target="_blank" rel="noopener noreferrer"
+              <a
+                href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
+                download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
                 style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c87a)', color: '#0a0e1a' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2144,7 +2148,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {report.pdf_url && (
           <div className="flex justify-center my-10">
             <a
-              href={report.pdf_url}
+              href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
+              download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105 shadow-lg"
