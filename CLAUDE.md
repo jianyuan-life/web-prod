@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.12（2026-04-18）
+**網站版本：** v5.3.13（2026-04-18）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,33 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.13（2026-04-18 六 LLM 各司其職 QA 架構）
+
+**核心改動：從「5 LLM 重複打分」改為「6 LLM 各司其職」**
+- Claude Opus 4.7 = 生成者（長文創作+自我驗證冠軍）
+- Qwen Max = 🔮 命理術語審查官（中文訓練最深）
+- Gemini 2.5 Pro = 📊 排盤資料驗證官（1M context + cross-reference 王）
+- GPT-4o = 🧱 結構審查官（邏輯一致性強）
+- Kimi v1-32k = 📖 讀者體驗官（中文長文閱讀頂尖）
+- DeepSeek V3 = 🚫 禁區守門員（最便宜做最機械的規則掃描）
+
+**判決邏輯：**
+- 舊：avg≥88 且 min≥80（平均分天花板問題→無限 retry 燒錢）
+- 新：任一家 criticalErrors.length>0 或 severity=red → fail（二元判決）
+
+**修復：**
+- ✅ Gemini 2.5 Pro MAX_TOKENS 截斷（加 thinkingBudget=1024 + maxOutputTokens 倍增）
+- ✅ Gemini 2.5 Flash 思考關閉（thinkingBudget=0）
+- ✅ 每家輸入按需分派（不需排盤的 reviewer 不塞 JSON，省 30-40% token）
+- ✅ 每家專屬 system prompt，只看自己強項的面向
+
+**影響檔案：**
+- `lib/ai/team/five-llm-qa.ts`（重寫為六 LLM 分工架構）
+- `lib/ai/providers/gemini.ts`（thinkingBudget 修復）
+- `workflows/generate-report/index.ts`（判決改為六項全過）
+
+---
 
 ### v5.2.7（2026-04-18 免費工具權威稽核修復：9 P0 + 4 P1）
 

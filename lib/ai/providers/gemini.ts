@@ -49,11 +49,26 @@ export const geminiProvider: LLMProvider = {
 
       const url = `${BASE_HOST}/${encodeURIComponent(model)}:generateContent?key=${API_KEY}`
 
+      // v5.3.13：maxOutputTokens 同時涵蓋 thinking tokens + content tokens
+      // Gemini 2.5 Pro 是思考模型，若不限 thinkingBudget，思考會吃光 maxOutputTokens
+      // → 回傳 finishReason=MAX_TOKENS 且 content 為空
+      // 解法：給 maxOutputTokens 足夠空間（預設 8192），thinkingBudget 限制 1024
+      //      讓思考短、輸出留足空間
+      const userMaxTokens = req.maxTokens ?? 4096
+      const effectiveMaxTokens = Math.min(Math.max(userMaxTokens * 2, 8192), 32768)
       const generationConfig: Record<string, unknown> = {
-        maxOutputTokens: Math.min(req.maxTokens ?? 4096, 32768),
+        maxOutputTokens: effectiveMaxTokens,
       }
       if (typeof req.temperature === 'number') generationConfig.temperature = req.temperature
       if (req.jsonMode) generationConfig.responseMimeType = 'application/json'
+      // 只有 2.5 Pro 必須思考（最低 128）；2.5 Flash 可關閉思考（thinkingBudget=0）
+      const isPro25 = /gemini-2\.5-pro/.test(model)
+      const isFlash25 = /gemini-2\.5-flash/.test(model)
+      if (isPro25) {
+        generationConfig.thinkingConfig = { thinkingBudget: 1024 }
+      } else if (isFlash25) {
+        generationConfig.thinkingConfig = { thinkingBudget: 0 }
+      }
 
       const body = {
         system_instruction: {

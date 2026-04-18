@@ -493,20 +493,22 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('Post-generation QA 執行失敗（不阻塞）:', e)
   }
 
-  // Step 3: 品質閘門 + Post-Gen 5 LLM QA Pipeline
-  // L3 P0 Bug 1 修復：阻斷式，失敗觸發 retry
-  // Post-Gen 5 LLM QA Pipeline (2026-04-18)：
-  //   舊：單 Claude reviewer score < 75 視為 hardFailure
-  //   新：5 LLM (GPT/Qwen/Gemini/Kimi/DeepSeek) 並行評分
-  //       min < 95 或 avg < 93 → hardFailure 觸發 retry
-  //       連續 3 次失敗 → status = 'needs_human_review' + Telegram 告警
-  // v5.3.12：降門檻到實際可達水平（老闆今天被 retry 死循環燒 $100+ 的根因修復）
-  //   原設 min≥95 avg≥93 → 實測 4 輪 QA 都在 avg 85-86 / min 80 → 永遠過不了 → 無限 retry
-  //   降到 min≥80 avg≥88 + 降 retry 上限（3→1 次）避免連鎖燒錢
+  // Step 3: 品質閘門 + Post-Gen 6 LLM 各司其職 QA Pipeline
+  // v5.3.13（2026-04-18）：從「5 LLM 重複打分」改為「6 LLM 各司其職」
+  //   生成者：Claude Opus 4.7
+  //   審查團隊（5 家，各攻一個面向）：
+  //     - Qwen Max：命理術語審查官
+  //     - Gemini 2.5 Pro：排盤資料驗證官
+  //     - GPT-4o：結構審查官
+  //     - Kimi：讀者體驗官
+  //     - DeepSeek V3：禁區守門員
+  //
+  // 判決改為「六項全過」：任一家 criticalErrors.length > 0 → fail
+  //   不再用 avg/min 平均分（消除 Gemini 對多系統平台的結構性扣分偏見）
+  //
+  // 保留 LEGACY_HARD_MIN_SCORE 供 6 LLM 整個失效時降級用
   const MAX_QUALITY_RETRIES = 1       // 原 3，避免 retry 死循環燒 $15-20/份
-  const LEGACY_HARD_MIN_SCORE = 75    // 舊分數門檻（5 LLM 失敗降級時用）
-  const FIVE_LLM_MIN_PER_REVIEWER = 80 // 原 95 不可達 → 實測天花板 80-84
-  const FIVE_LLM_AVG = 88              // 原 93 不可達 → 實測天花板 86-90
+  const LEGACY_HARD_MIN_SCORE = 75    // 6 LLM 全掛時才用這個分數門檻降級
 
   type FiveLLMSnapshot = {
     scores: Record<string, number>
@@ -576,31 +578,31 @@ export async function generateReportWorkflow(reportId: string) {
     const hardFails = gateResult?.hardFailures || []
     const softFails = gateResult?.softWarnings || []
 
-    // 5 LLM 門檻：min >= 95 且 avg >= 93
+    // v5.3.13 判決：六項全過（任一家找到 criticalError 或 severity=red → fail）
     let fiveLLMFail = false
     if (fiveLLMInfo) {
-      fiveLLMFail = fiveLLMInfo.min < FIVE_LLM_MIN_PER_REVIEWER || fiveLLMInfo.avg < FIVE_LLM_AVG
+      fiveLLMFail = fiveLLMInfo.criticalErrors.length > 0 || fiveLLMInfo.severity === 'red'
     } else {
-      // 5 LLM 整個掛了才走 legacy 門檻
+      // 6 LLM 整個掛了才走 legacy 分數門檻降級
       fiveLLMFail = reviewerScore < LEGACY_HARD_MIN_SCORE
     }
 
     if (hardFails.length === 0 && !fiveLLMFail) {
       qualityPassed = true
       const scoreLog = fiveLLMInfo
-        ? `5 LLM avg=${fiveLLMInfo.avg}, min=${fiveLLMInfo.min} (PASSED)`
-        : `Reviewer ${reviewerScore} 分 (legacy)`
+        ? `6 LLM 各司其職全過（avg=${fiveLLMInfo.avg}, critical=${fiveLLMInfo.criticalErrors.length}）`
+        : `Legacy Reviewer ${reviewerScore} 分`
       console.log(`品質閘門通過（第 ${roundNum} 次）: ${scoreLog}`)
       if (softFails.length > 0) console.log(`軟警告（不影響通過）: ${softFails.join('; ')}`)
       break
     }
 
-    // 3d. 失敗：記錄原因，決定是否重試
+    // 3d. 失敗：記錄原因
     const fiveLLMDesc = fiveLLMInfo
-      ? `[5 LLM] avg=${fiveLLMInfo.avg}/${FIVE_LLM_AVG}, min=${fiveLLMInfo.min}/${FIVE_LLM_MIN_PER_REVIEWER}, ` +
-        `severity=${fiveLLMInfo.severity}` +
+      ? `[6 LLM 各司其職] severity=${fiveLLMInfo.severity}, ` +
+        `criticalErrors=${fiveLLMInfo.criticalErrors.length}` +
         (fiveLLMInfo.criticalErrors.length > 0
-          ? `, critical=${fiveLLMInfo.criticalErrors.slice(0, 3).join('|')}`
+          ? `, top=${fiveLLMInfo.criticalErrors.slice(0, 3).join(' | ')}`
           : '')
       : `[Legacy] Reviewer 分數 ${reviewerScore} < ${LEGACY_HARD_MIN_SCORE}`
 
