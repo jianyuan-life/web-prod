@@ -9,6 +9,8 @@ import ShareCard from '@/components/ShareCard'
 import SectionExpander from '@/components/SectionExpander'
 import CollapsibleSection from '@/components/CollapsibleSection'
 import PartSection from '@/components/PartSection'
+import PartHighlights from '@/components/PartHighlights'
+import SubscribeCTA from '@/components/SubscribeCTA'
 import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
@@ -2099,6 +2101,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             const defaultExpanded = report.plan_code === 'D'
               ? true
               : (group.part.key === 'qi' || group.part.key === 'cheng')
+            const isLastPart = gIdx === grouped.length - 1
             return (
               <PartSection
                 key={`part-${group.part.key}`}
@@ -2108,10 +2111,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 currentOrder={gIdx + 1}
                 totalParts={grouped.length}
               >
+                {/* v5.3.25：每篇開頭「本篇重點」卡——UI 畫重點 */}
+                <PartHighlights part={group.part} sections={group.chapters} />
                 {group.chapters.map((sec) => {
                   const globalIdx = indexMap.get(sec) ?? 0
                   return renderChapter(sec, globalIdx, globalIdx + 1)
                 })}
+                {/* v5.3.25：合篇末尾月費訂閱 CTA（C 方案專屬）*/}
+                {isLastPart && group.part.key === 'he' && report.plan_code === 'C' && (
+                  <SubscribeCTA clientName={report.client_name} />
+                )}
               </PartSection>
             )
           })
