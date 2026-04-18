@@ -668,7 +668,8 @@ export async function generateReportWorkflow(reportId: string) {
   if (!qualityPassed && planCode === 'C') {
     const reasonMsg = `品質閘門連續 ${qualityRetryCount + 1} 次失敗: ${lastQualityIssues.slice(0, 3).join('; ').slice(0, 400)}`
     try {
-      await markReportNeedsHumanReview(reportId, reasonMsg, lastFiveLLM || undefined)
+      // v5.3.18：傳入 reportContent，讓後台 /jamie/quality-reports 能看到原文（不用重跑再燒 $5）
+      await markReportNeedsHumanReview(reportId, reasonMsg, lastFiveLLM || undefined, reportContent, aiModelUsed)
       try {
         const { notifyNeedsHumanReview } = await import('@/lib/ai/observability/telegram')
         await notifyNeedsHumanReview(

@@ -3553,6 +3553,8 @@ export async function markReportNeedsHumanReview(
     severity: string
     criticalErrors: string[]
   },
+  reportContent?: string,
+  aiModel?: string,
 ): Promise<void> {
   "use step";
   const supabase = getSupabase()
@@ -3560,6 +3562,21 @@ export async function markReportNeedsHumanReview(
   const updatePayload: Record<string, unknown> = {
     status: 'needs_human_review',
     error_message: `[需人工審核] ${reason}`.slice(0, 500),
+  }
+
+  // v5.3.18：把 Claude 寫的內容也存起來，避免 /jamie/quality-reports 查不到原文
+  //   老闆反映三份失敗 C 方案 report_result 都 0 bytes，無法手動 review
+  //   根因：失敗後 workflow 直接 return，從不呼叫 saveReportToSupabase
+  //   修：失敗時也存 ai_content，人工可一鍵放行（不用重跑再燒 Claude）
+  if (reportContent && reportContent.length > 0) {
+    updatePayload.report_result = {
+      ai_content: reportContent,
+      systems_count: 0,
+      analyses_summary: [],
+      generated_at: new Date().toISOString(),
+      flagged_for_human_review: true,
+      ai_model: aiModel || 'claude-opus-4-7',
+    }
   }
 
   // 若有 5 LLM snapshot，寫入 qa_snapshot 欄位（需 schema 支援）
@@ -3582,13 +3599,17 @@ export async function markReportNeedsHumanReview(
   if (error) {
     // qa_snapshot 欄位不存在 → fallback 不帶該欄位再試一次
     console.warn('markReportNeedsHumanReview 含 qa_snapshot 失敗，fallback:', error.message)
-    await supabase.from('paid_reports').update({
+    const fallbackPayload: Record<string, unknown> = {
       status: 'needs_human_review',
       error_message: `[需人工審核] ${reason}`.slice(0, 500),
-    }).eq('id', reportId)
+    }
+    if (reportContent && reportContent.length > 0) {
+      fallbackPayload.report_result = { ai_content: reportContent }
+    }
+    await supabase.from('paid_reports').update(fallbackPayload).eq('id', reportId)
   }
 
-  console.error(`報告 ${reportId} 標記為 needs_human_review: ${reason}`)
+  console.error(`報告 ${reportId} 標記為 needs_human_review: ${reason}（含 ${reportContent?.length ?? 0} 字 AI 內容）`)
 }
 
 // ── 匯出輔助常數（供 workflow 使用） ──
