@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.48（2026-04-19）
+**網站版本：** v5.3.49（2026-04-19）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,35 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.49（2026-04-19 回到客戶認可版 — C/D/R prompt 還原 + Claude 改回 4-6）
+
+**背景**：老闆審查後發現 v5.3.x 系列讓 C/D/G15/R 四方案品質「越做越差」。對照 04-08~04-16 共 43 份客戶認可版報告（全部 Claude Opus 4-6 寫的），找到根因是 v5.3.7 把模型升級到 4-7 之後文風變硬、術語堆砌；加上 v5.3.x prompt 大改（+1167 行）+ v3「感動到哭 Playbook」反效果。
+
+**動作**：
+- ✅ 模型全面回滾 4-7 → 4-6（官方 Active 狀態，退役 2027-02-05 以後）
+- ✅ prompts/c_plan_v2.ts / d_plan_v2.ts / r_plan_v2.ts / c_plan_prompt_v2.md 還原到 commit 879938d（v5.2.1 認可版基線）
+- ✅ 刪除 prompts/c_plan_v3.ts（感動到哭 Playbook + Blueprint JSON + 起承轉合 Playbook）
+- ✅ steps.ts 清掉 3 個 v3 函式（aiGenerateBlueprintV3 / aiGenerateCall1V3 / aiGenerateCall2ChengZhuanHeV3）
+- ✅ index.ts 清掉 v3 feature flag 分支（~96 行），簡化成只走 v2
+- ✅ claude.ts defaultModel 改 claude-opus-4-6，但保留 4-7 在 supportedModels 作備援
+- ✅ 3 處 buildCall1/2/3Prompt 移除 gender 第 4 參（認可版 prompt 用 3 參，gender 透過 user prompt 傳遞）
+- ✅ pricing.ts 保留 4-6 和 4-7 兩個定價（切換方便）
+
+**保留不動**（這些是好改動）：
+- 🟢 DB schema（UUID、RLS、新 RPC、殭屍表清理）
+- 🟢 安全修復（XSS、auth-helper 移除 JWT fallback、交易原子化）
+- 🟢 E1/E2 出門訣 prompt + 奇門引擎 v3.5
+- 🟢 推薦積分、後台 /jamie、UI 改善
+- 🟢 steps.ts 的錯誤處理、timeout 保護、失敗報告保存、多 API key 輪詢
+
+**備份**：
+- branch `backup-before-rollback-2026-04-19`（指向 v5.3.48 HEAD 38752ca，可隨時回滾）
+- stash `pre-rollback-stash-2026-04-19`（保留未提交的 d_plan+r_plan 1160 行大改）
+
+**風險**：
+- ⚠️ Vercel production 需確認 `USE_PROMPT_V3` env 未設為 true（否則編譯會失敗因為 c_plan_v3.ts 已刪）
+- ⚠️ 仍待處理：出門訣 E1/E2 深度審計（後台 Agent 進行中，已發現 7 個 bug 待修）
 
 ### v5.3.44-v5.3.48（2026-04-19 全面性重構 Wave 1+2+3）
 

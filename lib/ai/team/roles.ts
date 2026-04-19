@@ -20,7 +20,7 @@ export const AUTHOR: RoleConfig = {
   name: 'author',
   title: '首席命理顧問（主筆）',
   providers: [
-    { provider: 'anthropic', model: 'claude-opus-4-7' },
+    { provider: 'anthropic', model: 'claude-opus-4-6' },
     { provider: 'openai', model: 'gpt-4o' },
     { provider: 'alibaba', model: 'qwen-max' },
   ],

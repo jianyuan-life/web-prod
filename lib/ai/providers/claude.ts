@@ -2,8 +2,8 @@
 // Anthropic Claude Provider — Opus 4.6 主筆
 // ============================================================
 // API: https://api.anthropic.com/v1/messages
-// 預設模型：claude-opus-4-7（最高品質，主要用於報告主筆）
-// 備援：claude-sonnet-4-6、claude-haiku-4-5-20251001
+// 預設模型：claude-opus-4-6（客戶認可版，報告主筆）
+// 備援：claude-opus-4-7、claude-sonnet-4-6、claude-haiku-4-5-20251001
 
 import type { LLMProvider, LLMRequest, LLMResponse } from '../types'
 
@@ -14,6 +14,7 @@ const TIMEOUT_MS = 180_000 // 3 分鐘
 
 // 成本表（USD / 1M tokens）
 const PRICING: Record<string, { input: number; output: number }> = {
+  'claude-opus-4-6': { input: 15, output: 75 },
   'claude-opus-4-7': { input: 15, output: 75 },
   'claude-sonnet-4-6': { input: 3, output: 15 },
   'claude-haiku-4-5-20251001': { input: 0.25, output: 1.25 },
@@ -21,8 +22,9 @@ const PRICING: Record<string, { input: number; output: number }> = {
 
 export const claudeProvider: LLMProvider = {
   name: 'anthropic',
-  defaultModel: 'claude-opus-4-7',
+  defaultModel: 'claude-opus-4-6',
   supportedModels: [
+    'claude-opus-4-6',
     'claude-opus-4-7',
     'claude-sonnet-4-6',
     'claude-haiku-4-5-20251001',
