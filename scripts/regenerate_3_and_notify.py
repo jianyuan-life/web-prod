@@ -90,7 +90,8 @@ def wait_report_complete(report_id: str, max_wait=1800):
         return None
     t0 = time.time()
     while time.time() - t0 < max_wait:
-        url = f'{SUPA_URL}/rest/v1/paid_reports?id=eq.{report_id}&select=status,error_message,updated_at'
+        # paid_reports 沒有 updated_at 欄位（PostgREST 會回 400），用 created_at 取代
+        url = f'{SUPA_URL}/rest/v1/paid_reports?id=eq.{report_id}&select=status,error_message,created_at'
         req = urllib.request.Request(url, headers={
             'apikey': SERVICE_KEY,
             'Authorization': f'Bearer {SERVICE_KEY}',

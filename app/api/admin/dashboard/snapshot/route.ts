@@ -1,4 +1,4 @@
-// Dashboard 今日快照 API（L7+ BI 2026-04-17）
+// Dashboard 今日快照 API（L7+ BI 2026-04-17，v5.3.38 RPC 化）
 // GET /api/admin/dashboard/snapshot
 // Headers: x-admin-key
 //
@@ -8,6 +8,8 @@
 //   - 今日活躍用戶數（DAU）
 //   - 今日免費工具使用
 //   - vs 昨天的差值（比較）
+//
+// v5.3.38：改用 admin_dashboard_snapshot RPC，SQL 層聚合，不再把全表拉進 Node 記憶體。
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
@@ -31,6 +33,27 @@ function todayWindow() {
   return {
     startOfToday: startOfToday.toISOString(),
     startOfYesterday: startOfYesterday.toISOString(),
+    endTs: now.toISOString(),
+  }
+}
+
+type SnapshotRpcPayload = {
+  generated_at: string
+  today: {
+    orders: number
+    revenue_usd: number
+    reports_completed: number
+    reports_failed: number
+    reports_generating: number
+    dau: number
+    paying_customers: number
+    free_tool_usage: number
+  }
+  yesterday: {
+    orders: number
+    revenue_usd: number
+    dau: number
+    paying_customers: number
   }
 }
 
@@ -41,101 +64,63 @@ export async function GET(req: NextRequest) {
   if (authFail) return authFail
 
   const supabase = getSupabase()
-  const { startOfToday, startOfYesterday } = todayWindow()
+  const { startOfToday, startOfYesterday, endTs } = todayWindow()
 
-  // ==== 並行查詢 ====
-  const [
-    todayReportsRes,
-    yesterdayReportsRes,
-    todayVisitorsRes,
-    yesterdayVisitorsRes,
-    todayFreeToolRes,
-  ] = await Promise.all([
-    supabase
-      .from('paid_reports')
-      .select('id, plan_code, amount_usd, status, customer_email, created_at')
-      .gte('created_at', startOfToday),
-    supabase
-      .from('paid_reports')
-      .select('id, amount_usd, status, customer_email')
-      .gte('created_at', startOfYesterday)
-      .lt('created_at', startOfToday),
-    supabase
-      .from('visitor_events')
-      .select('session_id, user_agent')
-      .gte('created_at', startOfToday),
-    supabase
-      .from('visitor_events')
-      .select('session_id, user_agent')
-      .gte('created_at', startOfYesterday)
-      .lt('created_at', startOfToday),
-    supabase
-      .from('free_tool_usage')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', startOfToday),
-  ])
+  const { data, error } = await supabase.rpc('admin_dashboard_snapshot', {
+    start_today: startOfToday,
+    start_yesterday: startOfYesterday,
+    end_ts: endTs,
+  })
 
-  const BOT_PATTERNS = ['HeadlessChrome', 'vercel-screenshot', 'bot', 'crawler', 'spider', 'Googlebot', 'Bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider', 'YandexBot', 'facebookexternalhit', 'Twitterbot']
-  const isBot = (ua: string) => BOT_PATTERNS.some(p => ua.toLowerCase().includes(p.toLowerCase()))
+  if (error) {
+    return NextResponse.json(
+      { error: 'snapshot_rpc_failed', detail: error.message },
+      { status: 500 },
+    )
+  }
 
-  const todayReports = todayReportsRes.data || []
-  const yesterdayReports = yesterdayReportsRes.data || []
+  const payload = (data ?? {
+    generated_at: new Date().toISOString(),
+    today: {
+      orders: 0, revenue_usd: 0, reports_completed: 0, reports_failed: 0,
+      reports_generating: 0, dau: 0, paying_customers: 0, free_tool_usage: 0,
+    },
+    yesterday: { orders: 0, revenue_usd: 0, dau: 0, paying_customers: 0 },
+  }) as SnapshotRpcPayload
 
-  const todayRevenue = todayReports.filter(r => parseFloat(r.amount_usd) > 0).reduce((s, r) => s + parseFloat(r.amount_usd), 0)
-  const yesterdayRevenue = yesterdayReports.filter(r => parseFloat(r.amount_usd) > 0).reduce((s, r) => s + parseFloat(r.amount_usd), 0)
+  const today = payload.today
+  const yesterday = payload.yesterday
 
-  const todayOrders = todayReports.length
-  const yesterdayOrders = yesterdayReports.length
+  const todayRevenue = Number(today.revenue_usd) || 0
+  const yesterdayRevenue = Number(yesterday.revenue_usd) || 0
 
-  const todayCompleted = todayReports.filter(r => r.status === 'completed').length
-  const todayFailed = todayReports.filter(r => r.status === 'failed').length
-  const todayGenerating = todayReports.filter(r => r.status === 'generating' || r.status === 'pending').length
-
-  // DAU（去重 session_id + 排除 bot）
-  const todayDauSessions = new Set(
-    (todayVisitorsRes.data || [])
-      .filter(v => !isBot(v.user_agent || ''))
-      .map(v => v.session_id)
-  )
-  const yesterdayDauSessions = new Set(
-    (yesterdayVisitorsRes.data || [])
-      .filter(v => !isBot(v.user_agent || ''))
-      .map(v => v.session_id)
-  )
-  const todayDau = todayDauSessions.size
-  const yesterdayDau = yesterdayDauSessions.size
-
-  // 活躍付費用戶（今日下單的獨立 email）
-  const todayUniqueCustomers = new Set(todayReports.map(r => (r.customer_email || '').toLowerCase())).size
-  const yesterdayUniqueCustomers = new Set(yesterdayReports.map(r => (r.customer_email || '').toLowerCase())).size
-
-  const deltaPct = (today: number, yesterday: number): number | null => {
-    if (yesterday === 0) return today === 0 ? 0 : null
-    return Math.round(((today - yesterday) / yesterday) * 1000) / 10
+  const deltaPct = (t: number, y: number): number | null => {
+    if (y === 0) return t === 0 ? 0 : null
+    return Math.round(((t - y) / y) * 1000) / 10
   }
 
   return NextResponse.json({
-    generated_at: new Date().toISOString(),
+    generated_at: payload.generated_at,
     today: {
-      orders: todayOrders,
-      orders_delta_pct: deltaPct(todayOrders, yesterdayOrders),
+      orders: today.orders,
+      orders_delta_pct: deltaPct(today.orders, yesterday.orders),
       revenue_usd: Math.round(todayRevenue * 100) / 100,
       revenue_twd: Math.round(todayRevenue * USD_TO_TWD * 100) / 100,
       revenue_delta_pct: deltaPct(todayRevenue, yesterdayRevenue),
-      reports_completed: todayCompleted,
-      reports_failed: todayFailed,
-      reports_generating: todayGenerating,
-      dau: todayDau,
-      dau_delta_pct: deltaPct(todayDau, yesterdayDau),
-      paying_customers: todayUniqueCustomers,
-      paying_customers_delta_pct: deltaPct(todayUniqueCustomers, yesterdayUniqueCustomers),
-      free_tool_usage: todayFreeToolRes.count ?? 0,
+      reports_completed: today.reports_completed,
+      reports_failed: today.reports_failed,
+      reports_generating: today.reports_generating,
+      dau: today.dau,
+      dau_delta_pct: deltaPct(today.dau, yesterday.dau),
+      paying_customers: today.paying_customers,
+      paying_customers_delta_pct: deltaPct(today.paying_customers, yesterday.paying_customers),
+      free_tool_usage: today.free_tool_usage,
     },
     yesterday: {
-      orders: yesterdayOrders,
+      orders: yesterday.orders,
       revenue_usd: Math.round(yesterdayRevenue * 100) / 100,
-      dau: yesterdayDau,
-      paying_customers: yesterdayUniqueCustomers,
+      dau: yesterday.dau,
+      paying_customers: yesterday.paying_customers,
     },
     exchange_rate: { usd_to_twd: USD_TO_TWD },
   })

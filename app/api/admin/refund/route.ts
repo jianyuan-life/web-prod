@@ -163,20 +163,31 @@ export async function POST(req: NextRequest) {
       if (!viewErr && viewUser?.id) {
         refundedUserId = viewUser.id
       } else {
-        // Fallback: auth_users_view 尚未建立（migration 還沒跑）→ 退回 listUsers
-        //           雖然有 1000 上限，但至少不 break 既有功能
+        // Fallback: auth_users_view 尚未建立（migration 還沒跑）→ 分頁掃 listUsers
+        //           避免 perPage=1000 單次上限在用戶破千時漏掉目標
         if (viewErr) {
-          console.warn('[refund] auth_users_view 查詢失敗，退回 listUsers:', viewErr.message)
+          console.warn('[refund] auth_users_view 查詢失敗，退回分頁 listUsers:', viewErr.message)
         }
         try {
-          const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-          const refundedUser = users?.find(u => u.email?.toLowerCase() === lowerEmail)
-          refundedUserId = refundedUser?.id || null
-          if (!refundedUserId && (users?.length || 0) >= 1000) {
-            console.error('[refund] listUsers 達到 1000 筆上限，可能遺漏目標用戶:', lowerEmail)
+          let page = 1
+          const perPage = 1000
+          const MAX_PAGES = 100 // 安全網：最多 100 頁 = 100 萬用戶
+          while (page <= MAX_PAGES) {
+            const { data: listData, error: listErr } = await supabase.auth.admin.listUsers({ page, perPage })
+            if (listErr || !listData?.users?.length) break
+            const refundedUser = listData.users.find(u => u.email?.toLowerCase() === lowerEmail)
+            if (refundedUser) {
+              refundedUserId = refundedUser.id
+              break
+            }
+            if (listData.users.length < perPage) break // 最後一頁
+            page++
+          }
+          if (!refundedUserId && page > MAX_PAGES) {
+            console.error('[refund] findUserByEmail exceeded 100 pages limit:', lowerEmail)
           }
         } catch (fallbackErr) {
-          console.error('[refund] listUsers fallback 也失敗:', fallbackErr)
+          console.error('[refund] listUsers 分頁 fallback 失敗:', fallbackErr)
         }
       }
 
