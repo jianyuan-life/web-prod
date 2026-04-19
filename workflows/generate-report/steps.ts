@@ -18,6 +18,14 @@ import {
   extractCall1Summary, extractCall1And2Summary,
   SYSTEM_GROUPS,
 } from '@/prompts/c_plan_v2'
+// v5.3.47 QA 補：改 top-level import（省 cold-start 150-600ms/call × 3 = ~1.5 秒）
+import {
+  buildBlueprintPrompt,
+  validateBlueprint,
+  buildCall1QiPromptV3,
+  buildCall2ChengZhuanHePromptV3,
+  type BlueprintJSON,
+} from '@/prompts/c_plan_v3'
 
 // ── 常數 ──
 const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
@@ -1859,8 +1867,6 @@ export async function aiGenerateBlueprintV3(
   console.log('Call 0 BLUEPRINT 開始：抽結構化藍圖')
   await emitProgress({ step: 'AI分析', progress: 10, message: '正在抽取命格核心藍圖...' })
 
-  const { buildBlueprintPrompt, validateBlueprint } = await import('@/prompts/c_plan_v3')
-
   const systemPrompt = buildBlueprintPrompt({
     name: birthData.name,
     gender: birthData.gender,
@@ -1895,8 +1901,9 @@ export async function aiGenerateBlueprintV3(
     throw new Error(`Call 0 BLUEPRINT 驗證失敗：${validation.errors.join('、')}`)
   }
 
-  console.log(`Call 0 BLUEPRINT 完成：identity_label="${(blueprint as { identity_label: string }).identity_label}"`)
-  return blueprint as import('@/prompts/c_plan_v3').BlueprintJSON
+  const typedBlueprint = blueprint as BlueprintJSON
+  console.log(`Call 0 BLUEPRINT 完成：identity_label="${typedBlueprint.identity_label}"`)
+  return typedBlueprint
 }
 aiGenerateBlueprintV3.maxRetries = 3
 
@@ -1906,14 +1913,12 @@ aiGenerateBlueprintV3.maxRetries = 3
  * 情緒：認同（「這說的就是我」）
  */
 export async function aiGenerateCall1V3(
-  blueprint: import('@/prompts/c_plan_v3').BlueprintJSON,
+  blueprint: BlueprintJSON,
   calcResult: CalcResult, birthData: BirthData, clientQuestion?: string, reportId?: string,
 ) {
   "use step";
   console.log('Call 1 v3 起章開始：命格總覽 + 15 系統融合 + 命格總論')
   await emitProgress({ step: 'AI分析', progress: 25, message: '正在撰寫起章（認識本我）...' })
-
-  const { buildCall1QiPromptV3 } = await import('@/prompts/c_plan_v3')
 
   const systemPrompt = buildCall1QiPromptV3(
     blueprint,
@@ -1935,14 +1940,12 @@ aiGenerateCall1V3.maxRetries = 3
  * 情緒弧線：揭露 → 震撼 → 希望（Cinderella）
  */
 export async function aiGenerateCall2ChengZhuanHeV3(
-  blueprint: import('@/prompts/c_plan_v3').BlueprintJSON,
+  blueprint: BlueprintJSON,
   calcResult: CalcResult, birthData: BirthData, call1Content: string, reportId?: string,
 ) {
   "use step";
   console.log('Call 2 v3 承轉合開始')
   await emitProgress({ step: 'AI分析', progress: 55, message: '正在撰寫承轉合三章（一氣呵成）...' })
-
-  const { buildCall2ChengZhuanHePromptV3 } = await import('@/prompts/c_plan_v3')
 
   const systemPrompt = buildCall2ChengZhuanHePromptV3(
     blueprint,

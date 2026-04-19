@@ -418,35 +418,97 @@ export async function generateReportWorkflow(reportId: string) {
 
       // ── v5.3.45 Wave 2：Prompt v3 新流程（feature flag USE_PROMPT_V3 或 PROMPT_V3_TEST_REPORT_ID 啟用）──
       // Call 0 BLUEPRINT JSON + Call 1 起篇 + Call 2 承轉合合併
-      // 失敗時自動 fallback 到 v2 3-call（不阻塞客戶）
-      const useV3 = !pipelineSuccess && (
-        process.env.USE_PROMPT_V3 === 'true'
-        || process.env.PROMPT_V3_TEST_REPORT_ID === reportId
-      )
+      // IA 稽核要求：Call 0/1/2 獨立 try/catch（避免 Call 2 失敗時 Call 1 的 $2 白花）
+      // 失敗時優雅降級，不阻塞客戶
+      // v5.3.47 QA 補：feature flag 比對放寬（支援 true/TRUE/1/trim 空白，避免 Vercel env 設定坑）
+      const v3FlagRaw = (process.env.USE_PROMPT_V3 || '').trim().toLowerCase()
+      const v3Enabled = v3FlagRaw === 'true' || v3FlagRaw === '1'
+      const v3TestId = (process.env.PROMPT_V3_TEST_REPORT_ID || '').trim()
+      const useV3 = !pipelineSuccess && (v3Enabled || (v3TestId && v3TestId === reportId))
       let v3Success = false
+
       if (useV3) {
+        console.log('C 方案 v3 啟動：Call 0 BLUEPRINT + Call 1 起 + Call 2 承轉合')
+
+        // Call 0：BLUEPRINT JSON（~$0.06）
+        let blueprint: Awaited<ReturnType<typeof aiGenerateBlueprintV3>> | null = null
         try {
-          console.log('C 方案 v3 啟動：Call 0 BLUEPRINT + Call 1 起 + Call 2 承轉合')
-          const blueprint = await aiGenerateBlueprintV3(calcResult, birthData, clientQuestion, reportId)
-          const r1 = await aiGenerateCall1V3(blueprint, calcResult, birthData, clientQuestion, reportId)
-          const r2 = await aiGenerateCall2ChengZhuanHeV3(blueprint, calcResult, birthData, r1.content, reportId)
+          blueprint = await aiGenerateBlueprintV3(calcResult, birthData, clientQuestion, reportId)
+        } catch (e) {
+          console.error('[v3] Call 0 BLUEPRINT 失敗，整包降級 v2:', e)
+        }
 
-          // Call 2 v3 承轉合完整性檢查（刻意練習 + 給 XX 的一封信）
-          const hasDeliberatePractice = r2.content.includes('刻意練習')
-          const hasClosingLetter = r2.content.includes('寫給') || /給.{1,10}的一封信/.test(r2.content)
+        // Call 1：起篇（~$2）
+        let r1: Awaited<ReturnType<typeof aiGenerateCall1V3>> | null = null
+        if (blueprint) {
+          try {
+            r1 = await aiGenerateCall1V3(blueprint, calcResult, birthData, clientQuestion, reportId)
+          } catch (e) {
+            console.error('[v3] Call 1 起篇失敗，整包降級 v2:', e)
+          }
+        }
 
-          if (!hasDeliberatePractice || !hasClosingLetter) {
-            console.warn(`[v3] Call 2 完整性不足（刻意練習=${hasDeliberatePractice} 寫給=${hasClosingLetter}），降級到 v2`)
+        // Call 2：承轉合合併（~$2.7）
+        let r2Content: string | null = null
+        if (blueprint && r1) {
+          try {
+            const r2 = await aiGenerateCall2ChengZhuanHeV3(blueprint, calcResult, birthData, r1.content, reportId)
+            r2Content = r2.content
+          } catch (e) {
+            console.error('[v3] Call 2 承轉合失敗，嘗試 v2 Call 2+3 補後半（保留 r1 起篇）:', e)
+            // Call 2 v3 掛了但 r1 已花 $2。用 v2 Call 2+3 補後半（再燒 ~$2 比整包重跑 $4 省）
+            try {
+              const r2v2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
+              const r3v2 = await aiGenerateCall3(calcResult, birthData, r1.content, r2v2.content, undefined, undefined, reportId)
+              r2Content = r2v2.content + '\n\n' + r3v2.content
+              console.log('[v3] Call 2 降級補救成功：v2 Call 2+3 補完')
+            } catch (e2) {
+              console.error('[v3] Call 2 降級補救也失敗，整包降級 v2:', e2)
+              r1 = null  // 讓下方整包 fallback 觸發
+            }
+          }
+        }
+
+        // 合併前品質檢驗（IA 稽核必修 2 條）
+        if (blueprint && r1 && r2Content) {
+          const combined = r1.content + '\n' + r2Content
+
+          // 必修 1：Tier 3 五系統提及 ≥ 5 次
+          const tier3Systems = ['數字', '九星', '塔羅', '生肖', '節律', '南洋']
+          const tier3Counts = tier3Systems.map(s => ({
+            s, n: (combined.match(new RegExp(s, 'g')) || []).length,
+          }))
+          const tier3Lowest = Math.min(...tier3Counts.map(x => x.n))
+
+          // 必修 2：identity_label 回收 ≥ 3 次（取前 6 字模糊匹配，escape 特殊字元）
+          const labelHead = blueprint.identity_label.slice(0, 6).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          const labelCount = labelHead ? (combined.match(new RegExp(labelHead, 'g')) || []).length : 0
+
+          // Call 2 完整性（刻意練習 + 給 XX 的一封信）
+          const hasDeliberatePractice = r2Content.includes('刻意練習')
+          const hasClosingLetter = r2Content.includes('寫給') || /給.{1,10}的一封信/.test(r2Content)
+
+          const qualityIssues: string[] = []
+          if (!hasDeliberatePractice) qualityIssues.push('缺「刻意練習」')
+          if (!hasClosingLetter) qualityIssues.push('缺「寫給/給 XX 的一封信」')
+          if (tier3Lowest < 5) qualityIssues.push(`Tier3 系統最低提及 ${tier3Lowest} 次（${tier3Counts.find(x => x.n === tier3Lowest)?.s}）< 5`)
+          if (labelCount < 3) qualityIssues.push(`identity_label「${blueprint.identity_label}」僅回收 ${labelCount} 次 < 3`)
+
+          if (qualityIssues.length > 0) {
+            console.warn(`[v3] 品質檢驗不過：${qualityIssues.join(' | ')}，降級 v2（r1 已花 ~$2 將再燒 ~$4 v2）`)
+            // v5.3.47 QA 必修：成本警報 — v3 品質不過會雙燒，push Telegram 讓老闆知道
+            try {
+              const { notifyQualityGate } = await import('@/lib/ai/observability/telegram')
+              await notifyQualityGate(reportId, 0)
+            } catch { /* 警報失敗不阻塞 */ }
           } else {
             const appendix = buildAppendix(calcResult.analyses)
-            const rawContent = [r1.content, r2.content, appendix].join('\n\n')
+            const rawContent = [r1.content, r2Content, appendix].join('\n\n')
             reportContent = cleanFinalReport(rawContent, birthData.name)
             aiModelUsed = r1.model + '-v3'
             v3Success = true
-            console.log(`C 方案 v3 完成：${reportContent.length} 字（Call 1 ${r1.content.length} + Call 2 ${r2.content.length}）`)
+            console.log(`C 方案 v3 完成：${reportContent.length} 字（Call 1 ${r1.content.length} + Call 2 ${r2Content.length}），identity_label 回收 ${labelCount} 次，Tier 3 最低 ${tier3Lowest} 次`)
           }
-        } catch (v3Err) {
-          console.error('C 方案 v3 異常，降級到 v2 3-call:', v3Err)
         }
       }
 
