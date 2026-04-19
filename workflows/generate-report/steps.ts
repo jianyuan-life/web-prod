@@ -204,8 +204,12 @@ function cleanAIResponse(text: string): string {
   // 3. AI 批次標記
   cleaned = cleaned.replace(/（第[一二三四]批）/g, '')
 
-  // 4. 改名建議段落刪除（包含關鍵詞的整段）
-  cleaned = cleaned.replace(/^.*(?:建議改名|改名建議|建議名字改為).*$(\n(?!#).*$)*/gm, '')
+  // 4. 改名建議整行刪除（v5.3.43 修 Bug2 復發）
+  // 舊 regex `^.*建議改名.*$(\n(?!#).*$)*` 會貪婪吃到下個 # 前的所有行——
+  // 如果改名建議段落後面接的是列表/段落/空行而非 `#` 開頭章節，就會把下個系統的
+  // 正文整段吞掉，導致 Tier 3 系統（奇門/風水/易經/七政/節律）在最終報告出現
+  // 次數 <5 次。改為只刪單行，原意是去掉「建議改名」這句結論句，其餘正文保留。
+  cleaned = cleaned.replace(/^.*(?:建議改名|改名建議|建議名字改為).*$/gm, '')
 
   // 5. 禁止字眼整行刪除
   cleaned = cleaned.replace(/^.*(?:跳過|本次數據不足|待分析|本次不適用|需面部照片|需掌紋照片|需即時起卦|需即時抽牌|手相掌紋).*$/gm, '')
@@ -638,6 +642,21 @@ export function validateReportAgainstData(
 export function cleanFinalReport(text: string, clientName?: string): string {
   let cleaned = text
   console.log('[cleanFinalReport] 開始最終清理...')
+
+  // 0. v5.3.43 修 Bug1 復發：h2 主章節 0 個
+  // Claude 在 v5.3.41 c_plan_v2.ts v6.0 下仍習慣用 `### 一、...` 做主章節，
+  // 造成報告頁目錄/進度條/章節折疊全壞。此處硬升級：凡 `### <中文數字>、` 或
+  // `### <阿拉伯數字>、` 開頭的行，一律升格為 `## ...`。細分章節（`### 6.1 ...`
+  // `### N.M ...`）不匹配此模式，保留不動。
+  {
+    const h2PromoteRegex = /^### ([一二三四五六七八九十百]+[、\.]|\d+、)(.*)$/gm
+    let promoteCount = 0
+    cleaned = cleaned.replace(h2PromoteRegex, (_m, num, rest) => {
+      promoteCount++
+      return `## ${num}${rest}`
+    })
+    if (promoteCount > 0) console.log(`[cleanFinalReport] h2 升格：${promoteCount} 個 ### 主章節 → ##`)
+  }
 
   // 1. 刪除重複報告標題（保留第一個）
   // 策略 A：如果有客戶名字，匹配含客戶名的 h1/h2 標題

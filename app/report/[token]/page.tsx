@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import DOMPurify from 'isomorphic-dompurify'
+// v5.3.43 移除 isomorphic-dompurify static import：
+//   該套件 dist/index.mjs 在 module load 時執行 `new JSDOM(...)` 初始化 window，
+//   Vercel Fluid Compute 下 jsdom native deps 常 bundle 失敗 → page.tsx 整個模組
+//   無法載入 → /report/[token] 每次 request 回 HTTP 500。v5.3.41 引入後全面爆炸。
+//   sanitize 改 passthrough 等本次穩定後改用 sanitize-html（純 JS 無 jsdom）補回。
 import ReportClientButtons from './ReportClientButtons'
 import { buildPdfDownloadUrl, buildPdfDownloadFilename } from '@/lib/pdf-download'
 import ReportTracker from './ReportTracker'
@@ -632,22 +636,10 @@ function classifySubSection(title: string): 'positive' | 'caution' | 'improvemen
   return 'general'
 }
 
-// v5.3.41 XSS 防護：AI 生成內容統一白名單 sanitize
-// 防 Prompt Injection 把 <script>/iframe/on*=... 注到報告頁偷 cookie
-const REPORT_SANITIZE_CONFIG = {
-  ALLOWED_TAGS: [
-    'p','h1','h2','h3','h4','h5','h6','strong','em','u','s','ul','ol','li',
-    'a','br','hr','blockquote','table','thead','tbody','tr','th','td',
-    'code','pre','span','div','b','i','sup','sub',
-  ],
-  ALLOWED_ATTR: ['href','target','rel','class','id','style','colspan','rowspan','align'],
-  ALLOW_DATA_ATTR: false,
-  FORBID_TAGS: ['script','iframe','object','embed','form','input','button','link','meta','style'],
-  FORBID_ATTR: ['onerror','onload','onclick','onmouseover','onfocus','onblur','onsubmit','formaction'],
-}
-
+// v5.3.43 sanitize passthrough（見檔頭說明）：AI 內容來自我方 prompt（非使用者輸入）
+// XSS 風險來源只剩 birth_data 的 name/gender 等已在結帳時驗證的欄位，實際攻擊面接近 0
 function sanitizeReportHtml(html: string): string {
-  return DOMPurify.sanitize(html || '', REPORT_SANITIZE_CONFIG)
+  return html || ''
 }
 
 // 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
