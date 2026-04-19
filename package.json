@@ -1,6 +1,6 @@
 {
   "name": "fortune-reports",
-  "version": "5.3.40",
+  "version": "5.3.41",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -17,6 +17,7 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@workflow/next": "^4.0.1",
+    "isomorphic-dompurify": "^3.9.0",
     "next": "^16.2.1",
     "opencc-js": "^1.0.5",
     "postcss": "^8.5.8",

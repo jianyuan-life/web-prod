@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import DOMPurify from 'isomorphic-dompurify'
 import ReportClientButtons from './ReportClientButtons'
 import { buildPdfDownloadUrl, buildPdfDownloadFilename } from '@/lib/pdf-download'
 import ReportTracker from './ReportTracker'
@@ -631,14 +632,34 @@ function classifySubSection(title: string): 'positive' | 'caution' | 'improvemen
   return 'general'
 }
 
+// v5.3.41 XSS 防護：AI 生成內容統一白名單 sanitize
+// 防 Prompt Injection 把 <script>/iframe/on*=... 注到報告頁偷 cookie
+const REPORT_SANITIZE_CONFIG = {
+  ALLOWED_TAGS: [
+    'p','h1','h2','h3','h4','h5','h6','strong','em','u','s','ul','ol','li',
+    'a','br','hr','blockquote','table','thead','tbody','tr','th','td',
+    'code','pre','span','div','b','i','sup','sub',
+  ],
+  ALLOWED_ATTR: ['href','target','rel','class','id','style','colspan','rowspan','align'],
+  ALLOW_DATA_ATTR: false,
+  FORBID_TAGS: ['script','iframe','object','embed','form','input','button','link','meta','style'],
+  FORBID_ATTR: ['onerror','onload','onclick','onmouseover','onfocus','onblur','onsubmit','formaction'],
+}
+
+function sanitizeReportHtml(html: string): string {
+  return DOMPurify.sanitize(html || '', REPORT_SANITIZE_CONFIG)
+}
+
 // 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
 function renderSectionMarkdown(content: string): string {
   // 按 ### 分割子章節
   const subParts = content.split(/^### /m)
   if (subParts.length <= 1) {
     // 無子章節，直接渲染
-    return renderInlineMarkdown(content)
-      .replace(/^# (.+)$/gm, '<h3 class="report-h3">$1</h3>')
+    return sanitizeReportHtml(
+      renderInlineMarkdown(content)
+        .replace(/^# (.+)$/gm, '<h3 class="report-h3">$1</h3>')
+    )
   }
 
   let html = ''
@@ -670,7 +691,7 @@ function renderSectionMarkdown(content: string): string {
       if (subBody) html += `<p class="report-p">${renderInlineMarkdown(subBody)}</p>`
     }
   }
-  return html
+  return sanitizeReportHtml(html)
 }
 
 // Google Calendar URL 生成（純前端，不需要 API key）
@@ -874,7 +895,12 @@ function extractDChartCitations(markdown: string): DChartCite[] {
   return cites
 }
 
-// 動態 OG metadata — 社群分享時顯示方案名稱與客戶名
+// 動態 OG metadata — 去識別化版本（P0 隱私強化 2026-04-19）
+// 原則：
+//   1. 報告頁絕對不能被搜尋引擎索引（robots noindex/nofollow/noarchive）
+//   2. 標題/描述/OG 不暴露客戶真名（改用方案名稱）
+//   3. 不指定 canonical（避免誤導爬蟲認為這是公開頁面）
+//   4. referrer 清除（防止點擊外連後把 token URL 洩漏給第三方網站）
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params
 
@@ -885,18 +911,41 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 
   const { data } = await supabase
     .from('paid_reports')
-    .select('client_name, plan_code')
+    .select('plan_code')
     .eq('access_token', token)
     .single()
 
+  // 不使用客戶姓名，僅用方案名稱（去識別化）
   const planName = data ? (PLAN_NAMES[data.plan_code] || '命理分析') : '命理分析'
-  const clientName = data?.client_name || ''
-  const title = clientName ? `${clientName}的${planName}報告` : `${planName}報告`
-  const description = '鑒源命理 — 十五大命理系統整合分析，一份報告看清性格天賦、事業方向、感情運勢。'
+  const title = `${planName}報告 · 鑒源命理`
+  const description = '鑒源命理 — 東西方十五大命理系統整合分析。（此頁面為客戶專屬私密報告，不被搜尋引擎索引）'
 
   return {
     title,
     description,
+    // 阻止所有搜尋引擎索引 / 快取 / 翻譯 / snippet
+    robots: {
+      index: false,
+      follow: false,
+      nocache: true,
+      noarchive: true,
+      nosnippet: true,
+      noimageindex: true,
+      googleBot: {
+        index: false,
+        follow: false,
+        noarchive: true,
+        nosnippet: true,
+        noimageindex: true,
+        'max-snippet': -1,
+        'max-image-preview': 'none',
+        'max-video-preview': -1,
+      },
+    },
+    // 不指定 canonical（防止被當成公開頁面）
+    alternates: { canonical: null },
+    // 清除 referrer（防止點擊外連後把 token URL 洩漏給第三方網站）
+    referrer: 'no-referrer',
     openGraph: {
       title,
       description,

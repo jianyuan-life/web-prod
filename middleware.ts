@@ -27,13 +27,38 @@ function getClientIp(request: NextRequest): string {
 }
 
 export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // P0 隱私強化 (2026-04-19)：報告頁 / 儀表板 / 後台 / auth 路徑
+  // 加 HTTP header 防止被索引（meta 標籤是第一層，header 是第二層，robots.txt 是第三層）
+  // X-Robots-Tag 涵蓋所有爬蟲 + 還能控制非 HTML（圖片、PDF）的索引
+  const isPrivatePath =
+    pathname.startsWith('/report/') ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/jamie') ||
+    pathname.startsWith('/auth/')
+
+  if (isPrivatePath) {
+    const response = NextResponse.next()
+    // noindex/nofollow/noarchive/nosnippet/noimageindex：對所有爬蟲
+    response.headers.set(
+      'X-Robots-Tag',
+      'noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate',
+    )
+    // 防止 referrer 洩漏 access_token URL 給第三方網站
+    response.headers.set('Referrer-Policy', 'no-referrer')
+    // 不讓瀏覽器 / CDN 快取（即使客戶登出或 token 失效後，不會被後人取得）
+    response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0')
+    return response
+  }
+
   // 只對 API 路由做速率限制
-  if (!request.nextUrl.pathname.startsWith('/api/')) {
+  if (!pathname.startsWith('/api/')) {
     return NextResponse.next()
   }
 
   const ip = getClientIp(request)
-  const path = request.nextUrl.pathname
+  const path = pathname
   const key = `${ip}:${path}`
   const now = Date.now()
 
@@ -157,5 +182,12 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  // API 路由（速率限制）+ 隱私路徑（X-Robots-Tag header）
+  matcher: [
+    '/api/:path*',
+    '/report/:path*',
+    '/dashboard/:path*',
+    '/jamie/:path*',
+    '/auth/:path*',
+  ],
 }

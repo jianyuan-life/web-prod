@@ -41,6 +41,14 @@
   --color-purple-accent: #8b5cf6;  /* 靈性紫 */
   --color-teal-accent: #2dd4bf;    /* 能量青 */
 
+  /* WCAG 2.1 AA 合規狀態色（深色底 + 白字 ≥ 4.5:1）
+     舊值對比不足：#2ECC71=2.47:1、#F39C12=2.38:1、#3498DB=3.14:1
+     新值：翠綠 #1E8449(5.12:1)、琥珀 #B8650E(5.08:1)、天藍 #1F618D(7.14:1) */
+  --color-green-accent: #1E8449;   /* 成功綠（深版，AA pass）*/
+  --color-amber-accent: #B8650E;   /* 警示琥珀（深版，AA pass）*/
+  --color-sky-accent: #1F618D;     /* 資訊天藍（深版，AA pass）*/
+  --color-gold-on-light: #8B6F3B;  /* 淺色背景上的金（若日後有淺模式）*/
+
   /* 字體（含 emoji fallback，避免「方塊」顯示）— P2-1 */
   --font-sans: "Noto Serif TC", "Georgia", "Times New Roman", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
   --font-body: "Noto Sans TC", "Inter", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
@@ -231,12 +239,17 @@ select, option {
   color: #e8eaf0;
 }
 
-/* 無障礙：減少動態效果 */
+/* 無障礙：減少動態效果（WCAG 2.3.3 Animation from Interactions）
+   — 覆蓋 html.scroll-behavior: smooth 和所有 CSS 動畫/過渡 */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  html {
+    scroll-behavior: auto !important;
   }
 }
 

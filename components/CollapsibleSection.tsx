@@ -37,6 +37,8 @@ export default function CollapsibleSection({
   const [expanded, setExpanded] = useState(defaultExpanded)
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState<number | 'auto'>('auto')
+  // WCAG 2.1.1：aria-controls 需穩定 id，避免多個 CollapsibleSection 共用
+  const contentId = id ? `${id}-content` : undefined
 
   // 測量內容高度以實現平滑動畫
   // Bug #14：確認 node 仍 connected 再訪問，避免 parentNode null 錯誤
@@ -81,6 +83,7 @@ export default function CollapsibleSection({
         onClick={() => setExpanded(prev => !prev)}
         className="w-full flex items-center gap-3 text-left group"
         aria-expanded={expanded}
+        aria-controls={contentId}
         style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
       >
         {/* 章節編號或圖標 */}
@@ -94,6 +97,7 @@ export default function CollapsibleSection({
 
         {/* 展開/收起箭頭 */}
         <span
+          aria-hidden="true"
           className="shrink-0 text-xs transition-transform duration-300 ease-in-out"
           style={{
             color: 'var(--color-gold)',
@@ -108,7 +112,11 @@ export default function CollapsibleSection({
 
       {/* 內容區域（平滑動畫） */}
       <div
+        id={contentId}
         ref={contentRef}
+        role="region"
+        aria-labelledby={id ? `${id}-heading` : undefined}
+        hidden={!expanded && contentHeight === 0}
         style={{
           height: typeof contentHeight === 'number' ? `${contentHeight}px` : 'auto',
           overflow: 'hidden',

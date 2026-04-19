@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
@@ -13,6 +13,7 @@ export default function Navbar() {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const toolsContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setTxt(UI_TEXT[getLocale()])
@@ -47,6 +48,38 @@ export default function Navbar() {
     return () => { document.body.style.overflow = '' }
   }, [mobileMenuOpen])
 
+  // WCAG 2.1.1 鍵盤導航：ESC 關閉下拉選單、點擊外部關閉、Tab 離開關閉
+  useEffect(() => {
+    if (!toolsOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setToolsOpen(false)
+        // 還原焦點到觸發按鈕
+        const btn = toolsContainerRef.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')
+        btn?.focus()
+      }
+    }
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toolsContainerRef.current && !toolsContainerRef.current.contains(e.target as Node)) {
+        setToolsOpen(false)
+      }
+    }
+    const handleFocusOut = (e: FocusEvent) => {
+      // Tab 離開容器時關閉
+      if (toolsContainerRef.current && !toolsContainerRef.current.contains(e.relatedTarget as Node)) {
+        setToolsOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClickOutside)
+    toolsContainerRef.current?.addEventListener('focusout', handleFocusOut)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handleClickOutside)
+      toolsContainerRef.current?.removeEventListener('focusout', handleFocusOut)
+    }
+  }, [toolsOpen])
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = '/'
@@ -66,19 +99,69 @@ export default function Navbar() {
           <Link href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</Link>
           <Link href="/pricing" className="text-text-muted hover:text-gold transition-colors">{txt.nav_pricing}</Link>
           <Link href="/blog" className="text-text-muted hover:text-gold transition-colors">{txt.nav_blog}</Link>
-          <div className="relative" onMouseEnter={() => setToolsOpen(true)} onMouseLeave={() => setToolsOpen(false)}>
-            <button className="text-text-muted hover:text-gold transition-colors flex items-center gap-1 py-2 px-2.5 rounded-lg bg-gold/[0.08] border border-gold/10">
+          <div
+            ref={toolsContainerRef}
+            className="relative"
+            onMouseEnter={() => setToolsOpen(true)}
+            onMouseLeave={() => setToolsOpen(false)}
+          >
+            <button
+              type="button"
+              className="text-text-muted hover:text-gold transition-colors flex items-center gap-1 py-2 px-2.5 rounded-lg bg-gold/[0.08] border border-gold/10"
+              aria-haspopup="menu"
+              aria-expanded={toolsOpen}
+              aria-controls="tools-menu"
+              aria-label={`${txt.nav_free}（免費工具選單）`}
+              onClick={() => setToolsOpen(prev => !prev)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setToolsOpen(true)
+                  // 下一幀聚焦第一個 menuitem
+                  requestAnimationFrame(() => {
+                    const first = toolsContainerRef.current?.querySelector<HTMLAnchorElement>('[role="menuitem"]')
+                    first?.focus()
+                  })
+                }
+              }}
+            >
               {txt.nav_free}
               <span className="text-[9px] font-bold bg-gold text-dark px-1.5 py-0.5 rounded-full leading-none">FREE</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
             {toolsOpen && (
               <div className="absolute top-full left-0 pt-1 w-48">
-                <div className="glass rounded-lg border border-gold/15 py-2 shadow-xl">
-                  <Link href="/tools/bazi" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">八字命理速算</Link>
-                  <Link href="/tools/ziwei" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">紫微斗數速算</Link>
-                  <Link href="/tools/qimen" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">奇門遁甲排盤</Link>
-                  <Link href="/tools/name" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">姓名學速算</Link>
+                <div
+                  id="tools-menu"
+                  role="menu"
+                  aria-label="免費工具"
+                  className="glass rounded-lg border border-gold/15 py-2 shadow-xl"
+                  onKeyDown={(e) => {
+                    const items = Array.from(
+                      toolsContainerRef.current?.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]') ?? []
+                    )
+                    const currentIndex = items.findIndex(el => el === document.activeElement)
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      const next = items[(currentIndex + 1) % items.length]
+                      next?.focus()
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      const prev = items[(currentIndex - 1 + items.length) % items.length]
+                      prev?.focus()
+                    } else if (e.key === 'Home') {
+                      e.preventDefault()
+                      items[0]?.focus()
+                    } else if (e.key === 'End') {
+                      e.preventDefault()
+                      items[items.length - 1]?.focus()
+                    }
+                  }}
+                >
+                  <Link href="/tools/bazi" role="menuitem" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">八字命理速算</Link>
+                  <Link href="/tools/ziwei" role="menuitem" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">紫微斗數速算</Link>
+                  <Link href="/tools/qimen" role="menuitem" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">奇門遁甲排盤</Link>
+                  <Link href="/tools/name" role="menuitem" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">姓名學速算</Link>
                 </div>
               </div>
             )}

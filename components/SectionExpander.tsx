@@ -1,6 +1,25 @@
 'use client'
 
 import { useState } from 'react'
+import DOMPurify from 'isomorphic-dompurify'
+
+// AI 生成內容 XSS 防護：統一白名單（僅允許報告用到的安全標籤/屬性）
+// 禁止 script/iframe/object/embed/form/input、禁止 on* event handlers、禁止 javascript:
+const SANITIZE_CONFIG = {
+  ALLOWED_TAGS: [
+    'p','h1','h2','h3','h4','h5','h6','strong','em','u','s','ul','ol','li',
+    'a','br','hr','blockquote','table','thead','tbody','tr','th','td',
+    'code','pre','span','div','b','i','sup','sub',
+  ],
+  ALLOWED_ATTR: ['href','target','rel','class','id','style','colspan','rowspan','align'],
+  ALLOW_DATA_ATTR: false,
+  FORBID_TAGS: ['script','iframe','object','embed','form','input','button','link','meta','style'],
+  FORBID_ATTR: ['onerror','onload','onclick','onmouseover','onfocus','onblur','onsubmit','formaction'],
+}
+
+function safeHtml(html: string): string {
+  return DOMPurify.sanitize(html || '', SANITIZE_CONFIG)
+}
 
 // 從 HTML 內容中提取重點（粗體+引言框+行動建議+emoji標記）
 function extractHighlights(html: string): string {
@@ -72,12 +91,12 @@ export default function SectionExpander({ fullHtml, sectionTitle }: SectionExpan
   const highlightsFallbackEmpty = highlightVisible < 80
 
   if (alwaysExpand || !hasMore || highlightsFallbackEmpty) {
-    return <div dangerouslySetInnerHTML={{ __html: fullHtml }} />
+    return <div dangerouslySetInnerHTML={{ __html: safeHtml(fullHtml) }} />
   }
 
   return (
     <div>
-      <div dangerouslySetInnerHTML={{ __html: expanded ? fullHtml : highlightHtml }} />
+      <div dangerouslySetInnerHTML={{ __html: safeHtml(expanded ? fullHtml : highlightHtml) }} />
       <button
         onClick={() => setExpanded(!expanded)}
         aria-expanded={expanded}

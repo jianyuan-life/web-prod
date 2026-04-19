@@ -35,7 +35,7 @@ const PLAN_SYMBOLS: Record<string, string> = {
 export default async function OgImage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
-  let clientName = ''
+  // 去識別化：不再讀取 client_name，只用方案代碼渲染（P0 隱私強化 2026-04-19）
   let planCode = 'C'
   let systemsCount = 0
 
@@ -47,12 +47,11 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
 
     const { data } = await supabase
       .from('paid_reports')
-      .select('client_name, plan_code, report_result')
+      .select('plan_code, report_result')
       .eq('access_token', token)
       .single()
 
     if (data) {
-      clientName = data.client_name || ''
       planCode = data.plan_code || 'C'
       const analyses = data.report_result?.analyses_summary as { score: number }[] | undefined
       if (analyses && analyses.length > 0) {
@@ -67,7 +66,6 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
   const planDesc = PLAN_DESCRIPTIONS[planCode] || '十五大命理系統精準分析'
   const planSymbol = PLAN_SYMBOLS[planCode] || '鑒'
   const isChumenji = ['E1', 'E2'].includes(planCode)
-  const isFamily = planCode === 'G15'
 
   return new ImageResponse(
     (
@@ -323,30 +321,25 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
               {planDesc}
             </div>
 
-            {/* 客戶資訊卡片 */}
-            {clientName && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 24px',
-                  borderRadius: '8px',
-                  background: 'rgba(212,168,83,0.06)',
-                  border: '1px solid rgba(212,168,83,0.12)',
-                }}
-              >
-                <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
-                  {isFamily ? '家族' : '為'}
-                </div>
-                <div style={{ fontSize: '22px', color: '#d4a853', fontWeight: 600, display: 'flex' }}>
-                  {clientName}
-                </div>
-                <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
-                  {isFamily ? '專屬家族分析' : '專屬分析'}
-                </div>
+            {/* 私密報告標示卡（去識別化：不顯示客戶姓名，僅顯示「專屬私密報告」）*/}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 24px',
+                borderRadius: '8px',
+                background: 'rgba(212,168,83,0.06)',
+                border: '1px solid rgba(212,168,83,0.12)',
+              }}
+            >
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
+                客戶專屬
               </div>
-            )}
+              <div style={{ fontSize: '20px', color: '#d4a853', fontWeight: 600, display: 'flex' }}>
+                私密命理分析報告
+              </div>
+            </div>
           </div>
         </div>
 
