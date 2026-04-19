@@ -135,7 +135,62 @@ interface GenerationProgress {
   progress?: number
   message?: string
   progress_updated_at?: string
+  // v5.3.32：Call N 已寫字數（後端串流時每 3000 字更新一次）
+  'Call 1'?: string
+  'Call 2'?: string
+  'Call 3'?: string
+  'Call 1_updated'?: string
+  'Call 2_updated'?: string
+  'Call 3_updated'?: string
   [key: string]: unknown
+}
+
+// v5.3.32：Call N 預期字數（與後端 CALL_EXPECTED_CHARS 對齊）
+// Call 1 = 0-30%, Call 2 = 30-60%, Call 3 = 60-90%, 剩 10% 留給 PDF/Storage/Email
+const CALL_EXPECTED_CHARS_FRONT: Record<string, number> = {
+  'Call 1': 18000,
+  'Call 2': 15000,
+  'Call 3': 13000,
+}
+
+// 從 generation_progress 的 Call 1/2/3 實際字數推算真實進度（最可信）
+// 回傳 { pct, latestUpdate, stage }，用不到時回 null 讓呼叫端 fallback
+function computeRealPctFromCallChars(gp: GenerationProgress | null | undefined): {
+  pct: number
+  latestUpdate: number
+  stage: string
+  writtenChars: number
+} | null {
+  if (!gp) return null
+  const call1 = typeof gp['Call 1'] === 'string' ? gp['Call 1']!.length : 0
+  const call2 = typeof gp['Call 2'] === 'string' ? gp['Call 2']!.length : 0
+  const call3 = typeof gp['Call 3'] === 'string' ? gp['Call 3']!.length : 0
+
+  if (call1 === 0 && call2 === 0 && call3 === 0) return null
+
+  // Call 3 有內容 → 60-90%
+  // Call 2 有內容 → 30-60%
+  // 只有 Call 1 有內容 → 0-30%
+  let base = 10
+  let span = 30
+  let written = call1
+  let stage = 'Call 1'
+  if (call3 > 0) {
+    base = 65; span = 25; written = call3; stage = 'Call 3'
+  } else if (call2 > 0) {
+    base = 40; span = 25; written = call2; stage = 'Call 2'
+  }
+  const expected = CALL_EXPECTED_CHARS_FRONT[stage] || 15000
+  const ratio = Math.min(written / expected, 1)
+  const pct = Math.min(Math.round(base + ratio * span), 90)
+
+  // 取最新的 Call N_updated 時間戳
+  const ts1 = gp['Call 1_updated'] ? new Date(gp['Call 1_updated']!).getTime() : 0
+  const ts2 = gp['Call 2_updated'] ? new Date(gp['Call 2_updated']!).getTime() : 0
+  const ts3 = gp['Call 3_updated'] ? new Date(gp['Call 3_updated']!).getTime() : 0
+  const latestUpdate = Math.max(ts1, ts2, ts3)
+
+  return { pct, latestUpdate, stage, writtenChars: written }
 }
 
 export default function ReportProgress({ createdAt, planCode, generationProgress }: {
@@ -147,44 +202,82 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
   const [completed, setCompleted] = useState(0)
   const [realMessage, setRealMessage] = useState<string | null>(null)
   const [showWhyLong, setShowWhyLong] = useState(false)
+  // v5.3.32：追蹤「真實進度已 N 分鐘沒更新」警告
+  const [backendSilentMin, setBackendSilentMin] = useState(0)
 
   const cfg = PLAN_CONFIG[planCode] ?? PLAN_CONFIG['C']
   const systems = ALL_SYSTEMS.slice(0, cfg.systems)
   // 用「上限」作為時間基準，讓 pct 走得穩，不會超過 97% 又完不成
   const totalMs = cfg.maxMinutes * 60 * 1000
 
-  // 判斷真實進度是否有效（2 分鐘內有更新）
-  const hasRealProgress = !!(
+  // v5.3.32：三層進度來源（優先序：字數 > progress 欄位 > 時間估算）
+  //   1. Call 1/2/3 字數：最可信，反映 AI 實際寫作進度
+  //   2. generation_progress.progress（emitProgress 明確寫入的階段值：10/40/60/70/90/95）
+  //   3. 時間估算：沒有任何後端訊號時的 fallback
+  const callProgress = computeRealPctFromCallChars(generationProgress)
+  const hasCallChars = callProgress !== null
+
+  // 判斷 emitProgress 欄位是否有效（2 分鐘內有更新）
+  const hasEmitProgress = !!(
     generationProgress?.progress != null &&
     generationProgress?.progress_updated_at &&
     (Date.now() - new Date(generationProgress.progress_updated_at).getTime()) < 120_000
   )
 
   useEffect(() => {
-    if (hasRealProgress && generationProgress) {
-      const realPct = Math.min(Math.max(generationProgress.progress || 0, 0), 97)
-      setPct(realPct)
-      setCompleted(Math.min(Math.floor((realPct / 100) * cfg.systems), cfg.systems - 1))
-      setRealMessage(generationProgress.message || null)
-      return
-    }
-    // Fallback：用時間比例估算進度
-    setRealMessage(null)
     const update = () => {
+      // 來源 1：Call N 字數（最可信）
+      if (hasCallChars && callProgress) {
+        // 計算「後端多久沒更新」——超過 5 分鐘就提示
+        const silentMs = Date.now() - callProgress.latestUpdate
+        const silentMin = Math.floor(silentMs / 60000)
+        setBackendSilentMin(silentMin)
+
+        setPct(callProgress.pct)
+        setCompleted(Math.min(Math.floor((callProgress.pct / 100) * cfg.systems), cfg.systems - 1))
+        setRealMessage(
+          `${callProgress.stage} 正在為您撰寫（已完成 ${callProgress.writtenChars.toLocaleString()} 字）`,
+        )
+        return
+      }
+
+      // 來源 2：emitProgress 階段值（排盤/品質檢查/儲存/寄信等非 AI 寫作階段）
+      if (hasEmitProgress && generationProgress) {
+        const realPct = Math.min(Math.max(generationProgress.progress || 0, 0), 97)
+        setPct(realPct)
+        setCompleted(Math.min(Math.floor((realPct / 100) * cfg.systems), cfg.systems - 1))
+        setRealMessage(generationProgress.message || null)
+        setBackendSilentMin(0)
+        return
+      }
+
+      // 來源 3：時間估算 fallback（初始化階段或後端完全沒訊號）
+      // 關鍵修復：不再直接跳到 97%！只走到 25%（Call 1 通常 3-5 分鐘完成首次存檔）
+      // 之後必須靠後端真實字數接手，否則一律卡在 25%，讓「卡住提示」觸發
+      setRealMessage(null)
       const createdTime = new Date(createdAt).getTime()
       if (isNaN(createdTime) || totalMs <= 0) {
         setPct(0)
         return
       }
       const elapsed = Date.now() - createdTime
-      const rawPct = Math.min(Math.round((elapsed / totalMs) * 100), 97)
+      // 時間估算 fallback 上限 25%，防止「假 97%」欺騙客戶
+      const fallbackCap = 25
+      const rawPct = Math.min(Math.round((elapsed / (5 * 60 * 1000)) * fallbackCap), fallbackCap)
       setPct(rawPct)
       setCompleted(Math.min(Math.floor((rawPct / 100) * cfg.systems), cfg.systems - 1))
+      // Call 1 串流首存檔前 5 分鐘若無任何字數訊號，也當「後端可能卡住」
+      const elapsedMin = Math.floor(elapsed / 60000)
+      if (elapsedMin >= 5 && !hasCallChars && !hasEmitProgress) {
+        setBackendSilentMin(elapsedMin)
+      } else {
+        setBackendSilentMin(0)
+      }
     }
     update()
     const timer = setInterval(update, 15_000)
     return () => clearInterval(timer)
-  }, [createdAt, totalMs, cfg.systems, hasRealProgress, generationProgress])
+  }, [createdAt, totalMs, cfg.systems, hasCallChars, callProgress, hasEmitProgress, generationProgress])
 
   const phases = getPhases(planCode)
   const phaseIdx = getPhaseIndex(pct)
@@ -211,8 +304,12 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
           : pct > 80
             ? `預計剩餘約 ${midRemain} 分鐘`
             : `預計剩餘 ${remainMinMin}-${remainMinMax} 分鐘`
-  // 等太久的警示（超過上限的 20%，動態比例避免對長方案太苛刻）
-  const isStuck = elapsedMin > Math.round(cfg.maxMinutes * 1.2)
+  // v5.3.32：卡住警示升級為「後端真實沈默 > 5 分鐘」OR 「時間超過上限 20%」
+  //   - backendSilentMin：後端最後一次寫入字數/進度距今分鐘數（>5 即視為可能卡住）
+  //   - elapsedMin 超時：時間估算的退路
+  const isStuck = backendSilentMin >= 5 || elapsedMin > Math.round(cfg.maxMinutes * 1.2)
+  // v5.3.32：嚴重卡住（>20 分鐘無後端訊號），主動建議聯絡客服
+  const isCriticalStuck = backendSilentMin >= 20
 
   // 進度描述：前綴加上「第 X/4 步」，讓客戶一眼看到階段位置（回應 gemini）
   const stepPrefix = `第 ${phaseIdx + 1}/${phases.length} 步`
@@ -387,8 +484,8 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         </div>
       </div>
 
-      {/* 卡住警示：超時提示 + 聯絡客服 */}
-      {isStuck && (
+      {/* 卡住警示：後端超過 5 分鐘無進度 or 時間超出上限 */}
+      {isStuck && !isCriticalStuck && (
         <div className="rounded-lg bg-amber-500/10 border border-amber-500/25 px-3.5 py-2.5 text-xs text-amber-200/90 leading-relaxed">
           <div className="flex items-start gap-2">
             <span className="text-amber-400 flex-shrink-0">&#9888;</span>
@@ -404,6 +501,28 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
                   support@jianyuan.life
                 </a>
                 ，我們會立刻為您處理。您的資料與付款皆已完整保存，報告不會遺失。
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* v5.3.32：嚴重卡住警示 — 後端超過 20 分鐘完全無訊號，主動建議聯絡客服 */}
+      {isCriticalStuck && (
+        <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-3.5 py-2.5 text-xs text-red-200/95 leading-relaxed">
+          <div className="flex items-start gap-2">
+            <span className="text-red-400 flex-shrink-0">&#9888;</span>
+            <div className="space-y-1">
+              <div>
+                <strong className="text-red-300">後端處理中，請稍候</strong>
+                ——系統已偵測到您的報告已超過 {backendSilentMin} 分鐘沒有新進度更新，我們的工程團隊會主動關注您的案件。
+              </div>
+              <div className="text-red-200/80">
+                若等候超過 20 分鐘仍未完成，請直接來信{' '}
+                <a href="mailto:support@jianyuan.life" className="underline font-medium hover:text-red-100">
+                  support@jianyuan.life
+                </a>
+                ，附上您的訂單信箱，我們將於最短時間內為您處理。您的付款與資料皆已完整保存，報告不會遺失。
               </div>
             </div>
           </div>

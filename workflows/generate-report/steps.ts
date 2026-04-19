@@ -1174,6 +1174,22 @@ async function loadPartialContent(reportId: string, callLabel: string): Promise<
 }
 
 // ── 串流存檔：儲存部分內容到 Supabase ──
+// v5.3.32：同步更新 progress_updated_at + progress（字數換算），讓前端即時感知「還在寫」
+//   - 以前只更新 Call N 內容但不更 progress_updated_at → 前端 2 分鐘 timer 判定「無進度」
+//     fallback 到純時間估算，直接飆到 97%（假 97% 欺騙 bug）
+//   - 現在 savePartialContent 一起更新 progress_updated_at 讓前端判定仍有新鮮進度
+const CALL_EXPECTED_CHARS: Record<string, number> = {
+  'Call 1': 18000,
+  'Call 2': 15000,
+  'Call 3': 13000,
+}
+// Call 1 = 0-30%, Call 2 = 30-60%, Call 3 = 60-90%, 剩 10% 留給 PDF/Storage/Email
+const CALL_PROGRESS_RANGE: Record<string, { base: number; span: number }> = {
+  'Call 1': { base: 10, span: 30 }, // 10→40
+  'Call 2': { base: 40, span: 25 }, // 40→65
+  'Call 3': { base: 65, span: 25 }, // 65→90
+}
+
 async function savePartialContent(reportId: string, callLabel: string, content: string): Promise<void> {
   if (!reportId) return
   try {
@@ -1185,15 +1201,29 @@ async function savePartialContent(reportId: string, callLabel: string, content: 
       .eq('id', reportId)
       .single()
     const existing = (data?.generation_progress as Record<string, unknown>) || {}
+
+    // 以字數換算真實進度（Call N 已寫字數 / 預期字數 × span + base）
+    const update: Record<string, unknown> = {
+      ...existing,
+      [callLabel]: content,
+      [`${callLabel}_updated`]: new Date().toISOString(),
+      // 關鍵修復：同步更新 progress_updated_at，避免前端誤判「卡住」fallback 時間估算
+      progress_updated_at: new Date().toISOString(),
+    }
+
+    const range = CALL_PROGRESS_RANGE[callLabel]
+    const expected = CALL_EXPECTED_CHARS[callLabel]
+    if (range && expected && typeof content === 'string' && content.length > 0) {
+      const ratio = Math.min(content.length / expected, 1)
+      const realProgress = Math.round(range.base + ratio * range.span)
+      update.progress = realProgress
+      update.step = 'AI分析'
+      update.message = `正在為您撰寫 ${callLabel}（${content.length} 字）...`
+    }
+
     await supabase
       .from('paid_reports')
-      .update({
-        generation_progress: {
-          ...existing,
-          [callLabel]: content,
-          [`${callLabel}_updated`]: new Date().toISOString(),
-        },
-      })
+      .update({ generation_progress: update })
       .eq('id', reportId)
   } catch (e) {
     // 存檔失敗不阻塞串流
@@ -2323,17 +2353,29 @@ export async function generatePDF(
   if (!pdfData.pdf_base64) return null
 
   // 上傳到 Supabase Storage
+  // v5.3.32：加 60 秒 timeout 保護，避免 storage 卡住讓整個 workflow 停滯
   const supabase = getSupabase()
   const pdfBytes = Buffer.from(pdfData.pdf_base64, 'base64')
   const storagePath = `${reportId}/report.pdf`
 
-  const { error: uploadErr } = await supabase.storage
+  const uploadPromise = supabase.storage
     .from('reports')
     .upload(storagePath, pdfBytes, { contentType: 'application/pdf', upsert: true })
+  const uploadTimeout = new Promise<{ error: Error }>((resolve) =>
+    setTimeout(() => resolve({ error: new Error('Supabase Storage 上傳超時（60秒）') }), 60000),
+  )
+
+  let uploadErr: unknown = null
+  try {
+    const result = await Promise.race([uploadPromise, uploadTimeout])
+    uploadErr = (result as { error?: unknown }).error
+  } catch (e) {
+    uploadErr = e
+  }
 
   if (uploadErr) {
     console.error('Supabase Storage 上傳失敗:', uploadErr)
-    return null
+    return null  // PDF 失敗不阻塞整體流程（呼叫端有 try-catch）
   }
 
   const { data: urlData } = supabase.storage.from('reports').getPublicUrl(storagePath)
@@ -3059,7 +3101,8 @@ export async function saveReportToSupabase(
 
   // 原子操作：只有 generating 狀態才能寫入 completed
   // 防止 cron 已標記 failed 後被覆蓋，或已完成的報告被重複寫入
-  const { data: saved, error } = await supabase.from('paid_reports').update({
+  // v5.3.32：加 45 秒 timeout 保護，避免 Supabase 回應卡住讓 workflow 停滯
+  const savePromise = supabase.from('paid_reports').update({
     report_result: reportResult,
     pdf_url: pdfUrl,
     status: 'completed',
@@ -3068,6 +3111,21 @@ export async function saveReportToSupabase(
     .eq('id', reportId)
     .in('status', ['generating', 'pending', 'failed']) // 允許所有非 completed 狀態
     .select('id')
+
+  const saveTimeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Supabase 更新超時（45秒）')), 45000),
+  )
+
+  let saved: Array<{ id: string }> | null = null
+  let error: { message: string } | null = null
+  try {
+    const result = await Promise.race([savePromise, saveTimeout])
+    saved = (result as { data: Array<{ id: string }> | null }).data
+    error = (result as { error: { message: string } | null }).error
+  } catch (e) {
+    // timeout → 作為 retryable 錯誤拋出，Workflow 會自動重試
+    throw new RetryableError(`Supabase 更新超時或異常: ${e instanceof Error ? e.message : String(e)}`)
+  }
 
   if (error) {
     throw new RetryableError(`Supabase 更新失敗: ${error.message}`)
@@ -3246,8 +3304,12 @@ export async function sendReportEmail(
 
   let sendResult: { id?: string } | null = null
   let sendErr: unknown = null
+  // v5.3.32：Resend API 加 30 秒 timeout，避免 Email API hang 拖垮整個 workflow
+  const emailTimeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Resend API 超時（30秒）')), 30000),
+  )
   try {
-    const resendRaw = await resend.emails.send({
+    const resendSendPromise = resend.emails.send({
     from: emailText.from,
     to: customerEmail,
     subject: emailText.subject,
@@ -3288,6 +3350,7 @@ export async function sendReportEmail(
 </body>
 </html>`,
     })
+    const resendRaw = await Promise.race([resendSendPromise, emailTimeoutPromise])
     // Resend v2 回傳 { data, error } 結構，需要 unwrap
     const unwrapped = resendRaw as unknown as { data: { id?: string } | null; error: unknown }
     if (unwrapped.error) {

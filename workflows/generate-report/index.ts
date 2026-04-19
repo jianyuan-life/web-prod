@@ -690,47 +690,55 @@ export async function generateReportWorkflow(reportId: string) {
   }
 
   // Step 3.6: E1/E2 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）
+  // v5.3.32：加 try-catch 包裹，任一 regex 失敗不阻塞後續 PDF/save/email
   if (planCode === 'E1' || planCode === 'E2') {
-    const bannedTerms: [RegExp, string][] = [
-      [/八字[^\n]{0,20}/g, ''],
-      [/日主[^\n]{0,10}/g, ''],
-      [/用神\S{0,4}/g, '年命宮能量'],
-      [/喜神\S{0,4}/g, '吉方能量'],
-      [/風水八宅[^\n]{0,20}/g, ''],
-      [/本命卦[^\n]{0,10}/g, ''],
-      [/天醫位/g, '吉位'],
-      [/生氣位/g, '吉位'],
-      [/延年位/g, '吉位'],
-      [/生物節律[^\n]{0,30}/g, ''],
-      [/臨界日/g, ''],
-      [/紫微[^\n]{0,10}/g, ''],
-      [/太陽星座/g, ''],
-      [/五行喜忌[^\n]{0,20}/g, ''],
-      [/命宮主星[^\n]{0,10}/g, ''],
-      [/吠陀占星[^\n]{0,20}/g, ''],
-      [/南洋術數[^\n]{0,20}/g, ''],
-      [/數字能量[^\n]{0,20}/g, ''],
-      [/人類圖[^\n]{0,10}/g, ''],
-      [/姓名學[^\n]{0,10}/g, ''],
-    ]
-    let bannedCount = 0
-    for (const [pattern, replacement] of bannedTerms) {
-      const matches = reportContent.match(pattern)
-      if (matches) {
-        bannedCount += matches.length
-        reportContent = reportContent.replace(pattern, replacement)
+    try {
+      const bannedTerms: [RegExp, string][] = [
+        [/八字[^\n]{0,20}/g, ''],
+        [/日主[^\n]{0,10}/g, ''],
+        [/用神\S{0,4}/g, '年命宮能量'],
+        [/喜神\S{0,4}/g, '吉方能量'],
+        [/風水八宅[^\n]{0,20}/g, ''],
+        [/本命卦[^\n]{0,10}/g, ''],
+        [/天醫位/g, '吉位'],
+        [/生氣位/g, '吉位'],
+        [/延年位/g, '吉位'],
+        [/生物節律[^\n]{0,30}/g, ''],
+        [/臨界日/g, ''],
+        [/紫微[^\n]{0,10}/g, ''],
+        [/太陽星座/g, ''],
+        [/五行喜忌[^\n]{0,20}/g, ''],
+        [/命宮主星[^\n]{0,10}/g, ''],
+        [/吠陀占星[^\n]{0,20}/g, ''],
+        [/南洋術數[^\n]{0,20}/g, ''],
+        [/數字能量[^\n]{0,20}/g, ''],
+        [/人類圖[^\n]{0,10}/g, ''],
+        [/姓名學[^\n]{0,10}/g, ''],
+      ]
+      let bannedCount = 0
+      for (const [pattern, replacement] of bannedTerms) {
+        const matches = reportContent.match(pattern)
+        if (matches) {
+          bannedCount += matches.length
+          reportContent = reportContent.replace(pattern, replacement)
+        }
       }
-    }
-    // 清理替換後可能產生的多餘空行
-    reportContent = reportContent.replace(/\n{3,}/g, '\n\n')
-    if (bannedCount > 0) {
-      console.log(`${planCode} 出門訣：清除 ${bannedCount} 處非奇門詞彙`)
+      // 清理替換後可能產生的多餘空行
+      reportContent = reportContent.replace(/\n{3,}/g, '\n\n')
+      if (bannedCount > 0) {
+        console.log(`${planCode} 出門訣：清除 ${bannedCount} 處非奇門詞彙`)
+      }
+    } catch (e) {
+      // 詞彙清洗失敗不阻塞 — 繼續用原本的 reportContent 交付
+      console.error(`${planCode} bannedTerms 清洗失敗（不阻塞）:`, e)
     }
   }
 
   // Step 4: 取得出門訣吉時數據（E1/E2）
   // 策略：直接用引擎 chumenjiTop.results（最可靠），AI JSON 解析只作為備用
+  // v5.3.32：整段用 try-catch 包裹，解析失敗不阻塞交付
   let top5Timings: Record<string, unknown>[] | null = null
+  try {
 
   // 4a. 優先使用引擎計算結果（不依賴 AI 輸出 JSON）
   if ((planCode === 'E1' || planCode === 'E2') && chumenjiTop?.results?.length) {
@@ -842,6 +850,10 @@ export async function generateReportWorkflow(reportId: string) {
     reportContent = reportContent.replace(/[=-]{2,3}\s*TOP[135]_JSON_(?:START|END)\s*[=-]{2,3}/g, '').trim()
     reportContent = reportContent.replace(/```json?\s*\n\[[\s\S]*?"(?:date|direction)"[\s\S]*?\]\n\s*```/g, '').trim()
     reportContent = reportContent.replace(/\n{3,}/g, '\n\n')
+  }
+  } catch (step4Err) {
+    // v5.3.32：Step 4 整段失敗不阻塞交付
+    console.error('Step 4 吉時數據處理失敗（不阻塞）:', step4Err)
   }
 
   // Step 5: 生成 PDF
