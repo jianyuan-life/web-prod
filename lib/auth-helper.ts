@@ -5,16 +5,19 @@
 // 問題背景：
 //   - Supabase auth.getUser(token) 偶爾會 timeout 或 network error
 //   - 若直接 return null，客戶會看到「請先登入」或空陣列（誤以為資料消失）
-//   - v5.3.1 hotfix: 用 JWT 直接 decode 作 fallback
 //
-// 安全性：
-//   - 僅 decode JWT 取 email/user_id，不信任 JWT（不當鑒權依據）
-//   - 後續 query 必須用 email/user_id 嚴格過濾該使用者自己的資料
+// 安全性（v5.3.34+ 修復）：
+//   - **重要**：舊版 JWT fallback 只做 base64 decode 不驗簽，任何人都能偽造
+//     email/sub payload 冒充別人 → 已改為使用 Supabase 專案的 JWT secret
+//     驗證 HS256 簽名，驗證失敗直接 reject。
+//   - 若未設定 SUPABASE_JWT_SECRET，退回只信任 admin.getUser 的結果，
+//     不做任何 fallback（寧可讓使用者重新登入，也不要開 bypass）。
 //   - JWT 過期（exp < now）會直接 reject，不會放水
 // ============================================================
 
 import type { NextRequest } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 function getServiceSupabase(): SupabaseClient {
   return createClient(
@@ -23,33 +26,55 @@ function getServiceSupabase(): SupabaseClient {
   )
 }
 
+function base64UrlDecode(input: string): Buffer {
+  const b64 = input.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4)
+  return Buffer.from(padded, 'base64')
+}
+
 /**
- * 從 JWT payload 直接 decode 取 email 和 sub（user_id）
- * 會檢查 exp 是否過期（給 30 秒緩衝）
+ * 驗證 Supabase JWT 的 HS256 簽名並取出 payload。
+ * 若未設定 SUPABASE_JWT_SECRET（或驗簽失敗）回傳 null，
+ * 不進行任何「只 decode 不驗簽」的放水行為。
  */
-function decodeJwtPayload(token: string): { email: string | null; sub: string | null } {
+function verifyJwtPayload(token: string): { email: string | null; sub: string | null } | null {
   try {
+    const secret = process.env.SUPABASE_JWT_SECRET
+    if (!secret) return null
+
     const parts = token.split('.')
-    if (parts.length !== 3) return { email: null, sub: null }
-    const payload = parts[1]
-    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4)
-    const decoded = Buffer.from(padded, 'base64').toString('utf-8')
-    const parsed = JSON.parse(decoded) as {
+    if (parts.length !== 3) return null
+    const [headerB64, payloadB64, signatureB64] = parts
+
+    // 只允許 HS256（Supabase 預設）
+    const headerJson = base64UrlDecode(headerB64).toString('utf-8')
+    const header = JSON.parse(headerJson) as { alg?: string; typ?: string }
+    if (header.alg !== 'HS256') return null
+
+    // HMAC-SHA256 驗簽
+    const expectedSig = crypto
+      .createHmac('sha256', secret)
+      .update(`${headerB64}.${payloadB64}`)
+      .digest()
+    const actualSig = base64UrlDecode(signatureB64)
+    if (expectedSig.length !== actualSig.length) return null
+    if (!crypto.timingSafeEqual(expectedSig, actualSig)) return null
+
+    // 簽章有效 → 解析 payload
+    const payloadJson = base64UrlDecode(payloadB64).toString('utf-8')
+    const parsed = JSON.parse(payloadJson) as {
       email?: string
       sub?: string
       exp?: number
       user_metadata?: { email?: string }
     }
-    // 檢查是否已過期（30 秒緩衝）
-    if (parsed.exp && parsed.exp * 1000 < Date.now() - 30_000) {
-      return { email: null, sub: null }
-    }
+    if (parsed.exp && parsed.exp * 1000 < Date.now() - 30_000) return null
+
     const email = parsed.email || parsed.user_metadata?.email || null
     const sub = parsed.sub || null
     return { email, sub }
   } catch {
-    return { email: null, sub: null }
+    return null
   }
 }
 
@@ -115,15 +140,18 @@ export async function getAuthUser(
     )
   }
 
-  // 第二層 fallback：JWT 直接 decode
-  // 風險分析：token 可能被偽造 → 但需要同時偽造 email 和 sub，且 exp 仍需正確
-  // 後續 API 必須用 email/user_id 過濾資料（不會洩漏他人資料）
-  const { email, sub } = decodeJwtPayload(token)
-  if (email && sub) {
-    return { email: email.toLowerCase(), userId: sub, source: 'jwt-fallback' }
+  // 第二層 fallback：驗 HS256 簽名後再取 payload（需要 SUPABASE_JWT_SECRET）
+  // 不再做「只 decode 不驗簽」的放水行為，否則任何人偽造 JWT payload 即可冒充他人。
+  const verified = verifyJwtPayload(token)
+  if (verified && verified.email && verified.sub) {
+    return {
+      email: verified.email.toLowerCase(),
+      userId: verified.sub,
+      source: 'jwt-verified',
+    }
   }
 
-  return { email: null, userId: null, source: 'jwt-decode-failed' }
+  return { email: null, userId: null, source: 'jwt-verify-failed' }
 }
 
 /**
@@ -140,4 +168,23 @@ export async function getAuthUserId(req: NextRequest): Promise<string | null> {
 export async function getAuthEmail(req: NextRequest): Promise<string | null> {
   const { email } = await getAuthUser(req)
   return email
+}
+
+/**
+ * v5.3.34 新增：嚴格模式 — 只接受 Supabase admin.getUser 驗簽成功的結果
+ * 給需要高安全性的端點用（例如：以 email 查詢 paid_reports / refund / 敏感寫入）
+ *
+ * 與 getAuthUser 的差別：
+ *   - getAuthUser 會在 Supabase auth 掛掉時 fallback 到 JWT 驗簽（仍安全，但依賴 env SUPABASE_JWT_SECRET）
+ *   - getAuthUserStrict 不 fallback：只要 admin.getUser 沒回成功（例如 Supabase 服務短暫掛掉）就算未認證
+ *     好處：即使 JWT secret 不小心外洩，攻擊者也無法透過偽造 token 通過此端點
+ */
+export async function getAuthUserStrict(
+  req: NextRequest,
+): Promise<{ email: string | null; userId: string | null }> {
+  const user = await getAuthUser(req)
+  if (user.source !== 'admin-verified') {
+    return { email: null, userId: null }
+  }
+  return { email: user.email, userId: user.userId }
 }

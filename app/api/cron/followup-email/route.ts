@@ -94,17 +94,19 @@ export async function GET(req: NextRequest) {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
 
-  // 查詢 70-74 小時前完成的報告（約 3 天，4 小時視窗避免漏發）
-  const now = Date.now()
-  const seventyHoursAgo = new Date(now - 70 * 60 * 60 * 1000).toISOString()
-  const seventyFourHoursAgo = new Date(now - 74 * 60 * 60 * 1000).toISOString()
-
-  let reports: typeof rawReports = []
+  // v5.3.33 放寬 window + 修掉 forward reference 型別
+  // 窄 window 若 cron 失敗就整批錯過，現改成 >= 70h 且 <= 14 天
+  // 真正判斷是否已發過用 generation_progress.followup_sent flag
   type RawReport = {
     id: string; client_name: string; plan_code: string; customer_email: string;
     access_token: string; report_result: unknown; generation_progress: unknown; birth_data: unknown;
   }
-  let rawReports: RawReport[] | null = null
+
+  const now = Date.now()
+  const seventyHoursAgo = new Date(now - 70 * 60 * 60 * 1000).toISOString()
+  const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString()
+
+  let reports: RawReport[] = []
 
   try {
     // paid_reports 無 updated_at，用 email_sent_at 作為完成時間戳
@@ -113,7 +115,7 @@ export async function GET(req: NextRequest) {
       .select('id, client_name, plan_code, customer_email, access_token, report_result, generation_progress, birth_data')
       .eq('status', 'completed')
       .lt('email_sent_at', seventyHoursAgo)
-      .gt('email_sent_at', seventyFourHoursAgo)
+      .gte('email_sent_at', fourteenDaysAgo)
       .order('email_sent_at', { ascending: true })
       .limit(50)
 
@@ -121,8 +123,7 @@ export async function GET(req: NextRequest) {
       console.error('❌ 查詢跟進信報告失敗:', JSON.stringify(queryErr))
       return NextResponse.json({ error: '查詢失敗', detail: queryErr.message }, { status: 500 })
     }
-    rawReports = data as RawReport[]
-    reports = rawReports || []
+    reports = (data as RawReport[]) || []
   } catch (err) {
     console.error('❌ 跟進信查詢例外:', err)
     return NextResponse.json({ error: '查詢例外' }, { status: 500 })

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { BLOG_POSTS } from '@/lib/blog'
 import type { Metadata } from 'next'
 
@@ -5,6 +6,15 @@ export const metadata: Metadata = {
   title: '命理知識 — 鑒源 JianYuan',
   description: '深入淺出的命理入門教學：八字、紫微斗數、姓名學、西洋占星。讓命理不再神秘，用白話文帶你看懂自己的命格。',
   keywords: '命理教學, 八字入門, 紫微斗數教學, 姓名學, 上升星座, 生肖運勢, 命理知識',
+  alternates: { canonical: 'https://jianyuan.life/blog' },
+  openGraph: {
+    title: '命理知識 — 鑒源 JianYuan',
+    description: '深入淺出的命理入門教學：八字、紫微斗數、姓名學、西洋占星。',
+    url: 'https://jianyuan.life/blog',
+    siteName: '鑒源 JianYuan',
+    type: 'website',
+    locale: 'zh_TW',
+  },
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -30,7 +40,7 @@ export default function BlogListPage() {
         {/* 文章列表 */}
         <div className="space-y-5">
           {BLOG_POSTS.map((post) => (
-            <a key={post.slug} href={`/blog/${post.slug}`}
+            <Link key={post.slug} href={`/blog/${post.slug}`}
               className="glass rounded-2xl p-6 md:p-8 block group transition-all hover:-translate-y-1">
               <div className="flex items-center gap-3 mb-3">
                 <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${CATEGORY_COLORS[post.category] || 'bg-gold/15 text-gold'}`}>
@@ -52,7 +62,7 @@ export default function BlogListPage() {
                   </span>
                 ))}
               </div>
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -66,15 +76,15 @@ export default function BlogListPage() {
               免費速算工具，30 秒看到你的基本命格。不需註冊，不需付費。
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
-              <a href="/tools/bazi" className="px-6 py-3 bg-gold text-dark font-bold rounded-lg text-sm btn-glow">
+              <Link href="/tools/bazi" className="px-6 py-3 bg-gold text-dark font-bold rounded-lg text-sm btn-glow">
                 八字速算
-              </a>
-              <a href="/tools/ziwei" className="px-6 py-3 glass text-cream font-semibold rounded-lg text-sm hover:bg-surface-hover transition-colors">
+              </Link>
+              <Link href="/tools/ziwei" className="px-6 py-3 glass text-cream font-semibold rounded-lg text-sm hover:bg-surface-hover transition-colors">
                 紫微速算
-              </a>
-              <a href="/tools/name" className="px-6 py-3 glass text-cream font-semibold rounded-lg text-sm hover:bg-surface-hover transition-colors">
+              </Link>
+              <Link href="/tools/name" className="px-6 py-3 glass text-cream font-semibold rounded-lg text-sm hover:bg-surface-hover transition-colors">
                 姓名鑑定
-              </a>
+              </Link>
             </div>
           </div>
         </div>

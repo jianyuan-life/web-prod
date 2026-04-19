@@ -56,6 +56,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: '請提供完整出生資料' }, { status: 400 })
     }
 
+    // v5.3.34：範圍驗證
+    const inRange = (v: unknown, min: number, max: number): boolean => {
+      const n = Number(v)
+      return Number.isFinite(n) && n >= min && n <= max
+    }
+    if (!inRange(year, 1900, 2100) || !inRange(month, 1, 12) || !inRange(day, 1, 31)) {
+      return NextResponse.json({ detail: '出生日期超出範圍' }, { status: 400 })
+    }
+    if (!inRange(hour, 0, 23) || !inRange(minute, 0, 59)) {
+      return NextResponse.json({ detail: '出生時辰超出範圍' }, { status: 400 })
+    }
+    if (gender !== 'M' && gender !== 'F') {
+      return NextResponse.json({ detail: '性別格式錯誤' }, { status: 400 })
+    }
+    if (typeof name !== 'string' || name.length > 50) {
+      return NextResponse.json({ detail: '姓名格式錯誤或過長' }, { status: 400 })
+    }
+
     // 紫微斗數必須走 Python API — TS 無法正確排盤
     // v5.2.7：改用輕量 /api/free-ziwei 端點（正確回傳 palaces + wuxing_ju，不會 11 宮借星）
     let pythonData: Record<string, unknown> | null = null

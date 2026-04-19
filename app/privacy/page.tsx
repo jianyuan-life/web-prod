@@ -3,6 +3,8 @@ import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: '隱私政策 — 鑒源 JianYuan',
   description: '鑒源（JianYuan）隱私政策：說明我們如何收集、使用及保護您的個人資料。',
+  alternates: { canonical: 'https://jianyuan.life/privacy' },
+  robots: { index: true, follow: true },
 }
 
 export default function PrivacyPage() {

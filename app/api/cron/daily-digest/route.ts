@@ -82,17 +82,26 @@ export async function GET(req: NextRequest) {
     .map(([plan, count]) => ({ plan, count }))
 
   // 新客戶（昨日 distinct email - 過去出現過的 = 真新客）
+  // v5.3.33：分批查詢避免 URL 過長（Supabase .in() 超過 ~100 email 會超出 8KB URL 限制）
   const yesterdayEmails = new Set<string>(
     reports.map(r => r.customer_email).filter((e): e is string => !!e),
   )
   let newCustomers = 0
   if (yesterdayEmails.size > 0) {
-    const { data: priorReports } = await supabase
-      .from('paid_reports')
-      .select('customer_email')
-      .in('customer_email', Array.from(yesterdayEmails))
-      .lt('created_at', startIso)
-    const priorSet = new Set((priorReports || []).map(r => r.customer_email).filter((e): e is string => !!e))
+    const priorSet = new Set<string>()
+    const emails = Array.from(yesterdayEmails)
+    const BATCH = 50
+    for (let i = 0; i < emails.length; i += BATCH) {
+      const chunk = emails.slice(i, i + BATCH)
+      const { data: priorReports } = await supabase
+        .from('paid_reports')
+        .select('customer_email')
+        .in('customer_email', chunk)
+        .lt('created_at', startIso)
+      for (const r of (priorReports || [])) {
+        if (r.customer_email) priorSet.add(r.customer_email)
+      }
+    }
     for (const e of yesterdayEmails) {
       if (!priorSet.has(e)) newCustomers++
     }

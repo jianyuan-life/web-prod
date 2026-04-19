@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { BLOG_POSTS, getPostBySlug } from '@/lib/blog'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -15,9 +16,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: `${post.title} — 鑒源 JianYuan`,
     description: post.description,
     keywords: post.keywords.join(', '),
+    alternates: { canonical: `https://jianyuan.life/blog/${slug}` },
     openGraph: {
       title: post.title,
       description: post.description,
+      url: `https://jianyuan.life/blog/${slug}`,
       type: 'article',
       publishedTime: post.date,
       authors: [post.author],
@@ -136,9 +139,9 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
       <article className="max-w-3xl mx-auto px-6">
         {/* 標頭 */}
         <div className="mb-10">
-          <a href="/blog" className="text-xs text-text-muted hover:text-gold transition-colors mb-4 inline-block">
+          <Link href="/blog" className="text-xs text-text-muted hover:text-gold transition-colors mb-4 inline-block">
             &larr; 返回文章列表
-          </a>
+          </Link>
           <div className="flex items-center gap-3 mb-4">
             <span className="text-[10px] px-2.5 py-1 rounded-full bg-gold/15 text-gold font-medium">{post.category}</span>
             <span className="text-[11px] text-text-muted">{post.date}</span>
@@ -167,12 +170,12 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
             免費速算工具，30 秒看到你的基本命格。想要完整分析，人生藍圖用 15 套系統交叉驗證。
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
-            <a href="/tools/bazi" className="px-6 py-3 bg-gold text-dark font-bold rounded-lg text-sm btn-glow">
+            <Link href="/tools/bazi" className="px-6 py-3 bg-gold text-dark font-bold rounded-lg text-sm btn-glow">
               免費八字速算
-            </a>
-            <a href="/pricing" className="px-6 py-3 glass text-cream font-semibold rounded-lg text-sm hover:bg-surface-hover transition-colors">
+            </Link>
+            <Link href="/pricing" className="px-6 py-3 glass text-cream font-semibold rounded-lg text-sm hover:bg-surface-hover transition-colors">
               查看完整方案
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -181,12 +184,12 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
           <h3 className="text-lg text-cream mb-4" style={{ fontFamily: 'var(--font-sans)' }}>延伸閱讀</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {BLOG_POSTS.filter(p => p.slug !== post.slug).slice(0, 4).map(p => (
-              <a key={p.slug} href={`/blog/${p.slug}`}
+              <Link key={p.slug} href={`/blog/${p.slug}`}
                 className="glass rounded-xl p-4 group hover:-translate-y-0.5 transition-all">
                 <span className="text-[10px] text-gold/60">{p.category}</span>
                 <h4 className="text-sm text-cream group-hover:text-gold transition-colors mt-1 line-clamp-2">{p.title}</h4>
                 <span className="text-[10px] text-text-muted mt-2 block">{p.readingTime} 分鐘</span>
-              </a>
+              </Link>
             ))}
           </div>
         </div>

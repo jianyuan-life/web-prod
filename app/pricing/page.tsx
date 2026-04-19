@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import PriceTag from '@/components/PriceTag'
 import PricingButton from '@/components/PricingButton'
 import { PromotionTopBanner, PromotionPrice } from '@/components/PromotionBanner'
@@ -115,7 +116,7 @@ export default function PricingPage() {
           6 種方案，從個人到家庭，從了解自己到採取行動。每份報告含網頁展示 + PDF 永久保存。
         </p>
         <p className="text-center text-xs text-gold mb-8">
-          &#128274; 購買前需先<a href="/auth/signup" className="underline">免費註冊</a>或<a href="/auth/login" className="underline">登入</a>
+          &#128274; 購買前需先<Link href="/auth/signup" className="underline">免費註冊</Link>或<Link href="/auth/login" className="underline">登入</Link>
         </p>
 
         <PromotionTopBanner />
@@ -221,7 +222,7 @@ export default function PricingPage() {
         <div className="max-w-3xl mx-auto glass rounded-2xl p-8">
           <h3 className="text-xl font-bold text-gradient-gold mb-4" style={{ fontFamily: 'var(--font-sans)' }}>不確定選哪個？</h3>
           <div className="space-y-3 text-sm text-text">
-            <p><strong className="text-cream">第一次體驗：</strong>先去<a href="/tools/bazi" className="text-gold underline">免費速算</a>看效果，再選「心之所惑」（$39）聚焦你最在乎的問題。</p>
+            <p><strong className="text-cream">第一次體驗：</strong>先去<Link href="/tools/bazi" className="text-gold underline">免費速算</Link>看效果，再選「心之所惑」（$39）聚焦你最在乎的問題。</p>
             <p><strong className="text-cream">全面了解自己：</strong>「人生藍圖」（$89）完整分析人生各面向，最超值。</p>
             <p><strong className="text-cream">有特定困惑：</strong>「心之所惑」（$39）聚焦一個面向深入剖析。</p>
             <p><strong className="text-cream">全家分析：</strong>每位家人先各自購買「人生藍圖」（$89），再加購「家族藍圖」（$59）做家庭互動分析。</p>

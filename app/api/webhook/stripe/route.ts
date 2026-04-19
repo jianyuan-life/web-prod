@@ -192,7 +192,17 @@ export async function POST(req: NextRequest) {
     if (birthData && reportId) {
       try {
         console.info('觸發 Workflow 報告生成...')
-        const additionalData = birthData.additionalPeople ? JSON.parse(birthData.additionalPeople) : undefined
+        // v5.3.34：把 JSON.parse 包 try/catch，防止爛 JSON 中斷整個 webhook
+        //   additionalData 目前未使用但保留宣告（避免未來業務邏輯要讀）
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        let additionalData: unknown = undefined
+        if (birthData.additionalPeople) {
+          try {
+            additionalData = JSON.parse(birthData.additionalPeople as string)
+          } catch (parseErr) {
+            console.warn('⚠️ birthData.additionalPeople JSON 解析失敗，忽略:', parseErr)
+          }
+        }
 
         // 注入 locale（報告語言：zh-TW 繁體 / zh-CN 簡體）
         if (!birthData.locale) {

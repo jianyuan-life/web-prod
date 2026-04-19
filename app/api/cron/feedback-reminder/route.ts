@@ -39,17 +39,19 @@ export async function GET(req: NextRequest) {
   )
   const resend = new Resend(process.env.RESEND_API_KEY || '')
 
-  // 46-50 小時窗口（容許 4 小時 cron 間隔）
+  // v5.3.33 放寬 window：只要完成 >= 46 小時且 <= 7 天都納入
+  // 真正判斷是否已發過用 generation_progress.feedback_sent flag
+  // 避免單次 cron 失敗就整批錯過反饋機會
   const hourAgo46 = new Date(Date.now() - 46 * 60 * 60 * 1000).toISOString()
-  const hourAgo50 = new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString()
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // 查詢已完成報告：email_sent_at 在 46-50 小時前
+  // 查詢已完成報告：email_sent_at 在 46 小時前至 7 天內
   const { data: reports, error: queryErr } = await supabase
     .from('paid_reports')
     .select('id, customer_email, birth_data, plan_code, access_token, generation_progress, email_sent_at')
     .eq('status', 'completed')
     .lt('email_sent_at', hourAgo46)
-    .gte('email_sent_at', hourAgo50)
+    .gte('email_sent_at', sevenDaysAgo)
     .order('email_sent_at', { ascending: true })
     .limit(20)
 

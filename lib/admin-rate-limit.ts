@@ -92,17 +92,32 @@ export function checkAdminRateLimit(req: NextRequest): NextResponse | null {
 
 /**
  * 記錄一次認證失敗（達 5 次後鎖 30 分鐘）
+ *
+ * v5.3.34 安全修復（嚴重 bug）：
+ *   原邏輯 `if (!entry || entry.lockedUntil < now)` 在 entry 存在且 lockedUntil=0（從未鎖過）
+ *   時條件永遠為 true（因為 0 < now），導致 count 每次都被重置為 1 → 永遠達不到 5 次閾值
+ *   → ADMIN_KEY 可被無限次暴力破解！
+ *
+ * 修正邏輯：
+ *   - 沒紀錄 → 新建 count=1
+ *   - 鎖定期已過（lockedUntil > 0 且 < now）→ 重置為 count=1（舊鎖已消）
+ *   - 其他情況（count 累計中、或剛建立還沒鎖）→ 累加 count
  */
 export function recordAdminAuthFail(req: NextRequest): void {
   const ip = getClientIp(req)
   const now = Date.now()
   const entry = failedAttempts.get(ip)
-  if (entry && entry.lockedUntil > now) return // 已鎖定不再累加
 
-  if (!entry || entry.lockedUntil < now) {
+  // 已在鎖定中：不再累加（避免惡意請求延長封鎖）
+  if (entry && entry.lockedUntil > now) return
+
+  // 第一次失敗 or 鎖定期已過 → 重建
+  if (!entry || (entry.lockedUntil > 0 && entry.lockedUntil < now)) {
     failedAttempts.set(ip, { count: 1, lockedUntil: 0 })
     return
   }
+
+  // 累加 count；達閾值則鎖 30 分鐘
   entry.count++
   if (entry.count >= FAILED_ATTEMPTS_LIMIT) {
     entry.lockedUntil = now + LOCKOUT_MS

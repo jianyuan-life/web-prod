@@ -3,11 +3,12 @@ import { useState } from 'react'
 import { trackFunnelClient } from '@/lib/funnel-tracker'
 import { buildPdfDownloadUrl, buildPdfDownloadFilename } from '@/lib/pdf-download'
 
-export default function ReportClientButtons({ pdfUrl, planCode, reportId, clientName }: {
+export default function ReportClientButtons({ pdfUrl, planCode, reportId, clientName, accessToken }: {
   pdfUrl: string | null
   planCode?: string
   reportId?: string
   clientName?: string
+  accessToken?: string  // v5.3.34：report-view API 強制要求 access_token 防刷
 }) {
   const [shareLabel, setShareLabel] = useState('分享報告')
   const [generating, setGenerating] = useState(false)
@@ -25,7 +26,7 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
     fetch('/api/report-view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ report_id: reportId, plan_code: planCode, event_type: 'pdf_download' }),
+      body: JSON.stringify({ report_id: reportId, plan_code: planCode, event_type: 'pdf_download', access_token: accessToken }),
     }).catch(() => {})
     // v5.3.2：同步寫入 funnel 事件
     trackFunnelClient({ step: 'pdf_downloaded', planCode, reportId })

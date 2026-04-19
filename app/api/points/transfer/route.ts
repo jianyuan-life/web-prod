@@ -32,21 +32,45 @@ export async function POST(req: NextRequest) {
 
     const { recipientEmail, points, message } = await req.json()
 
-    if (!recipientEmail || !points || points <= 0) {
-      return NextResponse.json({ error: '請提供收件人 Email 和正數的積分數量' }, { status: 400 })
+    // 強化輸入驗證
+    if (typeof recipientEmail !== 'string' || !recipientEmail.includes('@')) {
+      return NextResponse.json({ error: '請提供有效的收件人 Email' }, { status: 400 })
+    }
+    if (typeof points !== 'number' || !Number.isInteger(points) || points <= 0) {
+      return NextResponse.json({ error: '積分必須為正整數' }, { status: 400 })
     }
     if (points > 1000) {
       return NextResponse.json({ error: '單次最多贈與 1,000 點' }, { status: 400 })
     }
+    // 限制 message 長度，避免塞入超長字串或潛在 SSRF / 日誌污染
+    if (message !== undefined && (typeof message !== 'string' || message.length > 200)) {
+      return NextResponse.json({ error: '留言最多 200 字' }, { status: 400 })
+    }
+    const normalizedMessage = typeof message === 'string' ? message.trim() : ''
+    const normalizedRecipientEmail = recipientEmail.trim().toLowerCase()
 
     // 不能贈與給自己
-    if (recipientEmail.toLowerCase() === user.email?.toLowerCase()) {
+    if (normalizedRecipientEmail === user.email?.toLowerCase()) {
       return NextResponse.json({ error: '不能贈與給自己' }, { status: 400 })
     }
 
-    // 找到收件人
-    const { data: { users } } = await supabase.auth.admin.listUsers()
-    const recipient = users?.find(u => u.email?.toLowerCase() === recipientEmail.toLowerCase())
+    // v5.3.34：用 auth_users_view 直接查 email → user_id，
+    //   取代 admin.listUsers()（O(N)、會拉整個用戶表、隨用戶量變慢且浪費頻寬）
+    type RecipientRow = { id: string; email: string | null; user_metadata?: { full_name?: string } | null }
+    let recipient: RecipientRow | null = null
+    const { data: recipientFromView } = await supabase
+      .from('auth_users_view')
+      .select('id, email')
+      .ilike('email', normalizedRecipientEmail)
+      .maybeSingle()
+    if (recipientFromView?.id) {
+      recipient = { id: recipientFromView.id, email: recipientFromView.email }
+    } else {
+      // Fallback：view 不存在時再走 admin.listUsers（極少用戶量時才退回）
+      const { data: list } = await supabase.auth.admin.listUsers()
+      const found = list?.users?.find(u => u.email?.toLowerCase() === normalizedRecipientEmail)
+      if (found) recipient = { id: found.id, email: found.email || null, user_metadata: found.user_metadata as RecipientRow['user_metadata'] }
+    }
     if (!recipient) {
       return NextResponse.json({ error: '找不到該 Email 的用戶' }, { status: 404 })
     }
@@ -62,12 +86,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `積分不足，目前餘額 ${senderPts?.balance || 0} 點` }, { status: 400 })
     }
 
-    // 扣除贈送者積分
+    // 扣除贈送者積分（帶 .gte 條件防止 race condition 造成負餘額）
     const senderNewBalance = senderPts.balance - points
-    await supabase.from('user_points').update({
-      balance: senderNewBalance,
-      total_used: senderPts.total_used + points,
-    }).eq('user_id', user.id).gte('balance', points)
+    const { error: deductErr } = await supabase
+      .from('user_points')
+      .update({
+        balance: senderNewBalance,
+        total_used: (senderPts.total_used || 0) + points,
+      })
+      .eq('user_id', user.id)
+      .gte('balance', points)
+    if (deductErr) {
+      console.error('扣除贈送者積分失敗:', deductErr)
+      return NextResponse.json({ error: '贈與失敗，請稍後再試' }, { status: 500 })
+    }
 
     // 增加收件人積分
     const { data: recipientPts } = await supabase
@@ -92,9 +124,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 記錄雙方交易
-    const refId = `transfer_${Date.now()}`
+    const refId = `transfer_${Date.now()}_${user.id.slice(0, 8)}`
     const senderName = user.user_metadata?.full_name || user.email
     const recipientName = recipient.user_metadata?.full_name || recipient.email
+    const messageSuffix = normalizedMessage ? `：${normalizedMessage}` : ''
 
     await supabase.from('point_transactions').insert([
       {
@@ -102,7 +135,7 @@ export async function POST(req: NextRequest) {
         type: 'transfer_out',
         amount: -points,
         balance_after: senderNewBalance,
-        description: `贈與 ${recipientName} ${points} 點${message ? `：${message}` : ''}`,
+        description: `贈與 ${recipientName} ${points} 點${messageSuffix}`,
         reference_id: refId,
       },
       {
@@ -110,7 +143,7 @@ export async function POST(req: NextRequest) {
         type: 'transfer_in',
         amount: points,
         balance_after: recipientNewBalance,
-        description: `收到 ${senderName} 贈與 ${points} 點${message ? `：${message}` : ''}`,
+        description: `收到 ${senderName} 贈與 ${points} 點${messageSuffix}`,
         reference_id: refId,
       },
     ])
@@ -119,7 +152,7 @@ export async function POST(req: NextRequest) {
       success: true,
       pointsTransferred: points,
       senderNewBalance,
-      recipientEmail,
+      recipientEmail: normalizedRecipientEmail,
     })
   } catch (err) {
     console.error('積分贈與失敗:', err)

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { getSafeRedirect } from '@/lib/safe-redirect'
 
@@ -111,9 +112,9 @@ function LoginForm() {
               />
               <span>記住我</span>
             </label>
-            <a href="/auth/reset-password" className="text-xs text-gold/70 hover:text-gold hover:underline">
+            <Link href="/auth/reset-password" className="text-xs text-gold/70 hover:text-gold hover:underline">
               忘記密碼？
-            </a>
+            </Link>
           </div>
 
           <button type="submit" disabled={loading}
@@ -134,7 +135,7 @@ function LoginForm() {
         </div>
 
         <p className="mt-6 text-center text-sm text-text-muted">
-          還沒有帳號？ <a href="/auth/signup" className="text-gold hover:underline">立即註冊</a>
+          還沒有帳號？ <Link href="/auth/signup" className="text-gold hover:underline">立即註冊</Link>
         </p>
       </div>
     </div>

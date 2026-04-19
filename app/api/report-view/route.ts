@@ -22,22 +22,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '無效的事件類型' }, { status: 400 })
     }
 
+    // v5.3.34：強制要求 access_token，防止僅拿到 report_id 就能刷計數
+    if (!access_token || typeof access_token !== 'string' || access_token.length < 8) {
+      return NextResponse.json({ error: '缺少 access_token' }, { status: 400 })
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     )
 
     // 驗證 report_id 存在且 access_token 匹配（防偽造刷數據）
-    if (access_token) {
-      const { data: report } = await supabase
-        .from('paid_reports')
-        .select('id')
-        .eq('id', report_id)
-        .eq('access_token', access_token)
-        .single()
-      if (!report) {
-        return NextResponse.json({ error: '報告不存在' }, { status: 404 })
-      }
+    const { data: report } = await supabase
+      .from('paid_reports')
+      .select('id')
+      .eq('id', report_id)
+      .eq('access_token', access_token)
+      .single()
+    if (!report) {
+      return NextResponse.json({ error: '報告不存在' }, { status: 404 })
     }
 
     const now = new Date().toISOString()

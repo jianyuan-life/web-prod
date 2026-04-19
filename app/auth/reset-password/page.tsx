@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 export default function ResetPasswordPage() {
@@ -19,7 +20,14 @@ export default function ResetPasswordPage() {
     })
 
     if (error) {
-      setError(error.message)
+      // Supabase 英文錯誤訊息中文化
+      const msgMap: Record<string, string> = {
+        'User not found': '查無此 Email 帳號',
+        'rate limit': '請求次數過多，請稍後再試',
+        'Unable to validate email address': '信箱格式錯誤',
+      }
+      const zhMsg = Object.entries(msgMap).find(([key]) => error.message.toLowerCase().includes(key.toLowerCase()))?.[1] || error.message
+      setError(zhMsg)
     } else {
       setSent(true)
     }
@@ -36,22 +44,26 @@ export default function ResetPasswordPage() {
 
         {sent ? (
           <div className="glass rounded-2xl p-6 text-center space-y-4">
-            <div className="text-4xl">✉️</div>
+            <div className="text-4xl text-gold">&#9993;</div>
             <p className="text-cream font-semibold">重設連結已寄出</p>
             <p className="text-sm text-text-muted">
               請檢查 <span className="text-gold">{email}</span> 的收件匣（也看看垃圾郵件夾），
               點擊信中的連結即可重設密碼。
             </p>
-            <a href="/auth/login" className="inline-block mt-4 text-sm text-gold hover:underline">
+            <Link href="/auth/login" className="inline-block mt-4 text-sm text-gold hover:underline">
               返回登入
-            </a>
+            </Link>
           </div>
         ) : (
           <form onSubmit={handleReset} className="glass rounded-2xl p-6 space-y-4">
             <div>
-              <label className="block text-xs text-text-muted mb-1">Email</label>
+              <label htmlFor="reset-email" className="block text-xs text-text-muted mb-1">Email</label>
               <input
+                id="reset-email"
+                name="email"
                 type="email" required placeholder="your@email.com"
+                autoComplete="email"
+                inputMode="email"
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
               />
@@ -67,7 +79,7 @@ export default function ResetPasswordPage() {
         )}
 
         <p className="mt-6 text-center text-sm text-text-muted">
-          想起密碼了？ <a href="/auth/login" className="text-gold hover:underline">返回登入</a>
+          想起密碼了？ <Link href="/auth/login" className="text-gold hover:underline">返回登入</Link>
         </p>
       </div>
     </div>

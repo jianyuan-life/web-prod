@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import PricingCards from '@/components/PricingCards'
 import LiveCounter from '@/components/LiveCounter'
 import StarField from '@/components/StarField'
@@ -98,11 +99,11 @@ export default function HomePage() {
           <div className="flex flex-wrap gap-4 justify-center mb-6">
             {/* A/B 測試：Hero CTA 文案（experimentKey: hero_cta_20260417） */}
             <HeroCTAExperiment />
-            <a href="/pricing"
+            <Link href="/pricing"
               className="inline-flex items-center gap-2 px-8 py-3.5 border border-gold/40 text-gold font-semibold rounded-[10px] text-[15px] hover:bg-gold/10 hover:border-gold/70 transition-all">
               探索完整方案
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-            </a>
+            </Link>
           </div>
           <p className="text-xs text-text-muted/60 tracking-wide flex items-center justify-center gap-3 flex-wrap">
             <span className="flex items-center gap-1.5">
@@ -157,13 +158,13 @@ export default function HomePage() {
             <p className="text-sm text-text-muted leading-relaxed mb-6">
               只需姓名、生日、性別，即刻獲得八字排盤 + AI 深度分析
             </p>
-            <a href="/tools/bazi"
+            <Link href="/tools/bazi"
               className="inline-flex items-center gap-2 px-8 py-3.5 bg-gold text-dark font-bold rounded-[10px] text-[15px] btn-glow">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
               </svg>
               立即免費體驗
-            </a>
+            </Link>
             <p className="text-xs text-text-muted/50 mt-4">不需註冊 &middot; 不需付費 &middot; 完全免費</p>
           </div>
         </div>
@@ -398,7 +399,7 @@ export default function HomePage() {
           <p className="text-center text-text-muted mb-12 text-sm">從 $39 起，每份報告都包含網頁展示 + PDF 永久保存</p>
           <PricingCards />
           <p className="text-center mt-8 text-sm text-text-muted">
-            還有家庭、關係、出門訣方案 &middot; <a href="/pricing" className="text-gold hover:underline">查看全部 6 種方案與詳細介紹</a>
+            還有家庭、關係、出門訣方案 &middot; <Link href="/pricing" className="text-gold hover:underline">查看全部 6 種方案與詳細介紹</Link>
           </p>
         </div>
       </section>
@@ -431,9 +432,9 @@ export default function HomePage() {
                   在指定時間朝吉方走出 500 公尺，靜坐接氣 40 分鐘，讓天時地利的能量灌注到您身上。
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                  <a href="/pricing" className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-dark font-bold rounded-lg btn-glow text-sm">
+                  <Link href="/pricing" className="inline-flex items-center gap-2 px-6 py-3 bg-gold text-dark font-bold rounded-lg btn-glow text-sm">
                     探索出門訣
-                  </a>
+                  </Link>
                   <div className="flex items-center gap-2 text-xs text-text-muted">
                     <span className="text-gold">&#10003;</span> 事件出門訣 $89
                     <span className="mx-1">|</span>
@@ -640,14 +641,14 @@ export default function HomePage() {
             看看十五套系統如何解讀你的命格密碼。
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-5">
-            <a href="/tools/bazi"
+            <Link href="/tools/bazi"
               className="inline-block px-10 py-4 bg-gold text-dark font-bold rounded-lg text-lg btn-glow">
               開始認識你自己
-            </a>
-            <a href="/pricing"
+            </Link>
+            <Link href="/pricing"
               className="inline-block px-10 py-4 glass text-cream font-semibold rounded-lg text-lg hover:bg-surface-hover transition-colors">
               我已經準備好了
-            </a>
+            </Link>
           </div>
           <p className="text-xs text-text-muted/50">不需註冊 &middot; 不需信用卡 &middot; 完全免費</p>
         </div>

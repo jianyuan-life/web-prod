@@ -45,15 +45,30 @@ export async function GET(req: NextRequest) {
   const totalPointsAwarded = referrals?.reduce((sum, r) =>
     sum + (r.referrer_points_awarded || 0) + (r.referred_points_awarded || 0), 0) || 0
 
-  // 嘗試取得推薦人 email（批量查詢）
-  const referrerIds = [...new Set((referrals || []).map(r => r.referrer_user_id).filter(Boolean))]
+  // 嘗試取得推薦人 email
+  // v5.3.34：N+1 修復 — 改用一次 listUsers 抓全部，不再逐個 getUserById
+  const referrerIds = new Set((referrals || []).map(r => r.referrer_user_id).filter(Boolean) as string[])
   const referrerEmailMap = new Map<string, string>()
-
-  // 逐個查詢（Supabase admin API 不支援批量 getUserById）
-  for (const uid of referrerIds.slice(0, 50)) {
-    const { data: userData } = await supabase.auth.admin.getUserById(uid)
-    if (userData?.user?.email) {
-      referrerEmailMap.set(uid, userData.user.email)
+  if (referrerIds.size > 0) {
+    try {
+      let page = 1
+      const perPage = 1000
+      while (true) {
+        const { data: usersData, error: usersErr } = await supabase.auth.admin.listUsers({
+          page,
+          perPage,
+        })
+        if (usersErr || !usersData?.users) break
+        for (const u of usersData.users) {
+          if (referrerIds.has(u.id) && u.email) {
+            referrerEmailMap.set(u.id, u.email)
+          }
+        }
+        if (usersData.users.length < perPage) break
+        page++
+      }
+    } catch (err) {
+      console.error('[referrals] listUsers 失敗:', err)
     }
   }
 

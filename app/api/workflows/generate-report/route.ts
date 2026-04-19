@@ -16,12 +16,19 @@ export async function POST(req: NextRequest) {
   try {
     // 安全驗證：只允許內部呼叫（Webhook/Cron/Fallback）
     // 使用 CRON_SECRET 或 ADMIN_KEY 驗證，不依賴可偽造的 Origin/Referer
+    // v5.3.34：如果 CRON_SECRET 未設定，直接拒絕，避免空字串繞過
+    const cronSecret = process.env.CRON_SECRET
+    if (!cronSecret) {
+      console.error('❌ CRON_SECRET 未設定，拒絕 workflow 觸發')
+      return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+    }
+
     const authHeader = req.headers.get('authorization')
-    const hasCronSecret = authHeader === `Bearer ${process.env.CRON_SECRET}`
+    const hasCronSecret = authHeader === `Bearer ${cronSecret}`
     // 內部呼叫（同一 Vercel 部署）的 server-to-server fetch 不帶 Origin
     // 用 x-internal-secret header 取代 Origin 判斷
     const internalSecret = req.headers.get('x-internal-secret')
-    const isInternalCall = internalSecret === (process.env.CRON_SECRET || '')
+    const isInternalCall = internalSecret === cronSecret
 
     if (!isInternalCall && !hasCronSecret) {
       return NextResponse.json({ error: '未授權' }, { status: 401 })

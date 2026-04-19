@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { useCheckoutForm } from '@/hooks/useCheckoutForm'
 import CheckoutHeader from '@/components/checkout/CheckoutHeader'
 import CouponInput from '@/components/checkout/CouponInput'
@@ -146,9 +147,9 @@ function CheckoutForm() {
             ) : !ctx.g15MyLoading ? (
               <div className="glass rounded-xl p-4 text-center">
                 <p className="text-text-muted text-sm">您的帳號下還沒有已完成的人生藍圖報告</p>
-                <a href="/pricing" className="text-gold text-xs hover:underline mt-1 inline-block">
+                <Link href="/pricing" className="text-gold text-xs hover:underline mt-1 inline-block">
                   前往購買人生藍圖
-                </a>
+                </Link>
               </div>
             ) : null}
 

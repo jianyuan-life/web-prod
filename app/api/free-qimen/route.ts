@@ -233,6 +233,21 @@ export async function POST(req: NextRequest) {
       pan_type = 'hour',
     } = body
 
+    // v5.3.34：範圍驗證
+    const inRange = (v: unknown, min: number, max: number): boolean => {
+      const n = Number(v)
+      return Number.isFinite(n) && n >= min && n <= max
+    }
+    if (!inRange(year, 1900, 2100) || !inRange(month, 1, 12) || !inRange(day, 1, 31)) {
+      return NextResponse.json({ detail: '日期超出範圍' }, { status: 400 })
+    }
+    if (!inRange(hour, 0, 23) || !inRange(minute, 0, 59)) {
+      return NextResponse.json({ detail: '時辰超出範圍' }, { status: 400 })
+    }
+    if (!['hour', 'day', 'month', 'year'].includes(String(pan_type))) {
+      return NextResponse.json({ detail: '盤類型無效' }, { status: 400 })
+    }
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 25000)
 
@@ -287,8 +302,9 @@ export async function POST(req: NextRequest) {
         { status: 504 }
       )
     }
+    console.error('free-qimen error:', err)
     return NextResponse.json(
-      { detail: err instanceof Error ? err.message : '排盤失敗，請稍後再試' },
+      { detail: '排盤失敗，請稍後再試' },
       { status: 500 }
     )
   }

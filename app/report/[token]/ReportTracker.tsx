@@ -32,6 +32,7 @@ export default function ReportTracker({ reportId, planCode, token }: ReportTrack
         report_id: reportId,
         plan_code: planCode,
         event_type: 'view',
+        access_token: token, // v5.3.34：API 強制要求 access_token 防刷
       }),
     }).catch(() => {
       // 追蹤失敗不影響使用者體驗

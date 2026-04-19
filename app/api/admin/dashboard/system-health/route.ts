@@ -108,10 +108,11 @@ export async function GET(req: NextRequest) {
       }),
     ]),
     // Email 送達率（過去 24h）
+    // v5.3.34：schema drift 修復 — 實際 schema 用 sent_at（不是 created_at）
     supabase
       .from('email_send_log')
       .select('status')
-      .gte('created_at', dayAgo),
+      .gte('sent_at', dayAgo),
     // 報告生成成功率（過去 24h）
     supabase
       .from('paid_reports')

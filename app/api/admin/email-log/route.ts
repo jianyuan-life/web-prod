@@ -28,13 +28,17 @@ export async function GET(req: NextRequest) {
   const since = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString()
   const supabase = getSupabase()
 
+  // v5.3.34：schema drift 修復
+  //   線上實際 schema：recipient, subject, template, resend_id, status,
+  //                    error_message, metadata, sent_at, delivered_at, bounced_at
+  //   shim 成前端預期欄位名 to_email / email_type / created_at 方便後台頁共用
   let query = supabase
     .from('email_send_log')
-    .select('id, resend_id, to_email, from_email, email_type, subject, report_id, user_id, status, error_message, delivered_at, bounced_at, complained_at, metadata, created_at')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
+    .select('id, resend_id, recipient, subject, template, status, error_message, delivered_at, bounced_at, metadata, sent_at')
+    .gte('sent_at', since)
+    .order('sent_at', { ascending: false })
     .limit(limit)
-  if (type) query = query.eq('email_type', type)
+  if (type) query = query.eq('template', type)
   if (status) query = query.eq('status', status)
 
   const { data, error } = await query
@@ -50,7 +54,39 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const logs = data || []
+  const raw = data || []
+  // 映射回前端慣用的欄位名（to_email / email_type / created_at）
+  type RawRow = {
+    id: string
+    resend_id: string | null
+    recipient: string
+    subject: string | null
+    template: string | null
+    status: string
+    error_message: string | null
+    delivered_at: string | null
+    bounced_at: string | null
+    metadata: Record<string, unknown> | null
+    sent_at: string
+  }
+  const logs = (raw as RawRow[]).map(l => ({
+    id: l.id,
+    resend_id: l.resend_id,
+    to_email: l.recipient,
+    from_email: (l.metadata as Record<string, unknown> | null)?.from_email || 'noreply@jianyuan.life',
+    email_type: l.template || 'other',
+    subject: l.subject,
+    report_id: (l.metadata as Record<string, unknown> | null)?.report_id || null,
+    user_id: (l.metadata as Record<string, unknown> | null)?.user_id || null,
+    status: l.status,
+    error_message: l.error_message,
+    delivered_at: l.delivered_at,
+    bounced_at: l.bounced_at,
+    complained_at: null,
+    metadata: l.metadata,
+    created_at: l.sent_at,
+  }))
+
   const byType: Record<string, number> = {}
   const byStatus: Record<string, number> = {}
   for (const l of logs) {

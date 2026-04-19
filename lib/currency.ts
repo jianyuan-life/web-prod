@@ -12,6 +12,10 @@ interface CurrencyInfo {
   decimals: number
 }
 
+// ⚠️ 匯率是硬編碼近似值（2026-04 更新），僅用於「結帳頁顯示」轉換：
+//   實際收費一律由 Stripe 按 USD 扣款，顯示與實收可能有 ±3% 誤差（正常波動）
+//   若匯率波動 > 10% 需手動更新下列值，否則客戶會覺得「牌價騙人」
+//   未來可改接 Open Exchange Rates / Fixer.io，每日 cron 更新到 Supabase 設定表
 const CURRENCIES: Record<CurrencyCode, CurrencyInfo> = {
   USD: { code: 'USD', symbol: '$', name: 'USD', rate: 1, decimals: 0 },
   TWD: { code: 'TWD', symbol: 'NT$', name: 'TWD', rate: 32, decimals: 0 },
@@ -49,10 +53,15 @@ let _cachedCurrency: CurrencyCode | null = null
 export function getUserCurrency(): CurrencyCode {
   if (_cachedCurrency) return _cachedCurrency
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('currency') as CurrencyCode
-    if (saved && CURRENCIES[saved]) {
-      _cachedCurrency = saved
-      return saved
+    try {
+      // v5.3.34：localStorage 在 Safari 隱私模式 / iframe 跨源時會 throw
+      const saved = localStorage.getItem('currency')
+      if (saved && (saved in CURRENCIES)) {
+        _cachedCurrency = saved as CurrencyCode
+        return _cachedCurrency
+      }
+    } catch {
+      /* ignore localStorage 錯誤，fallback detect */
     }
   }
   const detected = detectCurrency()
@@ -61,21 +70,31 @@ export function getUserCurrency(): CurrencyCode {
 }
 
 export function setCurrency(code: CurrencyCode) {
+  if (!(code in CURRENCIES)) return // v5.3.34 防寫入不支援的 code
   _cachedCurrency = code
   if (typeof window !== 'undefined') {
-    localStorage.setItem('currency', code)
+    try {
+      localStorage.setItem('currency', code)
+    } catch {
+      /* Safari 隱私模式 / quota exceeded：記憶體快取已設好，忽略 */
+    }
   }
 }
 
 export function formatPrice(usdPrice: number, currency?: CurrencyCode): string {
+  // v5.3.34：防 NaN/非法值污染顯示（例如後端送 null 進來）
+  const safeUsd = Number.isFinite(usdPrice) ? usdPrice : 0
   const code = currency || getUserCurrency()
-  const info = CURRENCIES[code]
-  const converted = Math.round(usdPrice * info.rate)
+  const info = CURRENCIES[code] || CURRENCIES.USD
+  const converted = Math.round(safeUsd * info.rate)
   return `${info.symbol}${converted.toLocaleString()}`
 }
 
 export function getCurrencyInfo(code?: CurrencyCode): CurrencyInfo {
-  return CURRENCIES[code || getUserCurrency()]
+  // v5.3.34：若 code 不在支援清單中，fallback USD 而不是回 undefined
+  //   原本 CURRENCIES[code||...] 對未知 code 會回 undefined，呼叫端 .symbol 會炸
+  const resolved = code || getUserCurrency()
+  return CURRENCIES[resolved] || CURRENCIES.USD
 }
 
 export function getAllCurrencies(): CurrencyInfo[] {

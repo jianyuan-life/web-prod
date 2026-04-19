@@ -202,6 +202,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ detail: '請提供姓和名' }, { status: 400 })
     }
 
+    // v5.3.34：輸入驗證
+    if (typeof surname !== 'string' || typeof givenName !== 'string') {
+      return NextResponse.json({ detail: '姓名格式錯誤' }, { status: 400 })
+    }
+    if (surname.length > 10 || givenName.length > 20) {
+      // 正常中文姓名：姓 1-2 字、名 1-6 字；放寬到 10/20 可容錯外國長名
+      return NextResponse.json({ detail: '姓名過長' }, { status: 400 })
+    }
+    if (surname.trim().length === 0 || givenName.trim().length === 0) {
+      return NextResponse.json({ detail: '姓名不能為空白' }, { status: 400 })
+    }
+    if (gender !== 'M' && gender !== 'F') {
+      return NextResponse.json({ detail: '性別格式錯誤' }, { status: 400 })
+    }
+
     // 保留用戶原始輸入（可能是簡體），用於前端顯示
     const originalSurname = surname
     const originalGivenName = givenName

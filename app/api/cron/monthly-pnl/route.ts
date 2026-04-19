@@ -46,7 +46,11 @@ export async function GET(req: NextRequest) {
   // 驗證 cron secret
   const authHeader = req.headers.get('authorization')
   const force = req.nextUrl.searchParams.get('force')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && force !== '1') {
+  const adminKey = req.headers.get('x-admin-key')
+  // v5.3.33 安全修：force=1 必須搭配 ADMIN_KEY，否則不可跳過 CRON_SECRET
+  const isCronAuth = authHeader === `Bearer ${process.env.CRON_SECRET}`
+  const isAdminForce = force === '1' && !!adminKey && adminKey === process.env.ADMIN_KEY
+  if (!isCronAuth && !isAdminForce) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

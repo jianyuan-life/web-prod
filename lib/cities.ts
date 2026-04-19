@@ -119,8 +119,11 @@ function searchCountries(query: string): CountrySearchResult[] {
 
 // 統一搜尋：先匹配國家，再匹配城市
 export function searchLocations(query: string): LocationSearchResult[] {
-  if (!query || query.length < 1) return []
+  // v5.3.34：修復 query 為純空白（'   '）時 trim 後空字串仍進 loop 的問題
+  //   String.includes('') 永遠 true → 會把所有城市都 match 出來浪費 CPU
+  if (!query) return []
   const q = query.toLowerCase().trim()
+  if (!q) return []
 
   const results: LocationSearchResult[] = []
 
@@ -228,8 +231,10 @@ export const CITIES: City[] = [
 // 搜尋城市（支援繁體、簡體、英文）
 // v5.2.4：先查原 CITIES（快速選單），不足 8 筆再 fallback 到 500+ 全球庫
 export function searchCities(query: string): City[] {
-  if (!query || query.length < 1) return []
+  // v5.3.34：同 searchLocations，防純空白 query 變全量搜尋
+  if (!query) return []
   const q = query.toLowerCase().trim()
+  if (!q) return []
   const fromLocal = CITIES.filter(c =>
     c.name.includes(q) || c.name_s.includes(q) ||
     c.name_en.toLowerCase().includes(q) || c.country.includes(q)

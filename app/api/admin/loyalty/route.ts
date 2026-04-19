@@ -54,18 +54,32 @@ export async function GET(req: NextRequest) {
     for (const c of (codes || [])) allUserIds.add(c.user_id)
 
     // 批量查詢用戶資訊（auth.users）
+    // v5.3.34：N+1 修復 — 改用一次 listUsers 抓全部，不再逐個 getUserById（200 個 API call 降為 1）
     const userMap = new Map<string, { email: string; full_name: string; created_at: string }>()
     const userIdArray = [...allUserIds]
-    // Supabase admin API 不支援批量 getUserById，需逐個查（限制前 200 位）
-    for (const uid of userIdArray.slice(0, 200)) {
-      const { data: userData } = await supabase.auth.admin.getUserById(uid)
-      if (userData?.user) {
-        userMap.set(uid, {
-          email: userData.user.email || '',
-          full_name: userData.user.user_metadata?.full_name || '',
-          created_at: userData.user.created_at,
+    try {
+      let page = 1
+      const perPage = 1000
+      while (true) {
+        const { data: usersData, error: usersErr } = await supabase.auth.admin.listUsers({
+          page,
+          perPage,
         })
+        if (usersErr || !usersData?.users) break
+        for (const u of usersData.users) {
+          if (allUserIds.has(u.id)) {
+            userMap.set(u.id, {
+              email: u.email || '',
+              full_name: u.user_metadata?.full_name || '',
+              created_at: u.created_at,
+            })
+          }
+        }
+        if (usersData.users.length < perPage) break
+        page++
       }
+    } catch (err) {
+      console.error('[loyalty] listUsers 失敗:', err)
     }
 
     // 組合客戶忠誠度資料

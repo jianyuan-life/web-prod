@@ -349,6 +349,36 @@ export async function POST(req: NextRequest) {
     const { year: inputYear, month: inputMonth, day: inputDay, hour: inputHour, minute = 0, gender, name,
             calendar_type = 'solar', latitude, longitude, timezone_offset = 8, time_unknown = false } = await req.json()
 
+    // v5.3.34：輸入範圍驗證（避免把 -99999 或 99999 丟進 localBazi / Python API）
+    const inRange = (v: unknown, min: number, max: number): boolean => {
+      const n = Number(v)
+      return Number.isFinite(n) && n >= min && n <= max
+    }
+    if (!inRange(inputYear, 1900, 2100)) {
+      return NextResponse.json({ detail: '出生年超出範圍（1900-2100）' }, { status: 400 })
+    }
+    if (!inRange(inputMonth, 1, 12) || !inRange(inputDay, 1, 31)) {
+      return NextResponse.json({ detail: '出生月/日超出範圍' }, { status: 400 })
+    }
+    if (!inRange(inputHour, 0, 23) || !inRange(minute, 0, 59)) {
+      return NextResponse.json({ detail: '出生時辰超出範圍' }, { status: 400 })
+    }
+    if (gender !== 'M' && gender !== 'F') {
+      return NextResponse.json({ detail: '性別格式錯誤' }, { status: 400 })
+    }
+    if (name !== undefined && (typeof name !== 'string' || name.length > 50)) {
+      return NextResponse.json({ detail: '姓名格式錯誤或過長' }, { status: 400 })
+    }
+    if (longitude !== undefined && longitude !== null && longitude !== 0 && !inRange(longitude, -180, 180)) {
+      return NextResponse.json({ detail: '經度超出範圍' }, { status: 400 })
+    }
+    if (latitude !== undefined && latitude !== null && latitude !== 0 && !inRange(latitude, -90, 90)) {
+      return NextResponse.json({ detail: '緯度超出範圍' }, { status: 400 })
+    }
+    if (timezone_offset !== undefined && !inRange(timezone_offset, -12, 14)) {
+      return NextResponse.json({ detail: '時區超出範圍' }, { status: 400 })
+    }
+
     // Step 0: 農曆→國曆轉換
     let year = inputYear, month = inputMonth, day = inputDay
     let lunarConverted = false
@@ -528,6 +558,8 @@ export async function POST(req: NextRequest) {
       is_fallback: isFallback,
     })
   } catch (err) {
-    return NextResponse.json({ detail: err instanceof Error ? err.message : '分析失敗' }, { status: 500 })
+    console.error('free-bazi error:', err)
+    // 不洩漏內部錯誤訊息給客戶端
+    return NextResponse.json({ detail: '分析失敗，請稍後再試' }, { status: 500 })
   }
 }

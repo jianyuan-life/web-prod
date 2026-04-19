@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
-export default function SignupPage() {
+function SignupForm() {
   const params = useSearchParams()
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [showPassword, setShowPassword] = useState(false)
@@ -213,7 +214,7 @@ export default function SignupPage() {
             {loading ? '註冊中...' : '免費註冊'}
           </button>
           <p className="text-[10px] text-text-muted/60 text-center">
-            註冊即表示同意<a href="/terms" className="text-gold">使用條款</a>和<a href="/privacy" className="text-gold">隱私政策</a>
+            註冊即表示同意<Link href="/terms" className="text-gold">使用條款</Link>和<Link href="/privacy" className="text-gold">隱私政策</Link>
           </p>
         </form>
 
@@ -229,9 +230,17 @@ export default function SignupPage() {
         </div>
 
         <p className="mt-6 text-center text-sm text-text-muted">
-          已有帳號？ <a href="/auth/login" className="text-gold hover:underline">登入</a>
+          已有帳號？ <Link href="/auth/login" className="text-gold hover:underline">登入</Link>
         </p>
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-text-muted">載入中...</div>}>
+      <SignupForm />
+    </Suspense>
   )
 }

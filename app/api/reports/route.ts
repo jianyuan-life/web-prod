@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getAuthUser as getAuthUserHelper } from '@/lib/auth-helper'
 
 // Service role client
 function getServiceSupabase() {
@@ -9,72 +10,10 @@ function getServiceSupabase() {
   )
 }
 
-// 從 JWT payload 直接解出 email（不驗證簽名，僅當 Supabase admin 驗證失敗時 fallback）
-// 因為後續 query 是基於這個 email 找屬於該 email 的報告，安全性仍由 token 來源保證
-function decodeJwtEmail(token: string): string | null {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-    const payload = parts[1]
-    // base64url → base64
-    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4)
-    const decoded = Buffer.from(padded, 'base64').toString('utf-8')
-    const parsed = JSON.parse(decoded) as { email?: string; exp?: number; user_metadata?: { email?: string } }
-    // 檢查 token 是否已過期（給 30 秒緩衝）
-    if (parsed.exp && parsed.exp * 1000 < Date.now() - 30_000) return null
-    return parsed.email || parsed.user_metadata?.email || null
-  } catch {
-    return null
-  }
-}
-
-// 從 Authorization header 或 cookie 驗證 Supabase Auth 登入狀態（雙層 fallback）
+// v5.3.34：改用統一的 auth-helper（會驗 JWT 簽名，不再是「只 decode 不驗簽」的放水版本）
 async function getAuthEmail(req: NextRequest): Promise<{ email: string | null; source: string }> {
-  let token: string | null = null
-  const authHeader = req.headers.get('authorization')
-  if (authHeader?.startsWith('Bearer ')) {
-    token = authHeader.slice(7)
-  }
-  if (!token) {
-    try {
-      const cookies = req.headers.get('cookie') || ''
-      const match = cookies.match(/sb-[^=]+-auth-token[^=]*=([^;]+)/)
-      if (match) {
-        const tokenData = JSON.parse(decodeURIComponent(match[1]))
-        token = Array.isArray(tokenData) ? tokenData[0] : tokenData?.access_token || tokenData
-      }
-    } catch { /* 忽略 cookie 解析錯誤 */ }
-  }
-  if (!token || typeof token !== 'string' || token.length < 20) {
-    return { email: null, source: 'no-token' }
-  }
-
-  // 第一層：Supabase admin.getUser 驗證（最嚴謹，會檢查 JWT 簽名）
-  try {
-    const supabase = getServiceSupabase()
-    const { data, error } = await supabase.auth.getUser(token)
-    if (data?.user?.email) {
-      return { email: data.user.email.toLowerCase(), source: 'admin-verified' }
-    }
-    // 若 admin 沒返回 email 但也沒 error，直接進 fallback
-    if (error) {
-      console.warn('[reports] admin.getUser error:', error.message)
-    }
-  } catch (e) {
-    console.warn('[reports] admin.getUser 異常:', e instanceof Error ? e.message : String(e))
-  }
-
-  // 第二層 fallback：直接 JWT decode 取 email
-  // 風險：若 token 偽造仍可取得 email，但後續 query 只看 email 對應的 reports，
-  // 若該 user 確實存在於 auth.users，JWT 是有效的（Supabase 簽發）
-  // 若 JWT 過期（exp < now），decodeJwtEmail 會回 null → 視為 unauthorized
-  const jwtEmail = decodeJwtEmail(token)
-  if (jwtEmail) {
-    return { email: jwtEmail.toLowerCase(), source: 'jwt-fallback' }
-  }
-
-  return { email: null, source: 'jwt-decode-failed' }
+  const { email, source } = await getAuthUserHelper(req)
+  return { email, source }
 }
 
 // GET — 取得用戶的報告

@@ -1305,7 +1305,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
           {/* 操作按鈕（Client Component 處理 onClick）*/}
           <div className="relative z-10">
-            <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} reportId={report.id} clientName={report.client_name} />
+            <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} reportId={report.id} clientName={report.client_name} accessToken={token} />
           </div>
         </div>
 

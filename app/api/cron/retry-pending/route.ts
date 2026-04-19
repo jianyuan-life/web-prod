@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
   const { data: pendingReports, error: queryErr } = await supabase
     .from('paid_reports')
-    .select('id, retry_count, status, created_at')
+    .select('id, retry_count, status, created_at, generation_progress')
     .in('status', ['pending', 'failed'])
     .lt('created_at', fiveMinAgo)
     .order('created_at', { ascending: true })
@@ -65,12 +65,18 @@ export async function GET(req: NextRequest) {
     // failed 狀態才重試（pending 理論上應該已被 webhook 觸發過了）
     // 但如果 pending 超過 5 分鐘還沒開始，也要重試
     // 用原子操作搶佔：只有 pending/failed 能被搶
+    // v5.3.33：合併現有 generation_progress（而非覆寫）以保留 checkpoint
+    const existingProgress = (report.generation_progress || {}) as Record<string, unknown>
     const { data: grabbed, error: grabErr } = await supabase
       .from('paid_reports')
       .update({
         status: 'pending', // 保持 pending，workflow 的 loadReportRecord 會搶佔為 generating
         retry_count: currentRetry + 1,
-        generation_progress: { cron_retry_at: new Date().toISOString() },
+        generation_progress: {
+          ...existingProgress,
+          cron_retry_at: new Date().toISOString(),
+          cron_retry_count: ((existingProgress.cron_retry_count as number) || 0) + 1,
+        },
       })
       .eq('id', report.id)
       .in('status', ['pending', 'failed'])

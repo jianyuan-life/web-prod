@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
@@ -77,14 +78,20 @@ function DashboardContent() {
   const sendNotification = (report: Report) => {
     if (notifiedIds.has(report.id)) return
     notifiedIds.add(report.id)
+    // Safari 某些版本、iOS Web 沒有 Notification API
+    if (typeof Notification === 'undefined') return
     const planName = PLAN_NAMES[report.plan_code] || report.plan_code
-    if (Notification.permission === 'granted') {
-      new Notification('鑒源命理', {
-        body: `您的${planName}報告已完成！`,
-        icon: '/favicon.ico',
-      })
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission()
+    try {
+      if (Notification.permission === 'granted') {
+        new Notification('鑒源命理', {
+          body: `您的${planName}報告已完成！`,
+          icon: '/favicon.ico',
+        })
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission()
+      }
+    } catch {
+      // iOS Safari 在非 HTTPS 或不支援時會丟例外
     }
   }
 
@@ -450,9 +457,9 @@ function DashboardContent() {
             <h1 className="text-2xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>我的報告</h1>
             <p className="text-sm text-text-muted">查看和下載已生成的命理報告</p>
           </div>
-          <a href="/pricing" className="px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-sm btn-glow">
+          <Link href="/pricing" className="px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-sm btn-glow">
             + 新的探索
-          </a>
+          </Link>
         </div>
 
         {/* 出門訣推廣 banner — 只對已有其他方案報告但沒有出門訣報告的用戶顯示 */}
@@ -465,9 +472,9 @@ function DashboardContent() {
               <p className="text-sm text-cream font-semibold">想讓命理能量真正落地？</p>
               <p className="text-xs text-text-muted mt-1">您已完成命格分析，下一步可以試試「出門訣」——根據奇門遁甲找出最適合您的出行吉時與方位，採取行動把握最佳時機。</p>
             </div>
-            <a href="/pricing" className="shrink-0 px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-xs btn-glow">
+            <Link href="/pricing" className="shrink-0 px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-xs btn-glow">
               了解出門訣
-            </a>
+            </Link>
           </div>
         )}
 
@@ -488,10 +495,10 @@ function DashboardContent() {
             <p className="text-sm text-text-muted mb-6">
               請重新登入即可查看您的報告，報告資料完全保留。
             </p>
-            <a href="/auth/login?redirect=/dashboard"
+            <Link href="/auth/login?redirect=/dashboard"
               className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow inline-block">
               重新登入查看報告
-            </a>
+            </Link>
           </div>
         ) : reports.length > 0 ? (
           <div className="space-y-4">
@@ -686,9 +693,9 @@ function DashboardContent() {
             <div className="text-4xl mb-4" style={{ fontFamily: 'var(--font-sans)' }}>&#9788;</div>
             <h3 className="text-lg font-semibold text-cream mb-2">還沒有報告</h3>
             <p className="text-sm text-text-muted mb-6">選擇一個方案，開始你的命理探索之旅</p>
-            <a href="/tools/bazi" className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow">
+            <Link href="/tools/bazi" className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow">
               先免費體驗
-            </a>
+            </Link>
           </div>
         )}
 

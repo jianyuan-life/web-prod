@@ -315,8 +315,30 @@ export async function GET(req: NextRequest) {
   const { error: insertErr } = await supabase.from('llm_balance_log').insert(rows)
 
   // 告警（同一 provider 6 小時內只告警一次 — 用最近一次 log 判斷）
+  // v5.3.33：實作真正的 6 小時冷卻，避免每小時狂發告警
+  const ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000
+  const sixHoursAgo = new Date(Date.now() - ALERT_COOLDOWN_MS).toISOString()
+  const { data: recentAlerts } = await supabase
+    .from('llm_balance_log')
+    .select('provider, status, created_at')
+    .gte('created_at', sixHoursAgo)
+    .in('status', ['critical', 'low', 'error'])
+    .order('created_at', { ascending: false })
+    .limit(200)
+  // 建立已告警過的 provider 集合（排除本次剛插入的 rows）
+  // 只要 6 小時內同一 provider 有過 critical/low/error 狀態，就認為已告警過
+  const alertedProviders = new Set<string>()
+  const now = Date.now()
+  for (const row of (recentAlerts || [])) {
+    const t = new Date(row.created_at).getTime()
+    // 排除 1 分鐘內的（本次執行剛寫的）
+    if (now - t < 60_000) continue
+    alertedProviders.add(row.provider)
+  }
+
   let alerted = 0
   for (const r of results) {
+    if (alertedProviders.has(r.provider)) continue // 6 小時內已告警，跳過
     if (r.status === 'critical' && r.balance !== null) {
       await notifyLLMBalanceCritical(r.provider, r.balance, r.currency)
       alerted++
