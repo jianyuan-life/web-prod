@@ -1213,6 +1213,95 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         @media (min-width: 641px) and (max-width: 1024px) {
           .section-card { padding: 22px; }
         }
+        /* v5.3.48 Wave 3.3 抽言金句塊：截圖分享素材 + 情感錨點
+           報告正文中若有 blockquote 或特定模式的金句，套用此樣式放大震撼
+           用法：在章節內容中寫 > 金句 或 <blockquote>金句</blockquote> */
+        .report-pullquote, blockquote.pullquote, .report-p blockquote {
+          margin: 2.5rem 0;
+          padding: 2rem 2.5rem;
+          border: none;
+          border-left: 3px solid rgba(201,168,76,0.85);
+          background: linear-gradient(135deg, rgba(201,168,76,0.06) 0%, rgba(201,168,76,0.02) 100%);
+          border-radius: 0 12px 12px 0;
+          font-size: 1.375rem;
+          line-height: 1.6;
+          letter-spacing: 0.015em;
+          font-weight: 500;
+          color: var(--color-cream);
+          font-family: var(--font-sans);
+          font-style: normal;
+          text-wrap: balance;
+          position: relative;
+        }
+        .report-pullquote::before, blockquote.pullquote::before {
+          content: '"';
+          position: absolute;
+          top: -0.5rem;
+          left: 1rem;
+          font-size: 4rem;
+          color: rgba(201,168,76,0.25);
+          font-family: Georgia, serif;
+          line-height: 1;
+        }
+        @media (max-width: 640px) {
+          .report-pullquote, blockquote.pullquote, .report-p blockquote {
+            font-size: 1.125rem;
+            padding: 1.25rem 1.5rem;
+            margin: 1.75rem 0;
+          }
+        }
+        /* v5.3.48 Wave 3.4 起承轉合篇章封面強化 */
+        .part-chapter-cover {
+          padding: 3rem 2rem 2rem;
+          text-align: center;
+          position: relative;
+          margin: 2rem 0;
+        }
+        .part-chapter-cover .part-label {
+          display: inline-block;
+          font-size: 0.75rem;
+          letter-spacing: 6px;
+          color: rgba(201,168,76,0.6);
+          margin-bottom: 1rem;
+          text-transform: uppercase;
+        }
+        .part-chapter-cover .part-stage {
+          font-size: 4rem;
+          font-family: var(--font-sans);
+          font-weight: 700;
+          color: var(--color-gold);
+          line-height: 1;
+          letter-spacing: 0.3em;
+          margin: 0.5rem 0 1.5rem;
+          text-shadow: 0 0 24px rgba(201,168,76,0.2);
+        }
+        .part-chapter-cover .part-title {
+          font-size: 1.75rem;
+          font-family: var(--font-sans);
+          font-weight: 600;
+          color: var(--color-cream);
+          margin-bottom: 0.75rem;
+          text-wrap: balance;
+        }
+        .part-chapter-cover .part-desc {
+          font-size: 1rem;
+          color: var(--color-text);
+          line-height: 1.7;
+          max-width: 36ch;
+          margin: 0 auto;
+          text-wrap: balance;
+        }
+        .part-chapter-cover .part-divider {
+          margin: 1.5rem auto 0;
+          width: 60px;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(201,168,76,0.6), transparent);
+        }
+        @media (max-width: 640px) {
+          .part-chapter-cover { padding: 2rem 1rem 1.5rem; }
+          .part-chapter-cover .part-stage { font-size: 2.75rem; }
+          .part-chapter-cover .part-title { font-size: 1.35rem; }
+        }
         @media print {
           body, html { background: white !important; color: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           nav, footer, .no-print { display: none !important; }
@@ -1334,6 +1423,36 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <span className="text-text-muted/20">|</span>
             <ReadingTime textLength={report.report_result?.ai_content?.length || 0} />
           </div>
+
+          {/* v5.3.48 Wave 3.1：首屏破冰語（老闆 docx P1） */}
+          {/* 客戶進入報告頁前 3 秒的「情感鉤子」—— 24px 金色 Serif 大字 + 淡入動畫
+              模板化按方案分流，不依賴 ai_content 解析（避免 SSR 複雜度） */}
+          {!isChumenji && !isRelationship && (
+            <div className="mt-8 pt-6 relative z-10" style={{ borderTop: '1px solid rgba(201,168,76,0.12)' }}>
+              <p className="text-[22px] sm:text-[24px] leading-[1.65] text-gold/90 font-medium tracking-wide" style={{
+                fontFamily: 'var(--font-sans)',
+                textWrap: 'balance',
+              }}>
+                {report.plan_code === 'C'
+                  ? `接下來的幾分鐘，會改變${report.client_name}看自己的方式。`
+                  : report.plan_code === 'D'
+                  ? `那個讓${report.client_name}卡住的原因，命盤早就寫好了答案。`
+                  : report.plan_code === 'G15'
+                  ? `這個家的故事，比${report.client_name}以為的更深。`
+                  : '從這裡開始，看見最真實的自己。'}
+              </p>
+            </div>
+          )}
+          {isRelationship && (
+            <div className="mt-8 pt-6 relative z-10" style={{ borderTop: '1px solid rgba(201,168,76,0.12)' }}>
+              <p className="text-[22px] sm:text-[24px] leading-[1.65] text-gold/90 font-medium tracking-wide" style={{
+                fontFamily: 'var(--font-sans)',
+                textWrap: 'balance',
+              }}>
+                你們之間的化學反應，比兩個人加起來的還多。
+              </p>
+            </div>
+          )}
 
           {/* R 方案專屬：相容度結論大徽章（最醒目，品牌金色系統一配色） */}
           {isRelationship && compatibilityVerdict && (

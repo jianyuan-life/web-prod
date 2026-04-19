@@ -65,12 +65,15 @@ export function BackToTopButton() {
 }
 
 // #14 閱讀時間估算
+// v5.3.48 Wave 3：改友善呈現（老闆 docx P1）
+// 舊：「預計閱讀 99 分鐘」→ 給壓迫感嚇退
+// 新：「精華 10 分 · 完整 N 分」雙入口呈現，降低閱讀門檻
 export function ReadingTime({ textLength }: { textLength: number }) {
-  // 中文閱讀速度約 400-500 字/分鐘
   const minutes = Math.max(5, Math.ceil(textLength / 450))
+  const essenceMin = Math.min(15, Math.max(8, Math.round(minutes / 6)))
   return (
     <span className="text-text-muted/60 text-xs">
-      預計閱讀 {minutes} 分鐘
+      精華 {essenceMin} 分 · 完整 {minutes} 分
     </span>
   )
 }
