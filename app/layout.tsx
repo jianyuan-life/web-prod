@@ -8,6 +8,7 @@ import LocaleContent from '@/components/LocaleContent'
 import Tracker from '@/components/Tracker'
 import ReferralHandler from '@/components/ReferralHandler'
 import GlobalBackToTop from '@/components/GlobalBackToTop'
+import EmailLink from '@/components/EmailLink'
 import './globals.css'
 
 const notoSerif = Noto_Serif_TC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' })
@@ -202,7 +203,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">聯繫我們</h4>
-                <a href="mailto:support@jianyuan.life" className="text-text-muted hover:text-gold transition-colors">support@jianyuan.life</a>
+                <EmailLink className="text-text-muted hover:text-gold transition-colors" />
               </div>
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
