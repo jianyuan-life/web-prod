@@ -143,17 +143,48 @@ export async function POST(req: NextRequest) {
   // 5. 扣回已發放的推薦積分
   // 邏輯：若此訂單有對應 referrals 記錄（referred_user_id 對應此訂單 user），
   //       且 referrer_points_awarded > 0，扣回給 referrer
+  //
+  // 注意：原本用 auth.admin.listUsers({ perPage: 1000 })，用戶破千會漏掉需退款客戶。
+  //       改為用 email 直接查 auth_users_view（migration add_referred_email 已建立此 view），
+  //       避免 listUsers 的分頁上限。auth_users_view 只開放 service_role，安全無虞。
   let pointsClawedBack = 0
   try {
     if (report?.customer_email) {
-      // 透過 email 找 user_id
-      const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-      const refundedUser = users?.find(u => u.email?.toLowerCase() === report?.customer_email?.toLowerCase())
-      if (refundedUser) {
+      const lowerEmail = report.customer_email.toLowerCase()
+
+      // 優先用 auth_users_view 直接查（O(1)，無分頁上限）
+      let refundedUserId: string | null = null
+      const { data: viewUser, error: viewErr } = await supabase
+        .from('auth_users_view')
+        .select('id')
+        .eq('email', lowerEmail)
+        .maybeSingle()
+
+      if (!viewErr && viewUser?.id) {
+        refundedUserId = viewUser.id
+      } else {
+        // Fallback: auth_users_view 尚未建立（migration 還沒跑）→ 退回 listUsers
+        //           雖然有 1000 上限，但至少不 break 既有功能
+        if (viewErr) {
+          console.warn('[refund] auth_users_view 查詢失敗，退回 listUsers:', viewErr.message)
+        }
+        try {
+          const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+          const refundedUser = users?.find(u => u.email?.toLowerCase() === lowerEmail)
+          refundedUserId = refundedUser?.id || null
+          if (!refundedUserId && (users?.length || 0) >= 1000) {
+            console.error('[refund] listUsers 達到 1000 筆上限，可能遺漏目標用戶:', lowerEmail)
+          }
+        } catch (fallbackErr) {
+          console.error('[refund] listUsers fallback 也失敗:', fallbackErr)
+        }
+      }
+
+      if (refundedUserId) {
         const { data: refs } = await supabase
           .from('referrals')
           .select('id, referrer_user_id, referrer_points_awarded')
-          .eq('referred_user_id', refundedUser.id)
+          .eq('referred_user_id', refundedUserId)
           .eq('status', 'purchased')
         for (const r of (refs || [])) {
           const pts = r.referrer_points_awarded || 0

@@ -26,6 +26,15 @@ import {
 // 全新設計：結構化三大區塊 + 評分橫條圖 + 品牌色系
 // ============================================================
 
+// v5.3.35：強制 dynamic 渲染，關閉 Next.js 16 預設的 PPR/Suspense streaming
+// 原因：報告頁 HTML 量大（~370KB），啟用 streaming 會讓 Next.js 在 body 末尾
+//   注入 <div hidden id="S:x">{chunk}</div> + $RS() 搬移腳本。React 19
+//   hydrate body 時會把 RootLayout JSX 之外的 children 當 extra children 清掉，
+//   造成後續 $RS("S:x","P:x") 找不到元素，觸發 TypeError parentNode null × 13
+//   與 React error #418「Unexpected string」 hydration mismatch × 2。
+//   force-dynamic 讓 SSR 一次回傳完整 HTML，不走 streaming 就沒這個問題。
+export const dynamic = 'force-dynamic'
+
 interface Top5Timing {
   rank: number
   title: string

@@ -5,12 +5,23 @@ import { checkAdminRateLimit, clearAdminAuthFail } from '@/lib/admin-rate-limit'
 import { writeAuditLog } from '@/lib/admin-audit-log'
 
 // 管理後台 API — x-admin-key header 驗證 + timing-safe compare + rate limit
+//
+// v5.3.35：visitor_events 聚合改走 RPC `admin_visitor_stats`，
+//          不再把整張表拉進 Node 記憶體。Bot 過濾在 SQL 層用 ILIKE 完成。
 
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   )
+}
+
+type VisitorStatRow = {
+  bucket: 'overview' | 'top_page' | 'country' | 'device' | string
+  key: string
+  sessions: number
+  pageviews: number
+  is_bot: boolean
 }
 
 export async function GET(req: NextRequest) {
@@ -29,47 +40,65 @@ export async function GET(req: NextRequest) {
   const since = new Date()
   since.setDate(since.getDate() - days)
   const sinceISO = since.toISOString()
+  const endISO = new Date().toISOString()
   const supabase = getSupabase()
 
-  // 已知 bot User-Agent 關鍵字（用於過濾非真人訪客）
-  const BOT_UA_PATTERNS = ['HeadlessChrome', 'vercel-screenshot', 'bot', 'crawler', 'spider', 'Googlebot', 'Bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider', 'YandexBot', 'facebookexternalhit', 'Twitterbot']
-
-  // 並行查詢所有數據
+  // 並行查詢所有數據（visitor_events 走 RPC；其他表維持 select）
   const [
-    visitorsRes,
+    visitorStatsRes,
     reportsRes,
     freeToolRes,
-    topPagesRes,
-    countriesRes,
-    devicesRes,
   ] = await Promise.all([
-    // 訪客總數（去重 session_id）— 包含 user_agent 用於 bot 過濾
-    supabase.from('visitor_events').select('session_id, user_agent', { count: 'exact' }).gte('created_at', sinceISO),
+    // 訪客聚合（overview / top_page / country / device + bot 分桶）
+    supabase.rpc('admin_visitor_stats', { start_date: sinceISO, end_date: endISO }),
     // 付費報告（只選統計需要的欄位，不拉 report_result 大 JSON）
     supabase.from('paid_reports').select('id, plan_code, amount_usd, status, created_at, customer_email, client_name, stripe_session_id').gte('created_at', sinceISO).order('created_at', { ascending: false }),
     // 免費工具使用
-    supabase.from('free_tool_usage').select('*', { count: 'exact' }).gte('created_at', sinceISO),
-    // 熱門頁面 Top 10（含 user_agent 用於 bot 過濾）
-    supabase.from('visitor_events').select('page_path, user_agent').gte('created_at', sinceISO),
-    // 國家分佈（含 user_agent 用於 bot 過濾）
-    supabase.from('visitor_events').select('country, user_agent').gte('created_at', sinceISO),
-    // 設備分佈（含 user_agent 用於 bot 過濾）
-    supabase.from('visitor_events').select('device_type, user_agent').gte('created_at', sinceISO),
+    supabase.from('free_tool_usage').select('*', { count: 'exact', head: true }).gte('created_at', sinceISO),
   ])
 
-  // Bot 過濾函式
-  const isBot = (ua: string) => BOT_UA_PATTERNS.some(p => ua.toLowerCase().includes(p.toLowerCase()))
+  // ====== 解析 visitor 聚合 ======
+  const statRows: VisitorStatRow[] = (visitorStatsRes.data as VisitorStatRow[] | null) || []
 
-  // 計算統計（過濾 bot）
-  const allVisitors = visitorsRes.data || []
-  const visitors = allVisitors.filter(v => !isBot(v.user_agent || ''))
-  const uniqueSessions = new Set(visitors.map(v => v.session_id)).size
-  const totalPageviews = visitors.length
-  // bot 統計（供參考）
-  const botCount = allVisitors.length - visitors.length
+  // Overview：取 is_bot = false 的那筆
+  const overviewReal = statRows.find(r => r.bucket === 'overview' && r.is_bot === false)
+  const overviewBot = statRows.find(r => r.bucket === 'overview' && r.is_bot === true)
+  const uniqueSessions = overviewReal?.sessions ?? 0
+  const totalPageviews = overviewReal?.pageviews ?? 0
+  const botCount = overviewBot?.pageviews ?? 0
 
+  // Top pages（過濾 bot）— 同 key 取 non-bot
+  const pageAgg: Record<string, number> = {}
+  for (const r of statRows) {
+    if (r.bucket !== 'top_page' || r.is_bot) continue
+    pageAgg[r.key] = (pageAgg[r.key] || 0) + r.pageviews
+  }
+  const topPages = Object.entries(pageAgg)
+    .map(([path, count]) => ({ path, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+
+  // 國家分佈（過濾 bot）
+  const countryAgg: Record<string, number> = {}
+  for (const r of statRows) {
+    if (r.bucket !== 'country' || r.is_bot) continue
+    const country = r.key || 'Unknown'
+    countryAgg[country] = (countryAgg[country] || 0) + r.pageviews
+  }
+  const geoDistribution = Object.entries(countryAgg)
+    .map(([country, count]) => ({ country, count, pct: Math.round(count / Math.max(totalPageviews, 1) * 100) }))
+    .sort((a, b) => b.count - a.count)
+
+  // 設備分佈（過濾 bot）
+  const deviceCounts: Record<string, number> = {}
+  for (const r of statRows) {
+    if (r.bucket !== 'device' || r.is_bot) continue
+    const k = r.key || 'unknown'
+    deviceCounts[k] = (deviceCounts[k] || 0) + r.pageviews
+  }
+
+  // ====== 付費報告統計 ======
   const reports = reportsRes.data || []
-  const totalRevenue = reports.reduce((sum, r) => sum + (parseFloat(r.amount_usd) || 0), 0)
   const completedReports = reports.filter(r => r.status === 'completed').length
 
   // 產品銷售排行
@@ -84,35 +113,6 @@ export async function GET(req: NextRequest) {
   const topProducts = Object.entries(planCounts)
     .map(([plan, data]) => ({ plan, ...data }))
     .sort((a, b) => b.revenue - a.revenue)
-
-  // 熱門頁面（過濾 bot）
-  const pageCounts: Record<string, number> = {}
-  for (const p of (topPagesRes.data || [])) {
-    if (isBot(p.user_agent || '')) continue
-    pageCounts[p.page_path] = (pageCounts[p.page_path] || 0) + 1
-  }
-  const topPages = Object.entries(pageCounts)
-    .map(([path, count]) => ({ path, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10)
-
-  // 國家分佈（過濾 bot）
-  const countryCounts: Record<string, number> = {}
-  for (const c of (countriesRes.data || [])) {
-    if (isBot(c.user_agent || '')) continue
-    const country = c.country || 'Unknown'
-    countryCounts[country] = (countryCounts[country] || 0) + 1
-  }
-  const geoDistribution = Object.entries(countryCounts)
-    .map(([country, count]) => ({ country, count, pct: Math.round(count / Math.max(totalPageviews, 1) * 100) }))
-    .sort((a, b) => b.count - a.count)
-
-  // 設備分佈（過濾 bot）
-  const deviceCounts: Record<string, number> = {}
-  for (const d of (devicesRes.data || [])) {
-    if (isBot(d.user_agent || '')) continue
-    deviceCounts[d.device_type || 'unknown'] = (deviceCounts[d.device_type || 'unknown'] || 0) + 1
-  }
 
   // 免費工具轉化率
   const freeToolCount = freeToolRes.count || 0

@@ -574,50 +574,69 @@ export async function POST(req: NextRequest) {
                   .eq('id', referral.id)
               }
 
-              // 推薦人加點數 — 安全加值（先查後更新，不存在則新建）
-              async function addPointsSafe(targetUserId: string, points: number): Promise<number> {
+              // 原子加點 RPC（防 race condition + 冪等）
+              // add_points 會原子 UPSERT user_points + INSERT point_transactions，
+              // 同一 (reference_id, type) 已存在則 skipped=true 不重複加值
+              const { data: addResult, error: addErr } = await supabase.rpc('add_points', {
+                p_user_id: referrerId,
+                p_delta: REFERRER_POINTS,
+                p_reason: isFirstPurchase ? '推薦用戶首次購買獎勵' : '推薦用戶回購獎勵',
+                p_reference_id: session.id,
+                p_type: 'earn_referral',
+                p_expires_at: expiresAt,
+              })
+
+              if (addErr) {
+                console.error('⚠️ add_points RPC 失敗，退回舊 addPointsSafe 邏輯:', addErr)
+
+                // Fallback：RPC 不存在時退回 select-then-update（有 race condition 但至少可運作）
                 const { data: existing } = await supabase
                   .from('user_points')
                   .select('balance, total_earned')
-                  .eq('user_id', targetUserId)
+                  .eq('user_id', referrerId)
                   .maybeSingle()
 
+                let referrerFinalBalance: number
                 if (existing) {
-                  const newBal = (existing.balance || 0) + points
+                  referrerFinalBalance = (existing.balance || 0) + REFERRER_POINTS
                   await supabase
                     .from('user_points')
                     .update({
-                      balance: newBal,
-                      total_earned: (existing.total_earned || 0) + points,
+                      balance: referrerFinalBalance,
+                      total_earned: (existing.total_earned || 0) + REFERRER_POINTS,
                     })
-                    .eq('user_id', targetUserId)
-                  return newBal
+                    .eq('user_id', referrerId)
                 } else {
-                  await supabase
-                    .from('user_points')
-                    .insert({
-                      user_id: targetUserId,
-                      balance: points,
-                      total_earned: points,
-                      total_used: 0,
-                    })
-                  return points
+                  referrerFinalBalance = REFERRER_POINTS
+                  await supabase.from('user_points').insert({
+                    user_id: referrerId,
+                    balance: REFERRER_POINTS,
+                    total_earned: REFERRER_POINTS,
+                    total_used: 0,
+                  })
+                }
+
+                await supabase.from('point_transactions').insert({
+                  user_id: referrerId,
+                  type: 'earn_referral',
+                  amount: REFERRER_POINTS,
+                  balance_after: referrerFinalBalance,
+                  description: isFirstPurchase ? '推薦用戶首次購買獎勵' : '推薦用戶回購獎勵',
+                  reference_id: session.id,
+                  expires_at: expiresAt,
+                })
+              } else {
+                // RPC 成功。addResult 是 TABLE(balance_after int, skipped bool)
+                const resultRow = Array.isArray(addResult) ? addResult[0] : addResult
+                const finalBalance = resultRow?.balance_after ?? 0
+                const wasSkipped = resultRow?.skipped ?? false
+
+                if (wasSkipped) {
+                  console.info(`ℹ️ add_points RPC 冪等命中：session ${session.id} 已發放過，跳過`)
+                } else {
+                  console.info(`✅ 推薦碼點數發放完成（原子 RPC）：推薦人 ${referrerId} +${REFERRER_POINTS}點，餘額 ${finalBalance}（${isFirstPurchase ? '首購' : '回購'}）`)
                 }
               }
-
-              // 只發放推薦人積分（被推薦人已在註冊時得到積分）
-              const referrerFinalBalance = await addPointsSafe(referrerId, REFERRER_POINTS)
-
-              // 寫入 point_transactions（用 session.id 作為 reference_id 防重複）
-              await supabase.from('point_transactions').insert({
-                user_id: referrerId,
-                type: 'earn_referral',
-                amount: REFERRER_POINTS,
-                balance_after: referrerFinalBalance,
-                description: isFirstPurchase ? '推薦用戶首次購買獎勵' : '推薦用戶回購獎勵',
-                reference_id: session.id,
-                expires_at: expiresAt,
-              })
 
               // 首購時更新 referral_codes.total_referrals
               if (isFirstPurchase && referral.referral_code) {
@@ -634,8 +653,6 @@ export async function POST(req: NextRequest) {
                     .eq('code', referral.referral_code)
                 }
               }
-
-              console.info(`✅ 推薦碼點數發放完成：推薦人 ${referrerId} +${REFERRER_POINTS}點（${isFirstPurchase ? '首購' : '回購'}）`)
             }
           }
         }

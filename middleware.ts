@@ -60,6 +60,13 @@ export function middleware(request: NextRequest) {
   } else if (path.startsWith('/api/ab-events')) {
     // A/B 測試事件追蹤：每頁可能有多個 impression/click，放寬到 120/min
     maxPerMinute = 120
+  } else if (path === '/api/webhook/stripe' || path.startsWith('/api/webhook/stripe')) {
+    // Stripe webhook 白名單：大促/批量結帳時 Stripe 可能在同一分鐘送多個事件
+    // (checkout.session.completed / payment_intent.succeeded / charge.succeeded 等)
+    // 預設 30/min 會被 429 擋，造成客戶付款不入帳 + Stripe 自動重試風暴
+    // 放寬到 120/min，且 Stripe 本身有簽名驗證（webhookSecret）防偽造，不怕被濫用
+    maxPerMinute = 120
+    console.info(`[rate-limit] Stripe webhook 套用白名單 120/min（ip=${ip}）`)
   }
 
   // 推薦碼驗證 brute force 封鎖檢查（先於速率限制，失敗 5 次封 1 小時）
