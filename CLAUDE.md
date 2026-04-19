@@ -170,6 +170,65 @@ Resend 寄 Email（含報告連結）
 
 ## 更新紀錄
 
+### v5.3.44-v5.3.48（2026-04-19 全面性重構 Wave 1+2+3）
+
+**核心產品目標**（老闆明確指令）：讓客戶感動到哭、一針見血、起就把命格講透、承轉合故事連貫。
+
+#### Wave 1 讀感+目錄（v5.3.44）
+- 正文 14.4px → 17px Noto Sans TC（Serif→Sans 致命 bug 修）
+- 對比度 #6880a0 (4.3:1) → #b3b8c5 (7.8:1 AA+)
+- 欄寬鎖 max-w-[680px]（Bringhurst 32 漢字/行）
+- 段距 2rem > 行距 30.6px（Apple HIG）
+- h1/h2 Major Third 字級（33.2px / 27.6px）
+- classifyC 2028-2035 年份 → 轉篇
+- parseStructuredContent CATEGORY_LABEL_ONLY 過濾
+- cleanFinalReport 清字數提示殘留
+
+#### Wave 2 感動到哭 Prompt v3（v5.3.45/46/47）
+**新檔 `prompts/c_plan_v3.ts`（640 行）**：
+- Call 0 BLUEPRINT JSON（core_themes/aha_moments/emotion_arc/callback_keywords/identity_label）
+- Call 1 起篇 ≥18K 字：命格總覽+15 系統融合白話+命格總論
+- Call 2 承轉合合併 ≥28K 字（Cinderella 情緒弧線）
+- 感動到哭 Playbook：15 一針見血模板 + 10 Aha 公式 + 7 流淚段落結構
+- v6.0 5 大 bug 全防範
+
+**workflows 接線**：
+- steps.ts 新增 aiGenerateBlueprintV3/Call1V3/Call2ChengZhuanHeV3
+- index.ts Call 0/1/2 獨立 try/catch（Call 2 失敗接 v2 Call 2+3 補）
+- 4 項品質硬驗：刻意練習+寫給+Tier 3 五系統 ≥5 次+identity_label ≥3 次
+- Feature flag 放寬：USE_PROMPT_V3 支援 true/TRUE/1/trim 空白
+- 動態 import → top-level（省 1.5s cold-start）
+- v3 品質不過觸發 notifyQualityGate Telegram 警報
+- IA + QA agent 雙稽核通過
+
+**成本**：v3 單份 Call 0 $0.06 + Call 1 $2 + Call 2 $2.7 = $4.76（比 v2 3-call $4 略高）
+
+#### Wave 3 UI 視覺強化（v5.3.48）
+- **首屏破冰語**：客戶姓名下方 24px 金色 Serif tagline（6 方案分流）
+  - C：「接下來的幾分鐘，會改變{name}看自己的方式。」
+  - D：「那個讓{name}卡住的原因，命盤早就寫好了答案。」
+  - G15：「這個家的故事，比{name}以為的更深。」
+  - R：「你們之間的化學反應，比兩個人加起來的還多。」
+- **閱讀時間友善化**：「99 分鐘」→「精華 15 分 · 完整 90 分」雙入口
+- **抽言金句塊 CSS**：22px Serif + 金色條 + 大型引號裝飾（截圖分享素材）
+- 起承轉合 PartSection 評估後保持現狀（已有 icon+stage+progress+tldr）
+
+#### 啟動 v3 需要的 2 步驟（等老闆做）
+1. Vercel 設 env `PROMPT_V3_TEST_REPORT_ID=<report_uuid>` 單份測試
+   或 `USE_PROMPT_V3=true` 全開
+2. `/jamie/recalculate` 重觸發該 reportId
+
+未啟動前 v3 code 休眠，不影響現有客戶。
+
+#### 待辦（Wave 4/5 暫緩，等 v3 品質確認）
+- Wave 4 效能：Cache Components + AI Gateway + BotID + Middleware
+- Wave 5 雙載體：PDF 重設計 + Day 1-7 分段解鎖 + 金句分享卡
+- qualityGate v3 observe mode（#53）
+- React #419 console error（#45）
+- 砍 Framer Motion/Recharts bundle（#60）
+
+---
+
 ### v5.3.31（2026-04-19 C prompt 復刻認可版 + 砍 5 LLM QA）
 
 **方向**：老闆發現過去 3 週迭代反而把 C prompt 改壞了（5 LLM QA + 起承轉合 10 章結構 = 砍掉認可版 DNA）。以「客戶認可版本範例」資料夾內的何紀萳 md/何宥諄 md/何宣逸 pdf 為標準復刻。
@@ -434,6 +493,24 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 待辦事項
+
+### 🔥 v5.3.48 後優先（等老闆動作 + Wave 4/5）
+| # | 任務 | 依賴 | 工作量 |
+|:---:|:---|:---|:---:|
+| V3-1 | **老闆設 Vercel env `PROMPT_V3_TEST_REPORT_ID=9fe911a7-...`** | 無 | 5 分鐘 |
+| V3-2 | **重觸發 9fe911a7 驗證 v3 品質（~$5）** | V3-1 | 20 分鐘 |
+| V3-3 | 驗收感動到哭品質 + 6 項核驗 | V3-2 | 30 分鐘 |
+| V3-4 | 品質達標 → 開 USE_PROMPT_V3=true 10% 灰度 | V3-3 通過 | 小 |
+| W4-1 | **Wave 4 Cache Components**（TTFB 800→80ms） | V3 穩定 | 中 |
+| W4-2 | **Wave 4 Vercel AI Gateway**（省 40% + fallback + observability） | V3 穩定 | 中 |
+| W4-3 | **Wave 4 BotID**（防付費內容被爬） | 無 | 小 |
+| W4-4 | **Wave 4 Middleware 精實化**（權限分離 + 邊緣驗證） | 無 | 小 |
+| W5-1 | **Wave 5 PDF 雙軌**（Web+PDF 一源雙軌、白底封面+編號+QR） | V3 穩定 | 大 |
+| W5-2 | **Wave 5 Day 1-7 分段解鎖**（儀式感 + 回看動機） | W5-1 | 中 |
+| W5-3 | **Wave 5 金句分享卡**（Vercel Blob og-image） | V3 穩定 | 中 |
+| W3-5 | 砍 Framer Motion/Recharts（bundle -400KB） | 無 | 中 |
+| W2-3 | qualityGate v3 observe mode（SCQA/Callback/金句密度） | V3 穩定 | 中 |
+| BUG45 | React #419 console error（非阻塞但未解） | 無 | 小 |
 
 ### 🔴 上線前必做（不做不能收費）
 | # | 任務 | 依賴 | 工作量 |
