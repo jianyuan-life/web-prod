@@ -10,6 +10,10 @@ import {
   aiGenerateCall1,
   aiGenerateCall2,
   aiGenerateCall3,
+  // v5.3.45 Wave 2：新 v3 流程（感動到哭 Playbook）
+  aiGenerateBlueprintV3,
+  aiGenerateCall1V3,
+  aiGenerateCall2ChengZhuanHeV3,
   aiGenerateGeneric,
   loadFamilyReports,
   loadFamilyReportsByIds,
@@ -412,9 +416,43 @@ export async function generateReportWorkflow(reportId: string) {
         }
       }
 
-      // ── 舊 3-call 流程（fallback 或 feature flag 關閉時）──
-      if (!pipelineSuccess) {
-        console.log('C 方案開始：3-call 順序執行（legacy）')
+      // ── v5.3.45 Wave 2：Prompt v3 新流程（feature flag USE_PROMPT_V3 或 PROMPT_V3_TEST_REPORT_ID 啟用）──
+      // Call 0 BLUEPRINT JSON + Call 1 起篇 + Call 2 承轉合合併
+      // 失敗時自動 fallback 到 v2 3-call（不阻塞客戶）
+      const useV3 = !pipelineSuccess && (
+        process.env.USE_PROMPT_V3 === 'true'
+        || process.env.PROMPT_V3_TEST_REPORT_ID === reportId
+      )
+      let v3Success = false
+      if (useV3) {
+        try {
+          console.log('C 方案 v3 啟動：Call 0 BLUEPRINT + Call 1 起 + Call 2 承轉合')
+          const blueprint = await aiGenerateBlueprintV3(calcResult, birthData, clientQuestion, reportId)
+          const r1 = await aiGenerateCall1V3(blueprint, calcResult, birthData, clientQuestion, reportId)
+          const r2 = await aiGenerateCall2ChengZhuanHeV3(blueprint, calcResult, birthData, r1.content, reportId)
+
+          // Call 2 v3 承轉合完整性檢查（刻意練習 + 給 XX 的一封信）
+          const hasDeliberatePractice = r2.content.includes('刻意練習')
+          const hasClosingLetter = r2.content.includes('寫給') || /給.{1,10}的一封信/.test(r2.content)
+
+          if (!hasDeliberatePractice || !hasClosingLetter) {
+            console.warn(`[v3] Call 2 完整性不足（刻意練習=${hasDeliberatePractice} 寫給=${hasClosingLetter}），降級到 v2`)
+          } else {
+            const appendix = buildAppendix(calcResult.analyses)
+            const rawContent = [r1.content, r2.content, appendix].join('\n\n')
+            reportContent = cleanFinalReport(rawContent, birthData.name)
+            aiModelUsed = r1.model + '-v3'
+            v3Success = true
+            console.log(`C 方案 v3 完成：${reportContent.length} 字（Call 1 ${r1.content.length} + Call 2 ${r2.content.length}）`)
+          }
+        } catch (v3Err) {
+          console.error('C 方案 v3 異常，降級到 v2 3-call:', v3Err)
+        }
+      }
+
+      // ── v2 舊 3-call 流程（fallback 或 feature flag 關閉時）──
+      if (!pipelineSuccess && !v3Success) {
+        console.log('C 方案開始：3-call 順序執行（legacy v2）')
         const r1 = await aiGenerateCall1(calcResult, birthData, clientQuestion, reportId)
         const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
         const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)

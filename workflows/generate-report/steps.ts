@@ -1841,6 +1841,123 @@ export async function aiGenerateCall3(
 }
 aiGenerateCall3.maxRetries = 3
 
+// ============================================================
+// v5.3.45 Wave 2 — Prompt v3 新流程（USE_PROMPT_V3=true 才啟用）
+// Call 0 BLUEPRINT JSON + Call 1 起篇 + Call 2 承轉合合併
+// 本段函式不影響現有 v2 Call 1/2/3 流程，僅在 flag 開啟時被 index.ts 呼叫
+// ============================================================
+
+/**
+ * v3 Call 0：生成 BLUEPRINT JSON（輕量 3K tokens，$0.06）
+ * 抽骨架：core_themes + aha_moments + emotion_arc + callback_keywords + identity_label
+ * 後續 Call 1/2 必須依此藍圖填肉
+ */
+export async function aiGenerateBlueprintV3(
+  calcResult: CalcResult, birthData: BirthData, clientQuestion?: string, reportId?: string,
+) {
+  "use step";
+  console.log('Call 0 BLUEPRINT 開始：抽結構化藍圖')
+  await emitProgress({ step: 'AI分析', progress: 10, message: '正在抽取命格核心藍圖...' })
+
+  const { buildBlueprintPrompt, validateBlueprint } = await import('@/prompts/c_plan_v3')
+
+  const systemPrompt = buildBlueprintPrompt({
+    name: birthData.name,
+    gender: birthData.gender,
+    year: birthData.year,
+    locale: birthData.locale,
+  })
+  const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
+    + (clientQuestion ? `\n\n【客戶提問】${clientQuestion}\n請將此問題納入 core_themes 與 closing_letter_theme 的考量。` : '')
+
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 8000, 'Call 0 Blueprint', reportId)
+
+  // 解析 JSON（容錯：去除 markdown code block 殼）
+  let jsonText = result.content.trim()
+  jsonText = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
+  // 找第一個 { 到最後一個 }
+  const firstBrace = jsonText.indexOf('{')
+  const lastBrace = jsonText.lastIndexOf('}')
+  if (firstBrace === -1 || lastBrace === -1) {
+    throw new Error(`Call 0 BLUEPRINT：無法解析 JSON（找不到 {} 邊界）`)
+  }
+  jsonText = jsonText.slice(firstBrace, lastBrace + 1)
+
+  let blueprint: unknown
+  try {
+    blueprint = JSON.parse(jsonText)
+  } catch (e) {
+    throw new Error(`Call 0 BLUEPRINT JSON parse 失敗：${e instanceof Error ? e.message : String(e)}`)
+  }
+
+  const validation = validateBlueprint(blueprint)
+  if (!validation.ok) {
+    throw new Error(`Call 0 BLUEPRINT 驗證失敗：${validation.errors.join('、')}`)
+  }
+
+  console.log(`Call 0 BLUEPRINT 完成：identity_label="${(blueprint as { identity_label: string }).identity_label}"`)
+  return blueprint as import('@/prompts/c_plan_v3').BlueprintJSON
+}
+aiGenerateBlueprintV3.maxRetries = 3
+
+/**
+ * v3 Call 1：起章（≥18K 字）
+ * 命格總覽 + 15 系統融合白話 + 命格總論
+ * 情緒：認同（「這說的就是我」）
+ */
+export async function aiGenerateCall1V3(
+  blueprint: import('@/prompts/c_plan_v3').BlueprintJSON,
+  calcResult: CalcResult, birthData: BirthData, clientQuestion?: string, reportId?: string,
+) {
+  "use step";
+  console.log('Call 1 v3 起章開始：命格總覽 + 15 系統融合 + 命格總論')
+  await emitProgress({ step: 'AI分析', progress: 25, message: '正在撰寫起章（認識本我）...' })
+
+  const { buildCall1QiPromptV3 } = await import('@/prompts/c_plan_v3')
+
+  const systemPrompt = buildCall1QiPromptV3(
+    blueprint,
+    { name: birthData.name, gender: birthData.gender, year: birthData.year, locale: birthData.locale },
+    clientQuestion,
+  )
+  const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
+
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 1 v3 Qi', reportId)
+  result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
+  console.log(`Call 1 v3 起章完成：${result.content.length} 字`)
+  return result
+}
+aiGenerateCall1V3.maxRetries = 3
+
+/**
+ * v3 Call 2：承轉合合併（≥28K 字）
+ * 承 12K + 轉 8K + 合 8K 一氣呵成
+ * 情緒弧線：揭露 → 震撼 → 希望（Cinderella）
+ */
+export async function aiGenerateCall2ChengZhuanHeV3(
+  blueprint: import('@/prompts/c_plan_v3').BlueprintJSON,
+  calcResult: CalcResult, birthData: BirthData, call1Content: string, reportId?: string,
+) {
+  "use step";
+  console.log('Call 2 v3 承轉合開始')
+  await emitProgress({ step: 'AI分析', progress: 55, message: '正在撰寫承轉合三章（一氣呵成）...' })
+
+  const { buildCall2ChengZhuanHePromptV3 } = await import('@/prompts/c_plan_v3')
+
+  const systemPrompt = buildCall2ChengZhuanHePromptV3(
+    blueprint,
+    { name: birthData.name, gender: birthData.gender, year: birthData.year, locale: birthData.locale },
+    call1Content,
+  )
+  const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
+
+  const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 2 v3 ChengZhuanHe', reportId)
+  result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
+  console.log(`Call 2 v3 承轉合完成：${result.content.length} 字`)
+  return result
+}
+aiGenerateCall2ChengZhuanHeV3.maxRetries = 3
+
 // ── Step 2e: 非 C 方案 AI 生成（單次呼叫） ──
 export async function aiGenerateGeneric(
   calcResult: CalcResult, birthData: BirthData, planCode: string,
