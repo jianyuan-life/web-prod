@@ -39,35 +39,37 @@ export default function CollapsibleSection({
   const [contentHeight, setContentHeight] = useState<number | 'auto'>('auto')
 
   // 測量內容高度以實現平滑動畫
+  // Bug #14：確認 node 仍 connected 再訪問，避免 parentNode null 錯誤
   useEffect(() => {
-    if (contentRef.current) {
-      const resizeObserver = new ResizeObserver(() => {
-        if (contentRef.current && expanded) {
-          setContentHeight(contentRef.current.scrollHeight)
-        }
-      })
-      resizeObserver.observe(contentRef.current)
-      return () => resizeObserver.disconnect()
-    }
+    const node = contentRef.current
+    if (!node || !node.isConnected) return
+    const resizeObserver = new ResizeObserver(() => {
+      const n = contentRef.current
+      if (n && n.isConnected && expanded) {
+        setContentHeight(n.scrollHeight)
+      }
+    })
+    resizeObserver.observe(node)
+    return () => resizeObserver.disconnect()
   }, [expanded])
 
   // 展開/收起時更新高度
   useEffect(() => {
-    if (contentRef.current) {
-      if (expanded) {
-        setContentHeight(contentRef.current.scrollHeight)
-        // 動畫結束後切換為 auto（讓內部內容自由伸縮）
-        const timer = setTimeout(() => setContentHeight('auto'), 350)
-        return () => clearTimeout(timer)
-      } else {
-        // 先設定確切高度，再在下一幀設為 0（觸發 CSS transition）
-        setContentHeight(contentRef.current.scrollHeight)
+    const node = contentRef.current
+    if (!node || !node.isConnected) return
+    if (expanded) {
+      setContentHeight(node.scrollHeight)
+      // 動畫結束後切換為 auto（讓內部內容自由伸縮）
+      const timer = setTimeout(() => setContentHeight('auto'), 350)
+      return () => clearTimeout(timer)
+    } else {
+      // 先設定確切高度，再在下一幀設為 0（觸發 CSS transition）
+      setContentHeight(node.scrollHeight)
+      requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            setContentHeight(0)
-          })
+          setContentHeight(0)
         })
-      }
+      })
     }
   }, [expanded])
 

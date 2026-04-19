@@ -197,7 +197,9 @@ function cleanAIResponse(text: string): string {
   cleaned = cleaned.replace(/^(好的|收到|我將|我會|讓我|以下是|沒問題|當然)[^\n]*\n+/i, '')
 
   // 2. prompt 結構標籤（任何位置出現都刪整行）
-  cleaned = cleaned.replace(/^.*(?:第一幕|第二幕|第三幕|壓軸|收尾|完整分析請繼續閱讀).*$/gm, '')
+  //    只刪精確的 meta 標記：「完整分析請繼續閱讀」「本報告分 X 批生成」等
+  //    不再刪「第一幕/第二幕/第三幕/壓軸/收尾」——這些可能是有意義的章節標題
+  cleaned = cleaned.replace(/^.*(?:完整分析請繼續閱讀|本報告分.{0,5}批生成).*$/gm, '')
 
   // 3. AI 批次標記
   cleaned = cleaned.replace(/（第[一二三四]批）/g, '')
@@ -834,12 +836,14 @@ export async function loadReportRecord(reportId: string) {
   // 防止 1000 人同時付款時 3000 個 Claude 呼叫打爆 API
   const MAX_CONCURRENT_REPORTS = 15 // 最多 15 份報告同時生成（= 45 個 Claude 呼叫）
   // 排除超過 30 分鐘的殭屍進程，只計算真正在跑的報告
+  // 注意：paid_reports 沒有 updated_at 欄位，改用 created_at 作為近似的活躍度判斷
+  // （生成中的報告 created_at 通常就是最近幾分鐘內，超過 30 分鐘視為殭屍）
   const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
   const { count: generatingCount } = await supabase
     .from('paid_reports')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'generating')
-    .gt('updated_at', thirtyMinAgo)
+    .gt('created_at', thirtyMinAgo)
 
   if ((generatingCount || 0) >= MAX_CONCURRENT_REPORTS) {
     // 排隊等候：利用 Workflow 的 RetryableError 機制自動延遲重試
@@ -1721,7 +1725,7 @@ export async function aiGenerateCall1(
   const ageGroup = getAgeGroup(birthData.year)
   const clientNeed = question || undefined
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
-  const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale)
+  const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale, birthData.gender)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 1', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -1741,7 +1745,7 @@ export async function aiGenerateCall2(
   const ageGroup = getAgeGroup(birthData.year)
   const call1Summary = extractCall1Summary(call1Content)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
-  const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale)
+  const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale, birthData.gender)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 2', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -1768,7 +1772,7 @@ export async function aiGenerateCall3(
   }
 
   const maxTokens = 128000
-  const systemPrompt = buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale)
+  const systemPrompt = buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale, birthData.gender)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call 3', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))

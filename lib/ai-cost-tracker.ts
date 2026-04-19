@@ -99,7 +99,7 @@ export async function recordAIUsage(usage: AIUsage): Promise<void> {
     }
 
     const supabase = createClient(url, serviceKey)
-    const cost = estimateCostUsd(usage.model, usage.promptTokens, usage.completionTokens)
+    const cost = estimateCostUsd(usage.model || 'unknown', usage.promptTokens, usage.completionTokens)
 
     // 正規化 provider（把 alibaba/google/claude 等別名統一）
     const providerTag: ProviderTag = canonicalProvider(usage.provider)
@@ -111,6 +111,13 @@ export async function recordAIUsage(usage: AIUsage): Promise<void> {
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     const safeReportId = (usage.reportId && UUID_REGEX.test(usage.reportId)) ? usage.reportId : null
 
+    // v5.3.32：model NOT NULL 保護
+    //   根因：部分 provider 回傳 response 可能沒帶 model 欄位（undefined/null/空字串），
+    //   導致 insert 時違反 NOT NULL constraint → 400。fallback 到 'unknown' 確保一定有值。
+    const safeModel = (typeof usage.model === 'string' && usage.model.trim().length > 0)
+      ? usage.model.trim()
+      : 'unknown'
+
     // v5.3.10：用 .select() 強制取回結果，這樣 Supabase insert 的真實錯誤才會浮出來
     //   以前 await supabase.from().insert() 吞掉 error（因為 postgrest-js 回 { error } 而不 throw），
     //   導致寫入失敗 recordAIUsage 外層 try/catch 看不到 → 06:01 後全部靜默失敗。
@@ -120,7 +127,7 @@ export async function recordAIUsage(usage: AIUsage): Promise<void> {
         report_id: safeReportId,
         plan_code: usage.planCode || null,
         provider: providerTag,
-        model: usage.model,
+        model: safeModel,
         call_stage: usage.callStage || null,
         prompt_tokens: Math.max(0, Math.round(usage.promptTokens || 0)),
         completion_tokens: Math.max(0, Math.round(usage.completionTokens || 0)),

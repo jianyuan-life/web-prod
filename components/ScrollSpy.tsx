@@ -28,18 +28,22 @@ export default function ScrollSpy() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // 找到所有「交集」的章節，取最靠近視口頂端的那個
+        // Bug #14：過濾已 detached 的 target，避免 parentNode null 錯誤
         const visible = entries
-          .filter(e => e.isIntersecting)
+          .filter(e => e.isIntersecting && e.target && e.target.isConnected)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
         if (!visible.length) return
 
         const topId = visible[0].target.id
-        // 清除所有 active
-        links.forEach(a => a.removeAttribute('data-active'))
+        // 清除所有 active（存取前確認仍掛在 document 上）
+        links.forEach(a => {
+          if (a && a.isConnected) a.removeAttribute('data-active')
+        })
         // 設置目前章節
         const activeLink = byHash.get(topId)
-        if (activeLink) activeLink.setAttribute('data-active', 'true')
+        if (activeLink && activeLink.isConnected) {
+          activeLink.setAttribute('data-active', 'true')
+        }
       },
       {
         // 中央 40% 視口觀察
@@ -48,7 +52,9 @@ export default function ScrollSpy() {
       }
     )
 
-    sections.forEach(s => observer.observe(s))
+    sections.forEach(s => {
+      if (s && s.isConnected) observer.observe(s)
+    })
     return () => observer.disconnect()
   }, [])
 

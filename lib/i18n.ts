@@ -4,8 +4,41 @@
 
 import * as OpenCC from 'opencc-js'
 
+// 簡→繁白名單：避免 OpenCC s2tw 把語境錯的「只」誤轉為「隻」
+// 「只」在簡體對應繁體「只/隻」二字，只有量詞（一隻貓、一隻手）應該用「隻」
+// 其餘「只是/只有/只能/只需要/只會/只要/只剩/只好/只不過/只見/只怕」等副詞用法都該保留「只」
+const s2tCustomDict: Array<[string, string]> = [
+  ['只是', '只是'],
+  ['只有', '只有'],
+  ['只能', '只能'],
+  ['只需', '只需'],
+  ['只需要', '只需要'],
+  ['只會', '只會'],
+  ['只会', '只會'],
+  ['只要', '只要'],
+  ['只剩', '只剩'],
+  ['只好', '只好'],
+  ['只不過', '只不過'],
+  ['只不过', '只不過'],
+  ['只見', '只見'],
+  ['只见', '只見'],
+  ['只怕', '只怕'],
+  ['只管', '只管'],
+  ['只顧', '只顧'],
+  ['只顾', '只顧'],
+  ['只為', '只為'],
+  ['只为', '只為'],
+  ['只求', '只求'],
+  ['只知道', '只知道'],
+  ['只差', '只差'],
+  ['只在', '只在'],
+]
+
 const t2sConverter = OpenCC.Converter({ from: 'tw', to: 'cn' })
-const s2tConverter = OpenCC.Converter({ from: 'cn', to: 'tw' })
+const s2tConverter = OpenCC.ConverterFactory(
+  OpenCC.Locale.from.cn,
+  OpenCC.Locale.to.tw.concat([s2tCustomDict]),
+)
 
 export function toSimplified(text: string): string {
   return t2sConverter(text)

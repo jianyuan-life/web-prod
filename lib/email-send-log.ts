@@ -35,17 +35,26 @@ export async function recordEmailSend(input: EmailLogInput): Promise<void> {
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!url || !key) return
     const supabase = createClient(url, key)
-    await supabase.from('email_send_log').insert({
-      resend_id: input.resendId || null,
-      to_email: input.toEmail,
+
+    // v5.3.32：schema drift 修復
+    //   實際 schema：recipient(NOT NULL), subject, template, resend_id,
+    //               status(default 'sent'), error_message, metadata(jsonb)
+    //   to_email → recipient；email_type → template；from_email/report_id/user_id 塞 metadata
+    const metadata: Record<string, unknown> = {
+      ...(input.metadata || {}),
       from_email: input.fromEmail || 'noreply@jianyuan.life',
-      email_type: input.emailType,
+    }
+    if (input.reportId) metadata.report_id = input.reportId
+    if (input.userId) metadata.user_id = input.userId
+
+    await supabase.from('email_send_log').insert({
+      recipient: input.toEmail,
       subject: input.subject,
-      report_id: input.reportId || null,
-      user_id: input.userId || null,
+      template: input.emailType,
+      resend_id: input.resendId || null,
       status: input.status || 'sent',
       error_message: input.errorMessage || null,
-      metadata: input.metadata || {},
+      metadata,
     })
   } catch (err) {
     // eslint-disable-next-line no-console

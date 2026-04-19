@@ -12,7 +12,10 @@ export default function LocaleContent({ children }: { children: React.ReactNode 
   const originalAttrs = useRef(new Map<string, string>())
 
   // 儲存原始繁體文字，轉換時用
+  // Bug #14 防護：所有 node 操作前先確認仍掛在 document 上（避免 React reconciliation
+  // 期間訪問已 detached 的 node 造成 $RS parentNode null 錯誤）
   const saveOriginal = useCallback((node: Node) => {
+    if (!node || !node.isConnected) return
     if (node.nodeType === Node.TEXT_NODE && node.textContent) {
       if (!originalTexts.current.has(node)) {
         originalTexts.current.set(node, node.textContent)
@@ -44,7 +47,7 @@ export default function LocaleContent({ children }: { children: React.ReactNode 
   }, [])
 
   const convertAll = useCallback((locale: string) => {
-    if (!ref.current) return
+    if (!ref.current || !ref.current.isConnected) return
 
     // 保存原始文字
     saveOriginal(ref.current)
@@ -52,6 +55,8 @@ export default function LocaleContent({ children }: { children: React.ReactNode 
     const isCN = locale === 'zh-CN'
 
     function convertNode(node: Node) {
+      // Bug #14 防護：node 已被 React detach 時略過
+      if (!node || !node.isConnected) return
       if (node.nodeType === Node.TEXT_NODE && node.textContent) {
         const original = originalTexts.current.get(node) || node.textContent
         node.textContent = isCN ? toSimplified(original) : original
@@ -105,14 +110,18 @@ export default function LocaleContent({ children }: { children: React.ReactNode 
     window.addEventListener('locale-change', handler)
 
     // 監聽動態內容（AI 生成等）
+    // Bug #14：使用 debounce + isConnected 守衛，避免在 React reconciliation 期間修改 DOM
+    //   造成 parentNode=null 的 $RS 崩潰（重複 11 次）
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const observer = new MutationObserver(() => {
       const locale = getLocale()
-      if (locale === 'zh-CN') {
-        setTimeout(() => {
-          saveOriginal(ref.current!)
-          convertAll('zh-CN')
-        }, 50)
-      }
+      if (locale !== 'zh-CN') return
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        if (!ref.current || !ref.current.isConnected) return
+        saveOriginal(ref.current)
+        convertAll('zh-CN')
+      }, 150)
     })
     if (ref.current) {
       observer.observe(ref.current, { childList: true, subtree: true })
@@ -121,6 +130,7 @@ export default function LocaleContent({ children }: { children: React.ReactNode 
     return () => {
       window.removeEventListener('locale-change', handler)
       observer.disconnect()
+      if (debounceTimer) clearTimeout(debounceTimer)
     }
   }, [convertAll, saveOriginal])
 

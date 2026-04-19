@@ -917,24 +917,34 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     .eq('access_token', token)
     .single()
 
+  // Bug #26：只有真的「查不到報告」才 404；已建立但尚未完成的 report 一律顯示 loading 頁
+  //   舊邏輯只覆蓋 pending / generating 兩種 status，其他任何非 completed 狀態
+  //   （例如 failed、retry、或 report_result 為 null 的 completed bug 資料）會繼續往下 render
+  //   造成客戶看到 404 或空白崩潰頁。改用「反向條件」：只要 status !== 'completed' 或 ai_content 為空，都顯示 loading。
   if (error || !data) return notFound()
 
   const report = data as ReportData
 
-  // 報告生成中
-  if (report.status === 'pending' || report.status === 'generating') {
+  // 報告生成中（status 不是 completed，或 completed 但 report_result / ai_content 為 null / 空字串）
+  const aiContentReady = !!report.report_result?.ai_content
+  if (report.status !== 'completed' || !aiContentReady) {
+    const isFailed = report.status === 'failed'
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
         <div className="glass rounded-2xl p-12 text-center max-w-md">
-          <div className="text-5xl mb-4">⏳</div>
+          <div className="text-5xl mb-4">{isFailed ? '\u26A0\uFE0F' : '\u23F3'}</div>
           <h1 className="text-xl font-bold text-cream mb-2">
-            {['E1','E2'].includes(report.plan_code) ? '奇門遁甲出門訣排算中'
+            {isFailed
+              ? '報告生成遇到問題'
+              : ['E1','E2'].includes(report.plan_code) ? '奇門遁甲出門訣排算中'
               : report.plan_code === 'G15' ? '家族藍圖分析進行中'
               : report.plan_code === 'R' ? '關係合盤分析進行中'
               : '命理分析進行中'}
           </h1>
           <p className="text-text-muted text-sm mb-2">
-            {['E1','E2'].includes(report.plan_code)
+            {isFailed
+              ? '系統已記錄此次生成異常，客服將於 1–2 小時內為您重新生成並通知您'
+              : ['E1','E2'].includes(report.plan_code)
               ? '系統正以 25 層古籍評分體系逐時辰排算奇門局，套入個人年命宮驗證吉位'
               : report.plan_code === 'G15'
               ? '正在為您的家庭成員進行多人命格交叉分析，整合家族互動關係'
@@ -942,14 +952,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               ? '系統正為雙方分別排盤，並用七大命理系統進行合盤分析'
               : '系統正同步調用東西方十五大命理系統，逐一進行排盤運算與深度解析'}
           </p>
-          <p className="text-text-muted/60 text-xs mb-1">
-            {['E1','E2'].includes(report.plan_code) ? '出門訣排算通常需要 40–50 分鐘'
-              : report.plan_code === 'G15' ? '家族分析通常需要 30–45 分鐘'
-              : report.plan_code === 'R' ? '合盤分析通常需要 30–45 分鐘'
-              : '完整分析通常需要 40–60 分鐘'}
-          </p>
-          <p className="text-text-muted/60 text-xs mb-6">完成後將自動寄送 Email 通知您，無需持續等候</p>
-          <p className="text-gold text-sm">如需確認進度，可稍後重新整理此頁面</p>
+          {!isFailed && (
+            <>
+              <p className="text-text-muted/60 text-xs mb-1">
+                {['E1','E2'].includes(report.plan_code) ? '出門訣排算通常需要 40–50 分鐘'
+                  : report.plan_code === 'G15' ? '家族分析通常需要 30–45 分鐘'
+                  : report.plan_code === 'R' ? '合盤分析通常需要 30–45 分鐘'
+                  : '完整分析通常需要 40–60 分鐘'}
+              </p>
+              <p className="text-text-muted/60 text-xs mb-6">完成後將自動寄送 Email 通知您，無需持續等候</p>
+              <p className="text-gold text-sm">如需確認進度，可稍後重新整理此頁面</p>
+            </>
+          )}
+          {isFailed && (
+            <p className="text-gold text-sm mt-4">如有疑問請聯繫 <a href="mailto:support@jianyuan.life" className="underline">support@jianyuan.life</a></p>
+          )}
         </div>
       </div>
     )

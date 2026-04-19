@@ -213,6 +213,10 @@ export interface ModerationLogInput {
   contentPreview: string
   /** retry 次數（第幾次被擋） */
   retryAttempt?: number
+  /** Layer 識別（例：content_moderation / pre_delivery / retry_guard），預設 content_moderation */
+  layer?: string
+  /** 嚴重度（block=red, warn=yellow, pass=info），預設由 blocked 自動決定 */
+  severity?: 'red' | 'yellow' | 'info' | string
 }
 
 function getSupabase() {
@@ -229,24 +233,38 @@ function getSupabase() {
 export async function logModerationEvent(input: ModerationLogInput): Promise<void> {
   try {
     const supabase = getSupabase()
-    await supabase.from('moderation_log').insert({
-      report_id: input.reportId,
+
+    // v5.3.32：schema drift 修復
+    //   實際 schema：layer(NOT NULL), severity(NOT NULL), content_sample, categories(jsonb),
+    //               ai_scores(jsonb), action_taken, notes
+    //   原傳入欄位 plan_code/blocked/reason/retry_attempt/status 對應不到 schema，
+    //   全部塞進 notes 或廢棄；hits → categories JSON；content_preview → content_sample
+    const severity = input.severity || (input.blocked ? 'red' : (input.action === 'warn' ? 'yellow' : 'info'))
+    const categories = input.hits.map(h => ({
+      category: h.category,
+      severity: h.severity,
+      reason: h.reason,
+      pattern: String(h.pattern).slice(0, 100),
+      matched_text: h.matchedText.slice(0, 100),
+      snippet: h.snippet.slice(0, 400),
+    }))
+    const notesPayload = {
       plan_code: input.planCode,
-      action: input.action,
       blocked: input.blocked,
       reason: input.reason.slice(0, 500),
-      hits: input.hits.map(h => ({
-        category: h.category,
-        severity: h.severity,
-        reason: h.reason,
-        pattern: String(h.pattern).slice(0, 100),
-        matched_text: h.matchedText.slice(0, 100),
-        snippet: h.snippet.slice(0, 400),
-      })),
-      ai_scores: input.aiScores,
-      content_preview: input.contentPreview.slice(0, 500),
       retry_attempt: input.retryAttempt ?? 0,
       status: input.blocked ? 'flagged' : 'passed',
+    }
+
+    await supabase.from('moderation_log').insert({
+      report_id: input.reportId,
+      layer: input.layer || 'content_moderation',
+      severity,
+      content_sample: input.contentPreview.slice(0, 500),
+      categories,
+      ai_scores: input.aiScores,
+      action_taken: input.action,
+      notes: JSON.stringify(notesPayload).slice(0, 2000),
     })
   } catch (err) {
     console.error('[moderation_log] 寫入失敗:', err)

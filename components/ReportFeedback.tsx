@@ -1,12 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-)
+// Bug #29：改用全站 singleton，避免 GoTrueClient 多實例衝突
+//   （「Multiple GoTrueClient instances detected」+「Lock was released because another request stole it」）
+import { supabase } from '@/lib/supabase'
 
 // 各方案對應的「最有價值的部分」選項
 const SECTION_OPTIONS: Record<string, string[]> = {

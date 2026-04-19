@@ -61,9 +61,14 @@ const AGE_INSTRUCTIONS: Record<string, string> = {
 }
 
 // ── 犀利版 system prompt（所有 call 共用）──
-function getSystemPrompt(locale?: string): string {
+function getSystemPrompt(locale?: string, gender?: 'M' | 'F' | string): string {
   const lang = locale === 'zh-CN' ? '簡體中文' : '繁體中文'
-  return `你是鑒源命理平台的首席命理顧問。你正在為付費客戶撰寫「人生藍圖」報告。
+  const isMale = gender === 'M'
+  const genderLabel = isMale ? '男' : '女'
+  const honorific = isMale ? '他/先生' : '她/小姐'
+  const forbidden = isMale ? '她/小姐/女命/女人/女士' : '他/先生/男命/男人/男士'
+  const genderLock = `【🚨 本次報告客戶性別：${genderLabel}｜全文稱呼必須用「${honorific}」，絕不可用相反稱呼（禁用：${forbidden}）｜違反此規定視為嚴重錯誤，無論命理範本如何都不得套用相反性別的稱呼】\n\n`
+  return `${genderLock}你是鑒源命理平台的首席命理顧問。你正在為付費客戶撰寫「人生藍圖」報告。
 
 【報告的終極使命——客戶讀完必須有這四個反應】
 1. 「這就是我不好的地方！」——直面自己的盲點和課題，不逃避
@@ -134,8 +139,8 @@ function getSystemPrompt(locale?: string): string {
 // Call 1：命格名片 + 你是什麼樣的人 + 事業與天賦 + 財運分析
 // 目標字數 ~12,000字，max_tokens 16000
 // ============================================================
-export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string): string {
-  return `${getSystemPrompt(locale)}
+export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string, gender?: 'M' | 'F' | string): string {
+  return `${getSystemPrompt(locale, gender)}
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 ${clientNeed ? `\n【客戶特定需求】${clientNeed}\n所有分析請優先圍繞客戶的需求展開，但不要遺漏其他重要面向。` : ''}
@@ -270,8 +275,9 @@ export function buildCall2Prompt(
   ageGroup: string,
   call1Summary: string,
   locale?: string,
+  gender?: 'M' | 'F' | string,
 ): string {
-  return `${getSystemPrompt(locale)}
+  return `${getSystemPrompt(locale, gender)}
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 
@@ -381,8 +387,9 @@ export function buildCall3Prompt(
   clientName: string,
   call1and2Summary: string,
   locale?: string,
+  gender?: 'M' | 'F' | string,
 ): string {
-  return `${getSystemPrompt(locale)}
+  return `${getSystemPrompt(locale, gender)}
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 

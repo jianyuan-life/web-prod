@@ -47,14 +47,30 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createClient(url, anon)
+
+  // v5.3.32：schema drift 修復
+  //   實際 schema：visitor_id(NOT NULL), event_type(NOT NULL), plan, metadata(jsonb),
+  //               user_agent, referrer, session_id
+  //   用 session_id 當 visitor_id fallback（都是唯一 ID 概念）
+  //   不存在的欄位（report_id, amount_usd, user_id）塞進 metadata
+  const userAgent = req.headers.get('user-agent') || null
+  const referrer = req.headers.get('referer') || req.headers.get('referrer') || null
+
+  const extraMeta: Record<string, unknown> = {
+    ...(body.metadata || {}),
+  }
+  if (body.report_id) extraMeta.report_id = body.report_id
+  if (body.amount_usd != null) extraMeta.amount_usd = body.amount_usd
+  if (body.user_id) extraMeta.user_id = body.user_id
+
   const { error } = await supabase.from('customer_funnel_events').insert({
+    visitor_id: body.session_id,
     session_id: body.session_id,
-    step: body.step,
-    plan_code: body.plan_code || null,
-    report_id: body.report_id || null,
-    amount_usd: body.amount_usd || null,
-    user_id: body.user_id || null,
-    metadata: body.metadata || {},
+    event_type: body.step,
+    plan: body.plan_code || null,
+    metadata: extraMeta,
+    user_agent: userAgent,
+    referrer,
   })
 
   // UNIQUE violation 算成功（同一 session 同步驟只記一次）
