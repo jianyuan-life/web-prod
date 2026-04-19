@@ -658,6 +658,17 @@ export function cleanFinalReport(text: string, clientName?: string): string {
     if (promoteCount > 0) console.log(`[cleanFinalReport] h2 升格：${promoteCount} 個 ### 主章節 → ##`)
   }
 
+  // 0b. v5.3.44 清 prompt 模板字數提示殘留（AI 把「（800-1200 字）」等範本指令原樣複製到正文）
+  // 支援：（800-1200字）/ （~3,500字）/ （3000 字）/ （800-1200 字）/ （2,500 字）
+  {
+    const wordHintRegex = /[（(]\s*[~～]?\s*\d{2,5}(?:,\d{3})?\s*(?:[-－~～]\s*\d{2,5}(?:,\d{3})?)?\s*字\s*[）)]/g
+    const hintCount = (cleaned.match(wordHintRegex) || []).length
+    if (hintCount > 0) {
+      cleaned = cleaned.replace(wordHintRegex, '')
+      console.log(`[cleanFinalReport] 清 prompt 字數提示殘留：${hintCount} 處`)
+    }
+  }
+
   // 1. 刪除重複報告標題（保留第一個）
   // 策略 A：如果有客戶名字，匹配含客戶名的 h1/h2 標題
   if (clientName) {

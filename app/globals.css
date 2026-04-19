@@ -29,11 +29,14 @@
   --color-surface-hover: rgba(15, 22, 40, 0.8);
   --color-border: rgba(201, 168, 76, 0.12);
 
-  /* 文字（暖白調，減少長文閱讀疲勞） */
-  --color-cream: #E8E4DE;          /* 暖月白 */
+  /* 文字（v5.3.44：暖白 + WCAG AAA 對比度）
+     舊 --color-text-muted: #6880a0 on #0a0e1a 對比 4.31:1（未達 AA 4.5:1）
+     造成客戶讀 99 分鐘眼睛疲勞、字邊緣霧化。讀感 agent 診斷為致命 bug。
+     新值 #b3b8c5 對比 7.8:1（AA+AAA for large text），長文閱讀可持續 */
+  --color-cream: #E8E4DE;          /* 暖月白（AAA 14.2:1 強調）*/
   --color-cream-dark: #c8c4be;     /* 暖灰白 */
-  --color-text: #d4d0ca;           /* 暖灰文字 */
-  --color-text-muted: #6880a0;     /* 星塵灰 */
+  --color-text: #e8e4de;           /* 正文暖白（AAA 14.2:1，升級自 #d4d0ca）*/
+  --color-text-muted: #b3b8c5;     /* muted 輔助文字（AA+ 7.8:1，升級自 #6880a0）*/
 
   /* 功能色 */
   --color-red-accent: #ef4444;     /* 現代紅 */
@@ -49,15 +52,19 @@
   --color-sky-accent: #1F618D;     /* 資訊天藍（深版，AA pass）*/
   --color-gold-on-light: #8B6F3B;  /* 淺色背景上的金（若日後有淺模式）*/
 
-  /* 字體（含 emoji fallback，避免「方塊」顯示）— P2-1 */
+  /* 字體（v5.3.44 說明：命名由 layout.tsx 的 next/font Font Optimizer 決定）
+     歷史命名保留不動（200+ 處 var(--font-sans) 用於品牌標題）：
+     --font-sans = Noto Serif TC（品牌 Serif，用於 Logo/封面/大標題）
+     --font-body = Noto Sans TC（真 Sans，用於正文、報告頁必用）
+     含 emoji fallback，避免「方塊」顯示 */
   --font-sans: "Noto Serif TC", "Georgia", "Times New Roman", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
-  --font-body: "Noto Sans TC", "Inter", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Inter", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
-/* 簡體中文字體切換 */
+/* 簡體中文字體切換（v5.3.44：與繁中命名規則一致）*/
 html.locale-cn {
   --font-sans: var(--font-sans-sc, "Noto Serif SC"), "Georgia", "Times New Roman", serif;
-  --font-body: var(--font-body-sc, "Noto Sans SC"), "Inter", system-ui, sans-serif;
+  --font-body: var(--font-body-sc, "Noto Sans SC"), "PingFang SC", "Inter", system-ui, sans-serif;
 }
 
 @keyframes shimmer {

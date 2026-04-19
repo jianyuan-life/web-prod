@@ -11,6 +11,10 @@ import GlobalBackToTop from '@/components/GlobalBackToTop'
 import EmailLink from '@/components/EmailLink'
 import './globals.css'
 
+// v5.3.44 字型 variable 保留歷史命名（QA 稽核發現動了會破壞 200+ 處品牌標題視覺）
+// --font-sans = Noto Serif TC（品牌 Serif，Logo/封面/大標題用）
+// --font-body = Noto Sans TC（真 Sans，正文用；報告頁 CSS 顯式用 var(--font-body)）
+// 命名違反直覺但不動，未來統一改名另開 Wave。
 const notoSerif = Noto_Serif_TC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' })
 const notoSans = Noto_Sans_TC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body', display: 'swap' })
 // 簡體中文字體（簡體模式時由 LocaleContent 切換 class）

@@ -469,10 +469,21 @@ function parseStructuredContent(markdown: string): ContentSection[] {
     else if (/需要注意|需要留意|注意的地方|家庭和諧的挑戰|需注意|關係張力/.test(title)) type = 'caution'
     else if (/改善方案|改善建議|行動指南|加持你的運勢|讓家更好|建議詳解|集體建議|刻意練習/.test(title)) type = 'improvement'
 
-    // 清除標題中的字數標注（如「（~3,500字）」「（~2,000字）」）— 客戶不需要看字數
-    let cleanTitle = title.replace(/[（(]\s*[~～]?\s*[\d,]+\s*字?\s*[）)]/g, '').trim()
+    // 清除標題中的字數標注（如「（~3,500字）」「（~2,000字）」「（800-1200字）」）— 客戶不需要看字數
+    // v5.3.44 強化：支援範圍字數「（800-1200 字）」和逗號千位
+    let cleanTitle = title.replace(/[（(]\s*[~～]?\s*[\d,]+\s*[-－~～]?\s*[\d,]*\s*字\s*[）)]/g, '').trim()
     // P0-3（2026-04-17）：清掉標題內的 # 前綴（AI 有時在 ## 章節標題裡再塞「# XXX」造成「# 何宣逸 人生藍圖」顯示）
     cleanTitle = cleanTitle.replace(/^#+\s*/, '').trim()
+
+    // v5.3.44 Bug #47 修復 + IA 稽核補全：類別標籤（好的/不好的/需注意/改善/集體/行動等）不該當主章節分組
+    // 當 Claude 誤用 `### 好的地方` 或 `### ✅ 好的地方` 寫子節，parser 把它切成主章節，造成 TOC 出現 5-6 次重複
+    // IA agent 稽核補全：加「不好的地方」「集體建議」「加持你的運勢」「行動指南」「家庭和諧的挑戰」「關係張力」+ emoji 前綴容忍
+    const CATEGORY_LABEL_ONLY = /^\s*[✅⚠️📌🔧✨🌟🔵🟢🟡🔴💡🎯]?\s*(好的地方|不好的地方|好的方面|需要注意的地方|需要注意|需注意|注意的地方|改善建議|改善方案|建議詳解|集體建議|加持你的運勢|行動指南|家庭和諧的挑戰|關係張力|優勢|風險|課題|祝福)\s*$/
+    if (CATEGORY_LABEL_ONLY.test(cleanTitle) && sections.length > 0) {
+      // 當成子節附加在上一個真章節裡
+      sections[sections.length - 1].content += `\n\n### ${cleanTitle}\n${content}`
+      continue
+    }
     sections.push({ type, title: cleanTitle, content })
   }
 
@@ -1149,12 +1160,26 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       <style>{`
         ${isSimplified ? `.locale-cn { font-family: var(--font-body-sc), var(--font-body), "Noto Sans SC", sans-serif; }
         .locale-cn .report-h3, .locale-cn h1, .locale-cn h2, .locale-cn h3 { font-family: var(--font-sans-sc), var(--font-sans), "Noto Serif SC", serif; }` : ''}
-        /* 章節標題層次強化（DeepSeek 建議：H3 左金條 4px 85% 不透明） */
-        .report-h3 { font-size: 1.05rem; font-weight: 600; color: var(--color-gold); margin: 1.5rem 0 0.6rem; font-family: var(--font-sans); padding-left: 12px; border-left: 4px solid rgba(201,168,76,0.85); line-height: 1.5; }
+        /* v5.3.44 讀感升級（讀感 agent 診斷修復 P0 致命三條）：
+           1. 正文 0.9rem (14.4px) → 1.0625rem (17px) — Apple Support / Stripe / Medium 共識甜蜜點
+           2. font-family 從 var(--font-sans)（舊值為 Serif）改為 var(--font-body)（真 Sans）
+              → globals.css 已正名 --font-sans 為 Sans，這裡顯式用 --font-body 雙保險
+           3. line-height 1.9 → 1.8（配 17px 字級更平衡，中文螢幕標準 1.7-1.9）
+           4. letter-spacing 0 → 0.01em（中文方塊字微增字距改善密排感）
+           5. margin-bottom 0.85rem → 1.25rem（Apple HIG：段距比行高更大才有呼吸）
+           6. color var(--color-text-muted) 已在 globals.css 從 #6880a0 升級 #b3b8c5 (AA+ 7.8:1)
+        */
+        .report-h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gold); margin: 1.75rem 0 0.75rem; font-family: var(--font-body); padding-left: 12px; border-left: 3px solid rgba(201,168,76,0.85); line-height: 1.5; letter-spacing: 0.02em; }
         .report-bold { color: var(--color-cream); font-weight: 600; }
-        .report-li { margin-left: 1.5rem; color: var(--color-text-muted); list-style: disc; margin-bottom: 0.5rem; line-height: 1.9; font-size: 0.9rem; }
-        .report-li-num { margin-left: 1.5rem; color: var(--color-text-muted); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.9; font-size: 0.9rem; }
-        .report-p { color: var(--color-text-muted); line-height: 1.9; margin-bottom: 0.85rem; font-size: 0.9rem; }
+        .report-li { margin-left: 1.5rem; color: var(--color-text); list-style: disc; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
+        .report-li-num { margin-left: 1.5rem; color: var(--color-text); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
+        /* v5.3.44 IA 稽核修正：段距 2rem（32px）> 行距 30.6px，符合 Apple HIG「段距 > 行距」原則 */
+        .report-p { color: var(--color-text); line-height: 1.8; margin-bottom: 2rem; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
+        /* v5.3.44 IA 稽核補：h1/h2 Major Third 比例（1.25 倍），配 17px 正文維持垂直節奏
+           h1 = 17 × 1.25³ = 33.2px / h2 = 17 × 1.25² = 26.56px / h3 = 17 × 1.25 = 21.25px
+           但 h3 已設 18px（Tailwind 1.125rem），改設 h1/h2 為 Major Third 且 font-family 顯式用 --font-body */
+        h1.report-h1, .report-main h1 { font-size: 2.074rem; line-height: 1.3; font-family: var(--font-body); font-weight: 700; margin: 2.5rem 0 1.25rem; color: var(--color-cream); letter-spacing: 0.01em; }
+        h2.report-h2, .report-main h2 { font-size: 1.728rem; line-height: 1.35; font-family: var(--font-body); font-weight: 700; margin: 3rem 0 1rem; color: var(--color-cream); letter-spacing: 0.015em; border-bottom: 1px solid rgba(201,168,76,0.2); padding-bottom: 0.75rem; }
         .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
         /* 目錄連結 hover/active/scrollspy 態 */
         .toc-link { position: relative; transition: all 0.18s ease; border-left: 2px solid transparent; }
@@ -1176,11 +1201,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .hover-lift:active { transform: translateY(0) scale(0.99); }
         /* D 方案 3 步驟圓徽章 */
         .step-badge { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: linear-gradient(135deg, #c9a84c, #e8c87a); color: #0a0e1a; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(201,168,76,0.3); }
-        /* 手機版適配（390px / iPhone SE-14 base） */
+        /* v5.3.44 手機版適配（保持 17px 甜蜜點，不縮字，僅微調 padding）*/
         @media (max-width: 640px) {
           .section-card { padding: 18px; margin-bottom: 16px; }
-          .report-p { font-size: 0.88rem; line-height: 1.85; }
-          .report-h3 { font-size: 1rem !important; padding-left: 8px; }
+          .report-p, .report-li, .report-li-num { font-size: 1rem; line-height: 1.75; }
+          .report-h3 { font-size: 1.05rem !important; padding-left: 8px; }
           h1 { font-size: 1.6rem !important; }
           h2 { font-size: 1.15rem !important; }
         }
@@ -1214,7 +1239,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
-      <div className="max-w-3xl mx-auto px-6 pt-12">
+      {/* v5.3.44 欄寬鎖 680px：Bringhurst 黃金欄寬 32 漢字/行（18px × 1.0625rem）
+           舊 max-w-3xl = 768px 在 1440px 螢幕一行 42+ 漢字、在超寬螢幕破 50 漢字，
+           超過 40 漢字讀者會頻繁「line skip」視線迷路。Stripe/Vercel/Medium 共識 640-720px。 */}
+      <div className="max-w-[680px] mx-auto px-6 pt-12">
 
         {/* 品牌標題 */}
         <div className="text-center mb-3 no-print">
