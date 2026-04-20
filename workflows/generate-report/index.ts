@@ -449,8 +449,9 @@ export async function generateReportWorkflow(reportId: string) {
       const topic = (birthData.topic || birthData.analysis_topic || undefined) as string | undefined
       const question = (birthData.question || birthData.customer_note || birthData.other_question || undefined) as string | undefined
 
-      // E1/E2 出門訣：先呼叫引擎取得 Top 結果，強制注入 Prompt
-      if (planCode === 'E1' || planCode === 'E2') {
+      // v5.3.62：E1/E2/E3 出門訣全系列呼叫奇門引擎取 Top 結果、強制注入 Prompt
+      //   E1: 3 吉時（事件 Top3）、E2: 4 週每週 1 盤、E3: 4 週每週 Top 2 共 8 吉時
+      if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
         console.log(`${planCode} 出門訣：呼叫引擎計算最佳時辰...`)
         chumenjiTop = await callChumenjiTop(planCode, birthData)
         if (chumenjiTop?.results?.length) {
@@ -689,9 +690,9 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('內容審查失敗（不阻塞）:', e)
   }
 
-  // Step 3.6: E1/E2 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）
-  // v5.3.32：加 try-catch 包裹，任一 regex 失敗不阻塞後續 PDF/save/email
-  if (planCode === 'E1' || planCode === 'E2') {
+  // Step 3.6: E1/E2/E3 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）
+  // v5.3.62：E3 週度補運也屬純奇門占事派、同禁八字/日主/用神/風水八宅等跨派詞
+  if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
     try {
       const bannedTerms: [RegExp, string][] = [
         [/八字[^\n]{0,20}/g, ''],
@@ -740,8 +741,8 @@ export async function generateReportWorkflow(reportId: string) {
   let top5Timings: Record<string, unknown>[] | null = null
   try {
 
-  // 4a. 優先使用引擎計算結果（不依賴 AI 輸出 JSON）
-  if ((planCode === 'E1' || planCode === 'E2') && chumenjiTop?.results?.length) {
+  // 4a. 優先使用引擎計算結果（不依賴 AI 輸出 JSON、E1/E2/E3 共用）
+  if ((planCode === 'E1' || planCode === 'E2' || planCode === 'E3') && chumenjiTop?.results?.length) {
     top5Timings = chumenjiTop.results.map((r, i) => ({
       rank: r.rank || i + 1,
       title: `${r.star}${r.door}` || `第${i + 1}吉時`,
@@ -769,8 +770,8 @@ export async function generateReportWorkflow(reportId: string) {
     console.log(`${planCode} 吉時直接從引擎取得: ${top5Timings.length} 項`)
   }
 
-  // 4b. 備用：如果引擎無結果，嘗試從 AI 報告中解析 JSON 標記
-  if (!top5Timings && (planCode === 'E1' || planCode === 'E2')) {
+  // 4b. 備用：如果引擎無結果，嘗試從 AI 報告中解析 JSON 標記（E3 也適用）
+  if (!top5Timings && (planCode === 'E1' || planCode === 'E2' || planCode === 'E3')) {
     const jsonPattern = /===(TOP[135]_JSON_START)===\s*([\s\S]*?)\s*===(TOP[135]_JSON_END)===/g
     let allJsonMatches: RegExpMatchArray[] = [...reportContent.matchAll(jsonPattern)]
 
@@ -845,8 +846,8 @@ export async function generateReportWorkflow(reportId: string) {
     }
   }
 
-  // 清理報告中的 JSON 標記（不管有沒有成功解析，都不應出現在最終報告中）
-  if (planCode === 'E1' || planCode === 'E2') {
+  // 清理報告中的 JSON 標記（不管有沒有成功解析，都不應出現在最終報告中、E3 也適用）
+  if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
     reportContent = reportContent.replace(/[=-]{2,3}\s*TOP[135]_JSON_(?:START|END)\s*[=-]{2,3}/g, '').trim()
     reportContent = reportContent.replace(/```json?\s*\n\[[\s\S]*?"(?:date|direction)"[\s\S]*?\]\n\s*```/g, '').trim()
     reportContent = reportContent.replace(/\n{3,}/g, '\n\n')

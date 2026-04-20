@@ -1148,6 +1148,20 @@ export async function callChumenjiTop(
   } else if (planCode === 'E2') {
     // E2：從今天開始算 4 週（國曆）
     body.start_date = new Date().toISOString().split('T')[0]
+  } else if (planCode === 'E3') {
+    // v5.3.62：E3 週度補運 — 從今天起 4 週、每週 Top 2 = 8 個吉時
+    // 主題用神權重 60% + 基礎格局 20% + 年命宮 20%（古法占事派）
+    body.start_date = new Date().toISOString().split('T')[0]
+    body.top_per_week = 2        // 每週取 Top 2
+    body.total_weeks = 4         // 共 4 週
+    body.expected_top_count = 8  // 共 8 個吉時
+    // E3 主題選擇（8 類選 1-3、順序即 TOP 1/2/3 優先序）
+    const topics = (birthData as Record<string, unknown>).topics
+    const topicRank = (birthData as Record<string, unknown>).topic_rank
+    if (Array.isArray(topics) && topics.length > 0) {
+      body.topics = topics
+      body.topic_rank = topicRank || {}
+    }
   }
 
   // P0 修復：傳入客戶可用時段，引擎只在這些時段內掃描
@@ -2511,12 +2525,34 @@ export async function qualityGate(
     }
   }
 
-  // 2c-3. E1/E2 出門訣：非奇門詞彙檢查
+  // 2c-2b. E3 週度補運必要章節檢查（v5.3.62 新增、8 卡片格式）
+  if (planCode === 'E3') {
+    const e3Required = [
+      { pattern: /第 ?1 ?週|第一週/, name: '第一週' },
+      { pattern: /第 ?2 ?週|第二週/, name: '第二週' },
+      { pattern: /第 ?3 ?週|第三週/, name: '第三週' },
+      { pattern: /第 ?4 ?週|第四週/, name: '第四週' },
+      { pattern: /TOP\s?1|Top\s?1/, name: '主題 TOP 1' },
+    ]
+    for (const sec of e3Required) {
+      if (!sec.pattern.test(reportContent)) {
+        warnings.push(`週度補運缺少必要章節: ${sec.name}`)
+      }
+    }
+    const jsonBlocks = (reportContent.match(/===TOP[135]_JSON_START===/g) || []).length
+    if (jsonBlocks < 8) {
+      warnings.push(`週度補運 JSON 區塊不足: 找到 ${jsonBlocks} 個（期望 8 個吉時卡片）`)
+    }
+    if (reportContent.length < 2000) {
+      warnings.push(`週度補運內容偏短: ${reportContent.length} 字（期望 > 2,400 字 = 8 卡 × 300 字）`)
+    }
+  }
+
+  // 2c-3. E1/E2/E3 出門訣：非奇門詞彙檢查
   // v5.3.19：從 hardFail 降級為 soft warning（index.ts 已有 bannedTerms 自動 replace）
   //   AI 偶爾違反 prompt 寫出「八字/紫微/生氣位」等跨系統詞彙
-  //   之前被 qualityGate 當 hardFail → retry → 第二次還是有同問題 → needs_human_review
   //   現在 index.ts 的 bannedTerms regex 會自動把這些詞 replace 掉，這裡只做 soft 紀錄
-  if (planCode === 'E1' || planCode === 'E2') {
+  if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
     const nonQimenTerms = [
       '用神', '喜神', '日主', '八字', '風水', '八宅', '本命卦',
       '天醫位', '生氣位', '延年位', '生物節律', '臨界日',
@@ -2538,7 +2574,7 @@ export async function qualityGate(
   // 2c-4. [CHUMENJI DEEP AUDIT 2026-04-18] 引擎硬比對：AI 輸出的 JSON 必須等於 chumenjiTop
   // 這是 P0 級修復 — 歷史發現 Claude Opus 4.6 在 E1/E2 偶爾覆寫引擎結果（自己編 date/time/door）
   // 從這裡起，AI JSON 的 (date, time_start, direction) 必須與引擎輸出 100% 一致，否則觸發 retry
-  if ((planCode === 'E1' || planCode === 'E2') && chumenjiTop?.results?.length) {
+  if ((planCode === 'E1' || planCode === 'E2' || planCode === 'E3') && chumenjiTop?.results?.length) {
     try {
       // 抽取 AI 寫的 JSON 區塊
       const aiJsonMatches: Array<{ date?: string; time_start?: string; direction?: string; title?: string }> = []
@@ -3222,8 +3258,8 @@ function getEmailHighlights(planCode: string, reportContent: string, isCN: boole
   } else if (planCode === 'G15') {
     highlights.push(isCN ? '家族成员的互动模式已解析' : '家族成員的互動模式已解析')
     highlights.push(isCN ? '家族能量流动与角色定位已完成' : '家族能量流動與角色定位已完成')
-  } else if (planCode === 'E1' || planCode === 'E2') {
-    // 出門訣：提取 Top1 吉時 + 方位
+  } else if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
+    // 出門訣 E1/E2/E3：提取 Top1 吉時 + 方位
     const timeMatch = text.match(/(?:最佳|第一|Top\s*1)[吉時时]*[：:]\s*(.{2,20})/)?.[1]
     const dirMatch = text.match(/(?:最佳|建議|建议)方位[：:]\s*(.{2,10})/)?.[1]
     if (timeMatch) {
