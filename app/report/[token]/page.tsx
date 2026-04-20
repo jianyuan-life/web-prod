@@ -56,6 +56,11 @@ interface Top5Timing {
   // v5.3.14：AI 生成的白話優勢與適合事項（給一般客戶看）
   plain_advantage?: string      // 盤的優勢（40-80 字白話）
   plain_purpose?: string[]      // 最適合做什麼（3-4 個動詞行動）
+  // v5.3.78：月度執行提醒動態資料需要（引擎已傳、補型別定義）
+  score?: number
+  star?: string
+  door?: string
+  shen?: string
 }
 
 interface ReportData {
@@ -88,6 +93,8 @@ interface ReportData {
     event_start_date?: string    // E1/E2 方案：時間範圍
     event_end_date?: string      // E1 方案：時間結束
     target_month?: string        // E2 方案：目標月份（YYYY-MM）
+    topics?: string[]             // E3 方案：客戶選的 TOP3 主題（[career, wealth, health]）
+    topic_rank?: Record<string, number>  // E3 方案：客戶排序（{career:1, wealth:2, health:3}）
   }
   report_result: {
     ai_content: string
@@ -2318,20 +2325,105 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 出門訣 E1/E2/E3/E4 專屬：其餘章節（v5.3.77 改純 div、砍摺疊 ▼）──── */}
-        {isChumenji && chumenjiOther.map((sec, i) => (
-          <div
-            key={`other-${i}`}
-            className="glass mb-4 p-5 rounded-lg"
-            style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
-          >
-            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-gold)' }}>
-              <span className="text-xs text-gold/40 font-mono font-bold mr-2">{String(i + 1).padStart(2, '0')}</span>
-              {sec.title}
-            </h2>
-            <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-          </div>
-        ))}
+        {/* ──── 出門訣 E1/E2/E3/E4 專屬：其餘章節（v5.3.77 改純 div、砍摺疊 ▼）
+             v5.3.78：執行方法 + 月度執行提醒用 hardcode 固定文案（老闆指定版本、避免 AI 隨意改寫）──── */}
+        {isChumenji && chumenjiOther.map((sec, i) => {
+          const isExecMethod = /執行方法|執行方式|操作方法/.test(sec.title)
+          const isMonthlyReminder = /月度執行提醒|月度提醒|執行提醒|月度建議/.test(sec.title)
+
+          const TOPIC_ZH: Record<string, string> = {
+            career: '事業運', wealth: '財運', love: '感情運', health: '健康',
+            study: '學業', noble: '貴人', villain: '化解小人', family: '家庭',
+          }
+
+          let contentToRender = sec.content
+
+          if (isExecMethod) {
+            contentToRender = `所有 8 張吉時卡片的操作方式相同，請一次記住：在卡片標示的時辰內出門（前後 15 分鐘仍屬同一時辰），朝卡片指定方位步行約 500 公尺，找一處安靜的地方停留 40 分鐘，期間不需走動、可滑手機，亦可讓自己安靜地待在吉方接引天時。不需要任何儀式或咒語，重點就是「身在吉方、心在當下」。`
+          } else if (isMonthlyReminder && report.plan_code === 'E3') {
+            // v5.3.78：E3 月度執行提醒動態生成（從 birth_data + top5Timings + ai_content 計算）
+            const topics = report.birth_data.topics || []
+            const topicRank = report.birth_data.topic_rank || {}
+            const sortedTopics = [...topics].sort((a, b) => (topicRank[a] || 99) - (topicRank[b] || 99))
+
+            // 從 AI content 卡片標題抽出主題分配
+            const topicMatches = [...(report.report_result?.ai_content || '').matchAll(/主題：(\S+?)（TOP\s?\d/g)]
+            const topicZhToCode = Object.fromEntries(Object.entries(TOPIC_ZH).map(([k, v]) => [v, k]))
+            const counts: Record<string, number> = {}
+            for (const m of topicMatches) {
+              const zh = m[1]
+              const code = topicZhToCode[zh] || zh
+              counts[code] = (counts[code] || 0) + 1
+            }
+
+            // 找最強盤（score 最高）
+            const bestTiming = [...top5Timings].sort((a, b) => (b.score || 0) - (a.score || 0))[0]
+
+            // 日期範圍
+            const dates = top5Timings.map(t => t.date).filter(Boolean).sort()
+            const firstDate = dates[0] || ''
+            const lastDate = dates[dates.length - 1] || ''
+            const fmt = (d: string) => {
+              const [, m, dd] = d.match(/(\d{4})-(\d{1,2})-(\d{1,2})/) || ['', '', '']
+              return m && dd ? `${parseInt(m)}/${parseInt(dd)}` : d
+            }
+            // 續訂日 = lastDate - 3 天
+            const renewDate = (() => {
+              try {
+                const d = new Date(lastDate)
+                d.setDate(d.getDate() - 3)
+                return fmt(d.toISOString().slice(0, 10))
+              } catch { return '' }
+            })()
+            // 下輪起始 = lastDate + 1 天
+            const nextStartDate = (() => {
+              try {
+                const d = new Date(lastDate)
+                d.setDate(d.getDate() + 1)
+                return fmt(d.toISOString().slice(0, 10))
+              } catch { return '' }
+            })()
+
+            // 主題分配描述
+            const topicDistDesc = sortedTopics.map((t, idx) => {
+              const zh = TOPIC_ZH[t] || t
+              const n = counts[t] || 0
+              const suffix = idx === 0 ? `（你的 TOP 1 優先）` : ''
+              return `${zh} ${n} 個${suffix}`
+            }).join('、')
+
+            // 最強盤描述
+            const bestDesc = bestTiming
+              ? `${fmt(bestTiming.date)} 的「${bestTiming.star}＋${bestTiming.door}＋${bestTiming.shen}」是整月中能量最強的組合，一次坐好勝過分散多次`
+              : '引擎為你挑選的最強盤會發揮最核心的補運力量'
+
+            contentToRender = `### 節奏掌握
+每週執行 2 次，4 週共 8 次，建議把行事曆先標好、設定提醒。古法奇門講究「一時一盤」，每個吉時都是獨一無二的天時窗口，無法用隔天替代——所以盡量按照卡片標示的日期時辰出門。
+
+### 萬一錯過
+如果某週因為臨時狀況錯過了其中一個吉時，不需要補坐，直接執行該週的另一個即可。如果整週都錯過，也不影響下一週——每週的盤面都是獨立的。不要因為錯過而焦慮，焦慮本身才是最大的內耗。
+
+### 主題分配邏輯
+8 個吉時中，${topicDistDesc}。${bestDesc}。
+
+### 續訂提醒
+這份方案為 4 週（${fmt(firstDate)}-${fmt(lastDate)}）的個人化吉時，下一期建議在 ${renewDate} 前續訂，讓排盤引擎無縫計算 ${nextStartDate} 起的下一輪 8 個吉時，保持你的補運節奏不中斷。`
+          }
+
+          return (
+            <div
+              key={`other-${i}`}
+              className="glass mb-4 p-5 rounded-lg"
+              style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
+            >
+              <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-gold)' }}>
+                <span className="text-xs text-gold/40 font-mono font-bold mr-2">{String(i + 1).padStart(2, '0')}</span>
+                {sec.title}
+              </h2>
+              <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(contentToRender) }} />
+            </div>
+          )
+        })}
 
         {/* ──── 報告章節（起承轉合四大篇摺疊結構）──── */}
         {(() => {
