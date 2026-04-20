@@ -409,9 +409,14 @@ export function useCheckoutForm() {
       if (!e1StartDate) { alert('請選擇事件開始日期'); return }
     }
 
-    if (planCode === 'E1' || planCode === 'E2') {
-      if (!eSelectedBlocks.some(b => b)) {
-        alert('請至少勾選一個可配合的出行時段')
+    // v5.3.66 — E1/E3 才需勾候選時辰（E2/E4 極簡、引擎自動擇吉）
+    if (planCode === 'E1' || planCode === 'E3') {
+      const minSlots = planCode === 'E3' ? 3 : 1
+      const selected = eSelectedBlocks.filter(b => b).length
+      if (selected < minSlots) {
+        alert(planCode === 'E3'
+          ? '週度補運需勾選至少 3 個時辰（84 候選池）、才能挑每週 Top 2'
+          : '請至少勾選一個可配合的出行時段')
         return
       }
     }
