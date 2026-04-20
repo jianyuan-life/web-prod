@@ -307,10 +307,12 @@ export default function SinglePersonForm({
         </div>
       )}
 
-      {/* 備注欄 */}
-      {!['C', 'D', 'E1', 'E2'].includes(planCode) && (
-        <CustomerNote customerNote={customerNote} setCustomerNote={setCustomerNote} />
-      )}
+      {/* v5.3.61 備注欄：
+          - C/D 方案在 TopicAndDescription 已有描述區
+          - E1 在事件描述區已有
+          - E2/E4 極簡不需描述
+          - E3 選 3 個主題 TOP 1/2/3 已表達優先序、不需自由文字
+          所以所有方案都不顯示 CustomerNote */}
 
       {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 

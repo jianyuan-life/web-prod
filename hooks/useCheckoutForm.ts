@@ -514,10 +514,20 @@ export function useCheckoutForm() {
           }
         }
 
-        if (planCode === 'E1' || planCode === 'E2') {
+        // v5.3.61：E1/E3 需傳候選時辰池（E2/E4 引擎自動算、不需傳）
+        if (planCode === 'E1' || planCode === 'E3') {
           birthData.available_time_slots = TIME_BLOCKS
             .filter((_, i) => eSelectedBlocks[i])
             .map(b => ({ start: b.start, end: b.end }))
+        }
+
+        // v5.3.61：E3 必傳主題選擇（8 選 1-3、順序即 TOP 1/2/3）
+        if (planCode === 'E3') {
+          birthData.topics = e3SelectedTopics // 例：['career','health','noble']
+          birthData.topic_rank = e3SelectedTopics.reduce((acc, code, idx) => {
+            acc[code] = idx + 1 // TOP N
+            return acc
+          }, {} as Record<string, number>)
         }
 
         if (customerNote.trim()) birthData.customer_note = customerNote.trim()
