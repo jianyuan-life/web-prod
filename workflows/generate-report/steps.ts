@@ -1623,9 +1623,15 @@ ${analyses.length}套系統排盤完整數據：
     userPrompt += `你必須使用這些結果，不能更換、不能調整、不能用任何理由否決。\n`
     userPrompt += `你的工作是用白話文解釋為什麼這些時辰最好，讓客戶看得懂。\n\n`
 
+    // 計算整批結果的排序位置（用於相對描述，非絕對分數）
+    const sortedByScore = [...chumenjiTop.results].sort((a, b) => b.score - a.score)
+    const rankMap = new Map(sortedByScore.map((r, i) => [r, i + 1]))
+
     for (const item of chumenjiTop.results) {
       const dir = item.direction || ''
       const weekInfo = item.week_label ? `【${item.week_label}（${item.week_range}）最佳】` : `【第${item.rank}名】`
+      const globalRank = rankMap.get(item) || item.rank
+      const tier = globalRank === 1 ? '最高（TOP1）' : globalRank <= 3 ? `前三（第${globalRank}）` : `中段（第${globalRank}）`
       userPrompt += `${weekInfo}\n`
       userPrompt += `  日期：${item.date}（${item.solar_date}）\n`
       userPrompt += `  時辰：${item.shichen}時（${item.time_range}）\n`
@@ -1633,18 +1639,19 @@ ${analyses.length}套系統排盤完整數據：
       userPrompt += `  奇門盤：${item.door}+${item.star}+${item.shen}\n`
       userPrompt += `  局：${item.ju}\n`
       userPrompt += `  宮位：${item.gong}\n`
-      userPrompt += `  評分：${item.score} 分（該時段所有方位中最高）\n`
-      if (item.kongwang) userPrompt += `  ⚠ 空亡：是（已在評分中扣分）\n`
+      userPrompt += `  能量等級：${tier}（相對排序，非絕對分數）\n`
+      if (item.kongwang) userPrompt += `  ⚠ 空亡：是（能量有損耗，已反映在排序中）\n`
       if (item.shensha_warning) userPrompt += `  ⚠ 神煞：${item.shensha_warning}\n`
-      userPrompt += `  評分理由：${item.reason}\n\n`
+      userPrompt += `  能量理由：${item.reason}\n\n`
     }
 
-    userPrompt += `【強制規則】\n`
+    userPrompt += `【強制規則（違反即需重寫）】\n`
     userPrompt += `1. 以上時辰是奇門遁甲排盤引擎的精確計算結果，你不可更改。\n`
     userPrompt += `2. JSON 輸出中的 date/time_start/time_end/direction 必須與上方引擎結果完全一致。\n`
-    userPrompt += `3. 不得使用生物節律、西洋占星、八字、風水八宅或任何非奇門遁甲系統來否決或調整這些時辰。\n`
-    userPrompt += `4. 你的任務：(a) 用白話文解釋門+星+神組合的含義 (b) 給出具體的穿著/物品/行為建議 (c) 說明為什麼這個組合對客戶的事件有利。\n`
-    userPrompt += `5. 評分已包含年命宮共振、格局加減分、空亡扣分等所有因素，不需要你重新計算。\n`
+    userPrompt += `3. 【禁止使用任何具體分數】不得寫出「100 分」「229 分」「70%」等任何分數、百分比、數值評級。只能用「最高」「強」「次之」「中等」「偏弱」等相對描述。\n`
+    userPrompt += `4. 不得使用生物節律、體力週期、智力週期、情緒週期、美感週期、直覺週期、低潮日、西洋占星、八字、風水八宅或任何非奇門遁甲系統來否決或調整這些時辰。\n`
+    userPrompt += `5. 你的任務：(a) 用白話文解釋門+星+神組合的含義 (b) 給出具體的穿著/物品/行為建議 (c) 說明為什麼這個組合對客戶的事件有利。\n`
+    userPrompt += `6. 所有加減分因素（年命宮共振、格局、空亡、神煞）已包含在排序中，不需要你重新計算或解釋分數來源。\n`
     userPrompt += `${'='.repeat(60)}\n\n`
   }
 

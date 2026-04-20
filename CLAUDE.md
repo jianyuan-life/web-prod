@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.52（2026-04-20）
+**網站版本：** v5.3.53（2026-04-20）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,20 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.53（2026-04-20 E2 奇門一時一盤原則 + 相對等級化）
+
+**P1 收尾 + E2 prompt 品質微調**：
+- `workflows/generate-report/plan-prompts.ts`：E1/E2 報告明確禁止「隔天替代方案」
+  - 古法「一時一盤」原則：每時辰盤面獨立、隔天能量完全不同、無法替代
+  - 錯過 E1 只能等下次引擎推薦、E2 錯過只能等下月
+- `workflows/generate-report/steps.ts`：AI 看到的評分去掉絕對分數
+  - 傳入 AI 的文案改用「最高（TOP1）/前三/中段」相對等級
+  - 避免 AI 看到 95 分後瞎掰「近乎完美」誇大形容
+
+**同時完成生產部署**：
+- staging v5.3.50/51/52 合併 main → Vercel 觸發 production 部署
+- v5.3.53 最終 patch 同批 push
 
 ### v5.3.52（2026-04-20 Phase 1 UI 第三波：E3/E4 結帳 + 容量監控 + QA 完成）
 
