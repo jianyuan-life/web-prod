@@ -43,7 +43,7 @@ interface SinglePersonFormProps {
   setESelectedBlocks: (v: boolean[]) => void
   // E3 週度補運主題（8 選 1-3、順序即 TOP 1/2/3）
   e3SelectedTopics?: string[]
-  setE3SelectedTopics?: (v: string[]) => void
+  setE3SelectedTopics?: React.Dispatch<React.SetStateAction<string[]>>
   // 備注
   customerNote: string
   setCustomerNote: (v: string) => void

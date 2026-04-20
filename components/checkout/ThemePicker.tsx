@@ -1,10 +1,11 @@
 'use client'
 
+import type { Dispatch, SetStateAction } from 'react'
 import { E3_TOPICS } from './types'
 
 interface Props {
   selectedTopics: string[]
-  onChange: (topics: string[]) => void
+  onChange: Dispatch<SetStateAction<string[]>>
 }
 
 /**
@@ -22,19 +23,27 @@ interface Props {
  * - 已選的再點一次 → 取消
  */
 export default function ThemePicker({ selectedTopics, onChange }: Props) {
+  // 使用 functional setState、確保連續 click 不會被 React batching 吃掉
   const toggle = (code: string) => {
-    const idx = selectedTopics.indexOf(code)
-    if (idx >= 0) {
-      // 取消選擇
-      onChange(selectedTopics.filter(c => c !== code))
-    } else {
-      // 新增選擇（超過 3 個提示）
-      if (selectedTopics.length >= 3) {
-        alert('最多選 3 個主題。若要新增、請先取消其中一個。')
-        return
+    onChange((prev) => {
+      if (prev.includes(code)) {
+        // 取消選擇
+        return prev.filter(c => c !== code)
       }
-      onChange([...selectedTopics, code])
+      // 超過 3 個提示（但不能在 setter 裡 alert、移外）
+      if (prev.length >= 3) return prev
+      // 新增
+      return [...prev, code]
+    })
+  }
+
+  // 點擊時若已滿 3、外部再 alert
+  const handleClick = (code: string) => {
+    if (!selectedTopics.includes(code) && selectedTopics.length >= 3) {
+      alert('最多選 3 個主題。若要新增、請先取消其中一個。')
+      return
     }
+    toggle(code)
   }
 
   return (
@@ -64,7 +73,7 @@ export default function ThemePicker({ selectedTopics, onChange }: Props) {
             <button
               key={topic.code}
               type="button"
-              onClick={() => toggle(topic.code)}
+              onClick={() => handleClick(topic.code)}
               className={`relative text-left rounded-xl p-3 border transition-all ${
                 isSelected
                   ? 'border-gold/60 bg-gold/10 shadow-[0_0_0_1px_rgba(197,150,58,0.3)]'
