@@ -1493,7 +1493,10 @@ function buildGenericUserPrompt(
   question?: string,
   additionalPeople?: Array<{ name: string; gender: string; year: number; month: number; day: number; hour: string | number; time_unknown?: boolean }>,
   chumenjiTop?: ChumenjiTopResult | null,
+  planCode?: string,
 ): string {
+  // v5.3.73 P0 修復：birthData.plan_code 在 JSONB 裡為 null、以外層 planCode 參數為準
+  const effectivePlanCode = planCode || birthData.plan_code || ''
   // G15 家族方案（舊版 family 模式）安全防護：多人 birthData 不能走單人 prompt
   if (birthData.plan_type === 'family' && Array.isArray(birthData.members)) {
     let memberPrompts = '家庭成員資料：\n'
@@ -1514,8 +1517,8 @@ function buildGenericUserPrompt(
   }
 
   // E1/E2/E3 出門訣：只傳奇門遁甲數據，不傳其他系統（避免 AI 混用）
-  // v5.3.72 P0 修復：E3 之前漏設、走通用分支把八字/紫微/15 系統塞給 AI、違反 E3 禁詞規則
-  const isChumenji = birthData.plan_code === 'E1' || birthData.plan_code === 'E2' || birthData.plan_code === 'E3'
+  // v5.3.73 P0 修復：用 effectivePlanCode（外層 planCode > birthData.plan_code、後者在 JSONB 裡常為 null）
+  const isChumenji = effectivePlanCode === 'E1' || effectivePlanCode === 'E2' || effectivePlanCode === 'E3'
 
   let userPrompt = `${birthData.name || ''}，${birthData.gender === 'M' ? '男' : '女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時\n`
 
@@ -1546,7 +1549,7 @@ function buildGenericUserPrompt(
     //   E1 從「純奇門」升級為「奇門為主，八字/紫微為輔」
     //   AI 先看客戶本命對此事件的傾向（助力/阻力），再給 Top 3 吉時
     //   E2 維持純奇門（不加）
-    if (birthData.plan_code === 'E1') {
+    if (effectivePlanCode === 'E1') {
       userPrompt += `\n【客戶命盤背景 — 八字/紫微摘要（僅供事件本質分析）】\n`
       userPrompt += `八字：${cd.bazi || ''}\n`
       if (cd.yongshen) userPrompt += `用神：${cd.yongshen}\n`
@@ -1565,7 +1568,7 @@ function buildGenericUserPrompt(
 
     // v5.3.72 P0 修復：E3 傳客戶選的 TOP3 主題給 AI
     // 之前 topic_rank 只傳給 Python 排盤引擎、沒給 AI → AI 看盤自動推成 career/wealth/noble
-    if (birthData.plan_code === 'E3') {
+    if (effectivePlanCode === 'E3') {
       const e3Topics = (birthData as Record<string, unknown>).topics as string[] | undefined
       const e3TopicRank = (birthData as Record<string, unknown>).topic_rank as Record<string, number> | undefined
       if (Array.isArray(e3Topics) && e3Topics.length > 0) {
@@ -1707,7 +1710,7 @@ ${analyses.length}套系統排盤完整數據：
 
   // D 方案：強制注入客戶原始問題 + 老闆鐵律（每條論述必須引用具體命盤欄位）
   const bdAny = birthData as Record<string, unknown>
-  const isDPlan = birthData.plan_code === 'D'
+  const isDPlan = effectivePlanCode === 'D'
   const dTopic = (topic || bdAny.analysis_topic || bdAny.topic || '') as string
   const dQuestion = (question || bdAny.customer_note || bdAny.other_question || bdAny.question || '') as string
   if (isDPlan) {
@@ -1905,7 +1908,7 @@ export async function aiGenerateGeneric(
   chumenjiTop?: ChumenjiTopResult | null,
 ) {
   "use step";
-  const userPrompt = buildGenericUserPrompt(birthData, calcResult.client_data, calcResult.analyses, topic, question, undefined, chumenjiTop)
+  const userPrompt = buildGenericUserPrompt(birthData, calcResult.client_data, calcResult.analyses, topic, question, undefined, chumenjiTop, planCode)
   const localizedPrompt = localizePrompt(systemPrompt, birthData.locale)
 
   // 付費報告只用 Claude Opus，不降級（透過 callClaudeOnly 同步記錄成本）
@@ -2644,6 +2647,32 @@ export async function qualityGate(
       if (missingTopics.length > 0) {
         warnings.push(`E3 主題遺漏：客戶選了 [${missingTopics.join('、')}] 但 AI 報告卡片沒出現 — 必須補寫`)
       }
+    }
+
+    // v5.3.73 P0：8 張卡片必須全部有 plain_advantage + plain_purpose（個人化、非罐頭）
+    const jsonBlockMatches = reportContent.matchAll(/===TOP[135]_JSON_START===([\s\S]+?)===TOP[135]_JSON_END===/g)
+    let hasAdvantageCount = 0
+    let hasPurposeCount = 0
+    const totalJsonBlocks2 = (reportContent.match(/===TOP[135]_JSON_START===/g) || []).length
+    for (const jm of jsonBlockMatches) {
+      try {
+        const jsonStr = (jm[1] || '').trim().replace(/^```json\s*/, '').replace(/```\s*$/, '').trim()
+        const parsed = JSON.parse(jsonStr)
+        if (parsed.plain_advantage && typeof parsed.plain_advantage === 'string' && parsed.plain_advantage.length >= 30) {
+          hasAdvantageCount++
+        }
+        if (Array.isArray(parsed.plain_purpose) && parsed.plain_purpose.length >= 2) {
+          hasPurposeCount++
+        }
+      } catch {
+        // JSON 解析失敗也算沒寫
+      }
+    }
+    if (hasAdvantageCount < totalJsonBlocks2) {
+      warnings.push(`E3 plain_advantage 個人化缺失：${hasAdvantageCount}/${totalJsonBlocks2} 張卡片有 ≥30 字的 plain_advantage — 必須每張都寫「坐這個盤對客戶該卡主題的輔助」`)
+    }
+    if (hasPurposeCount < totalJsonBlocks2) {
+      warnings.push(`E3 plain_purpose 主題行動缺失：${hasPurposeCount}/${totalJsonBlocks2} 張卡片有 ≥2 條主題行動 — 必須每張 2-3 條針對該卡主題的具體行動`)
     }
   }
 

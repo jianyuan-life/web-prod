@@ -2205,37 +2205,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     </div>
                   )}
 
-                  {/* v5.3.14：盤的優勢（白話版，給一般客戶看）*/}
-                  {(() => {
-                    const advantage = timing.plain_advantage
-                      || generatePlainAdvantage(timing.title, timing.direction)
-                    return (
-                      <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', borderLeft: '3px solid #22c55e' }}>
-                        <div className="text-emerald-400/80 text-xs mb-1.5 font-medium">✨ 這時段的優勢</div>
-                        <p className="text-text-muted text-sm leading-7">{advantage}</p>
-                      </div>
-                    )
-                  })()}
+                  {/* v5.3.73：盤對客戶主題的輔助（只用 AI 個人化版、不 fallback 罐頭）
+                      老闆明確要求：必須對齊客戶 TOP3 主題、針對這盤能輔助什麼寫、不准用罐頭文 */}
+                  {timing.plain_advantage && (
+                    <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', borderLeft: '3px solid #22c55e' }}>
+                      <div className="text-emerald-400/80 text-xs mb-1.5 font-medium">✨ 坐這個盤對你的輔助</div>
+                      <p className="text-text-muted text-sm leading-7">{timing.plain_advantage}</p>
+                    </div>
+                  )}
 
-                  {/* v5.3.14：最適合做什麼（白話動作清單）*/}
-                  {(() => {
-                    const purposes = Array.isArray(timing.plain_purpose) && timing.plain_purpose.length > 0
-                      ? timing.plain_purpose
-                      : generatePlainPurpose(timing.title)
-                    return (
-                      <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(197,150,58,0.06)', borderLeft: '3px solid var(--color-gold)' }}>
-                        <div className="text-gold/80 text-xs mb-1.5 font-medium">🎯 最適合做的事</div>
-                        <ul className="text-text-muted text-sm leading-7 space-y-1">
-                          {purposes.map((p: string, idx: number) => (
-                            <li key={idx} className="flex gap-2">
-                              <span className="text-gold/60 flex-shrink-0">•</span>
-                              <span>{p}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )
-                  })()}
+                  {/* 主題專屬行動清單（只用 AI 個人化版）*/}
+                  {Array.isArray(timing.plain_purpose) && timing.plain_purpose.length > 0 && (
+                    <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(197,150,58,0.06)', borderLeft: '3px solid var(--color-gold)' }}>
+                      <div className="text-gold/80 text-xs mb-1.5 font-medium">🎯 最適合做的事</div>
+                      <ul className="text-text-muted text-sm leading-7 space-y-1">
+                        {timing.plain_purpose.map((p: string, idx: number) => (
+                          <li key={idx} className="flex gap-2">
+                            <span className="text-gold/60 flex-shrink-0">•</span>
+                            <span>{p}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {/* 奇門依據（v5.3.17 改：預設展開，展現專業性）
                       老闆：專業度要展現出來，客戶看不懂沒關係，但我看得懂可以跟客戶解釋
