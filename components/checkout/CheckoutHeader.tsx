@@ -60,11 +60,11 @@ export default function CheckoutHeader({
         <span className="flex items-center gap-1"><span className="text-green-400">&#9679;</span> 資料隱私保護</span>
       </div>
 
-      {/* 方案摘要 */}
-      <div className="glass rounded-xl p-5 mb-8 flex justify-between items-center">
-        <div className="min-w-0 flex-1 mr-3">
+      {/* 方案摘要（手機直排、桌面水平） */}
+      <div className="glass rounded-xl p-5 mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <div className="min-w-0 flex-1">
           <div className="text-xs text-gold font-mono mb-1">方案 {planCode}</div>
-          <div className="text-lg font-bold text-white" style={{ wordBreak: 'keep-all' }}>{planName}</div>
+          <div className="text-lg font-bold text-white whitespace-nowrap">{planName}</div>
           <div className="text-xs text-text-muted mt-1">
             {isG15Plan
               ? '家族互動分析（需每位成員已購人生藍圖）'
@@ -90,7 +90,7 @@ export default function CheckoutHeader({
             </div>
           )}
         </div>
-        <div className="text-right">
+        <div className="text-left sm:text-right shrink-0">
           {couponApplied && (
             <div className="text-xs text-green-400 line-through mb-0.5">${totalPrice}</div>
           )}
