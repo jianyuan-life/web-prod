@@ -1176,6 +1176,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         chumenjiWarnings.push(sec)
       } else if (/Top[135]|加乘時機|最佳出行|最佳出門|最佳時機/.test(t)) {
         // Top 吉時已有專屬卡片渲染，跳過
+      } else if (/第\s*\d+\s*週.*TOP\s*\d/.test(t)) {
+        // v5.3.77：E3 週度卡片章節（第 1 週 TOP 1|主題：X）跟上方 Timeline 卡片重複、砍掉
       } else {
         chumenjiOther.push(sec)
       }
@@ -2316,19 +2318,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 出門訣 E1/E2 專屬：其餘章節 ──── */}
+        {/* ──── 出門訣 E1/E2/E3/E4 專屬：其餘章節（v5.3.77 改純 div、砍摺疊 ▼）──── */}
         {isChumenji && chumenjiOther.map((sec, i) => (
-          <CollapsibleSection
+          <div
             key={`other-${i}`}
-            title={sec.title}
-            titleColor="var(--color-gold)"
-            chapterLabel={<span className="text-xs text-gold/40 font-mono font-bold">{String(i + 1).padStart(2, '0')}</span>}
-            defaultExpanded={true}
-            className="glass"
+            className="glass mb-4 p-5 rounded-lg"
             style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
           >
+            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-gold)' }}>
+              <span className="text-xs text-gold/40 font-mono font-bold mr-2">{String(i + 1).padStart(2, '0')}</span>
+              {sec.title}
+            </h2>
             <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
-          </CollapsibleSection>
+          </div>
         ))}
 
         {/* ──── 報告章節（起承轉合四大篇摺疊結構）──── */}
