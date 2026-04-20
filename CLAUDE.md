@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.50（2026-04-20）
+**網站版本：** v5.3.51（2026-04-20）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,32 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.51（2026-04-20 Phase 1 UI 第二波：取消 PDF/Email + 行事曆組件 + Dashboard 適配）
+
+**P1-03 取消 E1-E4 PDF 下載**（深度綁定 web 策略）：
+- `ReportClientButtons.tsx` isChumenji 擴到 E1/E2/E3/E4、完全不渲染 PDF 按鈕
+- `report/[token]/page.tsx` 2 處 PDF 渲染加 E1-E4 排除條件
+- C/D/G15/R 保留 PDF 不變
+
+**P1-04 取消 E1-E4 Email 通知**：
+- `workflows/generate-report/index.ts` 主流程 sendReportEmail 外層 guard
+- E1/E2/E3/E4 跳過、記 log；C/D/G15/R 繼續寄信
+
+**P1-09 行事曆邀約通用組件**：
+- 新檔 `lib/calendar-invite.ts`：CalendarTiming interface、buildGoogleCalendarUrl、buildIcsFileContent、downloadIcs、PLAN_CALENDAR_LABELS
+- 新檔 `components/CalendarInviteButton.tsx`：雙模式（single 單吉時、batch 批次匯出 .ics）
+- 支援 E1 Top3、E2 4 週、E3 8 吉時、E4 12 月盤場景
+- .ics 內建 30 分鐘前 VALARM 提醒
+
+**P1-08 Dashboard E3/E4 適配**：
+- PLAN_NAMES 加 E3「月度訂閱」/ E4「年度出門訣」
+- CHUMENJI_CODES Set 統一判斷（替代散落的 ['E1','E2'] 陣列）
+- 方案類型標示差異化（E1 Top3 / E2 單盤 / E3 訂閱 8 吉時 / E4 全局）
+- 預估生成時間差異化（E1 5-10 分 / E2 10-20 分 / E3 20-40 分 / E4 30-60 分）
+- 出門訣推廣 banner 邏輯更新
+
+TypeScript 零錯誤通過。
 
 ### v5.3.50（2026-04-20 Phase 1 UI 第一波：E1-E4 四方案 + 購買須知 Modal + 用詞規範）
 

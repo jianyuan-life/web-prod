@@ -875,12 +875,16 @@ export async function generateReportWorkflow(reportId: string) {
     return { success: false, error: '儲存失敗' }
   }
 
-  // Step 6: 寄送 Email
-  try {
-    await sendReportEmail(reportId, customerEmail, accessToken, birthData, planCode, reportContent, analyses.length)
-  } catch (e) {
-    // Email 失敗不影響報告完成狀態
-    console.error('Email 寄送失敗（報告已完成）:', e)
+  // Step 6: 寄送 Email（E1-E4 出門訣不寄信，深度綁定 web 回訪）
+  if (!['E1', 'E2', 'E3', 'E4'].includes(planCode)) {
+    try {
+      await sendReportEmail(reportId, customerEmail, accessToken, birthData, planCode, reportContent, analyses.length)
+    } catch (e) {
+      // Email 失敗不影響報告完成狀態
+      console.error('Email 寄送失敗（報告已完成）:', e)
+    }
+  } else {
+    console.log(`[${planCode}] 跳過 Email 通知（E1-E4 深度綁定 web 策略）`)
   }
 
   // 完成

@@ -13,7 +13,8 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
   const [shareLabel, setShareLabel] = useState('分享報告')
   const [generating, setGenerating] = useState(false)
   const [generateMsg, setGenerateMsg] = useState<string | null>(null)
-  const isChumenji = planCode === 'E1' || planCode === 'E2'
+  // E1/E2/E3/E4 出門訣全系列：不提供 PDF（深度綁定客戶回訪 web）
+  const isChumenji = planCode === 'E1' || planCode === 'E2' || planCode === 'E3' || planCode === 'E4'
 
   // PDF 下載追蹤（5 分鐘內同一報告不重複計算）
   const trackPdfDownload = () => {
@@ -157,8 +158,8 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
           </a>
         )}
 
-        {/* E1/E2：獨立金色日曆式按鈕（支援 pdf_url 下載 & fallback 觸發生成） */}
-        {isChumenji && renderChumenjiPdfButton()}
+        {/* E1-E4 出門訣系列：不提供 PDF 下載（深度綁定 web 閱讀體驗） */}
+        {/* 如未來恢復需要 PDF，將下面一行改為 {isChumenji && renderChumenjiPdfButton()} */}
 
         <button
           onClick={handleShare}

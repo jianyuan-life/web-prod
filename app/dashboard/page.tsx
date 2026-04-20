@@ -15,7 +15,11 @@ const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
   G15: '家族藍圖', R: '合否？',
   E1: '事件出門訣', E2: '月度出門訣',
+  E3: '月度訂閱', E4: '年度出門訣',
 }
+
+// E 系列（出門訣）識別：用於判斷 PDF/Email/狀態文案
+const CHUMENJI_CODES = new Set(['E1', 'E2', 'E3', 'E4'])
 
 type Report = {
   id: string
@@ -464,8 +468,8 @@ function DashboardContent() {
 
         {/* 出門訣推廣 banner — 只對已有其他方案報告但沒有出門訣報告的用戶顯示 */}
         {!loading && reports.length > 0 &&
-          reports.some(r => r.status === 'completed' && !['E1', 'E2'].includes(r.plan_code)) &&
-          !reports.some(r => ['E1', 'E2'].includes(r.plan_code)) && (
+          reports.some(r => r.status === 'completed' && !CHUMENJI_CODES.has(r.plan_code)) &&
+          !reports.some(r => CHUMENJI_CODES.has(r.plan_code)) && (
           <div className="glass rounded-xl p-5 mb-6 flex flex-col sm:flex-row items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.06), rgba(15,22,40,0.3))', border: '1px solid rgba(201,168,76,0.15)' }}>
             <div className="text-3xl shrink-0">&#9788;</div>
             <div className="flex-1">
@@ -514,8 +518,12 @@ function DashboardContent() {
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted mt-1">
                         <span>{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</span>
                         <span>
-                          {['E1', 'E2'].includes(r.plan_code)
-                            ? '奇門遁甲出門訣'
+                          {CHUMENJI_CODES.has(r.plan_code)
+                            ? (r.plan_code === 'E1' ? '事件擇吉 Top3'
+                              : r.plan_code === 'E2' ? '月度單盤'
+                              : r.plan_code === 'E3' ? '月度訂閱 8 吉時'
+                              : r.plan_code === 'E4' ? '年度全局佈局'
+                              : '古法奇門出門訣')
                             : (() => {
                                 const count = r.report_result?.systems_count ?? PLAN_SYSTEMS[r.plan_code] ?? 0
                                 return count > 0 ? `${count} 套系統` : r.plan_code === 'D' ? '深度主題分析' : '關係合盤分析'
@@ -582,7 +590,11 @@ function DashboardContent() {
                             <div className="text-right">
                               <span className="text-xs text-gold/70 block">{r.status === 'generating' ? '深度分析中' : '分析中'}</span>
                               <span className="text-[10px] text-text-muted/50">
-                                {['E1', 'E2'].includes(r.plan_code) ? '約 40 分鐘以上' : '約 30 分鐘以上'}
+                                {r.plan_code === 'E1' ? '約 5-10 分鐘'
+                                  : r.plan_code === 'E2' ? '約 10-20 分鐘'
+                                  : r.plan_code === 'E3' ? '約 20-40 分鐘'
+                                  : r.plan_code === 'E4' ? '約 30-60 分鐘'
+                                  : '約 30 分鐘以上'}
                               </span>
                             </div>
                           </>
