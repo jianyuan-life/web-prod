@@ -1036,7 +1036,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const aiContent = report.report_result?.ai_content || ''
   const analysesSummary = report.report_result?.analyses_summary || []
   const top5Timings = report.report_result?.top5_timings || []
-  const isChumenji = ['E1', 'E2'].includes(report.plan_code)
+  const isChumenji = ['E1', 'E2', 'E3', 'E4'].includes(report.plan_code)
+  const isE3 = report.plan_code === 'E3'  // v5.3.63 週度補運 8 卡片格式
   const isFamily = report.plan_code === 'G15'
   const isRelationship = report.plan_code === 'R'
 
@@ -1489,7 +1490,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 color: '#c9a84c',
               }}>
                 <span aria-hidden>&#9733;</span>
-                {report.plan_code === 'E1' ? 'Top3 加乘時機' : '整月四週出行時機'}
+                {report.plan_code === 'E1' ? 'Top3 加乘時機'
+                  : report.plan_code === 'E3' ? '4 週 × 每週 Top 2 = 8 吉時卡片'
+                  : report.plan_code === 'E4' ? '年盤＋12 月盤'
+                  : '整月四週出行時機'}
               </div>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-text-muted" style={{
                 background: 'rgba(255,255,255,0.03)',
