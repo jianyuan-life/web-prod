@@ -1513,8 +1513,9 @@ function buildGenericUserPrompt(
     return userPrompt
   }
 
-  // E1/E2 出門訣：只傳奇門遁甲數據，不傳其他系統（避免 AI 混用）
-  const isChumenji = birthData.plan_code === 'E1' || birthData.plan_code === 'E2'
+  // E1/E2/E3 出門訣：只傳奇門遁甲數據，不傳其他系統（避免 AI 混用）
+  // v5.3.72 P0 修復：E3 之前漏設、走通用分支把八字/紫微/15 系統塞給 AI、違反 E3 禁詞規則
+  const isChumenji = birthData.plan_code === 'E1' || birthData.plan_code === 'E2' || birthData.plan_code === 'E3'
 
   let userPrompt = `${birthData.name || ''}，${birthData.gender === 'M' ? '男' : '女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時\n`
 
@@ -1559,6 +1560,41 @@ function buildGenericUserPrompt(
       const ziweiAnalysis = analyses.find(a => a.system === '紫微斗數' || (a.system || '').includes('紫微'))
       if (ziweiAnalysis?.summary) {
         userPrompt += `紫微摘要：${String(ziweiAnalysis.summary).slice(0, 600)}\n`
+      }
+    }
+
+    // v5.3.72 P0 修復：E3 傳客戶選的 TOP3 主題給 AI
+    // 之前 topic_rank 只傳給 Python 排盤引擎、沒給 AI → AI 看盤自動推成 career/wealth/noble
+    if (birthData.plan_code === 'E3') {
+      const e3Topics = (birthData as Record<string, unknown>).topics as string[] | undefined
+      const e3TopicRank = (birthData as Record<string, unknown>).topic_rank as Record<string, number> | undefined
+      if (Array.isArray(e3Topics) && e3Topics.length > 0) {
+        const TOPIC_ZH: Record<string, string> = {
+          career: '事業運',
+          wealth: '財運',
+          love: '感情運',
+          health: '健康',
+          study: '學業',
+          noble: '貴人',
+          villain: '化解小人',
+          family: '家庭',
+        }
+        const sortedTopics = [...e3Topics].sort((a, b) => {
+          const rankA = e3TopicRank?.[a] ?? 99
+          const rankB = e3TopicRank?.[b] ?? 99
+          return rankA - rankB
+        })
+        userPrompt += `\n【客戶選的 TOP${sortedTopics.length} 主題 — 按優先序、不可變更】\n`
+        sortedTopics.forEach((t) => {
+          const rank = e3TopicRank?.[t] ?? 0
+          const zh = TOPIC_ZH[t] || t
+          userPrompt += `TOP ${rank}：${zh}（code: ${t}）\n`
+        })
+        userPrompt += `\n**硬性規則（違反即重寫）**：\n`
+        userPrompt += `1. 所有 8 張卡片標題格式「主題：X（TOP N）」的 X 必須嚴格用上述中文名、N 必須匹配上述 rank 數字。\n`
+        userPrompt += `2. 禁止把客戶沒選的主題寫進報告（例如客戶沒選 noble，整份報告就不能出現「貴人」作為主題標籤；客戶沒選 career，就不能出現「事業運」作為主題標籤）。\n`
+        userPrompt += `3. 每張卡片的「優勢」「最適合做的事」「行動建議」必須完全貼合該卡片主題——健康卡寫身體調養/療癒/醫療建議、家庭卡寫親情/家宅/長輩建議、化解小人卡寫避禍/人際摩擦化解建議，不可套用通用事業/財運話術。\n`
+        userPrompt += `4. 引言必須明確列出客戶選的 TOP${sortedTopics.length} 主題（例如「這 4 週是為你的 ① ${TOPIC_ZH[sortedTopics[0]] || sortedTopics[0]} ② ${sortedTopics[1] ? (TOPIC_ZH[sortedTopics[1]] || sortedTopics[1]) : ''}${sortedTopics[2] ? ` ③ ${TOPIC_ZH[sortedTopics[2]] || sortedTopics[2]}` : ''} 量身挑選」），讓客戶一打開就確認你看到了他的需求。\n`
       }
     }
     userPrompt += '\n'
@@ -2440,6 +2476,7 @@ generatePDF.maxRetries = 2
 export async function qualityGate(
   reportContent: string, planCode: string, systemsCount: number,
   chumenjiTop?: ChumenjiTopResult | null,
+  birthData?: BirthData,
 ) {
   "use step";
   await emitProgress({ step: '品質檢查', progress: 70, message: '正在執行品質閘門檢查...' })
@@ -2563,6 +2600,50 @@ export async function qualityGate(
     }
     if (yongshenHits < 16) {
       warnings.push(`E3 主用神引用不足：全文命中 ${yongshenHits} 次（期望 ≥ 16 = 8 卡 × 每卡 2 次）— AI 需具名引用九星／八門／八神`)
+    }
+
+    // v5.3.72 P0 修復：主題一致性硬驗 — AI 寫的主題必須 ⊆ 客戶選的 TOP3
+    // 之前 AI 會自動把第 3 位寫成「貴人」不管客戶選什麼
+    const TOPIC_ZH_TO_CODE: Record<string, string> = {
+      '事業運': 'career',
+      '財運': 'wealth',
+      '感情運': 'love',
+      '健康': 'health',
+      '學業': 'study',
+      '貴人': 'noble',
+      '化解小人': 'villain',
+      '家庭': 'family',
+    }
+    const TOPIC_CODE_TO_ZH: Record<string, string> = Object.fromEntries(
+      Object.entries(TOPIC_ZH_TO_CODE).map(([zh, code]) => [code, zh])
+    )
+    const customerTopics = birthData ? ((birthData as unknown as Record<string, unknown>).topics as string[] | undefined) : undefined
+    if (Array.isArray(customerTopics) && customerTopics.length > 0) {
+      const customerTopicZh = new Set(customerTopics.map(c => TOPIC_CODE_TO_ZH[c]).filter(Boolean))
+      const aiTopicMatches = reportContent.matchAll(/主題：(\S+?)（TOP\s?\d）/g)
+      const aiWrittenTopics = new Set<string>()
+      for (const m of aiTopicMatches) {
+        aiWrittenTopics.add(m[1])
+      }
+      const wrongTopics: string[] = []
+      for (const t of aiWrittenTopics) {
+        if (!customerTopicZh.has(t)) {
+          wrongTopics.push(t)
+        }
+      }
+      if (wrongTopics.length > 0) {
+        warnings.push(`E3 主題不對題：AI 卡片寫了客戶沒選的主題 [${wrongTopics.join('、')}]、客戶實選 [${Array.from(customerTopicZh).join('、')}] — 必須重寫`)
+      }
+      // 也檢查客戶選了但 AI 完全沒寫的主題
+      const missingTopics: string[] = []
+      for (const t of customerTopicZh) {
+        if (!aiWrittenTopics.has(t)) {
+          missingTopics.push(t)
+        }
+      }
+      if (missingTopics.length > 0) {
+        warnings.push(`E3 主題遺漏：客戶選了 [${missingTopics.join('、')}] 但 AI 報告卡片沒出現 — 必須補寫`)
+      }
     }
   }
 

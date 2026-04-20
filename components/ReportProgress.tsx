@@ -20,14 +20,32 @@ const ALL_SYSTEMS = [
   { name: '南洋術數', icon: '術' },
 ]
 
+// v5.3.72：E1/E2/E3/E4 出門訣系列專屬評估面向（純奇門，非混 15 系統）
+const QIMEN_FACETS = [
+  { name: '九星排布', icon: '★' },
+  { name: '八門吉凶', icon: '門' },
+  { name: '八神交會', icon: '神' },
+  { name: '值符值使', icon: '符' },
+  { name: '三奇六儀', icon: '奇' },
+  { name: '格局評分', icon: '局' },
+  { name: '宮位生剋', icon: '宮' },
+  { name: '年命宮驗', icon: '命' },
+]
+
+function getSystemsForPlan(planCode: string) {
+  return ['E1', 'E2', 'E3', 'E4'].includes(planCode) ? QIMEN_FACETS : ALL_SYSTEMS
+}
+
 // 各方案使用系統數 + 預估總分鐘數（以「下限」作為基準）
 const PLAN_CONFIG: Record<string, { systems: number; minMinutes: number; maxMinutes: number; label: string }> = {
   C:   { systems: 15, minMinutes: 30, maxMinutes: 60, label: '全方位命理分析' },
   D:   { systems: 0,  minMinutes: 25, maxMinutes: 45, label: '深度主題分析' },
   G15: { systems: 15, minMinutes: 40, maxMinutes: 70, label: '家族命理分析' },
   R:   { systems: 0,  minMinutes: 30, maxMinutes: 50, label: '合盤關係分析' },
-  E1:  { systems: 1,  minMinutes: 35, maxMinutes: 55, label: '事件出門訣排算' },
-  E2:  { systems: 1,  minMinutes: 40, maxMinutes: 65, label: '月度 360 時辰排算' },
+  E1:  { systems: 8,  minMinutes: 35, maxMinutes: 55, label: '事件出門訣排算' },
+  E2:  { systems: 8,  minMinutes: 40, maxMinutes: 65, label: '月度 360 時辰排算' },
+  E3:  { systems: 8,  minMinutes: 20, maxMinutes: 40, label: '週度補運 8 吉時排算' },
+  E4:  { systems: 8,  minMinutes: 40, maxMinutes: 70, label: '年度 + 12 月盤排算' },
 }
 
 // 分析階段 — 溫度化文案（第二人稱、強調「為您」）
@@ -46,7 +64,7 @@ const PHASES_CHUMENJI = [
 ]
 
 function getPhases(planCode: string) {
-  return ['E1', 'E2'].includes(planCode) ? PHASES_CHUMENJI : PHASES_DEFAULT
+  return ['E1', 'E2', 'E3', 'E4'].includes(planCode) ? PHASES_CHUMENJI : PHASES_DEFAULT
 }
 
 // 命理小知識——讓客戶在等待時學到東西
@@ -64,16 +82,22 @@ const FACTS_DEFAULT = [
 ]
 const FACTS_CHUMENJI = [
   '奇門遁甲的「遁」指的是天干中的「甲」被隱藏，藏在六儀之下。',
-  '時家奇門遁甲共有 1,080 局，由節氣和時辰決定。',
+  '時家奇門遁甲共有 1,080 局，由節氣和時辰決定、每兩小時換一局。',
   '出門訣的核心是「接引吉方能量」——到達吉方定點後需停留 40 分鐘讓能量灌滿。',
-  '奇門遁甲的八門中，「開門」「休門」「生門」是三吉門，最適合出行。',
-  '出門訣的「九遁」包括天遁、地遁、人遁等 9 種特殊吉格，遇到任一種都是大吉。',
-  '奇門遁甲中的「值使門」是當值的門神，它的落宮方位影響整個時辰的吉凶。',
+  '八門中「開、休、生」三門大吉；「傷、杜、景」三門為中平；「死、驚」二門為凶。',
+  '九星中「天輔、天任、天心、天禽」為四大吉星，主事業、貴人、療癒、穩固。',
+  '八神中「值符、太陰、六合、九地」為四大吉神；「螣蛇、白虎、玄武、九天」需慎辨。',
+  '「值符」是當時辰的主宰神、它所臨之宮就是當時辰最有力的方位。',
+  '「值使門」是當值的門、它落宮的方位影響整個時辰的吉凶走向。',
+  '「三奇得使」、「三奇升殿」、「玉女守門」等格局都是古法認定的大吉格。',
+  '古法占事派依客戶主題選用神：求財用生門天心、問疾用天心景門、避小人用太陰六合。',
+  '古法「一時一盤」原則：每個時辰能量完全獨立、錯過無法以隔天相同時辰替代。',
+  '宮位生剋會影響盤面能量：宮生門為吉、宮剋門為門迫、需交叉驗證才能判定。',
 ]
 
 function FunFacts({ planCode }: { planCode: string }) {
   const [idx, setIdx] = useState(0)
-  const facts = ['E1', 'E2'].includes(planCode) ? FACTS_CHUMENJI : FACTS_DEFAULT
+  const facts = ['E1', 'E2', 'E3', 'E4'].includes(planCode) ? FACTS_CHUMENJI : FACTS_DEFAULT
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -206,7 +230,8 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
   const [backendSilentMin, setBackendSilentMin] = useState(0)
 
   const cfg = PLAN_CONFIG[planCode] ?? PLAN_CONFIG['C']
-  const systems = ALL_SYSTEMS.slice(0, cfg.systems)
+  // v5.3.72：E1/E2/E3/E4 走奇門評估面向、非 15 系統
+  const systems = getSystemsForPlan(planCode).slice(0, cfg.systems)
   // 用「上限」作為時間基準，讓 pct 走得穩，不會超過 97% 又完不成
   const totalMs = cfg.maxMinutes * 60 * 1000
 
@@ -423,10 +448,15 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         {showWhyLong && (
           <div className="mt-2 pl-3 border-l-2 border-gold/20 space-y-2 text-text-muted/85">
             <p className="leading-relaxed">
-              {['E1', 'E2'].includes(planCode) ? (
-                <>鑑源奇門遁甲需排算 {planCode === 'E2' ? '360 個時辰' : '事件前後所有可用時辰'}，每個時辰都要檢驗
-                  三吉門、九遁、神煞、年命宮生剋等 25 層古籍規則，再交叉驗證，
-                  才能挑出真正能為您接引吉方能量的最佳時辰。我們寧可多花時間，也不讓您用錯時辰。</>
+              {['E1', 'E2', 'E3', 'E4'].includes(planCode) ? (
+                <>鑑源古法奇門遁甲占事派擇吉——{
+                  planCode === 'E4' ? '需排算一年 8,760 小時全局盤 + 12 張月盤'
+                    : planCode === 'E3' ? '需排算未來 4 週、共 672 個時辰'
+                    : planCode === 'E2' ? '需排算 360 個時辰'
+                    : '需排算事件前後所有可用時辰'
+                }，每個時辰都要逐一檢驗九星、八門、八神、值符值使、三奇六儀、格局、宮位生剋、年命宮交涉等古籍評分層，
+                  再依您{planCode === 'E3' ? '所選的 TOP 主題用神（60% 權重）' : '命局'}交叉驗證，
+                  才能挑出真正能為您接引吉方能量的吉時。我們寧可多花時間，也不讓您用錯時辰。</>
               ) : (
                 <>您的報告會同步引用多套命理系統（八字、紫微、奇門、占星、人類圖、塔羅…），
                   每一套都由 AI 依您的命盤個別分析後，再進行「交叉驗證」與「個人化整合」，

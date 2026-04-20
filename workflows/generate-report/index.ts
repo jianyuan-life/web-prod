@@ -541,7 +541,7 @@ export async function generateReportWorkflow(reportId: string) {
     // 3a. 品質閘門硬檢查（結構、章節、字眼）
     let gateResult: { passed: boolean; warnings: string[]; hardFailures?: string[]; softWarnings?: string[] } | null = null
     try {
-      gateResult = await qualityGate(reportContent, planCode, analyses.length, chumenjiTop)
+      gateResult = await qualityGate(reportContent, planCode, analyses.length, chumenjiTop, birthData)
     } catch (e) {
       console.error('品質閘門執行失敗:', e)
       break
