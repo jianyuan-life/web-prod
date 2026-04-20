@@ -246,6 +246,14 @@ select, option {
   color: #e8eaf0;
 }
 
+/* v5.3.56 手機觸控最小高度（Apple HIG 44×44）
+   所有 input/select 強制 ≥44px 高、避免手機觸控過小 */
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]),
+select,
+textarea {
+  min-height: 44px;
+}
+
 /* 無障礙：減少動態效果（WCAG 2.3.3 Animation from Interactions）
    — 覆蓋 html.scroll-behavior: smooth 和所有 CSS 動畫/過渡 */
 @media (prefers-reduced-motion: reduce) {

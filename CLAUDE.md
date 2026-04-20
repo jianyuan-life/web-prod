@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.55（2026-04-20）
+**網站版本：** v5.3.56（2026-04-20）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,43 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.56（2026-04-20 UI 全面稽核修正 — CheckoutHeader 重複 bug + 手機觸控 44px）
+
+**Jamie 要求「電腦+手機 UI 全面檢查、滑動順暢、設計正確」**
+
+Playwright 自動化稽核桌面 1440 + 手機 375：
+
+**Bug 1（嚴重、已修）**：`components/checkout/CheckoutHeader.tsx` 方案摘要區 `planName` 被渲染兩次
+- 原碼：`<div>{planName}</div><div>{planName}</div>` → 「事件出門訣 事件出門訣」疊字
+- 修正：第 1 行顯示「方案 {planCode}」、第 2 行顯示 `{planName}`
+- 加 `wordBreak: 'keep-all'` 避免中文方案名被強制換行
+- E1-E4 description 改為各方案獨立文案
+
+**Bug 2（手機 UX、已修）**：checkout 表單 input 高度 38-42px < Apple HIG 44px 最小觸控
+- globals.css 加全站規則：`input:not([checkbox]) { min-height: 44px; }`
+- 含 select、textarea、所有 text/number/date/email/password input
+- 只排除 checkbox / radio / hidden / range
+
+**Playwright 稽核結果（全過、v5.3.56）**：
+| 頁面 | 桌面 1440 | 手機 375 |
+|:---|:---:|:---:|
+| / 首頁 | ✅ 無溢出 | ✅ 無溢出 |
+| /pricing | ✅ E1-E4 顯示 | ✅ 單欄友好 |
+| /auth/login | ✅ | ✅ 輸入框 46px |
+| /auth/signup | ✅ | ✅ 觸控好 |
+| /checkout?plan=E1 | ✅ 修 bug | ✅ 修 bug |
+| /checkout?plan=E3 | ✅ 修 bug | ✅ 修 bug |
+| /tools/bazi | ✅ | ✅ |
+| /tools/qimen | ✅ | ✅ |
+
+### v5.3.55（2026-04-20 修正 E3/E4 方案名稱為規格書定案版）
+
+Jamie 糾正：「月度訂閱」「年度出門訣」是擅改的、要回規格書定案名。
+
+- E3：月度訂閱 → **週度補運** $89（4 週×每週 Top 2=8 吉時）
+- E4：年度出門訣 → **年度方案** $279（年盤＋12 月盤）
+- 改全站 8 個檔案 + 存 `memory/feedback_plan_names_canonical.md` 永久鎖死
 
 ### v5.3.54（2026-04-20 E1-E4 Stripe 結帳後端接線 — 四方案全部可收錢）
 

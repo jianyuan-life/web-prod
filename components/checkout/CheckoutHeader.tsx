@@ -62,10 +62,10 @@ export default function CheckoutHeader({
 
       {/* 方案摘要 */}
       <div className="glass rounded-xl p-5 mb-8 flex justify-between items-center">
-        <div>
-          <div className="text-xs text-gold font-mono">{planName}</div>
-          <div className="text-lg font-bold text-white">{planName}</div>
-          <div className="text-xs text-text-muted">
+        <div className="min-w-0 flex-1 mr-3">
+          <div className="text-xs text-gold font-mono mb-1">方案 {planCode}</div>
+          <div className="text-lg font-bold text-white" style={{ wordBreak: 'keep-all' }}>{planName}</div>
+          <div className="text-xs text-text-muted mt-1">
             {isG15Plan
               ? '家族互動分析（需每位成員已購人生藍圖）'
               : isFamilyPlan
@@ -73,7 +73,10 @@ export default function CheckoutHeader({
               : isRelationPlan
               ? '含兩人分析，每加1人 +$19/人'
               : planCode === 'D' ? '精選相關系統聚焦分析'
-              : ['E1', 'E2'].includes(planCode) ? '奇門遁甲出門訣'
+              : planCode === 'E1' ? '單事件 Top3 吉時方案'
+              : planCode === 'E2' ? '當月主吉方＋吉時、單次執行'
+              : planCode === 'E3' ? '4 週 × 每週 Top 2 = 8 吉時'
+              : planCode === 'E4' ? '年盤 ＋ 12 月盤、全年擇吉'
               : `${planSystems} 套系統分析`}
           </div>
           {isFamilyPlan && extraMemberCount > 0 && (
