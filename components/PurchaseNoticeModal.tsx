@@ -74,7 +74,7 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
       '行事曆邀約一鍵加入',
       '若錯過當月，可下月再購買',
     ],
-    timing: '農曆月最後一天（晦日）21:00 前購買，即歸屬當月執行；21:00 後自動切下月',
+    timing: '晦日 21:00 前購買屬當月、21:00 後切下月；坐盤接氣須於晦日當晚 22:20 後（亥末子初交替）',
   },
   E3: {
     title: '週度補運須知',
@@ -266,16 +266,26 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
                       <div className="flex items-start gap-2">
                         <span className="text-red-300 text-xs shrink-0 mt-0.5">坐盤</span>
                         <span className="text-cream text-sm">
-                          當晚 <strong className="text-gold">22:00 後</strong>
-                          <span className="text-text-muted"> 或 </span>
-                          <strong className="text-gold">{e2Window.next_day_display} 清晨</strong>
+                          當晚 <strong className="text-gold">22:20 – 23:40</strong>（亥末子初交替）
+                          <br /><span className="text-text-muted">備案：</span>
+                          <strong className="text-gold">{e2Window.next_day_display} 清晨 05:00 前</strong>
                         </span>
                       </div>
                     </div>
                   </div>
+                  <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-400/20 mb-3">
+                    <p className="text-[11px] text-amber-200/90 font-semibold mb-1.5">📖 為何是 22:20 不是 22:00？</p>
+                    <ul className="space-y-1 text-[11px] text-text leading-[1.7]">
+                      <li>• 古法月盤必須在<strong className="text-red-300">亥時（21:00-23:00）末 → 子時（23:00-01:00）初</strong>交替那一刻「接月氣」</li>
+                      <li>• 子時交替為 <strong className="text-gold">23:00 整</strong>——要提前 40 分鐘坐定（22:20）、淨心、擺位</li>
+                      <li>• 太早（22:00 前）：月氣未到、坐盤接不到新月能量</li>
+                      <li>• 太晚（23:40 後）：子時已過半、接氣窗口關閉</li>
+                      <li>• 備案清晨：次日凌晨尚屬子時末、寅初（05:00）前完成仍可接到餘氣</li>
+                    </ul>
+                  </div>
                   <p className="text-xs text-text leading-[1.7]">
-                    古法「一時一盤」原則——月盤須在<strong className="text-red-300">{e2Window.lunar_month_display}</strong>交子時前後接氣才有效。
-                    <br />請確認您在上述時段內可配合執行，若無法配合請改購 E3 週度補運或 E1 事件出門訣。
+                    古法「一時一盤」原則——月盤須在<strong className="text-red-300">{e2Window.lunar_month_display}</strong>亥子交替接氣才有效、錯過就失效。
+                    <br />若您無法在上述時段配合，建議改購 E3 週度補運（時窗較彈性）或 E1 事件出門訣。
                   </p>
                 </>
               )}
@@ -312,8 +322,9 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
               {planCode === 'E2' && e2Window ? (
                 <>
                   我已確認能在 <strong className="text-gold">國曆 {e2Window.solar_display}</strong>（{e2Window.lunar_month_display}）
-                  當晚 <strong className="text-gold">22:00 後</strong> 或 <strong className="text-gold">{e2Window.next_day_display} 清晨</strong>
-                  配合坐盤接氣、並同意「本方案重點」與「共同條款」。
+                  當晚 <strong className="text-gold">22:20–23:40 亥子交替</strong>
+                  或 <strong className="text-gold">{e2Window.next_day_display} 清晨 05:00 前</strong>
+                  配合坐盤接月氣、並同意「本方案重點」與「共同條款」。
                 </>
               ) : (
                 <>我已閱讀並理解「本方案重點」與「共同條款」，同意開始付款流程。</>
