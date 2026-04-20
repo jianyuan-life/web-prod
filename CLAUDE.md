@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.51（2026-04-20）
+**網站版本：** v5.3.52（2026-04-20）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,48 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.52（2026-04-20 Phase 1 UI 第三波：E3/E4 結帳 + 容量監控 + QA 完成）
+
+**P1-06 結帳頁 E3/E4 支援（types 層）**：
+- `components/checkout/types.ts` PLANS 加 E3（$89）/E4（$279）
+- E1 價格更新 $89→$59、E2 $99→$29
+- PLAN_DESCRIPTIONS 全面改古法詞彙（「精密計算」「古法奇門遁甲」）
+- 新增 E3_TOPICS 8 類主題常數（code/label/desc）對應後端 `topic_yongshen_map.py`
+
+**P1-QA Phase 1 稽核**：
+- TypeScript 零錯誤（`tsc --noEmit` 全過）
+- `npm run build` ✓ Compiled successfully in 5.4s
+- Build 輸出 34 條路由全部 pre-render 成功
+
+**容量監控機制**：
+- 新檔 `lib/capacity-monitor.ts`：`checkCapacity()`、3 模式（open/throttle/closed）
+- 動態檢查：過去 15 分鐘 pending/generating 報告數 vs 閾值（預設 20）
+- 整合到 `/api/checkout/route.ts` 結帳首行、超載回 503
+- 環境變數：`QIMEN_CAPACITY_MODE` / `QIMEN_CAPACITY_THRESHOLD` / `QIMEN_CAPACITY_WINDOW_MIN`
+- Fail-open 設計：Supabase 查詢失敗不阻塞正常流量
+
+**Phase 1 已交付模組總覽（v5.3.50~v5.3.52）**：
+| 模組 | 狀態 | 版本 |
+|:---|:---:|:---:|
+| P1-01 Pricing 卡片重構 | ✅ | v5.3.50 |
+| P1-02 購買須知 Modal | ✅ | v5.3.50 |
+| P1-03 取消 E1-E4 PDF | ✅ | v5.3.51 |
+| P1-04 取消 E1-E4 Email | ✅ | v5.3.51 |
+| P1-05 用詞規範（UI 層） | ✅ | v5.3.50 |
+| P1-06 結帳 types 層 E3/E4 | ✅ | v5.3.52 |
+| P1-07 報告頁 E3/E4 結構 | ⏳ | 延至 v5.3.53+（需 AI prompt 先） |
+| P1-08 Dashboard E3/E4 | ✅ | v5.3.51 |
+| P1-09 行事曆通用組件 | ✅ | v5.3.51 |
+| P1-QA 稽核 | ✅ | v5.3.52 |
+| 容量監控 | ✅ | v5.3.52 |
+
+**剩餘工作（P1-07 + E3/E4 後端）**：
+- E3/E4 AI prompt 設計（需定義 report_result schema）
+- SinglePersonForm 擴充 E3 主題多選 UI 組件
+- E3/E4 專屬報告頁渲染（8 吉時卡片／12 月盤時間軸）
+- Stripe 訂閱 webhook 處理（E3 每 30 天續訂）
+- E4 立春前 30 天限時開放邏輯
 
 ### v5.3.51（2026-04-20 Phase 1 UI 第二波：取消 PDF/Email + 行事曆組件 + Dashboard 適配）
 

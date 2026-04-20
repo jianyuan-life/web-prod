@@ -35,8 +35,10 @@ export const PLANS: Record<string, { name: string; price: number; systems: numbe
   D: { name: '心之所惑', price: 39, systems: 0 },
   G15: { name: '家族藍圖', price: 59, systems: 15 },
   R: { name: '合否？', price: 59, systems: 0 },
-  E1: { name: '事件出門訣', price: 89, systems: 1 },
-  E2: { name: '月度出門訣', price: 99, systems: 1 },
+  E1: { name: '事件出門訣', price: 59, systems: 1 },
+  E2: { name: '月度出門訣', price: 29, systems: 1 },
+  E3: { name: '月度訂閱', price: 89, systems: 1 },
+  E4: { name: '年度出門訣', price: 279, systems: 1 },
 }
 
 
@@ -72,8 +74,10 @@ export const PLAN_DESCRIPTIONS: Record<string, string> = {
   D: '請選擇分析主題並填寫出生資料',
   G15: '從已完成的人生藍圖報告中選擇家庭成員，進行家族互動分析',
   R: '請填寫雙方（或多方）的出生資料',
-  E1: '請填寫您的出生資料與事件背景。系統將精確排算事件前後各時段的奇門局，套入您的命格驗證吉位，交出針對此事最精準的 Top 3 出行方案。計算需 40 分鐘以上。',
-  E2: '請填寫您的出生資料。系統將從今日起，為您排算未來一個月共 4 週奇門月盤，套入您的命格找出每週最適合出行的吉時與方向。計算需 40 分鐘以上，完成後可在儀表板查看。',
+  E1: '請填寫您的出生資料與事件背景。系統將精密計算事件前後各時段的古法奇門遁甲盤面，套入您的年命宮驗證，交出針對此事最精準的 Top 3 出行方案。',
+  E2: '請填寫您的出生資料。系統將為您排算當月古法奇門月盤，套入您的年命宮找出當月主吉方與最佳吉時窗口。晦日 21:00 前購買當月執行。',
+  E3: '請選擇 1-3 個主題（事業／財運／感情／健康／學業／貴人／化解小人／家庭），系統依用神佔事派 4 週精算 Top2 吉時、共 8 個最佳時窗。',
+  E4: '請填寫您的出生資料。系統將為您精算年盤＋12 個月盤，全年擇吉一次到位。立春前 30 天限時販售。',
 }
 
 export const SHICHEN = [
@@ -114,6 +118,18 @@ export interface CheckoutFormState {
 }
 
 export const D_TOPICS = ['財運', '事業', '感情', '健康', '學業', '搬家', '問事（其他）']
+
+// E3 月度訂閱主題（可選 1-3 個）—對應後端 topic_yongshen_map.py 的 8 類
+export const E3_TOPICS: Array<{ code: string; label: string; desc: string }> = [
+  { code: 'career', label: '事業運', desc: '升遷、創業、專案推進' },
+  { code: 'wealth', label: '財運', desc: '投資、求財、業務談判' },
+  { code: 'love', label: '感情運', desc: '交往、復合、姻緣' },
+  { code: 'health', label: '健康', desc: '養生、求醫、身心平衡' },
+  { code: 'study', label: '學業', desc: '考試、求學、進修' },
+  { code: 'noble', label: '貴人', desc: '拜訪長官、結交助力' },
+  { code: 'villain', label: '化解小人', desc: '化煞、迴避衝突' },
+  { code: 'family', label: '家庭', desc: '家人關係、家運興旺' },
+]
 
 // E1 事件出門訣 — 事件類型選單
 // 對應奇門遁甲不同用神：財運→生/天財、貴人→德/九天、談判/簽約→開/杜、搬家→杜/死、求醫→天醫/天任、考試/面試→文/九地、求姻緣→天喜/紅鸞、旅行出行→開/驛馬

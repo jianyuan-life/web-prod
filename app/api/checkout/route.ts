@@ -34,6 +34,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '無效的方案代碼' }, { status: 400 })
     }
 
+    // v5.3.51 容量監控：結帳前檢查系統負載
+    const { checkCapacity } = await import('@/lib/capacity-monitor')
+    const cap = await checkCapacity(planCode)
+    if (!cap.allowed) {
+      return NextResponse.json(
+        { error: cap.message, capacity_mode: cap.mode },
+        { status: 503 }
+      )
+    }
+
     // 從 Authorization header 或 cookie 取得 Supabase access token
     // 優先用 Authorization header（因為 Supabase 前端用 localStorage 存 token，不是 cookie）
     let authAccessToken = ''
