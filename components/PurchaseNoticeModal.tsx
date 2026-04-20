@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+// @ts-expect-error react-dom 型別在 Next.js 15 依賴中由 next 自身帶、外層 TS 無法檢測
+import { createPortal } from 'react-dom'
 
 type PlanCode = 'E1' | 'E2' | 'E3' | 'E4' | 'C' | 'D' | 'G15' | 'R'
 
@@ -104,16 +106,28 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
 
 export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: PurchaseNoticeProps) {
   const [agreed, setAgreed] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const notice = PLAN_SPECIFIC_NOTICE[planCode]
 
-  if (!notice) return null
+  // v5.3.58 — SSR 安全 mount 確認 + 鎖背景 scroll
+  useEffect(() => {
+    setMounted(true)
+    const origOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = origOverflow }
+  }, [])
 
-  return (
+  if (!notice || !mounted) return null
+
+  // v5.3.58 關鍵：用 Portal 掛到 document.body 根層
+  // 避免 .glass 父元素的 backdrop-filter 讓 Modal 變成相對於 pricing 卡片定位
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn"
+      className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn"
       role="dialog"
       aria-modal="true"
       aria-labelledby="notice-title"
+      onClick={(e) => { if (e.target === e.currentTarget && onCancel) onCancel() }}
     >
       <div className="glass rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 border border-gold/20">
         <div className="flex items-start justify-between mb-4">
@@ -205,6 +219,7 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
