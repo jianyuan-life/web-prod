@@ -2546,6 +2546,24 @@ export async function qualityGate(
     if (reportContent.length < 2000) {
       warnings.push(`週度補運內容偏短: ${reportContent.length} 字（期望 > 2,400 字 = 8 卡 × 300 字）`)
     }
+
+    // v5.3.67 E3 主用神硬驗：報告必須命中古法九星+八門+八神名稱 ≥ 16 次（8 卡 × 每卡最少 2 次）
+    const yongshenNames = [
+      // 九星
+      '天蓬', '天任', '天沖', '天輔', '天英', '天芮', '天柱', '天心', '天禽',
+      // 八門
+      '休門', '生門', '傷門', '杜門', '景門', '死門', '驚門', '開門',
+      // 八神（陰盤/陽盤都有的）
+      '值符', '螣蛇', '太陰', '六合', '白虎', '玄武', '九地', '九天', '勾陳', '朱雀',
+    ]
+    let yongshenHits = 0
+    for (const name of yongshenNames) {
+      const matches = reportContent.match(new RegExp(name, 'g'))
+      if (matches) yongshenHits += matches.length
+    }
+    if (yongshenHits < 16) {
+      warnings.push(`E3 主用神引用不足：全文命中 ${yongshenHits} 次（期望 ≥ 16 = 8 卡 × 每卡 2 次）— AI 需具名引用九星／八門／八神`)
+    }
   }
 
   // 2c-3. E1/E2/E3 出門訣：非奇門詞彙檢查
