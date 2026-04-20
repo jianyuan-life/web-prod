@@ -18,8 +18,11 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
   D: { amount: 3900, name: '心之所惑' },
   G15: { amount: 5900, name: '家族藍圖' },
   R: { amount: 5900, name: '合否？' },
-  E1: { amount: 8900, name: '事件出門訣' },
-  E2: { amount: 9900, name: '月度出門訣' },
+  // v5.3.53 E 系列四方案定價（對應 pricing page 和 checkout types）
+  E1: { amount: 5900, name: '事件出門訣' },   // 原 $89 → $59（降價）
+  E2: { amount: 2900, name: '月度出門訣' },   // 原 $99 → $29（降價、單次當月）
+  E3: { amount: 8900, name: '月度訂閱' },     // 新方案 $89（MVP 為一次性付款、下一輪升級訂閱續訂）
+  E4: { amount: 27900, name: '年度出門訣' },  // 新方案 $279（一次性、立春前 30 天限時販售）
   // 加人附加費（G15 已改為固定 $59，不再加人加價）
   'R-ADD': { amount: 1900, name: '合否？加1人' },
 }

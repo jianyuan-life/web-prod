@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.53（2026-04-20）
+**網站版本：** v5.3.54（2026-04-20）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,27 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.54（2026-04-20 E1-E4 Stripe 結帳後端接線 — 四方案全部可收錢）
+
+**checkout API 更新 PRICE_MAP**：
+- E1 $89 → **$59**（8900 → 5900）
+- E2 $99 → **$29**（9900 → 2900）
+- **E3 新增 $89**（8900、MVP 一次性付款、訂閱續訂下一輪升級）
+- **E4 新增 $279**（27900、一次性、pricing 卡片 seasonal=true 鎖定、立春前 30 天開放）
+
+**webhook PRICE_NAMES 同步**：2 處 PLAN_NAMES 補齊 E3/E4
+
+**Stripe 策略說明**：
+- Stripe Checkout Session 用 dynamic `price_data`（line_items 臨時定價）
+- 不需要預建 Stripe Product / Price ID、不需要 Stripe dashboard 操作
+- E3 先以一次性模式上線（MVP 策略）、每月續訂由後續 cron + DB 改造實現
+
+**完整四方案 E1-E4 現在全部可收錢**（上 Live 後）：
+- E1 事件出門訣 $59 — 付款→生成
+- E2 月度出門訣 $29 — 付款→生成（本月執行）
+- E3 月度訂閱 $89 — 付款→生成（MVP 一次性、下一輪自動續訂）
+- E4 年度出門訣 $279 — 立春前 30 天開放
 
 ### v5.3.53（2026-04-20 E2 奇門一時一盤原則 + 相對等級化）
 

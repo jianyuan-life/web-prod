@@ -249,7 +249,7 @@ export async function POST(req: NextRequest) {
         }).eq('id', reportId)
 
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' }
+        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣', E3: '月度訂閱', E4: '年度出門訣' }
 
         // 付款後立即發訂單確認信（讓客戶知道我們收到了）
         try {
@@ -477,7 +477,7 @@ export async function POST(req: NextRequest) {
                 type: 'use_checkout',
                 amount: -pointsUsed,
                 balance_after: newBalance,
-                description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
+                description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣', E3: '月度訂閱', E4: '年度出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
                 reference_id: session.id,
               })
               console.info(`✅ 點數扣除（fallback）：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)
@@ -491,7 +491,7 @@ export async function POST(req: NextRequest) {
             type: 'use_checkout',
             amount: -pointsUsed,
             balance_after: newBalance,
-            description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
+            description: `${({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣', E3: '月度訂閱', E4: '年度出門訣' } as Record<string,string>)[planCode] || planCode} 訂單折抵`,
             reference_id: session.id,
           })
           console.info(`✅ 點數扣除（RPC）：${pointsUserId} -${pointsUsed}點，餘額 ${newBalance}`)
