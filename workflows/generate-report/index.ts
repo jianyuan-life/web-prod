@@ -798,8 +798,13 @@ export async function generateReportWorkflow(reportId: string) {
         // 抓 <details>...奇門依據...</details> 的內容覆蓋 Python reason（AI 寫的分行版更清楚）
         const detailsMatch = cardContent.match(/<details[^>]*>\s*<summary[^>]*>[^<]*奇門依據[^<]*<\/summary>([\s\S]*?)<\/details>/)
         if (detailsMatch) {
-          const detailsContent = detailsMatch[1].trim()
-          // 只取前 600 字避免過長
+          let detailsContent = detailsMatch[1].trim()
+          // v5.3.75：奇門依據 AI 常擠成「- A: X - B: Y - C: Z」一行、強制 normalize 為多行
+          // 把「 - **」前面插換行（除了行首）
+          detailsContent = detailsContent
+            .replace(/\s+-\s+\*\*/g, '\n- **')  // ' - **' → '\n- **'
+            .replace(/^\n+/, '')                // 去掉開頭多餘換行
+            .replace(/\n{3,}/g, '\n\n')         // 壓縮多餘空行
           top5Timings![idx].reason = detailsContent.slice(0, 800)
         }
       })
@@ -894,13 +899,17 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('Step 4 吉時數據處理失敗（不阻塞）:', step4Err)
   }
 
-  // Step 5: 生成 PDF
+  // Step 5: 生成 PDF（v5.3.75：E3 月度訂閱不生成 PDF、深度綁定 web 策略）
   let pdfUrl: string | null = null
-  try {
-    pdfUrl = await generatePDF(reportId, planCode, birthData, reportContent, analysesSummary)
-  } catch (e) {
-    // PDF 失敗不阻塞整體流程
-    console.error('PDF 生成失敗（不影響報告）:', e)
+  if (planCode !== 'E3') {
+    try {
+      pdfUrl = await generatePDF(reportId, planCode, birthData, reportContent, analysesSummary)
+    } catch (e) {
+      // PDF 失敗不阻塞整體流程
+      console.error('PDF 生成失敗（不影響報告）:', e)
+    }
+  } else {
+    console.log('E3 月度訂閱：跳過 PDF 生成（v5.3.75 新策略）')
   }
 
   // Step 5: 儲存到 Supabase

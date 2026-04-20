@@ -209,30 +209,21 @@ export function buildCalendarDescription(params: {
   angle?: string
   clientName?: string
 }): string {
-  const { plainAdvantage, plainPurpose, title, direction, angle, clientName } = params
-  const advantage = plainAdvantage || generatePlainAdvantage(title, direction)
-  const purposes = plainPurpose && plainPurpose.length > 0
-    ? plainPurpose
-    : generatePlainPurpose(title)
+  // v5.3.75：行事曆內文強制用 AI 個人化版、不再 fallback 罐頭
+  // 老闆明確要求：內文就是「坐這個盤對你的輔助」+ AI 寫的 bullets
+  const { plainAdvantage, plainPurpose, direction, clientName } = params
 
   const lines: string[] = []
   lines.push(`【鑒源出門訣｜${clientName ?? ''}】`)
   lines.push('')
-  lines.push(`建議方位：${direction}${angle ? ` ${angle}` : ''}`)
-  lines.push(`從住家朝${direction}方向走約 500 公尺，找定點靜坐 40 分鐘。`)
+  lines.push(`方位：${direction}`)
+  lines.push(`步行 500 公尺、停留 40 分鐘，朝${direction.replace(/\s.*/, '')}方向。`)
   lines.push('')
-  lines.push('── 這時段的優勢 ──')
-  lines.push(advantage)
-  lines.push('')
-  lines.push('── 最適合做的事 ──')
-  for (const p of purposes) lines.push(`• ${p}`)
-
-  const avoid = getAvoidNote(title)
-  if (avoid) {
-    lines.push('')
-    lines.push(`※ 提醒：${avoid}`)
+  lines.push('── 坐這個盤對你的輔助 ──')
+  if (plainAdvantage) lines.push(plainAdvantage)
+  if (plainPurpose && plainPurpose.length > 0) {
+    for (const p of plainPurpose) lines.push(`• ${p}`)
   }
-
   lines.push('')
   lines.push('鑒源命理平台 jianyuan.life')
   return lines.join('\n')

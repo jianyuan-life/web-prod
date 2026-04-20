@@ -722,16 +722,24 @@ function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   }
   const endDateStr = endDateForUrl.replace(/-/g, '')
   const endStr = `${endDateStr}T${timing.time_end.replace(':', '')}00`
-  // 標題改用白話動詞（取 plain_purpose 第一項作 CTA，否則用 title）
-  const firstPurpose = Array.isArray(timing.plain_purpose) && timing.plain_purpose.length > 0
-    ? timing.plain_purpose[0]
-    : timing.title
-  const title = encodeURIComponent(`鑒源吉時｜${firstPurpose}`)
+  // v5.3.75 行事曆標題格式（老闆明確指示）：
+  // 標題：{值符星}+{天禽若有}+{值使門}({方位}{度數}°)
+  // 例：天心+天禽+休門(東90°)
+  // 從 timing.title（引擎已拼 "star+door"，可能含「(+天禽)」）加工
+  const titleRaw = (timing.title || '').trim()
+  const directionWithAngle = formatDirectionWithAngle(timing.direction || '', timing.angle)
+  // title 已是「天心(+天禽)休門」或「天心休門」，正規化為「天心+天禽+休門」
+  const normalizedTitle = titleRaw
+    .replace(/\(\+([^)]+)\)/, '+$1')  // (+天禽) → +天禽
+    .replace(/([星宮天心輔衝芮禽柱英任蓬])([門])/, '$1+$2')  // 在門字前插 +
+    .replace(/\++/g, '+')  // 多個 + 合併
+  const calTitle = `${normalizedTitle}(${directionWithAngle.replace(/\s/g, '')})`
+  const title = encodeURIComponent(calTitle)
   const description = buildCalendarDescription({
     plainAdvantage: timing.plain_advantage,
     plainPurpose: timing.plain_purpose,
     title: timing.title,
-    direction: timing.direction,
+    direction: directionWithAngle,
     angle: timing.angle,
     clientName,
   })
@@ -739,12 +747,30 @@ function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&ctz=Asia/Taipei`
 }
 
-// 排名獎牌
-function getRankMedal(rank: number): string {
-  if (rank === 1) return '🥇'
-  if (rank === 2) return '🥈'
-  if (rank === 3) return '🥉'
-  return `#${rank}`
+// v5.3.75：方位度數對照表——讓客戶拿指南針對度數出門
+const DIRECTION_ANGLES: Record<string, string> = {
+  '北': '0°',
+  '東北': '45°',
+  '東': '90°',
+  '東南': '135°',
+  '南': '180°',
+  '西南': '225°',
+  '西': '270°',
+  '西北': '315°',
+}
+
+function formatDirectionWithAngle(direction: string, existingAngle?: string): string {
+  if (!direction) return ''
+  const cleanDir = direction.trim()
+  // 引擎已給度數 → 優先用
+  if (existingAngle) {
+    const angleStr = existingAngle.trim()
+    // 避免重複加 °
+    return angleStr.includes('°') ? `${cleanDir} ${angleStr}` : `${cleanDir} ${angleStr}°`
+  }
+  // 沒度數 → 查表
+  const mapped = DIRECTION_ANGLES[cleanDir]
+  return mapped ? `${cleanDir} ${mapped}` : cleanDir
 }
 
 // 格式化日期顯示
@@ -2147,20 +2173,18 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     boxShadow: timing.rank === 1 ? '0 4px 20px rgba(201,168,76,0.12)' : undefined,
                   }}
                 >
-                  {/* 卡片頂部：排名 + 日期時間 */}
+                  {/* v5.3.75：取消排名標識（🥇🥈🥉 + #N）——符合命盤就是好盤、不強調比較
+                      方位加度數顯示（東→東 90°）讓客戶直接拿指南針對著走 */}
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{getRankMedal(timing.rank)}</span>
-                      <div>
-                        <div className="text-cream font-semibold">{timing.title}</div>
-                        <div className="text-text-muted text-sm mt-0.5">
-                          {formatTimingDate(timing.date)}&nbsp;&nbsp;{timing.time_start} - {timing.time_end}
-                        </div>
+                    <div>
+                      <div className="text-cream font-semibold">{timing.title}</div>
+                      <div className="text-text-muted text-sm mt-0.5">
+                        {formatTimingDate(timing.date)}&nbsp;&nbsp;{timing.time_start} - {timing.time_end}
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-text-muted/50">建議方位</div>
-                      <div className="text-gold font-semibold text-sm">{timing.direction}{timing.angle ? ` ${timing.angle}` : ''}</div>
+                      <div className="text-gold font-semibold text-sm">{formatDirectionWithAngle(timing.direction, timing.angle)}</div>
                     </div>
                   </div>
 
@@ -2214,14 +2238,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       <span className="font-medium">🔮 奇門依據{report.plan_code === 'E1' ? '（為什麼這個時間能加乘）' : ''}</span>
                     </summary>
                     <div className="px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid rgba(197,150,58,0.5)' }}>
-                      <p className="text-text-muted/90 text-sm leading-7">{
-                        String(timing.reason || '')
+                      {/* v5.3.75：奇門依據支援 markdown bullets 多行渲染 */}
+                      <div className="text-text-muted/90 text-sm leading-7 space-y-1" dangerouslySetInnerHTML={{
+                        __html: String(timing.reason || '')
                           .replace(/[（(]基礎\d+[×x][\s\S]*?[）)]/g, '')
                           .replace(/[（(][+-]\d+[）)]/g, '')
-                          .replace(/；\s*；/g, '；')
-                          .replace(/\s{2,}/g, ' ')
+                          .replace(/\s+-\s+\*\*/g, '\n- **')
+                          .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#c9a84c">$1</strong>')
+                          .replace(/^-\s*(.+?)$/gm, '<div class="ml-1">• $1</div>')
+                          .replace(/\n/g, '')
                           .trim()
-                      }</p>
+                      }} />
                     </div>
                   </details>
 
@@ -2329,6 +2356,34 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             ) : null
 
+            // v5.3.75：E 系列出門訣砍掉 CollapsibleSection 摺疊、改純 div 全展開（老闆指示）
+            // 短報告不需要 ▼ 收合按鈕
+            if (isChumenji) {
+              return (
+                <div
+                  key={globalIdx}
+                  id={`sec-${globalIdx}`}
+                  className="glass mb-4 p-5 rounded-lg"
+                  style={{
+                    background: sStyle?.bg,
+                    border: sStyle?.border || '1px solid rgba(197,150,58,0.15)',
+                    borderLeft: sStyle ? sStyle.border : '3px solid rgba(197,150,58,0.4)',
+                  }}
+                >
+                  <h2
+                    className="text-lg font-semibold mb-3"
+                    style={{ color: sStyle?.titleColor || 'var(--color-gold)' }}
+                  >
+                    {sStyle?.icon ? `${sStyle.icon} ` : ''}{sec.title}
+                  </h2>
+                  {tldrNode}
+                  <div className="report-p mt-2">
+                    <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
+                  </div>
+                </div>
+              )
+            }
+
             if (sStyle) {
               return (
                 <CollapsibleSection
@@ -2373,8 +2428,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           // C 方案（完整 15 章）/D/G15/R 章節結構固定，可安全分篇
           const eligibleForParts = !isChumenji && sections.length >= 4
           if (!eligibleForParts) {
-            // 出門訣或章節太少：維持原本扁平渲染
-            return sections.map((sec, i) => renderChapter(sec, i, i + 1))
+            // v5.3.75：出門訣砍下方重複的「第 N 週 TOP X」週度卡片章節
+            // 上方 Timeline 卡片已完整呈現該資訊（日期時辰/方位度數/白話輔助/奇門依據/行事曆）
+            // 保留：引言、執行方法、月度執行提醒、寫給你的話
+            const filteredSections = isChumenji
+              ? sections.filter(sec => !/第\s*\d+\s*週.*TOP\s*\d/.test(sec.title || ''))
+              : sections
+            return filteredSections.map((sec, i) => renderChapter(sec, i, i + 1))
           }
 
           // 起承轉合分篇渲染

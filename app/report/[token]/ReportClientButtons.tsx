@@ -160,7 +160,9 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
         )}
 
         {/* v5.3.59 規格書要求：E1-E4 出門訣全系列 PDF 按鈕（金色日曆式） */}
-        {isChumenji && renderChumenjiPdfButton()}
+        {/* v5.3.75：E3 月度訂閱不提供 PDF（老闆明確指示、深度綁定 web 策略）
+            行事曆按鈕才是 E3 主力交付管道。E1/E2/E4 保留舊邏輯 */}
+        {isChumenji && planCode !== 'E3' && renderChumenjiPdfButton()}
 
         <button
           onClick={handleShare}
