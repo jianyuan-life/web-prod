@@ -37,6 +37,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '無效的方案代碼' }, { status: 400 })
     }
 
+    // v5.3.69 暫擋：出門訣 E1-E4 正在進行奇門排盤引擎深度稽核修復
+    // 古法權威驗證通過（預計 8-11 小時）才重新開放
+    if (['E1', 'E2', 'E3', 'E4'].includes(planCode)) {
+      return NextResponse.json(
+        {
+          error: '出門訣方案維護中',
+          message: '出門訣四方案（E1 事件/E2 月度/E3 週度補運/E4 年度）正在進行奇門排盤引擎的古法權威深度稽核修復、確保九宮門／星／神 100% 符合古法。預計 8-11 小時後恢復。人生藍圖、心之所惑、家族藍圖、合否？不受影響、正常開放。',
+          maintenance: true,
+        },
+        { status: 503 }
+      )
+    }
+
     // v5.3.51 容量監控：結帳前檢查系統負載
     const { checkCapacity } = await import('@/lib/capacity-monitor')
     const cap = await checkCapacity(planCode)
