@@ -752,7 +752,8 @@ export async function generateReportWorkflow(reportId: string) {
       direction: r.direction || '',
       reason: r.reason || '',
       boost_explanation: '',
-      confidence: typeof r.confidence === 'object' ? JSON.stringify(r.confidence) : String(r.confidence || ''),
+      // v5.3.74：砍信心指數——引擎的 score/confidence 對客戶是噪音，符合命盤用神的盤都是好盤
+      confidence: '',
       shensha_warning: r.shensha_warning || '',
       zhishi_info: '',
       week: r.week_number || null,
@@ -766,8 +767,44 @@ export async function generateReportWorkflow(reportId: string) {
       ju: r.ju || '',
       gong: r.gong || '',
       kongwang: r.kongwang || false,
+      plain_advantage: '',
+      plain_purpose: [] as string[],
     }))
     console.log(`${planCode} 吉時直接從引擎取得: ${top5Timings.length} 項`)
+
+    // v5.3.74 P0：從 AI markdown 抽取每張卡片的「坐這個盤對你」bullets、塞進 plain_advantage + plain_purpose
+    // 修報告頁 parsing 吞掉 AI 白話優勢的 bug（body 只 3952 字、AI 實際寫 6500+ 字）
+    if (planCode === 'E3' && reportContent) {
+      // 用「## 第 N 週 TOP X」切 8 個卡片區塊
+      const cardSections = reportContent.split(/(?=^## 第\s*\d+\s*週\s*TOP\s*\d+[|｜])/m)
+      const cards = cardSections.filter(s => /^## 第\s*\d+\s*週\s*TOP\s*\d+[|｜]/.test(s))
+      cards.forEach((cardContent, idx) => {
+        if (idx >= top5Timings!.length) return
+        // 抓「## 坐這個盤對你...輔助」或「### 坐這個盤對你...輔助」後到 <details> 之前的 bullets
+        const advMatch = cardContent.match(/(?:^|\n)##?#?\s*(?:✨\s*)?坐這個盤對你[「『]\S+[」』]的輔助[^\n]*\n([\s\S]*?)(?=\n<details|\n##?#?\s|\Z)/)
+        if (advMatch) {
+          const bulletsRaw = advMatch[1].trim()
+          const bullets = bulletsRaw
+            .split(/\n/)
+            .map(l => l.trim())
+            .filter(l => /^[-•·]\s*/.test(l))
+            .map(l => l.replace(/^[-•·]\s*/, '').replace(/^\*\*([^*]+)\*\*\s*[：:]\s*/, '$1：'))
+            .filter(Boolean)
+          if (bullets.length > 0) {
+            top5Timings![idx].plain_purpose = bullets
+            top5Timings![idx].plain_advantage = bullets.join('\n')
+          }
+        }
+        // 抓 <details>...奇門依據...</details> 的內容覆蓋 Python reason（AI 寫的分行版更清楚）
+        const detailsMatch = cardContent.match(/<details[^>]*>\s*<summary[^>]*>[^<]*奇門依據[^<]*<\/summary>([\s\S]*?)<\/details>/)
+        if (detailsMatch) {
+          const detailsContent = detailsMatch[1].trim()
+          // 只取前 600 字避免過長
+          top5Timings![idx].reason = detailsContent.slice(0, 800)
+        }
+      })
+      console.log(`${planCode} 白話優勢從 AI markdown 補齊：${top5Timings.filter(t => (t.plain_purpose as string[]).length > 0).length}/${top5Timings.length} 張`)
+    }
   }
 
   // 4b. 備用：如果引擎無結果，嘗試從 AI 報告中解析 JSON 標記（E3 也適用）

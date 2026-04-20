@@ -2164,37 +2164,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     </div>
                   </div>
 
-                  {/* 信心指數 + 值使門（v3.0 新增）*/}
-                  {(timing.confidence || timing.zhishi_info) && (
+                  {/* v5.3.74：砍信心指數評級——符合客戶命盤用神的盤都是好盤、不強調比較
+                      只保留值使門資訊（中性、無評級） */}
+                  {timing.zhishi_info && (
                     <div className="flex gap-3 mb-3">
-                      {timing.confidence && (() => {
-                        // 支援物件格式（引擎直取）和字串格式（舊版）
-                        let level = ''
-                        let desc = ''
-                        if (typeof timing.confidence === 'object' && timing.confidence !== null) {
-                          const conf = timing.confidence as { value?: number; level?: string; desc?: string }
-                          level = conf.level || '高'
-                          desc = conf.desc || ''
-                        } else {
-                          level = String(timing.confidence).replace(/\s*\d+%/, '').trim()
-                        }
-                        const isHigh = level.includes('極高') || level.includes('高')
-                        const isMid = level.includes('中')
-                        return (
-                        <div className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{
-                          background: isHigh ? 'rgba(34,197,94,0.1)' : isMid ? 'rgba(234,179,8,0.1)' : 'rgba(239,68,68,0.1)',
-                          color: isHigh ? '#22c55e' : isMid ? '#eab308' : '#ef4444',
-                          border: `1px solid ${isHigh ? 'rgba(34,197,94,0.2)' : isMid ? 'rgba(234,179,8,0.2)' : 'rgba(239,68,68,0.2)'}`,
-                        }}>
-                          信心指數：{level}{desc ? ` — ${desc}` : ''}
-                        </div>
-                        )
-                      })()}
-                      {timing.zhishi_info && (
-                        <div className="px-3 py-1.5 rounded-lg text-xs text-blue-400" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                          {timing.zhishi_info}
-                        </div>
-                      )}
+                      <div className="px-3 py-1.5 rounded-lg text-xs text-blue-400" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                        {timing.zhishi_info}
+                      </div>
                     </div>
                   )}
 
