@@ -37,8 +37,8 @@ export const PLANS: Record<string, { name: string; price: number; systems: numbe
   R: { name: '合否？', price: 59, systems: 0 },
   E1: { name: '事件出門訣', price: 59, systems: 1 },
   E2: { name: '月度出門訣', price: 29, systems: 1 },
-  E3: { name: '月度訂閱', price: 89, systems: 1 },
-  E4: { name: '年度出門訣', price: 279, systems: 1 },
+  E3: { name: '週度補運', price: 89, systems: 1 },
+  E4: { name: '年度方案', price: 279, systems: 1 },
 }
 
 
@@ -119,7 +119,7 @@ export interface CheckoutFormState {
 
 export const D_TOPICS = ['財運', '事業', '感情', '健康', '學業', '搬家', '問事（其他）']
 
-// E3 月度訂閱主題（可選 1-3 個）—對應後端 topic_yongshen_map.py 的 8 類
+// E3 週度補運主題（可選 1-3 個）—對應後端 topic_yongshen_map.py 的 8 類
 export const E3_TOPICS: Array<{ code: string; label: string; desc: string }> = [
   { code: 'career', label: '事業運', desc: '升遷、創業、專案推進' },
   { code: 'wealth', label: '財運', desc: '投資、求財、業務談判' },

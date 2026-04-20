@@ -45,16 +45,16 @@ const PLANS = {
     { code: 'E2', name: '月度出門訣', price: 29,
       valueHint: '單次購買、當月執行',
       desc: '替該月度圈定一個當月最佳出行主吉方與吉時，適合每月補運、穩定運勢持續累積的人',
-      suitableFor: '每月補運、想讓好運累積、尚未決定訂閱月度計畫的人',
+      suitableFor: '每月補運、想讓好運累積、尚未決定週度密集補運的人',
       features: ['農曆月份精算（立春／節氣換月）', '月盤九宮八門八神古法排盤', '當月主吉方度數＋最佳吉時窗口', '個人年命宮交叉驗證', '行事曆邀約一鍵加入', '晦日 21:00 前購買即算當月'],
     },
-    { code: 'E3', name: '月度訂閱', price: 89,
+    { code: 'E3', name: '週度補運', price: 89,
       valueHint: '4 週×每週 Top2＝8 吉時、持續補運最佳',
       desc: '月度完整版——針對選定 1-3 個主題用神，4 週每週精算 Top2 吉時，共 8 個最佳時窗，讓您整月持續在對的能量中',
       suitableFor: '需要事業／財運／感情持續補運、希望系統性接天時地利的人',
       features: ['選 1-3 個主題（事業／財運／感情／健康／學業／貴人／化解小人／家庭）', '每週 2 個 Top 吉時、共 8 個時窗', '主題用神（值符／天心／開門等）對應評分', '個人年命宮交叉驗證', '行事曆邀約一鍵加入', '古法占事派正統：用神佔 60%'],
     },
-    { code: 'E4', name: '年度出門訣', price: 279, seasonal: true,
+    { code: 'E4', name: '年度方案', price: 279, seasonal: true,
       valueHint: '年盤＋12 月盤、立春前 30 天限時販售',
       desc: '年度完整方案——年盤 + 12 個月盤的古法精算，全年重要擇吉一次到位，每年立春前 30 天限時開放',
       suitableFor: '希望全年重要決策都有奇門吉時依據、年度擇吉一次搞定的人',
@@ -254,7 +254,7 @@ export default function PricingPage() {
                   <th className="text-left p-4 text-text-muted font-normal">項目</th>
                   <th className="p-4 text-gold text-center font-semibold">事件 E1<br/><span className="text-xs text-text-muted font-normal">$59</span></th>
                   <th className="p-4 text-gold text-center font-semibold">月度 E2<br/><span className="text-xs text-text-muted font-normal">$29</span></th>
-                  <th className="p-4 text-gold text-center font-semibold bg-gold/5">訂閱 E3<br/><span className="text-xs text-text-muted font-normal">$89</span></th>
+                  <th className="p-4 text-gold text-center font-semibold bg-gold/5">週度 E3<br/><span className="text-xs text-text-muted font-normal">$89</span></th>
                   <th className="p-4 text-gold text-center font-semibold">年度 E4<br/><span className="text-xs text-text-muted font-normal">$279</span></th>
                 </tr>
               </thead>
@@ -291,8 +291,8 @@ export default function PricingPage() {
             <p><strong className="text-cream">全家分析：</strong>每位家人先各自購買「人生藍圖」（$89），再加購「家族藍圖」（$59）做家庭互動分析。</p>
             <p><strong className="text-cream">感情/合夥：</strong>「合否？」（$59）兩人命理交叉分析，看你們合不合。</p>
             <p><strong className="text-cream">單一重要事件：</strong>「事件出門訣」（$59）針對一個事件推出 Top3 吉時方案。</p>
-            <p><strong className="text-cream">每月補運：</strong>先試「月度出門訣」（$29）當月執行，認可後升級「月度訂閱」（$89）持續補運。</p>
-            <p><strong className="text-cream">全年擇吉：</strong>「年度出門訣」（$279）立春前 30 天限時販售，全年重要決策一次搞定。</p>
+            <p><strong className="text-cream">每月補運：</strong>先試「月度出門訣」（$29）當月執行，認可後升級「週度補運」（$89）持續補運。</p>
+            <p><strong className="text-cream">全年擇吉：</strong>「年度方案」（$279）立春前 30 天限時販售，全年重要決策一次搞定。</p>
           </div>
         </div>
 
@@ -308,7 +308,7 @@ export default function PricingPage() {
             { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗大量運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會免費重新生成。' },
             { q: '付款方式有哪些？安全嗎？', a: '透過 Stripe（PCI DSS Level 1 認證）處理，支援 Visa、Mastercard、AMEX 等主流信用卡。您的卡號不會經過鑒源伺服器，全程加密。' },
             { q: '人生藍圖和心之所惑有什麼差別？', a: '「人生藍圖」是全面分析——動用十五套系統涵蓋性格、事業、財運、感情、健康、大運等所有面向。「心之所惑」則聚焦在你最在乎的一個問題，精選最相關的系統深入剖析。' },
-            { q: '四個出門訣方案怎麼選？', a: 'E1 事件出門訣（$59）針對單一重要事件推 Top3 吉時；E2 月度出門訣（$29）當月購買當月執行、晦日 21:00 前截止；E3 月度訂閱（$89）主題精選用神、4 週共 8 個吉時；E4 年度出門訣（$279）年盤＋12 月盤全年佈局、立春前 30 天限時。' },
+            { q: '四個出門訣方案怎麼選？', a: 'E1 事件出門訣（$59）針對單一重要事件推 Top3 吉時；E2 月度出門訣（$29）當月購買當月執行、晦日 21:00 前截止；E3 週度補運（$89）主題精選用神、4 週共 8 個吉時；E4 年度方案（$279）年盤＋12 月盤全年佈局、立春前 30 天限時。' },
             { q: '不確定出生時間怎麼辦？', a: '可以選擇最接近的時辰。即使時間不完全精確，十五套系統中有多套不依賴精確時辰（如姓名學、數字能量學、生肖運勢等），仍能提供有價值的分析。' },
             { q: '出門訣為什麼不提供「隔天」替代方案？', a: '古法奇門遁甲「一時一盤」，每個時辰的盤面能量不同，隔天就是完全不同的能量組合。若錯過推薦的吉時，只能等待下一個系統推薦的時窗。' },
           ].map((faq) => (

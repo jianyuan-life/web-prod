@@ -175,8 +175,8 @@ export function downloadIcs(timings: CalendarTiming[], filename = 'qimen-chumenj
 export const PLAN_CALENDAR_LABELS: Record<string, string> = {
   E1: '鑒源吉時｜事件出門訣',
   E2: '鑒源吉時｜月度出門訣',
-  E3: '鑒源吉時｜月度訂閱',
-  E4: '鑒源吉時｜年度出門訣',
+  E3: '鑒源吉時｜週度補運',
+  E4: '鑒源吉時｜年度方案',
 }
 
 export function buildDefaultTitle(planCode: string, customTitle?: string): string {

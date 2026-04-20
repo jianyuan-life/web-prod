@@ -42,7 +42,7 @@ export default function PricingButton({ code, popular, seasonal, locked }: Prici
     R: '看看我們合不合',
     E1: '為重要時刻做準備',
     E2: '掌握這個月的好時機',
-    E3: '訂閱月度最佳吉時',
+    E3: '開始週度密集補運',
     E4: '鎖定全年擇吉佈局',
   }
 

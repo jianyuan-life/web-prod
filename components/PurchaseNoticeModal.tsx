@@ -42,7 +42,7 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
     timing: '農曆月最後一天（晦日）21:00 前購買，即歸屬當月執行；21:00 後自動切下月',
   },
   E3: {
-    title: '月度訂閱須知',
+    title: '週度補運須知',
     items: [
       '月度計畫——選 1-3 個主題用神（事業／財運／感情／健康／學業／貴人／化解小人／家庭）',
       '4 週每週精算 Top2 吉時、共 8 個最佳時窗',
@@ -53,7 +53,7 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
     timing: '訂閱當月即生效、每 30 天自動續訂',
   },
   E4: {
-    title: '年度出門訣須知',
+    title: '年度方案須知',
     items: [
       '年盤＋12 個月盤的古法精算、全年擇吉一次到位',
       '立春前 30 天限時販售、錯過等明年',

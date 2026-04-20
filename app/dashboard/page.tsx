@@ -15,7 +15,7 @@ const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
   G15: '家族藍圖', R: '合否？',
   E1: '事件出門訣', E2: '月度出門訣',
-  E3: '月度訂閱', E4: '年度出門訣',
+  E3: '週度補運', E4: '年度方案',
 }
 
 // E 系列（出門訣）識別：用於判斷 PDF/Email/狀態文案
@@ -521,7 +521,7 @@ function DashboardContent() {
                           {CHUMENJI_CODES.has(r.plan_code)
                             ? (r.plan_code === 'E1' ? '事件擇吉 Top3'
                               : r.plan_code === 'E2' ? '月度單盤'
-                              : r.plan_code === 'E3' ? '月度訂閱 8 吉時'
+                              : r.plan_code === 'E3' ? '週度補運 8 吉時'
                               : r.plan_code === 'E4' ? '年度全局佈局'
                               : '古法奇門出門訣')
                             : (() => {
