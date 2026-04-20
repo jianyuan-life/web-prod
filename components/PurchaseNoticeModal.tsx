@@ -12,6 +12,39 @@ interface PurchaseNoticeProps {
   onCancel?: () => void
 }
 
+// E2 執行時段資訊（動態從 Fly.io API 取得）
+interface E2ExecWindow {
+  solar_date: string        // '2026-05-16'
+  solar_display: string     // '5 月 16 日（星期六）'
+  lunar_month_display: string  // '農曆三月晦日'
+  lunar_year_gz: string     // '丙午年'
+  next_day_display: string  // '5 月 17 日'
+}
+
+const LUNAR_MONTH_CN = ['', '正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '臘月']
+const WEEKDAY_CN = ['日', '一', '二', '三', '四', '五', '六']
+
+function formatE2Window(data: {
+  target_hui_day: string
+  target_lunar_month: number
+  target_lunar_year_gz?: string
+}): E2ExecWindow {
+  const [y, m, d] = data.target_hui_day.split('-').map(Number)
+  const huiDate = new Date(y, m - 1, d)
+  const weekday = WEEKDAY_CN[huiDate.getDay()]
+  const nextDate = new Date(huiDate)
+  nextDate.setDate(nextDate.getDate() + 1)
+  // 上一月（因為後端 target_lunar_month 是「接氣月」= 下個月；晦日本身是上個月末）
+  const huiLunarMonth = data.target_lunar_month === 1 ? 12 : data.target_lunar_month - 1
+  return {
+    solar_date: data.target_hui_day,
+    solar_display: `${m} 月 ${d} 日（星期${weekday}）`,
+    lunar_month_display: `農曆${LUNAR_MONTH_CN[huiLunarMonth] || huiLunarMonth + '月'}晦日`,
+    lunar_year_gz: data.target_lunar_year_gz ? `${data.target_lunar_year_gz}年` : '',
+    next_day_display: `${nextDate.getMonth() + 1} 月 ${nextDate.getDate()} 日`,
+  }
+}
+
 // 共用須知（所有方案）
 const SHARED_NOTICE = [
   '報告為虛擬數位內容，付款後即開始精密計算、不支持退款',
@@ -107,6 +140,8 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
 export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: PurchaseNoticeProps) {
   const [agreed, setAgreed] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [e2Window, setE2Window] = useState<E2ExecWindow | null>(null)
+  const [e2Loading, setE2Loading] = useState(false)
   const notice = PLAN_SPECIFIC_NOTICE[planCode]
 
   // v5.3.58 — SSR 安全 mount 確認 + 鎖背景 scroll
@@ -116,6 +151,26 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = origOverflow }
   }, [])
+
+  // v5.3.66 — E2 專屬：動態抓下個晦日執行時段
+  useEffect(() => {
+    if (planCode !== 'E2' || !mounted) return
+    setE2Loading(true)
+    const nowIso = new Date().toISOString()
+    fetch('/api/engine/v2/lunar/e2-purchase-window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ datetime_iso: nowIso }),
+    })
+      .then(r => r.json())
+      .then(json => {
+        if (json?.success && json?.data?.target_hui_day) {
+          setE2Window(formatE2Window(json.data))
+        }
+      })
+      .catch(() => { /* 靜默失敗、fallback 到靜態 timing 文案 */ })
+      .finally(() => setE2Loading(false))
+  }, [planCode, mounted])
 
   if (!notice || !mounted) return null
 
@@ -182,6 +237,56 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
             </div>
           )}
 
+          {/* E2 專屬：本月執行晦日動態提示 */}
+          {planCode === 'E2' && (
+            <div className="rounded-xl bg-red-500/10 border border-red-400/30 p-4 mb-5">
+              <h3 className="text-sm font-bold text-red-300 mb-2 flex items-center gap-1">
+                <span>⚠️</span>
+                <span>請先確認能配合坐盤時段</span>
+              </h3>
+              {e2Loading && (
+                <p className="text-xs text-text-muted">正在精算最近晦日…</p>
+              )}
+              {!e2Loading && e2Window && (
+                <>
+                  <div className="mb-3 p-3 rounded-lg bg-black/30 border border-red-400/20">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-300 text-xs shrink-0 mt-0.5">執行日</span>
+                        <span className="text-cream text-sm font-semibold">
+                          國曆 {e2Window.solar_display}
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-300 text-xs shrink-0 mt-0.5">農曆</span>
+                        <span className="text-cream text-sm">
+                          {e2Window.lunar_year_gz}{e2Window.lunar_month_display}
+                        </span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-300 text-xs shrink-0 mt-0.5">坐盤</span>
+                        <span className="text-cream text-sm">
+                          當晚 <strong className="text-gold">22:00 後</strong>
+                          <span className="text-text-muted"> 或 </span>
+                          <strong className="text-gold">{e2Window.next_day_display} 清晨</strong>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-text leading-[1.7]">
+                    古法「一時一盤」原則——月盤須在<strong className="text-red-300">{e2Window.lunar_month_display}</strong>交子時前後接氣才有效。
+                    <br />請確認您在上述時段內可配合執行，若無法配合請改購 E3 週度補運或 E1 事件出門訣。
+                  </p>
+                </>
+              )}
+              {!e2Loading && !e2Window && (
+                <p className="text-xs text-text-muted">
+                  晦日執行時段：農曆月最後一天當晚 22:00 後 或 次日清晨（下單後將以 Email 告知您確切時間）
+                </p>
+              )}
+            </div>
+          )}
+
           {/* 共用須知 */}
           <div className="mb-5 pt-4 border-t border-gold/10">
             <h3 className="text-sm font-semibold text-cream mb-2">共同條款</h3>
@@ -204,7 +309,15 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
               className="mt-0.5 w-5 h-5 rounded border-gold/40 bg-transparent focus:ring-gold/50 focus:ring-2 shrink-0 cursor-pointer"
             />
             <span className="text-xs text-text leading-[1.7]">
-              我已閱讀並理解「本方案重點」與「共同條款」，同意開始付款流程。
+              {planCode === 'E2' && e2Window ? (
+                <>
+                  我已確認能在 <strong className="text-gold">國曆 {e2Window.solar_display}</strong>（{e2Window.lunar_month_display}）
+                  當晚 <strong className="text-gold">22:00 後</strong> 或 <strong className="text-gold">{e2Window.next_day_display} 清晨</strong>
+                  配合坐盤接氣、並同意「本方案重點」與「共同條款」。
+                </>
+              ) : (
+                <>我已閱讀並理解「本方案重點」與「共同條款」，同意開始付款流程。</>
+              )}
             </span>
           </label>
         </div>
@@ -221,14 +334,14 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
           )}
           <button
             onClick={onConfirm}
-            disabled={!agreed}
+            disabled={!agreed || (planCode === 'E2' && e2Loading)}
             className={`flex-1 min-h-[48px] rounded-xl text-sm font-semibold transition-all ${
-              agreed
+              agreed && !(planCode === 'E2' && e2Loading)
                 ? 'bg-gold text-dark btn-glow cursor-pointer'
                 : 'bg-white/5 text-text-muted/40 cursor-not-allowed'
             }`}
           >
-            前往付款
+            {planCode === 'E2' && e2Loading ? '精算晦日中…' : '前往付款'}
           </button>
         </div>
       </div>
