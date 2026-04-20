@@ -87,10 +87,14 @@ export function useCheckoutForm() {
   // v5.3.22：E1 升級，「有固定時間」時填入精確時辰（HH:MM）
   const [e1EventExactTime, setE1EventExactTime] = useState('')
 
-  // E1/E2 十二時辰：子丑寅卯辰巳午未申酉戌亥，預設全不勾（讓客戶自己選）
+  // E1/E3 十二時辰候選池：子丑寅卯辰巳午未申酉戌亥（E2/E4 不用、引擎自動算）
   const [eSelectedBlocks, setESelectedBlocks] = useState<boolean[]>([
     false, false, false, false, false, false, false, false, false, false, false, false
   ])
+
+  // 方案 E3 週度補運：8 主題選擇（最多 3 個、按點選順序即 TOP 1/2/3）
+  // code 對應 types.ts 的 E3_TOPICS、順序即為客戶的優先序
+  const [e3SelectedTopics, setE3SelectedTopics] = useState<string[]>([])
 
   // Auth
   const [authChecked, setAuthChecked] = useState(false)
@@ -130,8 +134,15 @@ export function useCheckoutForm() {
     if (planCode === 'E1' && !e1StartDate) return false
     // E1 事件類型必填
     if (planCode === 'E1' && !e1EventType) return false
-    // E1/E2 時段
-    if ((planCode === 'E1' || planCode === 'E2') && !eSelectedBlocks.some(b => b)) return false
+    // v5.3.59 規格書對齊：
+    //   E1 候選時辰至少 1 個（挑 Top 3）
+    //   E3 候選時辰至少 3 個（84 候選池、每週挑 Top 2）
+    //   E2/E4 不需勾選（引擎自動算月盤/年盤）
+    const selectedCount = eSelectedBlocks.filter(b => b).length
+    if (planCode === 'E1' && selectedCount < 1) return false
+    if (planCode === 'E3' && selectedCount < 3) return false
+    // E3 必選 1-3 個主題
+    if (planCode === 'E3' && (e3SelectedTopics.length < 1 || e3SelectedTopics.length > 3)) return false
     // D 方案問事（其他）必填描述
     if (planCode === 'D' && dTopic === '問事（其他）' && !dOtherDesc.trim()) return false
     return true
@@ -594,8 +605,10 @@ export function useCheckoutForm() {
     e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
     e1EventType, setE1EventType, e1HasExactTime, setE1HasExactTime,
     e1EventExactTime, setE1EventExactTime,
-    // E1/E2 時段
+    // E1/E2 時段（E1/E3 用、E2/E4 不用）
     eSelectedBlocks, setESelectedBlocks,
+    // E3 週度補運主題（8 選 1-3、順序即 TOP 1/2/3）
+    e3SelectedTopics, setE3SelectedTopics,
     // 金額
     extraMemberCount, extraPrice, rExtraCount, totalPrice, finalPrice,
     // Auth

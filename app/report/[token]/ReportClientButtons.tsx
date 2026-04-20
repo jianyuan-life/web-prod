@@ -13,7 +13,8 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
   const [shareLabel, setShareLabel] = useState('分享報告')
   const [generating, setGenerating] = useState(false)
   const [generateMsg, setGenerateMsg] = useState<string | null>(null)
-  // E1/E2/E3/E4 出門訣全系列：不提供 PDF（深度綁定客戶回訪 web）
+  // v5.3.59 規格書對齊：E1-E4 全部提供 PDF（規格書明確要求）
+  // E1/E2 有金色日曆式按鈕、E3 8 卡片 PDF、E4 13 份 PDF 批次
   const isChumenji = planCode === 'E1' || planCode === 'E2' || planCode === 'E3' || planCode === 'E4'
 
   // PDF 下載追蹤（5 分鐘內同一報告不重複計算）
@@ -158,8 +159,8 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
           </a>
         )}
 
-        {/* E1-E4 出門訣系列：不提供 PDF 下載（深度綁定 web 閱讀體驗） */}
-        {/* 如未來恢復需要 PDF，將下面一行改為 {isChumenji && renderChumenjiPdfButton()} */}
+        {/* v5.3.59 規格書要求：E1-E4 出門訣全系列 PDF 按鈕（金色日曆式） */}
+        {isChumenji && renderChumenjiPdfButton()}
 
         <button
           onClick={handleShare}

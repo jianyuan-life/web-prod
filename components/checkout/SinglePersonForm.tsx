@@ -5,6 +5,7 @@ import HistoricalFigures from '@/components/HistoricalFigures'
 import FamilyMemberPicker from './FamilyMemberPicker'
 import BirthDataFields from './BirthDataFields'
 import TimeBlockPicker from './TimeBlockPicker'
+import ThemePicker from './ThemePicker'
 import CustomerNote from './CustomerNote'
 import ConfirmationModal from './ConfirmationModal'
 import { D_TOPICS, E1_EVENT_TYPES, type CheckoutFormState as FormState } from './types'
@@ -40,6 +41,9 @@ interface SinglePersonFormProps {
   // E1/E2 時段
   eSelectedBlocks: boolean[]
   setESelectedBlocks: (v: boolean[]) => void
+  // E3 週度補運主題（8 選 1-3、順序即 TOP 1/2/3）
+  e3SelectedTopics?: string[]
+  setE3SelectedTopics?: (v: string[]) => void
   // 備注
   customerNote: string
   setCustomerNote: (v: string) => void
@@ -69,6 +73,7 @@ export default function SinglePersonForm({
   e1EventType, setE1EventType, e1HasExactTime, setE1HasExactTime,
   e1EventExactTime, setE1EventExactTime,
   eSelectedBlocks, setESelectedBlocks,
+  e3SelectedTopics = [], setE3SelectedTopics = () => {},
   customerNote, setCustomerNote,
   loading, error, finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied, isFormValid, onSubmit,
   showConfirmModal, onCloseConfirmModal, onConfirmCheckout,
@@ -270,9 +275,36 @@ export default function SinglePersonForm({
         )
       })()}
 
-      {/* E1/E2 可配合出行時段 */}
-      {(planCode === 'E1' || planCode === 'E2') && (
-        <TimeBlockPicker eSelectedBlocks={eSelectedBlocks} setESelectedBlocks={setESelectedBlocks} />
+      {/* v5.3.59 規格書對齊：
+          - E1 事件出門訣：勾選候選時辰（最少 1 個）
+          - E2 月度出門訣：極簡、不勾時辰（引擎自動給當月主吉時）
+          - E3 週度補運：勾選候選時辰（最少 3 個）+ 主題選擇（8 類選 1-3）
+          - E4 年度方案：極簡、不勾時辰（引擎自動給年盤+12月盤） */}
+      {/* E3 主題選擇（8 選 1-3、TOP 1/2/3 按點選順序）*/}
+      {planCode === 'E3' && (
+        <ThemePicker selectedTopics={e3SelectedTopics} onChange={setE3SelectedTopics} />
+      )}
+
+      {(planCode === 'E1' || planCode === 'E3') && (
+        <TimeBlockPicker
+          eSelectedBlocks={eSelectedBlocks}
+          setESelectedBlocks={setESelectedBlocks}
+        />
+      )}
+      {planCode === 'E3' && (
+        <p className="text-[10px] text-gold/60 mt-1">
+          ⓘ E3 週度補運需勾選至少 3 個時辰（候選池要 84 個以上才能挑 Top 2 × 4 週）
+        </p>
+      )}
+      {(planCode === 'E2' || planCode === 'E4') && (
+        <div className="rounded-xl bg-gold/5 border border-gold/10 p-3">
+          <p className="text-xs text-text leading-[1.7]">
+            <strong className="text-gold">⚙ 引擎自動擇吉：</strong>
+            {planCode === 'E2'
+              ? '本方案採古法月盤推演、引擎自動算出當月主吉方與最佳吉時窗口、無需客戶勾選。'
+              : '本方案採年家奇門＋月家奇門、引擎自動推出年盤主吉方 + 12 個月盤各自吉時、無需客戶勾選。'}
+          </p>
+        </div>
       )}
 
       {/* 備注欄 */}
