@@ -730,8 +730,8 @@ function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   const directionWithAngle = formatDirectionWithAngle(timing.direction || '', timing.angle)
   // title 已是「天心(+天禽)休門」或「天心休門」，正規化為「天心+天禽+休門」
   const normalizedTitle = titleRaw
-    .replace(/\(\+([^)]+)\)/, '+$1')  // (+天禽) → +天禽
-    .replace(/([星宮天心輔衝芮禽柱英任蓬])([門])/, '$1+$2')  // 在門字前插 +
+    .replace(/\(\+([^)]+)\)/g, '+$1')  // (+天禽) → +天禽
+    .replace(/([^+\s])(開門|休門|生門|傷門|杜門|景門|死門|驚門)/g, '$1+$2')  // 在任何門字前插 +（除非已有 +）
     .replace(/\++/g, '+')  // 多個 + 合併
   const calTitle = `${normalizedTitle}(${directionWithAngle.replace(/\s/g, '')})`
   const title = encodeURIComponent(calTitle)
