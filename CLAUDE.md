@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.49（2026-04-19）
+**網站版本：** v5.3.50（2026-04-20）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,50 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.50（2026-04-20 Phase 1 UI 第一波：E1-E4 四方案 + 購買須知 Modal + 用詞規範）
+
+**Phase 1 首批交付（P1-01 + P1-02 + P1-05 部份）：**
+
+- ✅ **P1-01 Pricing 頁重構**：出門訣四方案 E1/E2/E3/E4 全面展開
+  - E1 事件出門訣 $89 → **$59**（單事件 Top3 吉時）
+  - E2 月度出門訣 $99 → **$29**（當月購買當月執行、單盤）
+  - **E3 月度訂閱 $89**（新）：主題用神 1-3 選、4 週共 8 個 Top 吉時、占事派用神 60% 權重
+  - **E4 年度出門訣 $279**（新、立春前 30 天限時）：年盤＋12 月盤、全年擇吉一次到位
+  - 新增「出門訣四方案對比表」（對象／吉時數／主題／年命宮／限時）
+  - FAQ 新增「四方案怎麼選」「一時一盤原則」問答
+  - 對應後端：Phase 0 的 `/api/v2/year-chart`、`/api/v2/month-chart`、`/api/v2/topic-yongshen`、`/api/v2/event-match` 已上線
+
+- ✅ **P1-02 購買前須知 Modal**：`components/PurchaseNoticeModal.tsx`
+  - 所有方案通用共同條款（不退款／確定性算法／永久保存）
+  - 各方案專屬須知（E1 一時一盤、E2 晦日 21:00 截止、E3 訂閱規則、E4 立春限時）
+  - 同意勾選後才可前往付款
+  - 整合到 `PricingButton` — 已登入點擊後先顯示 Modal、確認再跳 checkout
+
+- ✅ **P1-05 用詞規範（部份）**：不提「AI」、不用「陰盤」
+  - 首頁 FAQ「AI 引擎」→「引擎精密計算」
+  - 進度條說明「AI 分析當前深度」→「引擎精算當前深度」
+  - 免費工具「AI 解讀」→「引擎解讀」
+  - 家族動力圖說明「AI 報告」→「報告內容」
+  - TS Client 註解「王鳳麟陰盤奇門派」→「王鳳麟古法奇門遁甲派」
+
+**Phase 0 大里程碑（同日稍早）：**
+- 月家奇門 v4：知乎+易德軒雙源驗證（2026-04 癸巳月陰 1 局）
+- 年家奇門 v2：4 獨立權威源 + CDI 台灣年盤表 21 組 100% 交叉驗證
+- `personalization_scorer` 相對 import 修復
+- Fly.io `fortune-reports-api` version 82 部署成功，15 端點全上線
+- 命理研究部門 commits：`0b00ead`、`56dc6d4`
+
+**Phase 1 剩餘工作（下一波 v5.3.51+）：**
+- P1-03 取消 PDF 下載（全站 E1-E4）
+- P1-04 取消 Email 通知（全站 E1-E4）
+- P1-05 用詞規範其餘場所繼續掃
+- P1-06 E3/E4 填表頁動態欄位
+- P1-07 E3/E4 報告頁內容結構
+- P1-08 Dashboard E3/E4 適配
+- P1-09 行事曆邀約組件通用化（E1/E2/E3/E4 共用）
+- P1-QA 全面 QA/IA
+- 容量監控機制
 
 ### v5.3.49（2026-04-19 回到客戶認可版 — C/D/R prompt 還原 + Claude 改回 4-6）
 

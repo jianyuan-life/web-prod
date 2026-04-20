@@ -185,7 +185,7 @@ export default function FamilyDynamicsPanel({ members, aiContent }: FamilyDynami
       <div className="text-center mb-6">
         <div className="text-gold/60 text-xs tracking-[3px] uppercase mb-2">Family Dynamics</div>
         <h2 className="text-xl sm:text-2xl font-bold text-cream">家族動力全貌圖</h2>
-        <p className="text-text-muted/70 text-xs mt-2">根據 AI 報告自動抽取，快速掌握家庭能量結構</p>
+        <p className="text-text-muted/70 text-xs mt-2">由報告內容自動抽取，快速掌握家庭能量結構</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -328,7 +328,7 @@ export default function FamilyDynamicsPanel({ members, aiContent }: FamilyDynami
 
       {/* 底部提示 */}
       <div className="mt-6 pt-4 border-t border-gold/10 text-xs text-text-muted/60 text-center">
-        此圖由 AI 報告自動推導。詳細互動分析請閱讀「成員互動關係深度分析」章節。
+        此圖由報告內容自動推導。詳細互動分析請閱讀「成員互動關係深度分析」章節。
       </div>
     </div>
   )

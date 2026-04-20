@@ -876,7 +876,7 @@ export default function QimenToolPage() {
               </div>
             )}
 
-            {/* ═══ AI 解讀 ═══ */}
+            {/* ═══ 引擎解讀 ═══ */}
             {result.has_ai && result.ai_overview && (
               <AIAnalysisCard text={result.ai_overview} title="整體能量場解讀" accentColor="purple" />
             )}

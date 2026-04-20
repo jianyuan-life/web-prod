@@ -376,7 +376,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         </div>
         {/* 進度條意義說明（回應 gpt：部分用戶不明白進度條意義）*/}
         <div className="text-[10px] text-text-muted/60 leading-relaxed pt-0.5">
-          不關閉此頁亦可，報告完成會自動寄信通知您｜進度條反映 AI 分析當前深度，並非單純倒數計時
+          不關閉此頁亦可，報告完成會自動寄信通知您｜進度條反映引擎精算當前深度，並非單純倒數計時
         </div>
       </div>
 

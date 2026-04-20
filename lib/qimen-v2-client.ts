@@ -236,7 +236,7 @@ export const qimenV2 = {
   },
 
   /**
-   * 計算客戶年命宮（王鳳麟陰盤奇門派）
+   * 計算客戶年命宮（王鳳麟古法奇門遁甲派）
    */
   async lifePalace(params: {
     birth_year: number
