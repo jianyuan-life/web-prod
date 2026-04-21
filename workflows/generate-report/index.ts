@@ -742,34 +742,53 @@ export async function generateReportWorkflow(reportId: string) {
   try {
 
   // 4a. 優先使用引擎計算結果（不依賴 AI 輸出 JSON、E1/E2/E3 共用）
+  // v5.3.80：E2 v2.0 修正——handler 直接回傳 title/time_start/time_end/execution_date_lunar 等，不再從 time_range 切
   if ((planCode === 'E1' || planCode === 'E2' || planCode === 'E3') && chumenjiTop?.results?.length) {
-    top5Timings = chumenjiTop.results.map((r, i) => ({
-      rank: r.rank || i + 1,
-      title: `${r.star}${r.door}` || `第${i + 1}吉時`,
-      date: r.date || r.solar_date || '',
-      time_start: (typeof r.time_range === 'string' ? r.time_range.split('-')[0] : '').toString(),
-      time_end: (typeof r.time_range === 'string' ? r.time_range.split('-')[1] : '').toString(),
-      direction: r.direction || '',
-      reason: r.reason || '',
-      boost_explanation: '',
-      // v5.3.74：砍信心指數——引擎的 score/confidence 對客戶是噪音，符合命盤用神的盤都是好盤
-      confidence: '',
-      shensha_warning: r.shensha_warning || '',
-      zhishi_info: '',
-      week: r.week_number || null,
-      week_label: r.week_label || null,
-      week_range: r.week_range || null,
-      shichen: r.shichen || '',
-      door: r.door || '',
-      star: r.star || '',
-      shen: r.shen || '',
-      score: r.score || 0,
-      ju: r.ju || '',
-      gong: r.gong || '',
-      kongwang: r.kongwang || false,
-      plain_advantage: '',
-      plain_purpose: [] as string[],
-    }))
+    top5Timings = chumenjiTop.results.map((r, i) => {
+      const rr = r as unknown as Record<string, unknown>
+      // time_start/time_end：E2 v2.0 引擎直接提供；E1/E3 仍從 time_range 切
+      const explicitStart = typeof rr.time_start === 'string' ? (rr.time_start as string) : ''
+      const explicitEnd = typeof rr.time_end === 'string' ? (rr.time_end as string) : ''
+      const rangeStart = typeof rr.time_range === 'string' ? (rr.time_range as string).split('-')[0] : ''
+      const rangeEnd = typeof rr.time_range === 'string' ? (rr.time_range as string).split('-')[1] : ''
+      // title：E2 v2.0 引擎給「癸巳月本命吉時」；E1/E3 仍用 `${star}${door}` 組合
+      const explicitTitle = typeof rr.title === 'string' ? (rr.title as string) : ''
+      const composedTitle = `${r.star || ''}${r.door || ''}` || `第${i + 1}吉時`
+      return {
+        rank: r.rank || i + 1,
+        title: explicitTitle || composedTitle,
+        date: r.date || r.solar_date || '',
+        time_start: (explicitStart || rangeStart || '').toString(),
+        time_end: (explicitEnd || rangeEnd || '').toString(),
+        direction: r.direction || '',
+        reason: r.reason || '',
+        boost_explanation: '',
+        confidence: '',
+        shensha_warning: r.shensha_warning || '',
+        zhishi_info: '',
+        week: r.week_number || null,
+        week_label: r.week_label || null,
+        week_range: r.week_range || null,
+        shichen: r.shichen || '',
+        door: r.door || '',
+        star: r.star || '',
+        shen: r.shen || '',
+        score: r.score || 0,
+        ju: r.ju || '',
+        gong: r.gong || '',
+        kongwang: r.kongwang || false,
+        plain_advantage: '',
+        plain_purpose: [] as string[],
+        // v5.3.80 E2 v2.0 月家奇門欄位
+        angle: (rr.angle as string) || '',
+        execution_date_lunar: (rr.execution_date_lunar as string) || '',
+        yue_ganzhi: (rr.yue_ganzhi as string) || '',
+        year_ganzhi: (rr.year_ganzhi as string) || '',
+        nianming_gong: (rr.nianming_gong as string) || '',
+        backup_date_lunar: (rr.backup_date_lunar as string) || '',
+        backup_time: (rr.backup_time as string) || '',
+      }
+    })
     console.log(`${planCode} 吉時直接從引擎取得: ${top5Timings.length} 項`)
 
     // v5.3.74 P0：從 AI markdown 抽取每張卡片的「坐這個盤對你」bullets、塞進 plain_advantage + plain_purpose

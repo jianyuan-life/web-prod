@@ -1193,7 +1193,7 @@ ${PSYCHOLOGY_RULES}
   "week": 1,
   "title": "{month_gz}月本命吉時（月家奇門古法）",
   "date": "YYYY-MM-DD（引擎的 date）",
-  "execution_date_lunar": "{引擎的 execution_date_lunar，例：丙午年四月廿九}",
+  "execution_date_lunar": "{引擎的 execution_date_lunar，完全照抄引擎給的、不要自己改月份或日期}",
   "time_start": "22:20",
   "time_end": "23:00",
   "direction": "{引擎的方位，如「西」}",
@@ -1206,7 +1206,7 @@ ${PSYCHOLOGY_RULES}
     "【具體行動2】第二件事（不同維度）",
     "【具體行動3】第三件事"
   ],
-  "backup_date_lunar": "{引擎的 backup_date_lunar，例：丙午年五月初一}",
+  "backup_date_lunar": "{引擎的 backup_date_lunar，完全照抄、不要自己改}",
   "backup_time": "05:00-07:00"
 }
 ===TOP1_JSON_END===
