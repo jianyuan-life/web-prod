@@ -1146,8 +1146,9 @@ export async function callChumenjiTop(
       }
     }
   } else if (planCode === 'E2') {
-    // E2：從今天開始算 4 週（國曆）
-    body.start_date = new Date().toISOString().split('T')[0]
+    // v5.3.79 v2.0：E2 月家奇門古法、單月 1 盤
+    // handler 端會依伺服器當前時間自動算農曆晦日 22:20-23:00
+    // 不需要 start_date 或掃描參數
   } else if (planCode === 'E3') {
     // v5.3.62：E3 週度補運 — 從今天起 4 週、每週 Top 2 = 8 個吉時
     // 主題用神權重 60% + 基礎格局 20% + 年命宮 20%（古法占事派）
@@ -2534,34 +2535,31 @@ export async function qualityGate(
     }
   }
 
-  // 2c-2. E2 月度出門訣必要章節檢查（v5.3.19 簡化：移除每週坐盤補運/忌方忌日）
+  // 2c-2. E2 月度出門訣 v2.0 必要章節檢查（v5.3.79、月家奇門古法、單月 1 盤、500 字極簡）
   if (planCode === 'E2') {
     const e2Required = [
-      { pattern: /本月出行能量總覽|本月出行能量概覽/, name: '本月出行能量總覽' },
-      { pattern: /第一週/, name: '第一週' },
-      { pattern: /第二週/, name: '第二週' },
-      { pattern: /第三週/, name: '第三週' },
-      { pattern: /第四週/, name: '第四週' },
+      { pattern: /本月能量總覽|本月出行能量/, name: '本月能量總覽' },
+      { pattern: /本月最佳出行時機|最佳出行時機/, name: '本月最佳出行時機' },
       { pattern: /補運操作指南|操作指南/, name: '補運操作指南' },
-      { pattern: /月度總結/, name: '月度總結' },
+      { pattern: /月度執行提醒/, name: '月度執行提醒' },
+      { pattern: /寫給你的話/, name: '寫給你的話' },
     ]
     for (const sec of e2Required) {
       if (!sec.pattern.test(reportContent)) {
         warnings.push(`月度出門訣缺少必要章節: ${sec.name}`)
       }
     }
-    // E2 應有四個 Top1 JSON 區塊（每週一個），相容舊版 TOP5 標記
+    // E2 v2.0 只需要 1 個 TOP1 JSON 區塊（單月盤）
     const top1Matches = reportContent.match(/===TOP1_JSON_START===/g)
-    const top5Matches = reportContent.match(/===TOP5_JSON_START===/g)
-    const totalJsonBlocks = (top1Matches?.length || 0) + (top5Matches?.length || 0)
-    if (totalJsonBlocks === 0) {
-      warnings.push('月度出門訣缺少吉時 JSON 區塊')
-    } else if (totalJsonBlocks < 4) {
-      warnings.push(`月度出門訣 JSON 區塊不足: 找到 ${totalJsonBlocks} 個（期望 4 個，每週一個）`)
+    const count = top1Matches?.length || 0
+    if (count === 0) {
+      warnings.push('月度出門訣缺少吉時 JSON 區塊（期望 1 個單月盤）')
+    } else if (count > 1) {
+      warnings.push(`月度出門訣 JSON 區塊過多: 找到 ${count} 個（v2.0 期望 1 個單月盤）`)
     }
-    // 內容長度檢查（四週格式預期更長）
-    if (reportContent.length < 5000) {
-      warnings.push(`月度出門訣內容偏短: ${reportContent.length} 字（期望 > 5,000 字）`)
+    // 內容長度檢查（v2.0 極簡、500-800 字）
+    if (reportContent.length < 400) {
+      warnings.push(`月度出門訣內容偏短: ${reportContent.length} 字（v2.0 期望 > 400 字）`)
     }
   }
 

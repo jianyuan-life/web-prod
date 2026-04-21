@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.78（2026-04-20）
+**網站版本：** v5.3.79（2026-04-21 E2 月度出門訣 v2.0 月家奇門古法接入）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,45 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.79（2026-04-21 E2 月度出門訣 v2.0 月家奇門古法接入）
+
+**E2 徹底重寫——從「4 週每週 Top1」改為「月家奇門古法·單月 1 盤·農曆晦日 22:20-23:00 執行」：**
+
+**前端改動（page.tsx）：**
+- Top5Timing 介面擴充 E2 v2.0 欄位：`execution_date_lunar`、`yue_ganzhi`、`year_ganzhi`、`nianming_gong`、`gong`、`ju`、`backup_date_lunar`、`backup_time`
+- E2 月份卡改為「月家奇門古法 · 本月月盤」，從 `top5Timings[0]` 讀農曆晦日、月干支、局名
+- 吉時卡片在國曆日期下方新增「農曆晦日：{丙午年四月廿九}」
+- 行事曆按鈕前新增「月朔備案」區塊（藍底、錯過晦日才用）
+
+**Workflow 改動：**
+- `plan-prompts.ts` E2 段重寫為 500-800 字極簡版：月家奇門古法、單月 1 盤、晦日 22:20-23:00 執行、禁跨系統術語、禁 4 週結構
+- `steps.ts` 品質閘門改為 v2.0 必要章節（本月能量總覽/最佳出行時機/補運操作指南/月度執行提醒/寫給你的話）+ 期望 1 個 TOP1_JSON（非 4 個）+ 長度門檻 400 字
+- `steps.ts` callChumenjiTop E2 分支清空 start_date（handler 自動用伺服器當前時間算晦日）
+- `_serialize_top` 擴充 E2 v2.0 欄位直通前端
+
+**Python 後端改動（命理研究部門）：**
+- 新增 `api_server/calculators/e2_month_handler.py`（獨立 handler、不動任何 E3 禁區檔）
+- 新增 `api_server/calculators/month_family_qimen_v5_verified.py`（v5 引擎 A 派修正版：孟→坎一陰1、仲→巽四陰4、季→兌七陰7，立春用 getYearInGanZhiExact）
+- `api_server.py` E2 分支重寫為呼叫 `compute_e2_month_timing(birth_year_dizhi, now)`，返回單張月盤卡片
+
+**200% 保證——E3 禁區 SHA256 完整未變：**
+- `api_server/calculators/qimen_dunjia.py` ✅
+- `api_server/monthly_qimen.py` ✅
+- `api_server/calculators/month_family_qimen.py` ✅
+- `api_server/calculators/year_family_qimen.py` ✅
+
+**驗證結果：**
+- 階段 1 S1 局數驗證 20/20 通過（A 派古法主流）
+- E2 handler 5 組客戶模擬測試通過（何紀萳/何宣逸/施俊光/子年/卯年晦日切月）
+- TypeScript type-check 零錯誤
+
+**規格書：** `D:\Users\Desktop\奇門遁甲方案\E2_月度出門訣規格書_v2.md`
+**進度報告：** `D:\Users\Desktop\奇門遁甲方案\E2_完整規劃報告_v2_今晚進度.md`
+
+**已知議題（上線後首 3 客戶人工抽驗重點）：**
+- `_find_main_auspicious_palace` 50/50 打分中年命宮權重偏強、可能讓凶門宮位（如死門）被選為主吉方，需首 3 筆 E2 訂單實測後微調
+- S2 值符值使 + S3 九宮盤未取 A 派實例對照（β 策略通過：信邏輯鏈 + 上線後人工抽驗）
 
 ### v5.3.72-v5.3.78（2026-04-20 E3 週度補運全面完善 + UI 設計哲學確立）
 

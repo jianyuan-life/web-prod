@@ -61,6 +61,15 @@ interface Top5Timing {
   star?: string
   door?: string
   shen?: string
+  // v5.3.79 E2 v2.0：月家奇門古法新增欄位
+  execution_date_lunar?: string  // 農曆晦日（如「丙午年四月廿九」）
+  yue_ganzhi?: string            // 月干支（如「癸巳」）
+  year_ganzhi?: string           // 年干支（如「丙午」）
+  nianming_gong?: string         // 年命宮
+  gong?: string                  // 臨宮（如「兌七」）
+  ju?: string                    // 局名（如「陰遁 4 局」）
+  backup_date_lunar?: string     // 備案農曆日
+  backup_time?: string           // 備案時辰（如「05:00-07:00」）
 }
 
 interface ReportData {
@@ -1882,8 +1891,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── E2 方案：月份卡 ──── */}
-        {report.plan_code === 'E2' && report.birth_data?.target_month && (
+        {/* ──── E2 方案 v2.0：月度出行規劃卡 ──── */}
+        {report.plan_code === 'E2' && top5Timings.length > 0 && (
           <div className="rounded-2xl p-6 sm:p-8 mb-8 relative overflow-hidden text-center" style={{
             background: 'linear-gradient(135deg, rgba(197,150,58,0.10), rgba(26,42,74,0.4))',
             border: '1px solid rgba(197,150,58,0.25)',
@@ -1891,21 +1900,18 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <div aria-hidden className="absolute -top-8 -right-8 w-32 h-32 opacity-[0.08]" style={{
               background: 'radial-gradient(circle, rgba(201,168,76,1) 0%, transparent 70%)',
             }} />
-            <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 uppercase">月度出行規劃</div>
+            <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 uppercase">月家奇門古法 · 本月月盤</div>
             <div className="text-3xl sm:text-4xl font-bold text-gold tracking-wider" style={{
               fontFamily: 'var(--font-sans)',
               textShadow: '0 0 20px rgba(197,150,58,0.25)',
             }}>
-              {(() => {
-                const m = report.birth_data.target_month
-                if (/^\d{4}-\d{2}$/.test(m)) {
-                  const [y, mm] = m.split('-')
-                  return `${y} 年 ${Number(mm)} 月`
-                }
-                return m
-              })()}
+              {top5Timings[0]?.execution_date_lunar || top5Timings[0]?.date || ''}
             </div>
-            <div className="text-text-muted/70 text-xs mt-2">共 4 週 · 每週 Top1 最佳出行時機</div>
+            <div className="text-text-muted/70 text-xs mt-2">
+              {top5Timings[0]?.yue_ganzhi ? `${top5Timings[0].yue_ganzhi}月 · ` : ''}
+              {top5Timings[0]?.ju ? `${top5Timings[0].ju} · ` : ''}
+              單月 1 盤 · 農曆晦日 22:20-23:00 執行
+            </div>
           </div>
         )}
 
@@ -2183,13 +2189,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   }}
                 >
                   {/* v5.3.75：取消排名標識（🥇🥈🥉 + #N）——符合命盤就是好盤、不強調比較
-                      方位加度數顯示（東→東 90°）讓客戶直接拿指南針對著走 */}
+                      方位加度數顯示（東→東 90°）讓客戶直接拿指南針對著走
+                      v5.3.79 E2 v2.0：加農曆晦日顯示、加月朔備案提醒 */}
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <div className="text-cream font-semibold">{timing.title}</div>
                       <div className="text-text-muted text-sm mt-0.5">
                         {formatTimingDate(timing.date)}&nbsp;&nbsp;{timing.time_start} - {timing.time_end}
                       </div>
+                      {report.plan_code === 'E2' && timing.execution_date_lunar && (
+                        <div className="text-gold/70 text-xs mt-1">
+                          農曆晦日：{timing.execution_date_lunar}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="text-xs text-text-muted/50">建議方位</div>
@@ -2260,6 +2272,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       }} />
                     </div>
                   </details>
+
+                  {/* v5.3.79 E2 v2.0：月朔備案提示（若引擎給了 backup_date_lunar + backup_time）*/}
+                  {report.plan_code === 'E2' && timing.backup_date_lunar && timing.backup_time && (
+                    <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(59,130,246,0.06)', borderLeft: '3px solid #3b82f6' }}>
+                      <div className="text-blue-400/80 text-xs mb-1 font-medium">🌅 月朔備案（錯過晦日才用）</div>
+                      <p className="text-text-muted text-sm leading-6">
+                        {timing.backup_date_lunar}（月朔日清晨）{timing.backup_time}，朝同一吉方走 40 分鐘。效果約為晦日版的 70%。
+                      </p>
+                    </div>
+                  )}
 
                   {/* Google Calendar 按鈕 */}
                   <a
