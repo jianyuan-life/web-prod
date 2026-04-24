@@ -7,7 +7,7 @@ import { getDPlanSystemPrompt, getDPlanStructurePrompt } from '@/prompts/d_plan_
 import { getRPlanSystemPrompt, getRPlanStructurePrompt } from '@/prompts/r_plan_v2'
 
 // ── 論述倫理硬性規則（全方案共用，絕對不可違反）──
-const ETHICS_RULES = `【🚨 論述倫理硬性規則（絕對不可違反，違反視為不合格報告）】
+export const ETHICS_RULES = `【🚨 論述倫理硬性規則（絕對不可違反，違反視為不合格報告）】
 
 1. **禁止絕對預測語氣**：
    ❌ 不准用「會、必定、鐵定、保證、絕對、一定、注定」等絕對語氣談未來事件

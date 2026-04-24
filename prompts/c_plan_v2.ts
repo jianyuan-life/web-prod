@@ -14,6 +14,14 @@
 // ============================================================
 
 import { getPersonaByDayMaster } from '@/lib/profiles'
+import { ETHICS_RULES } from '@/workflows/generate-report/plan-prompts'
+
+// ── 派別硬鎖（C/D/R 全方案共用，禁止跨派混寫）──
+const SCHOOL_LOCK = `【🔒 派別硬鎖（禁止混派混寫，違反視為不合格報告）】
+- 紫微斗數：固定採北派古法（《紫微斗數全書》基準），禁用南派/中州派的結論混寫
+- 吠陀占星：固定採 Parashari 主流 + Lahiri Ayanamsa，禁用 Jaimini/KP 體系混寫
+- 八字四柱：固定採子平派（正格十神理論），禁用盲派斷事法混入
+同一系統在整份報告內只能採單一派別的斷法，不可同段或同節跨派切換。`
 
 // ── 年齡分層判斷 ──
 export function getAgeGroup(birthYear: number): 'toddler' | 'child' | 'teen' | 'adult' | 'elder' {
@@ -63,7 +71,11 @@ const AGE_INSTRUCTIONS: Record<string, string> = {
 // ── 犀利版 system prompt（所有 call 共用）──
 function getSystemPrompt(locale?: string): string {
   const lang = locale === 'zh-CN' ? '簡體中文' : '繁體中文'
-  return `你是鑒源命理平台的首席命理顧問。你正在為付費客戶撰寫「人生藍圖」報告。
+  return `${ETHICS_RULES}
+
+${SCHOOL_LOCK}
+
+你是鑒源命理平台的首席命理顧問。你正在為付費客戶撰寫「人生藍圖」報告。
 
 【報告的終極使命——客戶讀完必須有這四個反應】
 1. 「這就是我不好的地方！」——直面自己的盲點和課題，不逃避

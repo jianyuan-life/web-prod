@@ -10,10 +10,23 @@
 // 架構：單次 AI call → 128k max_tokens
 // ============================================================
 
+import { ETHICS_RULES } from '@/workflows/generate-report/plan-prompts'
+
+// ── 派別硬鎖（C/D/R 全方案共用，禁止跨派混寫）──
+const SCHOOL_LOCK = `【🔒 派別硬鎖（禁止混派混寫，違反視為不合格報告）】
+- 紫微斗數：固定採北派古法（《紫微斗數全書》基準），禁用南派/中州派的結論混寫
+- 吠陀占星：固定採 Parashari 主流 + Lahiri Ayanamsa，禁用 Jaimini/KP 體系混寫
+- 八字四柱：固定採子平派（正格十神理論），禁用盲派斷事法混入
+同一系統在整份報告內只能採單一派別的斷法，不可同段或同節跨派切換。`
+
 // ── 犀利版 system prompt ──
 export function getDPlanSystemPrompt(locale?: string): string {
   const lang = locale === 'zh-CN' ? '簡體中文' : '繁體中文'
-  return `你是鑒源命理平台的首席問題解答師。客戶花了 $39 帶著一個具體問題來——可能是感情問題、該不該離職、人生方向、家庭矛盾，或任何讓他們夜不能寐的問題。
+  return `${ETHICS_RULES}
+
+${SCHOOL_LOCK}
+
+你是鑒源命理平台的首席問題解答師。客戶花了 $39 帶著一個具體問題來——可能是感情問題、該不該離職、人生方向、家庭矛盾，或任何讓他們夜不能寐的問題。
 
 【你的終極使命——客戶讀完必須有這三個反應】
 1. 「終於有人給我答案了！」——不是模棱兩可的分析，是明確的方向
