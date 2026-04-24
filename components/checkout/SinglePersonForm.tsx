@@ -213,10 +213,20 @@ export default function SinglePersonForm({
                 min={minStartDate}
                 max={maxStartDate}
                 onChange={(e) => {
-                  setE1StartDate(e.target.value)
-                  // 如果結束日期超過新開始日期+30 天，自動清空
+                  const v = e.target.value
+                  // v5.3.87 強制驗證:HTML5 min/max 只是提示、用戶可打字繞過、這裡強制鎖死
+                  if (v && v < minStartDate) {
+                    alert(`事件日期最早只能選 ${minStartDate}(今天+7 天)\n\n為什麼?需要 3-5 分鐘排盤分析 + 客戶事前準備時間。`)
+                    return
+                  }
+                  if (v && v > maxStartDate) {
+                    alert(`事件日期最晚只能選 ${maxStartDate}(今天+30 天內)\n\n為什麼?奇門遁甲吉時推薦最佳有效期為 30 天。`)
+                    return
+                  }
+                  setE1StartDate(v)
+                  // 如果結束日期超過新開始日期+30 天,自動清空
                   if (e1EndDate) {
-                    const newMax = new Date(new Date(e.target.value).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                    const newMax = new Date(new Date(v).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
                     if (e1EndDate > newMax) setE1EndDate('')
                   }
                 }}
@@ -231,7 +241,20 @@ export default function SinglePersonForm({
                 value={e1EndDate}
                 min={e1StartDate || minStartDate}
                 max={maxEnd}
-                onChange={(e) => setE1EndDate(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value
+                  // v5.3.87 強制驗證
+                  const effectiveMin = e1StartDate || minStartDate
+                  if (v && v < effectiveMin) {
+                    alert(`截止日期不能早於開始日期 ${effectiveMin}`)
+                    return
+                  }
+                  if (v && v > maxEnd) {
+                    alert(`截止日期最晚只能選 ${maxEnd}(開始日+30 天)`)
+                    return
+                  }
+                  setE1EndDate(v)
+                }}
                 placeholder="不填則預設 1 個月"
                 className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
               />
