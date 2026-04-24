@@ -206,7 +206,7 @@ export default function SinglePersonForm({
           <p className="text-sm font-semibold text-gold">事件日期</p>
           <div>
             <label className="block text-xs text-text-muted mb-1">您的事件會在哪一天發生？*</label>
-            {/* v5.3.91 簡化:只要事件日、系統自動從明天(T+1)開始找吉時、到事件日為止 */}
+            {/* v5.3.92 規則:最早 T+7(給足準備時間)、最晚 T+30(一個月內) */}
             <select
               required
               value={e1EndDate}
@@ -214,15 +214,15 @@ export default function SinglePersonForm({
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none cursor-pointer"
             >
               <option value="">請選擇事件日期</option>
-              {Array.from({ length: 30 }, (_, i) => {
-                const days = i + 2  // T+2 起(給出 1 天準備),到 T+31
+              {Array.from({ length: 24 }, (_, i) => {
+                const days = i + 7  // T+7 起(最早 7 天後),到 T+30(最晚 30 天內)
                 const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
                 const v = d.toISOString().split('T')[0]
                 const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
                 return <option key={v} value={v}>{v} (週{weekday}、{days} 天後)</option>
               })}
             </select>
-            <p className="text-[10px] text-text-muted/60 mt-1">💡 系統會從明天開始、到您的事件日為止、找出 Top 3 最佳吉時</p>
+            <p className="text-[10px] text-text-muted/60 mt-1">💡 為保證排盤與前置補運品質、事件日最早需 7 天後、最晚 30 天內。系統會從明天開始找 Top 3 最佳吉時</p>
           </div>
 
           {/* v5.3.22：yes 模式下要求填事件確切時辰 */}
