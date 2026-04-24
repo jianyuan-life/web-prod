@@ -27,9 +27,7 @@ interface SinglePersonFormProps {
   setDTopic: (v: string) => void
   dOtherDesc: string
   setDOtherDesc: (v: string) => void
-  // E1 方案
-  e1StartDate: string
-  setE1StartDate: (v: string) => void
+  // E1 方案（v5.3.93：砍 e1StartDate,系統自動 T+1）
   e1EndDate: string
   setE1EndDate: (v: string) => void
   e1EventType: string
@@ -69,7 +67,7 @@ export default function SinglePersonForm({
   cityResults, onCitySearch, onCitySelect,
   onCountrySelect, onCancelCountry, needCityForCountry,
   dTopic, setDTopic, dOtherDesc, setDOtherDesc,
-  e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
+  e1EndDate, setE1EndDate,
   e1EventType, setE1EventType, e1HasExactTime, setE1HasExactTime,
   e1EventExactTime, setE1EventExactTime,
   eSelectedBlocks, setESelectedBlocks,
@@ -152,29 +150,23 @@ export default function SinglePersonForm({
         </div>
       )}
 
-      {/* 方案 E1：事件類型 + 事件日期範圍（最早 7 天後、最晚 30 天內） */}
-      {planCode === 'E1' && (() => {
-        // 事件日期規則：最早今天+7 天（給足排盤準備與提前準備時間）、最晚今天+30 天
-        const minStartDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        const maxStartDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        const maxEnd = e1StartDate
-          ? new Date(new Date(e1StartDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          : maxStartDate
-        return (
+      {/* 方案 E1：事件類型 + 事件日期（最早 T+7、最晚 T+30） */}
+      {planCode === 'E1' && (
         <div className="border-t border-gold/10 pt-4 space-y-3">
           {/* 事件類型 */}
           <div>
-            <label className="block text-sm font-semibold text-gold mb-2">事件類型 *</label>
+            <label htmlFor="e1-event-type" className="block text-sm font-semibold text-gold mb-2">事件類型 *</label>
             <select
+              id="e1-event-type"
               required
               value={e1EventType}
               onChange={(e) => setE1EventType(e.target.value)}
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
             >
-              <option value="" className="bg-[#1a1a2e] text-white">請選擇事件類型</option>
+              <option value="" disabled className="bg-[#1a1a2e] text-white">請選擇事件類型</option>
               {E1_EVENT_TYPES.map((t) => <option key={t} value={t} className="bg-[#1a1a2e] text-white">{t}</option>)}
             </select>
-            <p className="text-[10px] text-text-muted/60 mt-1">系統會依據事件類型調整吉時篩選條件（如財運 vs. 貴人 vs. 安全等）</p>
+            <p className="text-[10px] text-text-muted/60 mt-1">您選的事件類型會決定吉時的「守護面向」— 例如面試優先找有貴人星的時辰、手術優先找天醫守護的時辰</p>
           </div>
 
           {/* 有無明確時間 */}
@@ -203,17 +195,18 @@ export default function SinglePersonForm({
             <p className="text-[10px] text-text-muted/60 mt-1">{e1HasExactTime === 'yes' ? '請於下方事件描述註明確切時間，系統會驗證該時辰的吉凶' : '系統會從事件日期範圍內找出 Top3 最佳吉時'}</p>
           </div>
 
-          <p className="text-sm font-semibold text-gold">事件日期</p>
+          {/* 事件日期 */}
           <div>
-            <label className="block text-xs text-text-muted mb-1">您的事件會在哪一天發生？*</label>
+            <label htmlFor="e1-event-date" className="block text-sm font-semibold text-gold mb-2">事件日期 *</label>
             {/* v5.3.92 規則:最早 T+7(給足準備時間)、最晚 T+30(一個月內) */}
             <select
+              id="e1-event-date"
               required
               value={e1EndDate}
               onChange={(e) => setE1EndDate(e.target.value)}
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none cursor-pointer"
             >
-              <option value="">請選擇事件日期</option>
+              <option value="" disabled>請選擇您的事件日期</option>
               {Array.from({ length: 24 }, (_, i) => {
                 const days = i + 7  // T+7 起(最早 7 天後),到 T+30(最晚 30 天內)
                 const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
@@ -222,14 +215,15 @@ export default function SinglePersonForm({
                 return <option key={v} value={v}>{v} (週{weekday}、{days} 天後)</option>
               })}
             </select>
-            <p className="text-[10px] text-text-muted/60 mt-1">💡 為保證排盤與前置補運品質、事件日最早需 7 天後、最晚 30 天內。系統會從明天開始找 Top 3 最佳吉時</p>
+            <p className="text-[10px] text-text-muted/60 mt-1">💡 為保證排盤品質與前置補運時間、事件日需 7-30 天內。系統會從明天開始為您找 Top 3 最佳吉時</p>
           </div>
 
           {/* v5.3.22：yes 模式下要求填事件確切時辰 */}
           {e1HasExactTime === 'yes' && (
             <div className="mt-3 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.2)' }}>
-              <label className="block text-sm font-semibold text-gold mb-2">事件確切時間 *（HH:MM）</label>
+              <label htmlFor="e1-exact-time" className="block text-sm font-semibold text-gold mb-2">事件確切時間 *（HH:MM）</label>
               <input
+                id="e1-exact-time"
                 type="time"
                 required
                 value={e1EventExactTime}
@@ -237,29 +231,28 @@ export default function SinglePersonForm({
                 className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
               />
               <p className="text-[10px] text-text-muted/60 mt-1">
-                事件的確切開始時間（如：面試 14:00、簽約 15:30）。
-                系統會**直接評估這個時辰的吉凶**並提供前置補運建議，而不只是找 Top 3 吉時。
+                事件的確切開始時間（如：面試 14:00、簽約 15:30）。系統會直接評估這個時辰的吉凶並提供前置補運建議、而不只是找 Top 3 吉時。
               </p>
             </div>
           )}
           <div className="mt-4">
-            <label className="block text-sm font-semibold text-gold mb-2">事件描述 *（最多 200 字）</label>
+            <label htmlFor="e1-event-desc" className="block text-sm font-semibold text-gold mb-2">事件描述 *（最多 400 字）</label>
             <textarea
+              id="e1-event-desc"
               required
-              maxLength={200}
-              rows={4}
+              maxLength={400}
+              rows={5}
               placeholder={e1HasExactTime === 'yes'
-                ? '請描述事件與確切時間（如：4月25日下午3點面試，對方是科技公司HR）...'
-                : '請描述事件背景（如：重要面試、簽約、旅行、搬家）與希望達成的目標...'}
+                ? '請描述事件背景+確切時間（如：下午3點面試科技公司HR、對方要求介紹三個作品、希望對方留下專業印象）…'
+                : '請描述事件背景（如：重要面試、簽約、搬家）與您希望達成的目標、系統會依此推薦最契合的吉時…'}
               value={customerNote}
               onChange={(e) => setCustomerNote(e.target.value)}
               className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none resize-none placeholder:text-text-muted/40"
             />
-            <p className="text-[10px] text-text-muted/50 text-right mt-1">{customerNote.length}/200</p>
+            <p className="text-[10px] text-text-muted/50 text-right mt-1">{customerNote.length}/400</p>
           </div>
         </div>
-        )
-      })()}
+      )}
 
       {/* v5.3.59 規格書對齊：
           - E1 事件出門訣：勾選候選時辰（最少 1 個）
@@ -337,7 +330,6 @@ export default function SinglePersonForm({
         form={form}
         timeMode={timeMode}
         loading={loading}
-        e1StartDate={e1StartDate}
         e1EndDate={e1EndDate}
         e1EventType={e1EventType}
         e1HasExactTime={e1HasExactTime}

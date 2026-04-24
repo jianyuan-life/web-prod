@@ -34,7 +34,6 @@ interface ConfirmationModalProps {
   }
   timeMode: 'unknown' | 'shichen' | 'exact'
   loading: boolean
-  e1StartDate?: string
   e1EndDate?: string
   e1EventType?: string
   e1HasExactTime?: 'yes' | 'no'
@@ -44,7 +43,7 @@ interface ConfirmationModalProps {
 
 export default function ConfirmationModal({
   show, onClose, onConfirm, planCode, form, timeMode, loading,
-  e1StartDate, e1EndDate, e1EventType, e1HasExactTime, eSelectedBlocks, customerNote,
+  e1EndDate, e1EventType, e1HasExactTime, eSelectedBlocks, customerNote,
   finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied,
 }: ConfirmationModalProps) {
   if (!show) return null
@@ -99,25 +98,38 @@ export default function ConfirmationModal({
             <span className="text-white font-medium">{form.birthCity}</span>
           </div>
 
-          {/* E1/E2 專屬：事件日期+可配合時辰+事件描述 */}
-          {(planCode === 'E1' || planCode === 'E2') && (
+          {/* E1 專屬：事件類型+日期+時間+可配合時辰+事件描述 */}
+          {/* v5.3.93 修正：E2 不走這裡(E2 單月 1 盤、不需事件日期) */}
+          {planCode === 'E1' && (
             <>
-              {planCode === 'E1' && e1EventType && (
+              {e1EventType && (
                 <div className="flex justify-between items-center py-2 border-b border-white/10">
                   <span className="text-text-muted text-sm">事件類型</span>
                   <span className="text-white font-medium">{e1EventType}</span>
                 </div>
               )}
-              {planCode === 'E1' && e1HasExactTime && (
+              {e1HasExactTime && (
                 <div className="flex justify-between items-center py-2 border-b border-white/10">
                   <span className="text-text-muted text-sm">有無固定時間</span>
                   <span className="text-white font-medium">{e1HasExactTime === 'yes' ? '有（固定時間）' : '無（找最佳吉時）'}</span>
                 </div>
               )}
-              {planCode === 'E1' && e1EndDate && (
-                <div className="flex justify-between items-center py-2 border-b border-white/10">
-                  <span className="text-text-muted text-sm">事件日期</span>
-                  <span className="text-white font-medium">{e1EndDate}</span>
+              {e1EndDate && (
+                <div className="py-2 border-b border-white/10">
+                  <div className="flex justify-between items-center">
+                    <span className="text-text-muted text-sm">事件日期</span>
+                    <span className="text-white font-medium">{e1EndDate}</span>
+                  </div>
+                  {/* v5.3.93 透明度提示：讓客戶在付款前知道系統會從哪天開始找吉時 */}
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-text-muted/70 text-[11px]">吉時搜尋區間</span>
+                    <span className="text-gold/80 text-[11px]">
+                      {(() => {
+                        const tPlus1 = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                        return `${tPlus1} ~ ${e1EndDate} 找 Top 3`
+                      })()}
+                    </span>
+                  </div>
                 </div>
               )}
               {eSelectedBlocks && eSelectedBlocks.some(b => b) && (

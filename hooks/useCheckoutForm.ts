@@ -79,8 +79,7 @@ export function useCheckoutForm() {
   // 方案 G15（舊版保留兼容）
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([newMember(), newMember()])
 
-  // 方案 E1
-  const [e1StartDate, setE1StartDate] = useState('')
+  // 方案 E1（v5.3.93：砍 e1StartDate,開始日期系統自動設 T+1）
   const [e1EndDate, setE1EndDate] = useState('')
   const [e1EventType, setE1EventType] = useState('')
   const [e1HasExactTime, setE1HasExactTime] = useState<'yes' | 'no'>('no')
@@ -612,7 +611,7 @@ export function useCheckoutForm() {
     // 家庭成員（保留供 UI 相容）
     familyMembers, updateFamilyMember, addFamilyMember, removeFamilyMember,
     // E1 方案
-    e1StartDate, setE1StartDate, e1EndDate, setE1EndDate,
+    e1EndDate, setE1EndDate,
     e1EventType, setE1EventType, e1HasExactTime, setE1HasExactTime,
     e1EventExactTime, setE1EventExactTime,
     // E1/E2 時段（E1/E3 用、E2/E4 不用）

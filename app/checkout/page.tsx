@@ -282,8 +282,6 @@ function CheckoutForm() {
             setDTopic={ctx.setDTopic}
             dOtherDesc={ctx.dOtherDesc}
             setDOtherDesc={ctx.setDOtherDesc}
-            e1StartDate={ctx.e1StartDate}
-            setE1StartDate={ctx.setE1StartDate}
             e1EndDate={ctx.e1EndDate}
             setE1EndDate={ctx.setE1EndDate}
             e1EventType={ctx.e1EventType}
