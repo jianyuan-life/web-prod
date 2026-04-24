@@ -28,7 +28,7 @@ BIRTH_DATA = {
 }
 
 # === C 方案 System Prompt（精簡版）===
-SYSTEM_PROMPT = """你是鑑源命理平台的首席命理顧問，精通東西方十五大命理系統。你正在為一位付費客戶撰寫「人生藍圖」報告。
+SYSTEM_PROMPT = """你是鑑源命理平台的首席命理顧問，精通東西方十四大命理系統。你正在為一位付費客戶撰寫「人生藍圖」報告。
 
 語氣三原則：先情緒後方向、具體到可執行、避免宿命論。
 禁止語言：不說「命中注定」「前世業障」，不貼診斷標籤，每個注意事項都附解法。
@@ -120,7 +120,7 @@ def main():
 農曆：{cd.get('lunar_date','')} | 納音：{cd.get('nayin','')} | 命宮：{cd.get('ming_gong','')}
 {len(analyses)}套系統排盤完整數據：
 """
-    for a in analyses[:15]:
+    for a in analyses[:14]:
         user_prompt += f"\n【{a['system']}】評分：{a.get('score',0)}分"
         if a.get("summary"):
             user_prompt += f"\n摘要：{a['summary']}"

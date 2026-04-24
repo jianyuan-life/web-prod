@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: '鑑源命理學術白皮書 | 15 系統交叉驗證方法論',
+  title: '鑑源命理學術白皮書 | 14 系統交叉驗證方法論',
   description:
     '4,600+ 條規則來源盤點、365 天 Windada 驗證、12 位中港台客戶八字一致率 100%、16 位紫微 3-way 驗證、20 組奇門時辰盤局數一致率 100%。鑑源命理研究部門公開發布。',
   keywords: [
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: '鑑源命理學術白皮書 v1.0',
     description:
-      '給專業人士看的研究：鑑源如何把 15 套命理系統做到可交叉驗證、可追溯、可回歸測試。',
+      '給專業人士看的研究：鑑源如何把 14 套命理系統做到可交叉驗證、可追溯、可回歸測試。',
     type: 'article',
     url: 'https://jianyuan.life/whitepaper',
     images: ['/logo-full.svg'],
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '鑑源命理學術白皮書 v1.0',
-    description: '15 系統交叉驗證方法論與工業級排盤引擎技術報告。',
+    description: '14 系統交叉驗證方法論與工業級排盤引擎技術報告。',
   },
   alternates: {
     canonical: 'https://jianyuan.life/whitepaper',
@@ -48,7 +48,7 @@ export default function WhitepaperPage() {
           鑑源命理學術白皮書
         </h1>
         <p className="text-lg md:text-xl text-text-muted max-w-2xl mx-auto leading-relaxed">
-          15 系統交叉驗證方法論與工業級排盤引擎技術報告
+          14 系統交叉驗證方法論與工業級排盤引擎技術報告
         </p>
         <div className="mt-6 text-sm text-text-muted">
           版本 v1.0 · 2026 年 4 月 17 日 · 鑑源命理研究部門編纂
@@ -129,7 +129,7 @@ export default function WhitepaperPage() {
           <li>摘要（Executive Summary）</li>
           <li>研究背景與動機</li>
           <li>研究方法論：規則導向 + 交叉驗證 + 回歸測試</li>
-          <li>15 系統整合理論：權重分配與衝突仲裁</li>
+          <li>14 系統整合理論：權重分配與衝突仲裁</li>
           <li>八字引擎驗證：12 位中港台客戶 + 真太陽時校正</li>
           <li>紫微斗數引擎驗證：16 位客戶 3-way 驗證 + 5 個歷史 bug 修復</li>
           <li>奇門遁甲引擎：Windada 20 組 + 365 天快照</li>
@@ -146,7 +146,7 @@ export default function WhitepaperPage() {
           如何引用
         </h2>
         <div className="rounded-lg border border-white/10 bg-white/5 p-5 font-mono text-sm text-text leading-relaxed">
-          鑑源命理研究部門（2026）。《鑑源命理學術白皮書：15
+          鑑源命理研究部門（2026）。《鑑源命理學術白皮書：14
           系統交叉驗證方法論與工業級排盤引擎技術報告》（v1.0）。鑑源命理平台。
           <br />
           <span className="text-text-muted">
@@ -193,8 +193,8 @@ export default function WhitepaperPage() {
 const KEY_METRICS: Array<{ label: string; value: string; note: string }> = [
   {
     label: '整合系統數量',
-    value: '15 套',
-    note: '八字 / 紫微 / 奇門 / 西洋占星 / 吠陀 / 人類圖 / 姓名學 / 易經 / 塔羅 / 數字命理 / 風水 / 生肖 / 古典命理 / 生物節律 / 南洋術數',
+    value: '14 套',
+    note: '八字 / 紫微 / 奇門 / 西洋占星 / 吠陀 / 人類圖 / 姓名學 / 易經 / 塔羅 / 數字命理 / 風水 / 生肖 / 古典命理 / 生物節律',
   },
   {
     label: '計算引擎總行數',

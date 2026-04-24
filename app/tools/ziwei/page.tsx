@@ -1091,24 +1091,24 @@ export default function ZiweiToolPage() {
             )}
 
             {/* 速算概覽提示 */}
-            <p className="text-xs text-text-muted/50 text-center">以上為命宮主星速算概覽，完整報告將根據您的完整命盤做 15 系統個人化深度分析</p>
+            <p className="text-xs text-text-muted/50 text-center">以上為命宮主星速算概覽，完整報告將根據您的完整命盤做 14 系統個人化深度分析</p>
 
             {/* 升級引導 */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))' }}>
               <div className="p-8 md:p-10">
                 <div className="text-center mb-8">
                   <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                    紫微斗數只是 15 套系統中的 <span className="text-gradient-gold">1 套</span>
+                    紫微斗數只是 14 套系統中的 <span className="text-gradient-gold">1 套</span>
                   </h3>
                   <p className="text-base text-text max-w-2xl mx-auto leading-relaxed">
-                    完整報告還會融合<strong className="text-white">八字、奇門遁甲、西洋占星、姓名學</strong>等 14 套命理體系，
+                    完整報告還會融合<strong className="text-white">八字、奇門遁甲、西洋占星、姓名學</strong>等 13 套命理體系，
                     從多維度交叉驗證，為您呈現一份真正全面的命格分析。
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#128218;</div>
-                    <h4 className="font-bold text-white mb-1">15 系統交叉驗證</h4>
+                    <h4 className="font-bold text-white mb-1">14 系統交叉驗證</h4>
                     <p className="text-sm text-text-muted">東西方命理系統互相印證，結論更可靠</p>
                   </div>
                   <div className="glass rounded-xl p-5 text-center">

@@ -702,7 +702,7 @@ export default function NameToolPage() {
 
             {/* 速算提示 */}
             <p className="text-center text-xs text-text-muted/50 leading-relaxed">
-              以上為姓名速算概覽，完整報告將根據您的完整命盤做 15 系統個人化深度分析
+              以上為姓名速算概覽，完整報告將根據您的完整命盤做 14 系統個人化深度分析
             </p>
 
             {/* 升級引導 */}
@@ -710,11 +710,11 @@ export default function NameToolPage() {
               <div className="p-8 md:p-10">
                 <div className="text-center mb-8">
                   <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                    姓名學只是 15 套系統中的 <span className="text-gradient-gold">1 套</span>
+                    姓名學只是 14 套系統中的 <span className="text-gradient-gold">1 套</span>
                   </h3>
                   <p className="text-base text-text max-w-2xl mx-auto leading-relaxed">
                     姓名是先天命格的一部分，但真正影響人生的還有<strong className="text-white">八字、紫微斗數、奇門遁甲</strong>等。
-                    完整報告融合 15 套東西方命理體系，多維度交叉驗證，給您最全面的命格分析。
+                    完整報告融合 14 套東西方命理體系，多維度交叉驗證，給您最全面的命格分析。
                   </p>
                 </div>
                 <div className="text-center">

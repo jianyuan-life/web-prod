@@ -19,7 +19,7 @@ const PLAN_NAMES: Record<string, string> = {
 }
 
 const PLAN_DESCRIPTIONS: Record<string, string> = {
-  C: '十五大命理系統 · 完整命格分析',
+  C: '十四大命理系統 · 完整命格分析',
   D: '針對困惑 · 精準解答',
   G15: '家族命格互動 · 深度剖析',
   R: '雙人合盤 · 關係解讀',
@@ -63,7 +63,7 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
   }
 
   const planName = PLAN_NAMES[planCode] || '命理分析'
-  const planDesc = PLAN_DESCRIPTIONS[planCode] || '十五大命理系統精準分析'
+  const planDesc = PLAN_DESCRIPTIONS[planCode] || '十四大命理系統精準分析'
   const planSymbol = PLAN_SYMBOLS[planCode] || '鑒'
   const isChumenji = ['E1', 'E2'].includes(planCode)
 
@@ -373,7 +373,7 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
               display: 'flex',
             }}
           >
-            東西方十五大命理系統整合分析
+            東西方十四大命理系統整合分析
           </div>
         </div>
       </div>

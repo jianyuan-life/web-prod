@@ -23,25 +23,25 @@ const notoSansSC = Noto_Sans_SC({ subsets: ['latin'], weight: ['400', '500', '70
 
 export const metadata: Metadata = {
   title: {
-    default: '鑒源 JianYuan — 十五大命理系統精準分析',
+    default: '鑒源 JianYuan — 十四大命理系統精準分析',
     template: '%s | 鑒源 JianYuan',
   },
-  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十五大命理系統，以 4,600+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十四大命理系統，以 4,600+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
   keywords: '鑒源, JianYuan, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命理分析, 命格分析, 命盤, 算命, 姓名學, 風水, 出門訣, 人類圖, 吠陀占星, 運勢',
   metadataBase: new URL('https://jianyuan.life'),
   openGraph: {
-    title: '鑒源 JianYuan — 十五大命理系統精準分析',
-    description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
+    title: '鑒源 JianYuan — 十四大命理系統精準分析',
+    description: '整合東西方十四大命理系統，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
     url: 'https://jianyuan.life',
     siteName: '鑒源 JianYuan',
     type: 'website',
     locale: 'zh_TW',
-    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: '鑒源 JianYuan — 十五大命理系統精準分析' }],
+    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: '鑒源 JianYuan — 十四大命理系統精準分析' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: '鑒源 JianYuan — 十五大命理系統精準分析',
-    description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
+    title: '鑒源 JianYuan — 十四大命理系統精準分析',
+    description: '整合東西方十四大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
     images: ['/og-default.png'],
   },
   robots: {
@@ -138,7 +138,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   '@type': 'WebApplication',
                   name: '鑒源 JianYuan',
                   url: 'https://jianyuan.life',
-                  description: '整合東西方十五大命理系統精準交叉驗證的命格分析平台',
+                  description: '整合東西方十四大命理系統精準交叉驗證的命格分析平台',
                   applicationCategory: 'LifestyleApplication',
                   operatingSystem: 'Web',
                   offers: {
@@ -196,7 +196,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">了解更多</h4>
                 <div className="space-y-2 text-text-muted">
-                  <Link href="/#systems" className="block hover:text-gold transition-colors">十五大系統</Link>
+                  <Link href="/#systems" className="block hover:text-gold transition-colors">十四大系統</Link>
                   <Link href="/#how" className="block hover:text-gold transition-colors">分析流程</Link>
                   <Link href="/blog" className="block hover:text-gold transition-colors">命理知識</Link>
                 </div>

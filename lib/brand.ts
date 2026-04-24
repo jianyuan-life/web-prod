@@ -9,9 +9,9 @@ export const BRAND = {
   full_en: 'JianYuan Destiny',
 
   // 品牌標語
-  tagline: '十五套系統交叉驗證，一份報告看清自己',
+  tagline: '十四套系統交叉驗證，一份報告看清自己',
   tagline_short: '回到源頭，看清本質',
-  tagline_en: 'Fifteen systems, one truth. See yourself clearly.',
+  tagline_en: 'Fourteen systems, one truth. See yourself clearly.',
 
   // 品牌理念（用於 About 頁面、品牌介紹）
   philosophy: [
@@ -22,7 +22,7 @@ export const BRAND = {
 
   // 品牌差異化（用於行銷文案）
   differentiators: [
-    '最多十五大命理系統交叉分析，不依賴單一觀點',
+    '最多十四大命理系統交叉分析，不依賴單一觀點',
     '4,600+ 條規則源自數十部經典古籍',
     '智能引擎整合，產出有深度、有溫度的個人化報告',
     '出門訣服務，讓命理不只是了解，更能把握最佳時機',

@@ -17,10 +17,9 @@ const ALL_SYSTEMS = [
   { name: '古典命理', icon: '⊕' },
   { name: '生肖命理', icon: '肖' },
   { name: '生物節律', icon: '律' },
-  { name: '南洋術數', icon: '術' },
 ]
 
-// v5.3.72：E1/E2/E3/E4 出門訣系列專屬評估面向（純奇門，非混 15 系統）
+// v5.3.72：E1/E2/E3/E4 出門訣系列專屬評估面向（純奇門，非混 14 系統）
 const QIMEN_FACETS = [
   { name: '九星排布', icon: '★' },
   { name: '八門吉凶', icon: '門' },
@@ -38,9 +37,9 @@ function getSystemsForPlan(planCode: string) {
 
 // 各方案使用系統數 + 預估總分鐘數（以「下限」作為基準）
 const PLAN_CONFIG: Record<string, { systems: number; minMinutes: number; maxMinutes: number; label: string }> = {
-  C:   { systems: 15, minMinutes: 30, maxMinutes: 60, label: '全方位命理分析' },
+  C:   { systems: 14, minMinutes: 30, maxMinutes: 60, label: '全方位命理分析' },
   D:   { systems: 0,  minMinutes: 25, maxMinutes: 45, label: '深度主題分析' },
-  G15: { systems: 15, minMinutes: 40, maxMinutes: 70, label: '家族命理分析' },
+  G15: { systems: 14, minMinutes: 40, maxMinutes: 70, label: '家族命理分析' },
   R:   { systems: 0,  minMinutes: 30, maxMinutes: 50, label: '合盤關係分析' },
   E1:  { systems: 8,  minMinutes: 35, maxMinutes: 55, label: '事件出門訣排算' },
   E2:  { systems: 8,  minMinutes: 40, maxMinutes: 65, label: '月度 360 時辰排算' },
@@ -230,7 +229,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
   const [backendSilentMin, setBackendSilentMin] = useState(0)
 
   const cfg = PLAN_CONFIG[planCode] ?? PLAN_CONFIG['C']
-  // v5.3.72：E1/E2/E3/E4 走奇門評估面向、非 15 系統
+  // v5.3.72：E1/E2/E3/E4 走奇門評估面向、非 14 系統
   const systems = getSystemsForPlan(planCode).slice(0, cfg.systems)
   // 用「上限」作為時間基準，讓 pct 走得穩，不會超過 97% 又完不成
   const totalMs = cfg.maxMinutes * 60 * 1000

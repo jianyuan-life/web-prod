@@ -31,9 +31,9 @@ export function newMember(): FamilyMember {
 }
 
 export const PLANS: Record<string, { name: string; price: number; systems: number }> = {
-  C: { name: '人生藍圖', price: 89, systems: 15 },
+  C: { name: '人生藍圖', price: 89, systems: 14 },
   D: { name: '心之所惑', price: 39, systems: 0 },
-  G15: { name: '家族藍圖', price: 59, systems: 15 },
+  G15: { name: '家族藍圖', price: 59, systems: 14 },
   R: { name: '合否？', price: 59, systems: 0 },
   E1: { name: '事件出門訣', price: 59, systems: 1 },
   E2: { name: '月度出門訣', price: 29, systems: 1 },
@@ -70,7 +70,7 @@ export function newFamilyEmail(): FamilyEmailEntry {
 }
 
 export const PLAN_DESCRIPTIONS: Record<string, string> = {
-  C: '填寫您的出生資料，我們將為您進行十五套命理系統深度分析',
+  C: '填寫您的出生資料，我們將為您進行十四套命理系統深度分析',
   D: '請選擇分析主題並填寫出生資料',
   G15: '從已完成的人生藍圖報告中選擇家庭成員，進行家族互動分析',
   R: '請填寫雙方（或多方）的出生資料',

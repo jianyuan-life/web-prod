@@ -82,7 +82,7 @@ export default function ReportPreview() {
                 </div>
                 <div>
                   <div className="text-[11px] text-text-muted">交叉驗證</div>
-                  <div className="text-lg font-bold text-gradient-gold">15 系統</div>
+                  <div className="text-lg font-bold text-gradient-gold">14 系統</div>
                 </div>
               </div>
             </div>
@@ -94,7 +94,7 @@ export default function ReportPreview() {
               深度、有溫度的命格報告
             </h3>
             <p className="text-text-muted leading-[2] mb-8">
-              不是千篇一律的模板，而是根據你的出生資料，由 15 套系統精密運算後整合而成的專屬報告。
+              不是千篇一律的模板，而是根據你的出生資料，由 14 套系統精密運算後整合而成的專屬報告。
             </p>
 
             <div className="space-y-5 mb-8">

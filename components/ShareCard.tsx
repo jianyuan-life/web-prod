@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 const PLAN_TAGLINES: Record<string, string> = {
-  C: '用十五套系統，重新認識自己',
+  C: '用十四套系統，重新認識自己',
   D: '一個問題，一份完整的答案',
   G15: '看清家族成員之間的能量互動',
   R: '用命理看清這段關係的本質',

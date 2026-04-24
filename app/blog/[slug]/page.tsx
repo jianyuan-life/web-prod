@@ -182,7 +182,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
             想更深入了解自己的命格？
           </h2>
           <p className="text-sm text-text-muted mb-6 max-w-md mx-auto">
-            免費速算工具，30 秒看到你的基本命格。想要完整分析，人生藍圖用 15 套系統交叉驗證。
+            免費速算工具，30 秒看到你的基本命格。想要完整分析，人生藍圖用 14 套系統交叉驗證。
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link href="/tools/bazi" className="px-6 py-3 bg-gold text-dark font-bold rounded-lg text-sm btn-glow">

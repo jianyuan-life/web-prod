@@ -963,7 +963,7 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   // 不使用客戶姓名，僅用方案名稱（去識別化）
   const planName = data ? (PLAN_NAMES[data.plan_code] || '命理分析') : '命理分析'
   const title = `${planName}報告 · 鑒源命理`
-  const description = '鑒源命理 — 東西方十五大命理系統整合分析。（此頁面為客戶專屬私密報告，不被搜尋引擎索引）'
+  const description = '鑒源命理 — 東西方十四大命理系統整合分析。（此頁面為客戶專屬私密報告，不被搜尋引擎索引）'
 
   return {
     title,
@@ -1053,7 +1053,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               ? '正在為您的家庭成員進行多人命格交叉分析，整合家族互動關係'
               : report.plan_code === 'R'
               ? '系統正為雙方分別排盤，並用七大命理系統進行合盤分析'
-              : '系統正同步調用東西方十五大命理系統，逐一進行排盤運算與深度解析'}
+              : '系統正同步調用東西方十四大命理系統，逐一進行排盤運算與深度解析'}
           </p>
           {!isFailed && (
             <>
@@ -1138,7 +1138,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     if (/全方位命格分析報告/.test(t)) return false
     // 過濾重複的評分表（上面已有可視化圖表）
     if (/系統綜合評分|評分表|系統名稱.*評分.*關鍵發現/.test(t)) return false
-    if (/15.*系統.*評分|十五.*系統.*評分/.test(t)) return false
+    if (/1[45].*系統.*評分|十[四五].*系統.*評分/.test(t)) return false
     return true
   })
 
@@ -1165,7 +1165,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     // 年度運勢 / 月曆
     if (/年度|月曆|月運勢|行事曆|運勢行事/.test(t)) return true
     // 交叉驗證結論
-    if (/交叉驗證|全局鳥瞰|十五系統/.test(t)) return true
+    if (/交叉驗證|全局鳥瞰|十四系統|十五系統/.test(t)) return true
     // 刻意練習
     if (/刻意練習/.test(t)) return true
     // 寫給你的話 / 給你的一句話

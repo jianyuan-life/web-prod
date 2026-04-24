@@ -8,12 +8,12 @@ import HeroCTAExperiment from '@/components/HeroCTAExperiment'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '鑒源 JianYuan — 十五大命理系統精準分析｜八字、紫微斗數、奇門遁甲',
-  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十五大東西方命理系統，以 4,600+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，即時出結果。',
+  title: '鑒源 JianYuan — 十四大命理系統精準分析｜八字、紫微斗數、奇門遁甲',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十四大東西方命理系統，以 4,600+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，即時出結果。',
   keywords: '命理, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命盤, 命格分析, 免費算命, 姓名學, 風水, 人類圖, 吠陀占星, 出門訣, 運勢',
   openGraph: {
-    title: '鑒源 JianYuan — 十五大命理系統精準分析',
-    description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
+    title: '鑒源 JianYuan — 十四大命理系統精準分析',
+    description: '整合東西方十四大命理系統，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
     url: 'https://jianyuan.life',
     siteName: '鑒源 JianYuan',
     type: 'website',
@@ -21,15 +21,15 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '鑒源 JianYuan — 十五大命理系統精準分析',
-    description: '整合東西方十五大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
+    title: '鑒源 JianYuan — 十四大命理系統精準分析',
+    description: '整合東西方十四大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
   },
   alternates: {
     canonical: 'https://jianyuan.life',
   },
 }
 
-// 15 大命理系統（含 24x24 SVG 圖示 path）
+// 14 大命理系統（含 24x24 SVG 圖示 path）
 const SYSTEMS: { name: string; tier: 1 | 2 | 3; desc: string; icon: string }[] = [
   { name: '八字命理', tier: 1, desc: '看清你天生的性格底色、一生的高峰低谷期，以及事業、感情、財運的先天優勢與功課',
     icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
@@ -89,7 +89,7 @@ export default function HomePage() {
               也許你正在尋找一個答案
             </span>
             <span className="text-gradient-gold font-semibold whitespace-nowrap">
-              用十五個維度，重新認識你自己
+              用十四個維度，重新認識你自己
             </span>
           </h1>
           <p className="text-base text-text-muted leading-[2] mb-10 max-w-[520px] mx-auto">
@@ -209,7 +209,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { title: '傳統命理師', items: ['只用 1-2 套系統', '結論因人而異，難以驗證', '收費 $100-$300 美金', '等待 3-7 天出結果', '人為偏見影響判斷'], highlight: false },
-              { title: '鑒源命理', items: ['最多 15 套系統交叉分析', '4,600+ 條規則客觀運算', '最低 $39 美金起', '報告約 30-60 分鐘完成', '規則驅動，排盤可驗證'], highlight: true },
+              { title: '鑒源命理', items: ['最多 14 套系統交叉分析', '4,600+ 條規則客觀運算', '最低 $39 美金起', '報告約 30-60 分鐘完成', '規則驅動，排盤可驗證'], highlight: true },
               { title: '免費算命網站', items: ['套公式的罐頭回覆', '千篇一律的描述', '沒有個人化深度', '無法回答「為什麼」', '沒有行動建議'], highlight: false },
             ].map((col) => (
               <div key={col.title} className={`glass rounded-2xl p-6 relative ${col.highlight ? 'border-gold/25 shadow-[0_0_40px_rgba(201,168,76,0.08)]' : ''}`}>
@@ -250,8 +250,8 @@ export default function HomePage() {
             {[
               {
                 icon: <><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><line x1="2" y1="12" x2="22" y2="12" /></>,
-                title: '15 系統交叉驗證',
-                desc: '不是「某位老師說」，而是十五套東西方命理系統的共識。三層加權架構確保結論經得起推敲。',
+                title: '14 系統交叉驗證',
+                desc: '不是「某位老師說」，而是十四套東西方命理系統的共識。三層加權架構確保結論經得起推敲。',
                 warmth: false,
               },
               {
@@ -292,11 +292,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ========== 十五大系統（帶圖示） ========== */}
+      {/* ========== 十四大系統（帶圖示） ========== */}
       <section id="systems" className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(18, 14, 45, 0.25) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
-            <span className="text-xs tracking-[0.2em]">十五大系統</span>
+            <span className="text-xs tracking-[0.2em]">十四大系統</span>
           </div>
           <h2 className="text-2xl md:text-3xl text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             東方古典智慧 &middot; 西方占星體系
@@ -436,9 +436,9 @@ export default function HomePage() {
                     探索出門訣
                   </Link>
                   <div className="flex items-center gap-2 text-xs text-text-muted">
-                    <span className="text-gold">&#10003;</span> 事件出門訣 $89
+                    <span className="text-gold">&#10003;</span> 事件出門訣 $59
                     <span className="mx-1">|</span>
-                    <span className="text-gold">&#10003;</span> 月度出門訣 $99
+                    <span className="text-gold">&#10003;</span> 月度出門訣 $29
                   </div>
                 </div>
               </div>
@@ -554,7 +554,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { name: '陳先生', location: '台北', plan: '人生藍圖', color: 'bg-gold/20',
-                text: '之前花了三千多找老師看八字，結論就兩頁紙。鑒源的報告十幾頁，十五套系統逐一分析，而且每個結論都說明了依據。最關鍵的是大運分析，直接點出了我 37-42 歲是事業黃金期，我正好在猶豫要不要創業。' },
+                text: '之前花了三千多找老師看八字，結論就兩頁紙。鑒源的報告十幾頁，十四套系統逐一分析，而且每個結論都說明了依據。最關鍵的是大運分析，直接點出了我 37-42 歲是事業黃金期，我正好在猶豫要不要創業。' },
               { name: '王女士', location: '香港', plan: '家族藍圖', color: 'bg-teal-500/20',
                 text: '幫全家四口人做了分析。我跟老公的合婚分析很精準——報告說我們在財務觀念上容易有摩擦，確實如此。更驚喜的是孩子的天賦分析，報告建議的學習方向跟孩子實際的興趣完全吻合。' },
               { name: '李先生', location: '深圳', plan: '心之所惑', color: 'bg-purple-500/20',
@@ -603,10 +603,10 @@ export default function HomePage() {
             您可能想知道
           </h2>
           {[
-            { q: '鑒源的命理分析準確嗎？', a: '排盤計算使用確定性算法（如壽星天文曆、Swiss Ephemeris），結果可重複驗證，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的專業規則，經引擎精密計算整合成個人化報告。鑒源最多用十五套系統交叉分析——當多數系統得出相同結論時，可信度遠高於單一系統的判斷。' },
+            { q: '鑒源的命理分析準確嗎？', a: '排盤計算使用確定性算法（如壽星天文曆、Swiss Ephemeris），結果可重複驗證，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的專業規則，經引擎精密計算整合成個人化報告。鑒源最多用十四套系統交叉分析——當多數系統得出相同結論時，可信度遠高於單一系統的判斷。' },
             { q: '報告多久可以收到？', a: '付款後系統自動開始運算。個人報告（人生藍圖、心之所惑）約 30 分鐘完成；出門訣需排算數百個時辰，約需 40 分鐘以上。完成後會立即寄送 Email 通知，您也可以在儀表板即時查看分析進度。' },
             { q: '需要提供什麼資料？', a: '姓名、出生日期、出生時間（時辰）、性別。出生時間越精確，分析越準確。如果不確定出生時間，可以選擇最接近的時辰，部分不依賴時辰的系統仍可正常分析。' },
-            { q: '15套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。這正是鑒源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十五套系統交叉驗證才能得到更全面、更可靠的結論。' },
+            { q: '14套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。這正是鑒源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十四套系統交叉驗證才能得到更全面、更可靠的結論。' },
             { q: '付款安全嗎？', a: '所有付款透過國際知名的 Stripe 安全系統處理，支援信用卡和各種支付方式。您的信用卡資訊完全由 Stripe 處理，不會經過鑒源伺服器。Stripe 已通過 PCI DSS Level 1 認證，是全球最高等級的支付安全標準。' },
             { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會為您免費重新生成，確保您獲得滿意的分析結果。' },
             { q: '什麼是出門訣？怎麼用？', a: '出門訣源自奇門遁甲的千年擇吉術，古籍《煙波釣叟歌》記載：「吉門吉方即行，凶門凶方即止。」我們的系統以 25 層評分體系（三吉門、三奇、八神、九星旺衰、天地盤干生剋、九遁格局等）精算每個時辰八方位的能量，再套入您的個人年命宮驗證。使用方法：在報告推薦的吉時準時出門，朝吉方走 500 公尺以上，到達後面朝吉方靜坐接氣 40 分鐘。如有重要事（面試、簽約、談判），接氣後直接前往，效果最強。支援 15 種事件分類（求財、事業、感情、考試、談判、婚姻等），報告附帶 Google Calendar 一鍵新增。' },
@@ -638,7 +638,7 @@ export default function HomePage() {
           </h2>
           <p className="text-text-muted mb-10 leading-[1.9] text-base">
             用 30 秒做一次免費命理速算，<br />
-            看看十五套系統如何解讀你的命格密碼。
+            看看十四套系統如何解讀你的命格密碼。
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-5">
             <Link href="/tools/bazi"

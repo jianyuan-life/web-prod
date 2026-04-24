@@ -101,7 +101,7 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
   C: {
     title: '人生藍圖須知',
     items: [
-      '十五套命理系統交叉分析、一次看清人生全貌',
+      '十四套命理系統交叉分析、一次看清人生全貌',
       '約 30,000 字網頁重點版＋完整 PDF',
       '付款後系統自動精密計算並生成報告',
     ],

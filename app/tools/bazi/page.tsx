@@ -1260,7 +1260,7 @@ export default function FreeToolPage() {
 
             {/* 速算提示 */}
             <p className="text-center text-xs text-text-muted/50 leading-relaxed">
-              以上為日主速算概覽，完整報告將根據您的完整命盤做 15 系統個人化深度分析
+              以上為日主速算概覽，完整報告將根據您的完整命盤做 14 系統個人化深度分析
             </p>
 
             {/* ═══ 升級引導 ═══ */}
@@ -1275,7 +1275,7 @@ export default function FreeToolPage() {
                     <strong className="text-white">千年東方玄學經典</strong>——
                     《滴天髓》《窮通寶鑑》《紫微斗數全書》《奇門遁甲統宗》，結合
                     <strong className="text-white">全球最頂尖的命理分析引擎</strong>，
-                    橫跨 15 套東西方命理體系，為您呈現一份前所未有的命格全景報告。
+                    橫跨 14 套東西方命理體系，為您呈現一份前所未有的命格全景報告。
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -1291,7 +1291,7 @@ export default function FreeToolPage() {
                   </div>
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#127760;</div>
-                    <h4 className="font-bold text-white mb-1">15 系統交叉驗證</h4>
+                    <h4 className="font-bold text-white mb-1">14 系統交叉驗證</h4>
                     <p className="text-sm text-text-muted">東西方系統互相印證，多系統共識的結論才最可靠</p>
                   </div>
                 </div>
