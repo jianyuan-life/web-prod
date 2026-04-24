@@ -61,7 +61,7 @@ interface Top5Timing {
   star?: string
   door?: string
   shen?: string
-  // v5.3.79 E2 v2.0：月家奇門古法新增欄位
+  // v5.3.81 E2 v2.1：奇門紫白擇日派四層架構欄位
   execution_date_lunar?: string  // 農曆晦日（如「丙午年四月廿九」）
   yue_ganzhi?: string            // 月干支（如「癸巳」）
   year_ganzhi?: string           // 年干支（如「丙午」）
@@ -1900,7 +1900,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <div aria-hidden className="absolute -top-8 -right-8 w-32 h-32 opacity-[0.08]" style={{
               background: 'radial-gradient(circle, rgba(201,168,76,1) 0%, transparent 70%)',
             }} />
-            <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 uppercase">月家奇門古法 · 本月月盤</div>
+            <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 uppercase">奇門紫白擇日派 · 本月月盤</div>
             <div className="text-3xl sm:text-4xl font-bold text-gold tracking-wider" style={{
               fontFamily: 'var(--font-sans)',
               textShadow: '0 0 20px rgba(197,150,58,0.25)',
