@@ -207,50 +207,49 @@ export default function SinglePersonForm({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-text-muted mb-1">希望從何時開始找吉時？ *</label>
-              <input
-                type="date" required
+              {/* v5.3.90 改用 <select> 完全鎖死(手機 iOS date picker 忽略 min/max、改這個解) */}
+              <select
+                required
                 value={e1StartDate}
-                min={minStartDate}
-                max={maxStartDate}
-                onKeyDown={(e) => e.preventDefault()}
-                onPaste={(e) => e.preventDefault()}
                 onChange={(e) => {
-                  let v = e.target.value
-                  // v5.3.89 鍵盤 + paste 禁止 + clamp 三重鎖死
-                  if (v && v < minStartDate) v = minStartDate
-                  if (v && v > maxStartDate) v = maxStartDate
+                  const v = e.target.value
                   setE1StartDate(v)
-                  if (e1EndDate) {
+                  if (e1EndDate && v) {
                     const newMax = new Date(new Date(v).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
                     if (e1EndDate > newMax) setE1EndDate('')
                   }
                 }}
-                className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark] cursor-pointer"
-                title="只能從日曆選擇、無法手動輸入"
-              />
+                className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none cursor-pointer"
+              >
+                <option value="">請選擇日期</option>
+                {Array.from({ length: 24 }, (_, i) => {
+                  const days = 7 + i
+                  const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+                  const v = d.toISOString().split('T')[0]
+                  const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
+                  return <option key={v} value={v}>{v} (週{weekday}、{days} 天後)</option>
+                })}
+              </select>
               <p className="text-[10px] text-text-muted/50 mt-1">最早 7 天後、最晚 30 天內（預留準備時間）</p>
             </div>
             <div>
               <label className="block text-xs text-gold/80 mb-1">事件截止日期（選填）</label>
-              <input
-                type="date"
+              {/* v5.3.90 同改 <select> 鎖死 */}
+              <select
                 value={e1EndDate}
-                min={e1StartDate || minStartDate}
-                max={maxEnd}
-                onKeyDown={(e) => e.preventDefault()}
-                onPaste={(e) => e.preventDefault()}
-                onChange={(e) => {
-                  let v = e.target.value
-                  // v5.3.89 鍵盤 + paste 禁止 + clamp 三重鎖死
-                  const effectiveMin = e1StartDate || minStartDate
-                  if (v && v < effectiveMin) v = effectiveMin
-                  if (v && v > maxEnd) v = maxEnd
-                  setE1EndDate(v)
-                }}
-                placeholder="不填則預設 1 個月"
-                className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark] cursor-pointer"
-                title="只能從日曆選擇、無法手動輸入"
-              />
+                disabled={!e1StartDate}
+                onChange={(e) => setE1EndDate(e.target.value)}
+                className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">不填 = 開始日+30 天</option>
+                {e1StartDate && Array.from({ length: 30 }, (_, i) => {
+                  const startT = new Date(e1StartDate).getTime()
+                  const d = new Date(startT + (i + 1) * 24 * 60 * 60 * 1000)
+                  const v = d.toISOString().split('T')[0]
+                  const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
+                  return <option key={v} value={v}>{v} (週{weekday}、開始日+{i + 1} 天)</option>
+                })}
+              </select>
             </div>
           </div>
           <p className="text-[10px] text-text-muted/60">不填截止日期 = 從開始日起算 1 個月內找最佳時機。有明確截止日（如面試、簽約）請填寫。</p>
