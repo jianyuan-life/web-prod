@@ -213,16 +213,11 @@ export default function SinglePersonForm({
                 min={minStartDate}
                 max={maxStartDate}
                 onChange={(e) => {
-                  const v = e.target.value
-                  // v5.3.87 強制驗證:HTML5 min/max 只是提示、用戶可打字繞過、這裡強制鎖死
-                  if (v && v < minStartDate) {
-                    alert(`事件日期最早只能選 ${minStartDate}(今天+7 天)\n\n為什麼?需要 3-5 分鐘排盤分析 + 客戶事前準備時間。`)
-                    return
-                  }
-                  if (v && v > maxStartDate) {
-                    alert(`事件日期最晚只能選 ${maxStartDate}(今天+30 天內)\n\n為什麼?奇門遁甲吉時推薦最佳有效期為 30 天。`)
-                    return
-                  }
+                  let v = e.target.value
+                  // v5.3.88 靜默 clamp:超出範圍的值自動調整為邊界、不彈 alert
+                  // 同時日曆 picker 本身已因 min/max 灰掉不可選日期(現代瀏覽器)
+                  if (v && v < minStartDate) v = minStartDate
+                  if (v && v > maxStartDate) v = maxStartDate
                   setE1StartDate(v)
                   // 如果結束日期超過新開始日期+30 天,自動清空
                   if (e1EndDate) {
@@ -242,17 +237,11 @@ export default function SinglePersonForm({
                 min={e1StartDate || minStartDate}
                 max={maxEnd}
                 onChange={(e) => {
-                  const v = e.target.value
-                  // v5.3.87 強制驗證
+                  let v = e.target.value
+                  // v5.3.88 靜默 clamp
                   const effectiveMin = e1StartDate || minStartDate
-                  if (v && v < effectiveMin) {
-                    alert(`截止日期不能早於開始日期 ${effectiveMin}`)
-                    return
-                  }
-                  if (v && v > maxEnd) {
-                    alert(`截止日期最晚只能選 ${maxEnd}(開始日+30 天)`)
-                    return
-                  }
+                  if (v && v < effectiveMin) v = effectiveMin
+                  if (v && v > maxEnd) v = maxEnd
                   setE1EndDate(v)
                 }}
                 placeholder="不填則預設 1 個月"
