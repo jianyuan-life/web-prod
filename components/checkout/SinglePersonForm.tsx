@@ -301,7 +301,7 @@ export default function SinglePersonForm({
           <p className="text-xs text-text leading-[1.7]">
             <strong className="text-gold">⚙ 引擎自動擇吉：</strong>
             {planCode === 'E2'
-              ? '本方案採古法月盤推演、引擎自動算出當月主吉方與最佳吉時窗口、無需客戶勾選。'
+              ? '本方案採奇門紫白擇日派四層架構推演（紫白飛星月+年吉星並集）、引擎自動算出當月主吉方與最佳吉時窗口、無需客戶勾選。'
               : '本方案採年家奇門＋月家奇門、引擎自動推出年盤主吉方 + 12 個月盤各自吉時、無需客戶勾選。'}
           </p>
         </div>
