@@ -1545,13 +1545,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {report.plan_code === 'E1' ? 'Top3 加乘時機'
                   : report.plan_code === 'E3' ? '4 週 × 每週 Top 2 = 8 吉時卡片'
                   : report.plan_code === 'E4' ? '年盤＋12 月盤'
-                  : '整月四週出行時機'}
+                  : report.plan_code === 'E2' ? '本月 1 盤 · 晦日 22:20-23:00 執行'
+                  : '整月出行時機'}
               </div>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-text-muted" style={{
                 background: 'rgba(255,255,255,0.03)',
                 border: '1px solid rgba(255,255,255,0.08)',
               }}>
-                25 層評分體系
+                {report.plan_code === 'E2' ? '奇門紫白擇日派四層架構' : '25 層評分體系'}
               </div>
             </div>
           )}
@@ -2652,7 +2653,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </svg>
               )}
               {isChumenji
-                ? (report.plan_code === 'E1' ? '下載 Top3 吉時 PDF' : '下載 4 週吉時月度 PDF')
+                ? (report.plan_code === 'E1' ? '下載 Top3 吉時 PDF' : report.plan_code === 'E2' ? '下載本月月盤 PDF' : '下載 4 週吉時月度 PDF')
                 : '下載 PDF 完整報告'}
             </a>
           </div>

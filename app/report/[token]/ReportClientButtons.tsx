@@ -102,7 +102,7 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
             <polyline points="8 15 12 19 16 15" />
             <line x1="12" y1="13" x2="12" y2="19" />
           </svg>
-          {planCode === 'E1' ? '下載 Top3 吉時 PDF' : '下載 4 週吉時月度 PDF'}
+          {planCode === 'E1' ? '下載 Top3 吉時 PDF' : planCode === 'E2' ? '下載本月月盤 PDF' : '下載 4 週吉時月度 PDF'}
         </a>
       )
     }
@@ -132,7 +132,7 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
             </>
           )}
         </svg>
-        {generating ? '正在生成 PDF...' : (planCode === 'E1' ? '生成 Top3 吉時 PDF' : '生成 4 週吉時月度 PDF')}
+        {generating ? '正在生成 PDF...' : (planCode === 'E1' ? '生成 Top3 吉時 PDF' : planCode === 'E2' ? '生成本月月盤 PDF' : '生成 4 週吉時月度 PDF')}
       </button>
     )
   }
