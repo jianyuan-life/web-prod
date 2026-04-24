@@ -186,7 +186,7 @@ export default function SinglePersonForm({
                 <input
                   type="radio" name="e1-has-exact-time" value="no"
                   checked={e1HasExactTime === 'no'}
-                  onChange={() => setE1HasExactTime('no')}
+                  onChange={() => { setE1HasExactTime('no'); setE1EventExactTime('') }}
                   className="accent-gold"
                 />
                 <span className="text-sm text-text">無（由我們找最佳吉時）</span>

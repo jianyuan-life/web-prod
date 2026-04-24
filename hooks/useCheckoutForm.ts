@@ -132,6 +132,8 @@ export function useCheckoutForm() {
     // v5.3.91 E1 簡化：只需事件日期（e1EndDate）+ 事件類型、開始日期系統自動設 T+1
     if (planCode === 'E1' && !e1EndDate) return false
     if (planCode === 'E1' && !e1EventType) return false
+    // v5.3.94：選「有固定時間」時、必填確切 HH:MM（前端 button 正確 disable）
+    if (planCode === 'E1' && e1HasExactTime === 'yes' && !e1EventExactTime) return false
     // v5.3.59 規格書對齊：
     //   E1 候選時辰至少 1 個（挑 Top 3）
     //   E3 候選時辰至少 3 個（84 候選池、每週挑 Top 2）
@@ -405,6 +407,7 @@ export function useCheckoutForm() {
     if (planCode === 'E1') {
       if (!e1EventType) { alert('請選擇事件類型'); return }
       if (!e1EndDate) { alert('請選擇事件日期'); return }
+      if (e1HasExactTime === 'yes' && !e1EventExactTime) { alert('您選了「有固定時間」、請填寫事件確切時間（HH:MM）'); return }
     }
 
     // v5.3.66 — E1/E3 才需勾候選時辰（E2/E4 極簡、引擎自動擇吉）
