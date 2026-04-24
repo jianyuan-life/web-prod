@@ -13,9 +13,10 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
   const [shareLabel, setShareLabel] = useState('分享報告')
   const [generating, setGenerating] = useState(false)
   const [generateMsg, setGenerateMsg] = useState<string | null>(null)
-  // v5.3.59 規格書對齊：E1-E4 全部提供 PDF（規格書明確要求）
-  // E1/E2 有金色日曆式按鈕、E3 8 卡片 PDF、E4 13 份 PDF 批次
+  // v5.3.86 出門訣 E1-E4 取消 PDF 下載（Jamie 指令:深度綁定 web + 行事曆）
+  // isChumenji 仍用來判斷樣式、但所有出門訣不渲染 PDF 按鈕
   const isChumenji = planCode === 'E1' || planCode === 'E2' || planCode === 'E3' || planCode === 'E4'
+  const hidePdfForChumenji = isChumenji  // 出門訣全部不顯示 PDF
 
   // PDF 下載追蹤（5 分鐘內同一報告不重複計算）
   const trackPdfDownload = () => {
@@ -77,7 +78,9 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
   }
 
   // E1/E2 專屬 PDF 按鈕（金色漸層 + 日曆 icon）
+  // v5.3.86:出門訣取消 PDF、若 hidePdfForChumenji=true 則完全不渲染
   const renderChumenjiPdfButton = () => {
+    if (hidePdfForChumenji) return null
     if (pdfUrl) {
       return (
         <a
