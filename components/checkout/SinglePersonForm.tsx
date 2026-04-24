@@ -204,55 +204,26 @@ export default function SinglePersonForm({
           </div>
 
           <p className="text-sm font-semibold text-gold">事件日期</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-text-muted mb-1">希望從何時開始找吉時？ *</label>
-              {/* v5.3.90 改用 <select> 完全鎖死(手機 iOS date picker 忽略 min/max、改這個解) */}
-              <select
-                required
-                value={e1StartDate}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setE1StartDate(v)
-                  if (e1EndDate && v) {
-                    const newMax = new Date(new Date(v).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-                    if (e1EndDate > newMax) setE1EndDate('')
-                  }
-                }}
-                className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none cursor-pointer"
-              >
-                <option value="">請選擇日期</option>
-                {Array.from({ length: 24 }, (_, i) => {
-                  const days = 7 + i
-                  const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
-                  const v = d.toISOString().split('T')[0]
-                  const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
-                  return <option key={v} value={v}>{v} (週{weekday}、{days} 天後)</option>
-                })}
-              </select>
-              <p className="text-[10px] text-text-muted/50 mt-1">最早 7 天後、最晚 30 天內（預留準備時間）</p>
-            </div>
-            <div>
-              <label className="block text-xs text-gold/80 mb-1">事件截止日期（選填）</label>
-              {/* v5.3.90 同改 <select> 鎖死 */}
-              <select
-                value={e1EndDate}
-                disabled={!e1StartDate}
-                onChange={(e) => setE1EndDate(e.target.value)}
-                className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="">不填 = 開始日+30 天</option>
-                {e1StartDate && Array.from({ length: 30 }, (_, i) => {
-                  const startT = new Date(e1StartDate).getTime()
-                  const d = new Date(startT + (i + 1) * 24 * 60 * 60 * 1000)
-                  const v = d.toISOString().split('T')[0]
-                  const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
-                  return <option key={v} value={v}>{v} (週{weekday}、開始日+{i + 1} 天)</option>
-                })}
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">您的事件會在哪一天發生？*</label>
+            {/* v5.3.91 簡化:只要事件日、系統自動從明天(T+1)開始找吉時、到事件日為止 */}
+            <select
+              required
+              value={e1EndDate}
+              onChange={(e) => setE1EndDate(e.target.value)}
+              className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none cursor-pointer"
+            >
+              <option value="">請選擇事件日期</option>
+              {Array.from({ length: 30 }, (_, i) => {
+                const days = i + 2  // T+2 起(給出 1 天準備),到 T+31
+                const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+                const v = d.toISOString().split('T')[0]
+                const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
+                return <option key={v} value={v}>{v} (週{weekday}、{days} 天後)</option>
+              })}
+            </select>
+            <p className="text-[10px] text-text-muted/60 mt-1">💡 系統會從明天開始、到您的事件日為止、找出 Top 3 最佳吉時</p>
           </div>
-          <p className="text-[10px] text-text-muted/60">不填截止日期 = 從開始日起算 1 個月內找最佳時機。有明確截止日（如面試、簽約）請填寫。</p>
 
           {/* v5.3.22：yes 模式下要求填事件確切時辰 */}
           {e1HasExactTime === 'yes' && (

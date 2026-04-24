@@ -114,10 +114,10 @@ export default function ConfirmationModal({
                   <span className="text-white font-medium">{e1HasExactTime === 'yes' ? '有（固定時間）' : '無（找最佳吉時）'}</span>
                 </div>
               )}
-              {planCode === 'E1' && e1StartDate && (
+              {planCode === 'E1' && e1EndDate && (
                 <div className="flex justify-between items-center py-2 border-b border-white/10">
                   <span className="text-text-muted text-sm">事件日期</span>
-                  <span className="text-white font-medium">{e1StartDate}{e1EndDate ? ` ~ ${e1EndDate}` : '（一個月內）'}</span>
+                  <span className="text-white font-medium">{e1EndDate}</span>
                 </div>
               )}
               {eSelectedBlocks && eSelectedBlocks.some(b => b) && (

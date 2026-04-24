@@ -130,9 +130,8 @@ export function useCheckoutForm() {
     if (!form.gender) return false
     // 出生地區必填：必須選了國家/城市（cityLat !== 0 或 birthCity 非空且不是搜尋中）
     if (!form.birthCity || form.cityLat === 0) return false
-    // E1 必填（結束日期選填，不填則預設開始日期+1個月）
-    if (planCode === 'E1' && !e1StartDate) return false
-    // E1 事件類型必填
+    // v5.3.91 E1 簡化：只需事件日期（e1EndDate）+ 事件類型、開始日期系統自動設 T+1
+    if (planCode === 'E1' && !e1EndDate) return false
     if (planCode === 'E1' && !e1EventType) return false
     // v5.3.59 規格書對齊：
     //   E1 候選時辰至少 1 個（挑 Top 3）
@@ -406,7 +405,7 @@ export function useCheckoutForm() {
 
     if (planCode === 'E1') {
       if (!e1EventType) { alert('請選擇事件類型'); return }
-      if (!e1StartDate) { alert('請選擇事件開始日期'); return }
+      if (!e1EndDate) { alert('請選擇事件日期'); return }
     }
 
     // v5.3.66 — E1/E3 才需勾候選時辰（E2/E4 極簡、引擎自動擇吉）
@@ -502,15 +501,11 @@ export function useCheckoutForm() {
         }
 
         if (planCode === 'E1') {
-          birthData.event_start_date = e1StartDate
-          // 結束日期選填：不填則預設開始日期 + 1 個月
-          if (e1EndDate) {
-            birthData.event_end_date = e1EndDate
-          } else {
-            const defaultEnd = new Date(new Date(e1StartDate).getTime() + 30 * 24 * 60 * 60 * 1000)
-            birthData.event_end_date = defaultEnd.toISOString().split('T')[0]
-          }
-          // E1 新增：事件類型 + 有無明確時間（結構化欄位，不依賴 customer_note）
+          // v5.3.91：開始日期系統自動設 T+1（買了隔天就開始找吉時）、結束日期 = 客戶填的事件日期
+          const tPlus1 = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          birthData.event_start_date = tPlus1
+          birthData.event_end_date = e1EndDate
+          // E1 結構化欄位：事件類型 + 有無明確時間（不依賴 customer_note）
           birthData.event_type = e1EventType
           birthData.has_exact_time = e1HasExactTime === 'yes'
           // v5.3.22：E1 升級，yes 時傳入事件精確時辰
