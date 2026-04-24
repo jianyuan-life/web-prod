@@ -212,20 +212,21 @@ export default function SinglePersonForm({
                 value={e1StartDate}
                 min={minStartDate}
                 max={maxStartDate}
+                onKeyDown={(e) => e.preventDefault()}
+                onPaste={(e) => e.preventDefault()}
                 onChange={(e) => {
                   let v = e.target.value
-                  // v5.3.88 靜默 clamp:超出範圍的值自動調整為邊界、不彈 alert
-                  // 同時日曆 picker 本身已因 min/max 灰掉不可選日期(現代瀏覽器)
+                  // v5.3.89 鍵盤 + paste 禁止 + clamp 三重鎖死
                   if (v && v < minStartDate) v = minStartDate
                   if (v && v > maxStartDate) v = maxStartDate
                   setE1StartDate(v)
-                  // 如果結束日期超過新開始日期+30 天,自動清空
                   if (e1EndDate) {
                     const newMax = new Date(new Date(v).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
                     if (e1EndDate > newMax) setE1EndDate('')
                   }
                 }}
-                className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
+                className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark] cursor-pointer"
+                title="只能從日曆選擇、無法手動輸入"
               />
               <p className="text-[10px] text-text-muted/50 mt-1">最早 7 天後、最晚 30 天內（預留準備時間）</p>
             </div>
@@ -236,16 +237,19 @@ export default function SinglePersonForm({
                 value={e1EndDate}
                 min={e1StartDate || minStartDate}
                 max={maxEnd}
+                onKeyDown={(e) => e.preventDefault()}
+                onPaste={(e) => e.preventDefault()}
                 onChange={(e) => {
                   let v = e.target.value
-                  // v5.3.88 靜默 clamp
+                  // v5.3.89 鍵盤 + paste 禁止 + clamp 三重鎖死
                   const effectiveMin = e1StartDate || minStartDate
                   if (v && v < effectiveMin) v = effectiveMin
                   if (v && v > maxEnd) v = maxEnd
                   setE1EndDate(v)
                 }}
                 placeholder="不填則預設 1 個月"
-                className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark]"
+                className="w-full bg-white/5 border border-gold/30 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none [color-scheme:dark] cursor-pointer"
+                title="只能從日曆選擇、無法手動輸入"
               />
             </div>
           </div>
