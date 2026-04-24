@@ -2038,8 +2038,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 摘要提示 + PDF 下載（v5.3.59 規格書要求 E1-E4 也要 PDF）──── */}
-        {isShowingSummary && report.pdf_url && (
+        {/* ──── 摘要提示 + PDF 下載（v5.3.83:出門訣 E1-E4 不顯示 PDF、深度綁定 web）──── */}
+        {isShowingSummary && report.pdf_url && !isChumenji && (
           <div className="rounded-xl p-6 mb-8 no-print" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(26,42,74,0.3))', border: '1px solid rgba(197,150,58,0.25)' }}>
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="flex-1">
@@ -2619,8 +2619,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 底部 PDF 按鈕（v5.3.59 規格書要求 E1-E4 全部提供 PDF）──── */}
-        {report.pdf_url && (
+        {/* ──── 底部 PDF 按鈕（v5.3.83:出門訣 E1-E4 不顯示 PDF、深度綁定 web、使用行事曆）──── */}
+        {report.pdf_url && !isChumenji && (
           <div className="flex justify-center my-10">
             <a
               href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}

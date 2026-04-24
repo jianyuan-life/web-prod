@@ -567,7 +567,7 @@ function DashboardContent() {
                               分享
                             </button>
                           )}
-                          {r.pdf_url && (
+                          {r.pdf_url && !CHUMENJI_CODES.has(r.plan_code) && (
                             <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
                               className="px-3 py-1.5 glass rounded-lg text-xs text-gold hover:bg-gold/10 transition-colors">
                               下載 PDF
