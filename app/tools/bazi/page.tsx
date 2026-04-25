@@ -1282,7 +1282,7 @@ export default function FreeToolPage() {
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#128218;</div>
                     <h4 className="font-bold text-white mb-1">千年古籍精髓</h4>
-                    <p className="text-sm text-text-muted">融合數十部命理經典核心理論，4,600+ 條專業規則</p>
+                    <p className="text-sm text-text-muted">融合數十部命理經典核心理論，44,421+ 條專業規則</p>
                   </div>
                   <div className="glass rounded-xl p-5 text-center">
                     <div className="text-3xl mb-2">&#129302;</div>

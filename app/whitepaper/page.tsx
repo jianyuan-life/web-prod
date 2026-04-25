@@ -4,7 +4,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: '鑑源命理學術白皮書 | 14 系統交叉驗證方法論',
   description:
-    '4,600+ 條規則來源盤點、365 天 Windada 驗證、12 位中港台客戶八字一致率 100%、16 位紫微 3-way 驗證、20 組奇門時辰盤局數一致率 100%。鑑源命理研究部門公開發布。',
+    '44,421+ 條規則來源盤點、365 天 Windada 驗證、12 位中港台客戶八字一致率 100%、16 位紫微 3-way 驗證、20 組奇門時辰盤局數一致率 100%。鑑源命理研究部門公開發布。',
   keywords: [
     '命理學術白皮書',
     '命理方法論',
@@ -203,7 +203,7 @@ const KEY_METRICS: Array<{ label: string; value: string; note: string }> = [
   },
   {
     label: '規則來源盤點',
-    value: '4,600+ 條',
+    value: '44,421+ 條',
     note: '源自數十部經典古籍與現代學者教材',
   },
   {

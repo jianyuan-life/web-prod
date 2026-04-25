@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     default: '鑒源 JianYuan — 十四大命理系統精準分析',
     template: '%s | 鑒源 JianYuan',
   },
-  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十四大命理系統，以 4,600+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十四大命理系統，以 44,421+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。',
   keywords: '鑒源, JianYuan, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命理分析, 命格分析, 命盤, 算命, 姓名學, 風水, 出門訣, 人類圖, 吠陀占星, 運勢',
   metadataBase: new URL('https://jianyuan.life'),
   openGraph: {
@@ -169,8 +169,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Navbar />
         <main className="pt-16">{children}</main>
         <GlobalBackToTop />
-        </LocaleContent>
         <footer className="border-t border-gold/10 mt-20">
+          {/* 英文/簡體翻譯覆蓋範圍：v5.3.95 起 footer 納入 LocaleContent */}
           <div className="max-w-6xl mx-auto px-6 py-16">
             {/* 古典分隔裝飾 */}
             <div className="text-center mb-10">
@@ -220,6 +220,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </footer>
+        </LocaleContent>
       </body>
     </html>
   )

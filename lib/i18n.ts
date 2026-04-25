@@ -48,7 +48,7 @@ export function toTraditional(text: string): string {
   return s2tConverter(text)
 }
 
-export type Locale = 'zh-TW' | 'zh-CN'
+export type Locale = 'zh-TW' | 'zh-CN' | 'en'
 
 // UI 文字翻譯
 export const UI_TEXT: Record<Locale, Record<string, string>> = {
@@ -65,7 +65,7 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
     nav_blog: '知識',
     hero_title_1: '十四套系統交叉驗證',
     hero_title_2: '一份報告，看清自己',
-    hero_desc: '不再依賴單一命理師的主觀判斷。鑒源整合八字、紫微、奇門遁甲等最多14套系統，以 4,600+ 條專業規則交叉分析，給你經得起驗證的命格報告。',
+    hero_desc: '不再依賴單一命理師的主觀判斷。鑒源整合八字、紫微、奇門遁甲等最多14套系統，以 44,421+ 條專業規則交叉分析，給你經得起驗證的命格報告。',
     cta_free: '免費體驗命理速算',
     cta_pricing: '查看完整方案',
     cta_no_card: '不需註冊 · 30 秒出結果 · 完全免費',
@@ -200,12 +200,87 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
     auth_no_account: '还没有账号？',
     auth_has_account: '已经有账号？',
   },
+  en: {
+    brand: 'JianYuan',
+    tagline: 'Fourteen systems cross-validated — one report to see yourself clearly',
+    nav_systems: 'Systems',
+    nav_pricing: 'Pricing',
+    nav_free: 'Free Tools',
+    nav_login: 'Sign In',
+    nav_signup: 'Sign Up Free',
+    nav_my_reports: 'My Reports',
+    nav_logout: 'Sign Out',
+    nav_blog: 'Blog',
+    hero_title_1: 'Fourteen systems cross-validated',
+    hero_title_2: 'One report to see yourself clearly',
+    hero_desc:
+      'No longer rely on a single master’s subjective judgement. JianYuan integrates up to fourteen systems — Bazi, Zi Wei Dou Shu, Qi Men Dun Jia and more — with tens of thousands of professional rules cross-analyzed to deliver a destiny report you can verify.',
+    cta_free: 'Try a Free Quick Reading',
+    cta_pricing: 'See All Plans',
+    cta_no_card: 'No signup · Results in 30 seconds · Completely free',
+    free_title: 'Quick Reading',
+    free_subtitle: 'Precise chart + deep analysis + personalized destiny interpretation',
+    free_no_register: 'No signup · Results in 30 seconds · Completely free',
+    name_label: 'Name',
+    name_required: 'Please enter your full name',
+    year_label: 'Birth Year',
+    month_label: 'Month',
+    day_label: 'Day',
+    hour_label: 'Birth Hour',
+    gender_label: 'Gender',
+    gender_male: 'Male',
+    gender_female: 'Female',
+    btn_analyze: 'Start Analysis',
+    btn_analyzing: 'Deep analysis in progress, please wait...',
+    pricing_title: 'Plans & Pricing',
+    pricing_subtitle: '6 plans — from knowing yourself to taking action',
+    login_title: 'Welcome Back',
+    signup_title: 'Create Account',
+    footer_disclaimer:
+      'This service combines traditional metaphysics with modern technology. Results are for reference only and do not constitute medical, investment or legal advice.',
+    footer_back_to_origin: 'Back to the source · See the essence',
+    footer_services: 'Services',
+    footer_free_tools: 'Free Quick Reading',
+    footer_plans: 'Plans & Pricing',
+    footer_systems: 'Systems',
+    footer_15_systems: 'The Fourteen Systems',
+    footer_process: 'Process',
+    footer_legal: 'Legal',
+    footer_privacy: 'Privacy Policy',
+    footer_terms: 'Terms of Service',
+    footer_contact: 'Contact Us',
+    tool_bazi: 'Bazi Quick Reading',
+    tool_ziwei: 'Zi Wei Quick Reading',
+    tool_name: 'Name Quick Reading',
+    tool_surname: 'Surname',
+    tool_given_name: 'Given Name',
+    tool_surname_placeholder: 'e.g. Wang',
+    tool_given_name_placeholder: 'e.g. Xiaoming',
+    tool_start_analysis: 'Start Name Analysis',
+    tool_analyzing: 'Deep analysis in progress...',
+    checkout_redirecting: 'Redirecting to payment...',
+    checkout_free_claim: 'Claim Free Report',
+    checkout_confirm_pay: 'Confirm Payment',
+    checkout_stripe_note:
+      'Payment is securely processed by Stripe. Reports typically take 30+ minutes; Direction Guides take 40+ minutes.',
+    dashboard_title: 'My Reports',
+    dashboard_no_reports: 'You have not purchased any reports yet',
+    dashboard_browse: 'Browse Plans',
+    auth_email: 'Email',
+    auth_password: 'Password',
+    auth_login_btn: 'Sign In',
+    auth_signup_btn: 'Sign Up',
+    auth_no_account: 'Don’t have an account? ',
+    auth_has_account: 'Already have an account? ',
+  },
 }
 
 // 取得當前語言
 export function getLocale(): Locale {
   if (typeof window === 'undefined') return 'zh-TW'
-  return (localStorage.getItem('locale') as Locale) || 'zh-TW'
+  const raw = localStorage.getItem('locale')
+  if (raw === 'zh-TW' || raw === 'zh-CN' || raw === 'en') return raw
+  return 'zh-TW'
 }
 
 export function setLocale(locale: Locale) {

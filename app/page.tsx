@@ -9,7 +9,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: '鑒源 JianYuan — 十四大命理系統精準分析｜八字、紫微斗數、奇門遁甲',
-  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十四大東西方命理系統，以 4,600+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，即時出結果。',
+  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十四大東西方命理系統，以 44,421+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，即時出結果。',
   keywords: '命理, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命盤, 命格分析, 免費算命, 姓名學, 風水, 人類圖, 吠陀占星, 出門訣, 運勢',
   openGraph: {
     title: '鑒源 JianYuan — 十四大命理系統精準分析',
@@ -176,7 +176,7 @@ export default function HomePage() {
           {[
             { num: '15', label: '命理系統', sub: '東西方完整覆蓋',
               icon: <><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20" /></> },
-            { num: '4,600+', label: '條專業規則', sub: '源自《滴天髓》《窮通寶鑑》等經典古籍',
+            { num: '44,421+', label: '條專業規則', sub: '源自《滴天髓》《窮通寶鑑》等經典古籍',
               icon: <><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></> },
             { num: '', label: '隱私保護', sub: '資料加密傳輸與儲存',
               icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /> },
@@ -209,7 +209,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { title: '傳統命理師', items: ['只用 1-2 套系統', '結論因人而異，難以驗證', '收費 $100-$300 美金', '等待 3-7 天出結果', '人為偏見影響判斷'], highlight: false },
-              { title: '鑒源命理', items: ['最多 14 套系統交叉分析', '4,600+ 條規則客觀運算', '最低 $39 美金起', '報告約 30-60 分鐘完成', '規則驅動，排盤可驗證'], highlight: true },
+              { title: '鑒源命理', items: ['最多 14 套系統交叉分析', '44,421+ 條規則客觀運算', '最低 $39 美金起', '報告約 30-60 分鐘完成', '規則驅動，排盤可驗證'], highlight: true },
               { title: '免費算命網站', items: ['套公式的罐頭回覆', '千篇一律的描述', '沒有個人化深度', '無法回答「為什麼」', '沒有行動建議'], highlight: false },
             ].map((col) => (
               <div key={col.title} className={`glass rounded-2xl p-6 relative ${col.highlight ? 'border-gold/25 shadow-[0_0_40px_rgba(201,168,76,0.08)]' : ''}`}>
@@ -257,7 +257,7 @@ export default function HomePage() {
               {
                 icon: <><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /><path d="M8 7h8M8 11h5" /></>,
                 title: '古籍 + 科技雙引擎',
-                desc: '4,600+ 條規則源自《滴天髓》《紫微斗數全書》《窮通寶鑑》等經典，由分析引擎整合成有深度的個人化報告。',
+                desc: '44,421+ 條規則源自《滴天髓》《紫微斗數全書》《窮通寶鑑》等經典，由分析引擎整合成有深度的個人化報告。',
                 warmth: false,
               },
               {
