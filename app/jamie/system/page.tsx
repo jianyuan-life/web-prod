@@ -89,8 +89,74 @@ export default function SystemPage() {
               ))}
             </div>
           </div>
+
+          {/* v5.4.1 Item 1 批次 3:Telegram 告警測試 UI(API 已存、UI 補齊) */}
+          <TelegramTestPanel adminKey={adminKey} />
         </>
       )}
+    </div>
+  )
+}
+
+function TelegramTestPanel({ adminKey }: { adminKey: string }) {
+  const [running, setRunning] = useState<string | null>(null)
+  const [result, setResult] = useState<{ event: string; ok: boolean; message?: string } | null>(null)
+
+  const events = [
+    { id: 'failed', label: '報告失敗告警', desc: '模擬 1 份報告生成失敗、檢查 [TEST] 訊息' },
+    { id: 'high_cost', label: '高成本警報', desc: '模擬單份報告超預算、檢查告警是否送達' },
+    { id: 'quality_gate', label: '品質閘門失敗', desc: '模擬 AI 報告未過 QA 閘門、檢查通知' },
+    { id: 'daily', label: '每日摘要', desc: '模擬每日 09:00 自動摘要、檢查格式' },
+    { id: 'llm_balance_low', label: 'LLM 餘額低', desc: '模擬 Claude/DeepSeek 餘額警告' },
+    { id: 'llm_balance_critical', label: 'LLM 餘額危急', desc: '模擬餘額即將耗盡' },
+  ]
+
+  const trigger = async (eventId: string) => {
+    if (!adminKey) return
+    setRunning(eventId)
+    setResult(null)
+    try {
+      const res = await adminFetch(`/api/admin/telegram-test?event=${eventId}`, {
+        adminKey,
+        method: 'POST',
+      })
+      const data = await res.json().catch(() => ({}))
+      setResult({ event: eventId, ok: res.ok, message: data?.message || (res.ok ? '已觸發、請檢查 Telegram' : '失敗') })
+    } catch (e: any) {
+      setResult({ event: eventId, ok: false, message: e?.message || 'network error' })
+    } finally {
+      setRunning(null)
+    }
+  }
+
+  return (
+    <div className="bg-[#1a1a1a] rounded-xl border border-white/5 p-5">
+      <h3 className="text-sm font-semibold text-white mb-2">Telegram 告警測試</h3>
+      <p className="text-xs text-gray-500 mb-4">每個按鈕觸發一個告警事件、實際送 [TEST] 前綴訊息到 Telegram、確認管道暢通</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {events.map(e => (
+          <div key={e.id} className="bg-black/30 rounded-lg p-3 border border-white/5">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <div className="text-sm text-white font-medium">{e.label}</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">{e.desc}</div>
+              </div>
+              <button
+                onClick={() => trigger(e.id)}
+                disabled={running !== null}
+                className="px-3 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded border border-blue-500/30 disabled:opacity-40 whitespace-nowrap"
+              >
+                {running === e.id ? '送出中...' : '觸發'}
+              </button>
+            </div>
+            {result?.event === e.id && (
+              <div className={`text-[10px] mt-1 ${result.ok ? 'text-green-400' : 'text-red-400'}`}>
+                {result.ok ? '✓' : '✗'} {result.message}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
