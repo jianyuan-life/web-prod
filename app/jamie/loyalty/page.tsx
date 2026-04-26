@@ -223,6 +223,140 @@ export default function LoyaltyPage() {
           </div>
         )}
       </div>
+
+      {/* v5.4.3 Item 1 批次 4:手動發放積分 UI(API 已存、UI 缺) */}
+      <GrantPointsPanel adminKey={adminKey || ''} onSuccess={() => fetchData()} />
+    </div>
+  )
+}
+
+function GrantPointsPanel({ adminKey, onSuccess }: { adminKey: string; onSuccess: () => void }) {
+  const [email, setEmail] = useState('')
+  const [points, setPoints] = useState<number>(0)
+  const [description, setDescription] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  const handleGrant = async () => {
+    if (!adminKey) return
+    if (!email.trim()) {
+      setResult({ ok: false, message: '請輸入 email' })
+      return
+    }
+    if (!points || points === 0) {
+      setResult({ ok: false, message: '請輸入點數(可為負數扣點)' })
+      return
+    }
+    if (!description.trim()) {
+      setResult({ ok: false, message: '請填寫發放原因(audit log 用)' })
+      return
+    }
+    // v5.4.3 補:Gemini+Codex 共識 P1 confirm dialog(尤其負數)
+    const action = points > 0 ? '發放' : '扣除'
+    const absPoints = Math.abs(points)
+    const confirmMsg = `確認${action} ${absPoints} 點給 ${email}?\n\n原因:${description}\n\n${points < 0 ? '⚠️ 此為扣點操作、不可逆!' : ''}`
+    if (!window.confirm(confirmMsg)) return
+
+    setSubmitting(true)
+    setResult(null)
+    try {
+      const res = await adminFetch('/api/admin/grant-points', {
+        adminKey,
+        method: 'POST',
+        body: JSON.stringify({
+          key: adminKey,
+          email: email.trim(),
+          points,
+          description: description.trim(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setResult({ ok: true, message: `成功${action} ${absPoints} 點給 ${email}` })
+        setEmail('')
+        setPoints(0)
+        setDescription('')
+        onSuccess()
+      } else {
+        // v5.4.3 Codex P1:細化錯誤訊息(401/403/429/parse fail)
+        let errMsg = data?.error || data?.message || ''
+        if (!errMsg) {
+          if (res.status === 401) errMsg = '未授權(401)、請重新登入'
+          else if (res.status === 403) errMsg = '權限不足(403)'
+          else if (res.status === 429) errMsg = '請求過於頻繁(429)、稍後再試'
+          else if (res.status >= 500) errMsg = `伺服器錯誤(${res.status})`
+          else errMsg = `操作失敗(HTTP ${res.status})`
+        }
+        setResult({ ok: false, message: errMsg })
+      }
+    } catch (e: any) {
+      setResult({ ok: false, message: e?.message || 'network error' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 bg-[#1a1a1a] rounded-xl border border-white/5 p-5">
+      <h3 className="text-sm font-semibold text-white mb-1">手動發放/扣除積分</h3>
+      <p className="text-xs text-gray-500 mb-4">
+        補償客訴 / 行銷活動加碼 / 修正異常扣點。所有操作寫入 audit_log、原因必填。
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label className="block text-[10px] text-gray-400 mb-1">客戶 Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="customer@example.com"
+            className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded text-white placeholder-gray-600 focus:border-blue-500/50 outline-none"
+            disabled={submitting}
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] text-gray-400 mb-1">點數(可為負數扣點)</label>
+          <input
+            type="number"
+            value={points || ''}
+            onChange={(e) => setPoints(Number(e.target.value))}
+            placeholder="例如 10 或 -5"
+            className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded text-white placeholder-gray-600 focus:border-blue-500/50 outline-none"
+            disabled={submitting}
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] text-gray-400 mb-1">原因(必填、audit log)</label>
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="例如:客訴補償 #ORD-1234"
+            className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded text-white placeholder-gray-600 focus:border-blue-500/50 outline-none"
+            disabled={submitting}
+          />
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleGrant}
+          disabled={submitting || !email || !points || !description}
+          className={`px-4 py-2 text-xs rounded border disabled:opacity-40 ${
+            points < 0
+              ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border-red-500/30'
+              : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-500/30'
+          }`}
+        >
+          {submitting
+            ? (points < 0 ? '扣除中...' : '發放中...')
+            : (points < 0 ? '⚠️ 確認扣除' : '確認發放')}
+        </button>
+        {result && (
+          <span className={`text-xs ${result.ok ? 'text-green-400' : 'text-red-400'}`}>
+            {result.ok ? '✓' : '✗'} {result.message}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

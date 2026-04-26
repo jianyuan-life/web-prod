@@ -91,7 +91,7 @@ export default function SystemPage() {
           </div>
 
           {/* v5.4.1 Item 1 批次 3:Telegram 告警測試 UI(API 已存、UI 補齊) */}
-          <TelegramTestPanel adminKey={adminKey} />
+          <TelegramTestPanel adminKey={adminKey || ''} />
         </>
       )}
     </div>
