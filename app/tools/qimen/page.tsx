@@ -1009,15 +1009,20 @@ export default function QimenToolPage() {
                     <span>&#128230; PDF 永久保存</span>
                   </div>
 
-                  {/* v5.4.4 Item 1 批次 5:cross-sell 完整 14 系統人生藍圖 C 方案 */}
-                  <div className="glass rounded-xl p-5 max-w-md mx-auto mb-4">
-                    <p className="text-sm text-cream mb-2 font-semibold">想看完整命格、不只奇門?</p>
-                    <p className="text-xs text-text-muted mb-3">
-                      奇門遁甲只是 14 套系統之一。完整人生藍圖融合八字、紫微、占星、易經、人類圖等全套交叉驗證、找出您獨特的天命密碼。
+                  {/* v5.4.5 Item 1 批次 6:文案強化(Gemini 建議「術 vs 道」「終身藍圖」) */}
+                  <div className="glass rounded-xl p-5 max-w-lg mx-auto mb-4 border border-gold/20">
+                    <p className="text-sm text-cream mb-2 font-semibold">奇門助你贏在當下、但你的「終身藍圖」看過了嗎?</p>
+                    <p className="text-xs text-text-muted mb-3 leading-relaxed">
+                      奇門遁甲擅長捕捉「當下時空」、但真正的勝算、取決於你的命格底氣。
+                      完整人生藍圖整合八字、紫微、占星、吠陀、易經、人類圖、姓名學等 14 套東西方系統、
+                      <strong className="text-cream">為你做 360° 交叉驗證、找出獨特的天命密碼</strong>。
                     </p>
-                    <Link href="/checkout?plan=C" className="inline-block px-6 py-2 text-sm bg-gradient-to-r from-gold/30 to-amber-500/30 text-gold rounded-lg hover:from-gold/40 hover:to-amber-500/40 transition-all border border-gold/30 font-semibold">
+                    <Link href="/checkout?plan=C" className="inline-block px-6 py-2.5 text-sm bg-gradient-to-r from-gold/40 to-amber-500/40 text-gold rounded-lg hover:from-gold/55 hover:to-amber-500/55 transition-all border border-gold/40 font-semibold shadow-md">
                       解鎖人生藍圖完整報告 $89
                     </Link>
+                    <p className="text-[10px] text-text-muted/60 mt-2">
+                      含八字 / 紫微 / 占星 / 易經 / 人類圖等 14 套深度解析、約 46,000 字
+                    </p>
                   </div>
 
                   <p className="text-xs text-text-muted/50">
