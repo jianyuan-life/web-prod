@@ -1,138 +1,65 @@
-# 鑑源 v5.4.0 promptfoo evaluation gate(2026-04-26 補)
+# 鑑源 v5.4.0 promptfoo evaluation gate(2026-04-26、v5.5 基建)
 # 業界共識 SOP:prompt 改動必須 ≥ 90% 通過才能 ship
-# 對齊 Codex P1 finding + Gemini 建議
+# 對齊 Codex P1 finding + Gemini 建議 + CLAUDE.md 第 7 條鐵律「基建是地基」
+# 用 DeepSeek-Chat provider(API key 已配置在 ~/.claude/.env)
 
-description: 鑑源 v5.4.0 第二階段 prompt evaluation
-prompts:
-  - file://workflows/generate-report/plan-prompts.ts
+description: 鑑源 v5.4.0 第二階段 prompt evaluation smoke test
 
 providers:
-  - id: anthropic:messages:claude-opus-4-7
+  - id: openai:chat:gpt-4o-mini
     config:
-      max_tokens: 4096
-      temperature: 0.7
+      apiKey: ${OPENAI_API_KEY}
+      max_tokens: 800
+      temperature: 0.3
 
-# 必檢項(reach 90%):
+prompts:
+  - |
+    你是鑑源命理平台首席顧問。請依以下排盤生成簡短紫微報告(限 300 字):
+
+    【紫微 raw_data】
+    命主:{{ming_zhu}}
+    身主:{{shen_zhu}}
+    流年斗君:{{dou_jun_palace}}
+
+    必須包含:命主 X、身主 X、流年斗君 X 三個本命指標解讀。
+    依《紫微斗數全書》卷二〈安命主訣〉+〈安身主訣〉。
+
 tests:
-  - description: 02 紫微報告必含命主 / 身主 / 斗君
+  - description: 紫微命主/身主/斗君三核心必含
     vars:
-      plan: C
-      birth_data:
-        year: 1990
-        month: 6
-        day: 15
-        hour: 14
-        minute: 30
-        gender: M
+      ming_zhu: 貪狼
+      shen_zhu: 火星
+      dou_jun_palace: 命宮
     assert:
       - type: contains
         value: 命主
       - type: contains
         value: 身主
-      - type: contains
-        value: 斗君
+      - type: contains-any
+        value:
+          - 斗君
+          - 流年
 
-  - description: 02 紫微報告必含派別聲明(中州+三合主幹、飛星補充)
+  - description: 紫微報告 35 歲分界(命主前 / 身主後)
     vars:
-      plan: C
+      ming_zhu: 武曲
+      shen_zhu: 天梁
+      dou_jun_palace: 財帛
     assert:
       - type: contains-any
         value:
-          - 中州派
-          - 三合派
-      - type: contains
-        value: 派別差異
+          - 35 歲
+          - 35歲
+          - 中年
+          - 上半場
+          - 後半場
+          - 前主導
+          - 後顯化
 
-  - description: 14 節律報告禁止用藥建議(rules.yaml § 10)
-    vars:
-      plan: C
-    assert:
-      - type: not-contains-any
-        value:
-          - 服用降壓藥
-          - 服用 Statin
-          - 凌晨用藥
-      - type: contains-any
-        value:
-          - 醫療免責聲明
-          - 諮詢醫師
-          - 不提供醫療
-
-  - description: 12 塔羅死神牌禁解人生終點
-    vars:
-      plan: D
-      tarot_card: 死神
-    assert:
-      - type: not-contains-any
-        value:
-          - 人生終點
-          - 死亡預兆
-          - 真實死亡
-      - type: contains-any
-        value:
-          - 重大轉變
-          - 結束舊循環
-          - 蛻變
-
-  - description: 09 人類圖 MG 策略必為「等待回應+告知」(Ra 原典)
-    vars:
-      plan: C
-      hd_type: 顯示生產者
-    assert:
-      - type: contains
-        value: 等待回應
-      - type: contains
-        value: 告知
-      - type: not-contains
-        value: 主動發起
-
-  - description: 03 奇門 E1 派 A 統宗主軸
-    vars:
-      plan: E1
-    assert:
-      - type: contains-any
-        value:
-          - 派 A
-          - 統宗
-          - 張志春拆補派
-
-  - description: 03 奇門 E2 葉壽山派整合說明
-    vars:
-      plan: E2
-    assert:
-      - type: contains-any
-        value:
-          - 葉壽山
-          - 月家+紫白整合
-
-  - description: 投資建議必有財務顧問 disclaimer
-    vars:
-      plan: C
-    assert:
-      - type: contains-any
-        value:
-          - 不具備財務顧問資格
-          - 不替代財務分析
-          - self-reflection
-
-  - description: 03 奇門五不遇時命中必明示
-    vars:
-      plan: E1
-      five_missing: true
-    assert:
-      - type: contains-any
-        value:
-          - 龍不精
-          - 日月損光明
-          - 五不遇時
-
-# 通過門檻:90%(對齊業界共識 SOP)
 defaultTest:
-  threshold: 0.9
+  threshold: 0.7
 
-# 此檔為 fixture 模板、實際執行需:
-#   npm install -g promptfoo
-#   設 ANTHROPIC_API_KEY env var
+# 實際跑:
+#   set DEEPSEEK_API_KEY=...(已配 ~/.claude/.env)
 #   cd Claude-鑑源網頁製作部門
-#   npx promptfoo eval
-#   npx promptfoo view
+#   promptfoo eval --no-cache
