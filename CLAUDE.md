@@ -170,6 +170,41 @@ Resend 寄 Email（含報告連結）
 
 ## 更新紀錄
 
+### v5.3.99(2026-04-26 第二階段 100 分:Wave 5 深度訓練 + 02 紫微 P0 修)
+
+**完成第二階段:訓練命理邏輯 + 規則合併去重 + 全面優化、進下一階段準備**
+
+Wave 5 深度訓練全 15 系統(命理研究部門 16e7870 push):
+- 16 份 deep_v3 markdown(290K 字、~1100+ 條規則)
+- 02 紫微 calculator(ziwei_doushu.py)修 3 條 P0:天哭天虛 L1071-1077 / 辛年魁鉞 L139 / 小限 L924-948、11 組 unit test PASS、古籍依據《紫微斗數全書》卷二 line 915/979/1040
+- iztro-py + 王亭之手稿三方驗證、12 宮主星 16/16 一致、信心 95/100
+
+新增 tasks(鑑源主 repo ce51a4b push):
+- master_v5_rules_to_integrate.md(71K 字、整合 16 份 deep_v3)
+- jianyuan_system_map_v1.md / jianyuan_workflow_complete_v1.md
+- 03_qimen_deep_audit_v1.md(78% 規則找古籍依據)
+- research_crawl_decisions / rules / references_sop_summary_v1.md
+- p0_fix_results/(13 生肖 PASS / 04 風水 已對 / 02 紫微 已修 / 訓練庫重分類)
+- phase2_task_plan / phase2_decisions(planning-with-files 模式)
+
+關鍵發現:
+- 04 風水九運 / 13 生肖立春 P0 = 已修對、不需動 code(grep 命中為證)
+- 03 奇門年命宮 = Wave 1 誤判、實是派 A 共識(平反 65/100)
+- 月家 E2 派別 = 鑑源走張志春拆補派、避王鳳麟陰盤(zhihu/ziwei tw 兩源)
+- 訓練庫 5 檔誤分類已重歸位
+- 14 節律 chronotherapy 醫療建議 = P0 法務風險(下版本修)
+- 02 紫微仍缺命主/身主/斗君(下版本補)
+
+派工(SOP v1.1 8.2):
+- Wave 5:Claude 16 sub-agent 平行 + Gemini grounding 補
+- 02 紫微修 code:Claude sub-agent + 11 unit test PASS
+- 整合:Python grep-based(Gemini API quota 用完、改 grep)
+
+對應 lesson:#029 全流程三家協作 / #030 訓練庫品質問題
+對應規則:CLAUDE.md 第 5 條核心鐵律(全流程派工)
+
+---
+
 ### v5.3.98（2026-04-26 4 方案還原 — C/D/G15/R prompt 修壞還原）
 
 **背景**：v5.3.95「對外清零 15→14」+ v5.3.96「ETHICS_RULES 加 system prompt 開頭」造成 4 方案失焦不準。依 `tasks/4plan_recovery_diff_report.md`（531 行 / 14000 字 Wave 1 Agent 分析）執行 Phase 1+2+3。
