@@ -1008,8 +1008,20 @@ export default function QimenToolPage() {
                     <span>&#9889; 約 30-60 分鐘出報告</span>
                     <span>&#128230; PDF 永久保存</span>
                   </div>
+
+                  {/* v5.4.4 Item 1 批次 5:cross-sell 完整 14 系統人生藍圖 C 方案 */}
+                  <div className="glass rounded-xl p-5 max-w-md mx-auto mb-4">
+                    <p className="text-sm text-cream mb-2 font-semibold">想看完整命格、不只奇門?</p>
+                    <p className="text-xs text-text-muted mb-3">
+                      奇門遁甲只是 14 套系統之一。完整人生藍圖融合八字、紫微、占星、易經、人類圖等全套交叉驗證、找出您獨特的天命密碼。
+                    </p>
+                    <Link href="/checkout?plan=C" className="inline-block px-6 py-2 text-sm bg-gradient-to-r from-gold/30 to-amber-500/30 text-gold rounded-lg hover:from-gold/40 hover:to-amber-500/40 transition-all border border-gold/30 font-semibold">
+                      解鎖人生藍圖完整報告 $89
+                    </Link>
+                  </div>
+
                   <p className="text-xs text-text-muted/50">
-                    還沒準備好？{' '}
+                    還沒準備好?{' '}
                     <Link href="/auth/signup" className="text-gold hover:underline">免費註冊帳號</Link>
                     {' '}先體驗更多免費工具
                   </p>

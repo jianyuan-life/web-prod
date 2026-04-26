@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { searchCities, searchLocations, type LocationSearchResult } from '@/lib/cities'
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
@@ -1147,6 +1148,21 @@ export default function ZiweiToolPage() {
                       return <a key={plan} href={`/checkout?${q}`} className={cls}>{label}</a>
                     })}
                   </div>
+
+                  {/* v5.4.4 Item 1 批次 5:出門訣 cross-sell(對齊 bazi/qimen 頁) */}
+                  <div className="glass rounded-xl p-5 max-w-md mx-auto mb-6">
+                    <p className="text-sm text-cream mb-2 font-semibold">想知道什麼時候出門最順利?</p>
+                    <p className="text-xs text-text-muted mb-3">奇門遁甲出門訣 — 精準計算吉時吉方、讓每次出門都事半功倍</p>
+                    <div className="flex gap-2 justify-center">
+                      <Link href="/checkout?plan=E1" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
+                        事件出門訣 $59
+                      </Link>
+                      <Link href="/checkout?plan=E2" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
+                        月度出門訣 $29
+                      </Link>
+                    </div>
+                  </div>
+
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">
                     <span>&#128274; Stripe 安全支付</span>
                     <span>&#9889; 約30-60分鐘出報告</span>
