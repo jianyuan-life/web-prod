@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.97（2026-04-25 找回真實規則條數:4,600+ → 44,421+ 真實精算值)
+**網站版本：** v5.3.98（2026-04-25 找回真實規則條數:4,600+ → 44,421+ 真實精算值)
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -169,6 +169,53 @@ Resend 寄 Email（含報告連結）
 ---
 
 ## 更新紀錄
+
+### v5.3.98（2026-04-26 4 方案還原 — C/D/G15/R prompt 修壞還原）
+
+**背景**：v5.3.95「對外清零 15→14」+ v5.3.96「ETHICS_RULES 加 system prompt 開頭」造成 4 方案失焦不準。依 `tasks/4plan_recovery_diff_report.md`（531 行 / 14000 字 Wave 1 Agent 分析）執行 Phase 1+2+3。
+
+**Phase 1：低風險快修**
+- C 方案 prompt 內 14→15 系統字眼還原（c_plan_v2.ts L599/L762/L776/L783，對外保持 14）
+- D 方案移除 SCHOOL_LOCK（D 是問題解答型、需要派別彈性）
+- D 方案「不硬塞 14 套」改為「不硬塞所有系統」
+- C/D/R 三方案 ETHICS_RULES + SCHOOL_LOCK 從 system prompt 開頭移到末尾（避免稀釋核心人設定位）
+- steps.ts 4 處 14→15 同步
+
+**Phase 2：G15 大手術 — 回 v5.3.32 認可版基線**
+- plan-prompts.ts G15 段落從 v5.3.97 (708 行學術化) 取代為 v5.3.32 認可版 (266 行直白)（commit 667b6f9）
+- 砍掉 G15_FAMILY_DYNAMICS_INSTRUCTION + G15_CROSS_VALIDATION_INSTRUCTION + G15_THREE_DNA_RULES + G15_FAMILY_ETHICS 共 4 個 const（減 ~280 行）
+- Bowen / Satir / Karpman / Stephen Covey 學術理論引用全砍
+- 字數要求從 15K/20K/25K/30K 改回 8K/10K/12K（認可版基線）
+- G15 prompt 末尾加 ETHICS_RULES（法務合規必要、4 層審查雙標必修）
+- 整檔減 382 行（1558 → 1176）
+
+**Phase 3：C 方案 Call 3 補集大成 6 章節**
+- c_plan_v2.ts buildCall3Prompt 在「九、給你的一句話」之前插入：
+  - 九、十五系統交叉驗證矩陣（7 面向 × 15 系統 ★ 評級 + 共識度%）
+  - 十、TOP 5 優勢（每條附支持系統 + 信心度 ●●●●○）
+  - 十一、TOP 5 風險（同上格式）
+  - 十二、三階段行動計畫（即刻/短期/長期）
+  - 十三、年度運勢曲線（12 個月運勢表）
+  - 十四、幸運參數速查表（顏色/數字/方位/時段/植物）
+- 原 9-11 章重編為 15-17（給你的一句話 / 刻意練習 / 寫給你的話）
+
+**4 層審查（self-audit.md / SOP v1.1）**：
+- L1 QA Agent (Claude self)：PASS — 結構符合 instructions、ETHICS 全保留、Phase 1+2+3 全做
+- L2 IA Agent (Claude self)：PASS — 認可版 G15 完整貼回、6 章節新增、編號連續
+- L3 Codex review：PASS — 找 3 finding（P1×2 + P2×1）、全修
+- L4 Gemini review：PASS — 找 4 finding（P0×2 + P1×1 + P2×1 + P1 提問）、3 修 1 為誤判
+- 雙標必修：G15 ETHICS_RULES 缺失（L3 P1 + L4 P0、已修）
+
+**必保留（未還原）**：
+- ETHICS_RULES（法務合規）
+- ETHICS_RULES_QIMEN
+- 對外文案 14 套（首頁/pricing/blog/OG/whitepaper、剛 push 認可）
+- 出門訣 E1/E2/E3/E4 整塊 prompt（不在範圍）
+- SCHOOL_LOCK（C / R 留 / D 移除）
+
+**type-check 零錯誤**：tsc --noEmit 通過。
+
+---
 
 ### v5.3.79（2026-04-21 E2 月度出門訣 v2.0 月家奇門古法接入）
 

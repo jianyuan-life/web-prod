@@ -917,7 +917,7 @@ export async function loadReportRecord(reportId: string) {
 // ── Step 1: 呼叫 Python API 排盤 ──
 export async function callPythonCalculate(birthData: BirthData) {
   "use step";
-  await emitProgress({ step: '排盤運算', progress: 10, message: '正在計算十四大命理系統排盤...' })
+  await emitProgress({ step: '排盤運算', progress: 10, message: '正在計算十五大命理系統排盤...' })
 
   // 60 秒超時：防止 Fly.io 無回應時無限等待
   const controller = new AbortController()
@@ -2476,7 +2476,7 @@ export async function generatePDF(
 generatePDF.maxRetries = 2
 
 // ── Step 3.5: 自動品質閘門 ──
-// 檢查報告完整性：14 系統覆蓋、禁止字眼、句子截斷
+// 檢查報告完整性：15 系統覆蓋、禁止字眼、句子截斷
 export async function qualityGate(
   reportContent: string, planCode: string, systemsCount: number,
   chumenjiTop?: ChumenjiTopResult | null,
@@ -2487,9 +2487,9 @@ export async function qualityGate(
 
   const warnings: string[] = []
 
-  // 1. 系統數量檢查（C 方案需 14 套）
-  if (planCode === 'C' && systemsCount < 14) {
-    warnings.push(`排盤系統不足: 期望 14 套，實際 ${systemsCount} 套`)
+  // 1. 系統數量檢查（C 方案需 15 套）
+  if (planCode === 'C' && systemsCount < 15) {
+    warnings.push(`排盤系統不足: 期望 15 套，實際 ${systemsCount} 套`)
   }
 
   // v5.3.26：C 方案結構性檢查放寬（修 v5.3.23 的誤判 bug）
