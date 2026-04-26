@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.3.98（2026-04-25 找回真實規則條數:4,600+ → 44,421+ 真實精算值)
+**網站版本：** v5.4.0（2026-04-26 v5.4.0 第二階段啟動部署:14 節律法務修補 + 02 紫微命主/身主/斗君整合 + 09 MG 確認 + 斗君落宮映射 + Feature Flag 系統)
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
