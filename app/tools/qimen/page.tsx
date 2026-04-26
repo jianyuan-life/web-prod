@@ -996,11 +996,11 @@ export default function QimenToolPage() {
                   <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
                     <Link href="/checkout?plan=E1"
                       className="px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow">
-                      事件出門訣 $89
+                      事件出門訣 $59
                     </Link>
                     <Link href="/checkout?plan=E2"
                       className="px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10">
-                      月度出門訣 $99
+                      月度出門訣 $29
                     </Link>
                   </div>
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">

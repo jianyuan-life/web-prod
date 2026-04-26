@@ -2611,7 +2611,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     了解出門訣方案
                   </a>
                   <span className="text-xs text-text-muted/60 mt-2 sm:mt-0 sm:self-center">
-                    事件出門訣 $89 / 月度出門訣 $99
+                    事件出門訣 $59 / 月度出門訣 $29
                   </span>
                 </div>
               </div>
