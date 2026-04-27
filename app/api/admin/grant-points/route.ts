@@ -124,9 +124,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 記錄交易(amount 帶符號、type 區分 grant vs deduct)
-    // v5.4.8 P2 註:type='admin_deduct' 為新增、若 DB enum/check constraint 限制、insert 會失敗
-    // 已知 type 欄位:admin_grant / signup_bonus / referral_reward / repeat_purchase / use_at_checkout / transfer_in/out
-    // admin_deduct 為新 enum、若 schema check_type constraint 限制需先 migration 加入
+    // v5.4.10 audit:point_transactions.type 是 TEXT NOT NULL、無 CHECK constraint
+    // 任何字串都可 insert、不需 migration、admin_deduct 直接用
+    // 詳:supabase/migrations/v540_point_transactions_type_audit.md
     const { error: txErr } = await supabase.from('point_transactions').insert({
       user_id: user.id,
       type: isDeduct ? 'admin_deduct' : 'admin_grant',
@@ -136,20 +136,7 @@ export async function POST(req: NextRequest) {
       reference_id: `admin_${Date.now()}`,
     })
     if (txErr) {
-      // 若是 enum constraint、fallback 用 admin_grant + 註明是扣點
-      if (isDeduct && (txErr.message.includes('check') || txErr.message.includes('enum') || txErr.message.includes('constraint'))) {
-        await supabase.from('point_transactions').insert({
-          user_id: user.id,
-          type: 'admin_grant',
-          amount: points,  // 仍帶負號
-          balance_after: newBalance,
-          description: `[扣點] ${description.trim()}`,
-          reference_id: `admin_${Date.now()}`,
-        })
-      } else {
-        // 非 constraint 錯、回 500
-        return NextResponse.json({ error: `寫入交易紀錄失敗:${txErr.message}` }, { status: 500 })
-      }
+      return NextResponse.json({ error: `寫入交易紀錄失敗:${txErr.message}` }, { status: 500 })
     }
 
     // 稽核紀錄(Codex C3 P2:加 before/after balance + delta + action)
