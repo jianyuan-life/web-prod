@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
 import { adminFetch } from '@/lib/admin-fetch'
+import { maskEmail } from '@/lib/privacy-mask'
 
 const PLAN_NAMES: Record<string, string> = {
   C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
@@ -146,7 +147,7 @@ export default function FeedbackPage() {
             <div className="text-xs text-gray-400 mb-2">
               {item.paid_reports.client_name}
               <span className="text-gray-600 mx-1">|</span>
-              {item.paid_reports.customer_email}
+              <span title="個資保護:點客訴詳情查完整 email">{maskEmail(item.paid_reports.customer_email)}</span>
             </div>
 
             {item.most_valuable && (

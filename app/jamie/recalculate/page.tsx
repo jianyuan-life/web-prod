@@ -14,6 +14,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
 import { getAllUniqueTimezones } from '@/lib/cities-with-tz'
+import { maskEmail } from '@/lib/privacy-mask'
 
 interface Row {
   id: string
@@ -186,7 +187,7 @@ function RecalcRow({
             <span className="text-[10px] text-gray-500">{new Date(row.created_at).toLocaleDateString('zh-TW')}</span>
           </div>
           <div className="text-xs text-gray-400">
-            {row.customer_email} · 狀態 <span className="text-gray-300">{row.status}</span>
+            <span title="個資保護:點報告詳情查完整 email">{maskEmail(row.customer_email)}</span> · 狀態 <span className="text-gray-300">{row.status}</span>
           </div>
           <div className="text-xs text-gray-500 mt-1 font-mono">
             id: {row.id.slice(0, 8)}... | city: {city || '(空)'} | country: {row.birth_country || '(空)'} | lat/lng: {row.birth_lat ?? '-'}/{row.birth_lng ?? '-'}
