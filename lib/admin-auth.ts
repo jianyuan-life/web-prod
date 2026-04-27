@@ -59,6 +59,12 @@ export function checkAdminAuth(
   req: NextRequest,
   bodyKey?: string | null,
 ): NextResponse | null {
+  // v5.4.16 P1(Codex 真審):先檢查 IP lockout、被鎖直接拒絕(避免暴破)
+  // 動態 import 避免循環依賴
+  const { checkAdminAuthLockout, recordAdminAuthFail, clearAdminAuthFail } = require('./admin-rate-limit')
+  const lockoutResp = checkAdminAuthLockout(req)
+  if (lockoutResp) return lockoutResp
+
   const adminKey = getAdminKey()
   if (!adminKey) {
     // env 未設定一律拒絕（不能因為 env 空就放行）
@@ -66,8 +72,12 @@ export function checkAdminAuth(
   }
   const provided = extractAdminKey(req, bodyKey)
   if (!safeCompare(provided, adminKey)) {
+    // v5.4.16:認證失敗、記錄一次(連續 5 次鎖 30 分鐘)
+    recordAdminAuthFail(req)
     return NextResponse.json({ error: '無權限' }, { status: 403 })
   }
+  // v5.4.16:認證成功、清空該 IP 失敗紀錄
+  clearAdminAuthFail(req)
   return null
 }
 

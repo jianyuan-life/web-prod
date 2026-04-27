@@ -16,6 +16,9 @@ function getServiceSupabase() {
 
 const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || ''
 
+// v5.4.16 P1(Codex 真審):併發 lock map、防同 reportId 同時觸發兩次 PDF gen burn API
+const pdfGenInFlight = new Map<string, Promise<string>>()
+
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
   R: '合否？', E1: '事件出門訣', E2: '月度出門訣', Y: '年度運勢',
@@ -108,6 +111,25 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // v5.4.16 P1(Codex 真審):in-process lock 防同 reportId 併發 burn API
+    // 同一個 reportId 只允許一個 PDF 生成 in-flight、後到的等先到結果
+    if (pdfGenInFlight.has(reportId)) {
+      // 等先到的完成、或 30s 後 timeout 自己跑
+      const existing = pdfGenInFlight.get(reportId)!
+      try {
+        const result = await Promise.race([
+          existing,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('wait existing PDF gen timeout')), 30_000),
+          ),
+        ])
+        return NextResponse.json({ pdf_url: result, cached: false, waited: true })
+      } catch {
+        // 既存 in-flight failed/timeout、繼續自己跑(刪 stale entry)
+        pdfGenInFlight.delete(reportId)
+      }
+    }
+
     const ai = report.report_result as { ai_content?: string } | null
     const aiContent = ai?.ai_content || ''
     if (!aiContent) {
@@ -130,68 +152,60 @@ export async function POST(req: NextRequest) {
       clientName = memberNames.filter(Boolean).join('、') || clientName
     }
 
-    // 呼叫 Fly.io Python API 生成 PDF
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 90_000)
-    let pdfRes: Response
+    // v5.4.16 P1(Codex):整個 PDF gen + upload 包進 Promise 註冊到 lock map
+    // 同 reportId 後到請求 await 同一 Promise、不會重複 burn
+    const genPromise: Promise<string> = (async () => {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 90_000)
+      let pdfRes: Response
+      try {
+        pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            report_id: reportId,
+            plan_code: planCode,
+            client_name: clientName,
+            plan_name: planName,
+            ai_content: pdfContent,
+            locale: (bd.locale as string) || 'zh-TW',
+            analyses_summary: [],
+            show_header_footer: true,
+            show_toc_page: true,
+            cover_style: 'compact',
+          }),
+        })
+      } finally {
+        clearTimeout(timeout)
+      }
+      if (!pdfRes.ok) {
+        const txt = await pdfRes.text().catch(() => '')
+        throw new Error(`python pdf api failed HTTP ${pdfRes.status}: ${txt.slice(0, 300)}`)
+      }
+      const pdfData = await pdfRes.json() as { pdf_base64?: string; file_size_kb?: number }
+      if (!pdfData.pdf_base64) throw new Error('pdf_base64 missing from python response')
+      const pdfBytes = Buffer.from(pdfData.pdf_base64, 'base64')
+      const storagePath = `${reportId}/report.pdf`
+      const { error: uploadErr } = await supabase.storage
+        .from('reports')
+        .upload(storagePath, pdfBytes, { contentType: 'application/pdf', upsert: true })
+      if (uploadErr) throw new Error(`supabase storage upload failed: ${uploadErr.message}`)
+      const { data: urlData } = supabase.storage.from('reports').getPublicUrl(storagePath)
+      const pdfUrl = urlData.publicUrl
+      await supabase.from('paid_reports').update({ pdf_url: pdfUrl }).eq('id', reportId)
+      return pdfUrl
+    })()
+
+    // 註冊到 lock map(in-flight)、其他併發請求看到會等
+    pdfGenInFlight.set(reportId, genPromise)
     try {
-      pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          report_id: reportId,
-          plan_code: planCode,
-          client_name: clientName,
-          plan_name: planName,
-          ai_content: pdfContent,
-          locale: (bd.locale as string) || 'zh-TW',
-          analyses_summary: [],
-          show_header_footer: true,
-          show_toc_page: true,
-          cover_style: 'compact',
-        }),
-      })
+      const pdfUrl = await genPromise
+      return NextResponse.json({ pdf_url: pdfUrl, cached: false })
     } finally {
-      clearTimeout(timeout)
+      // 完成後從 map 移除(成功或失敗都移)
+      pdfGenInFlight.delete(reportId)
     }
-
-    if (!pdfRes.ok) {
-      const txt = await pdfRes.text().catch(() => '')
-      return NextResponse.json(
-        { error: `python pdf api failed: HTTP ${pdfRes.status}`, detail: txt.slice(0, 300) },
-        { status: 502 },
-      )
-    }
-
-    const pdfData = await pdfRes.json() as { pdf_base64?: string; file_size_kb?: number }
-    if (!pdfData.pdf_base64) {
-      return NextResponse.json({ error: 'pdf_base64 missing from python response' }, { status: 502 })
-    }
-
-    const pdfBytes = Buffer.from(pdfData.pdf_base64, 'base64')
-    const storagePath = `${reportId}/report.pdf`
-
-    const { error: uploadErr } = await supabase.storage
-      .from('reports')
-      .upload(storagePath, pdfBytes, { contentType: 'application/pdf', upsert: true })
-
-    if (uploadErr) {
-      return NextResponse.json(
-        { error: 'supabase storage upload failed', detail: uploadErr.message },
-        { status: 502 },
-      )
-    }
-
-    const { data: urlData } = supabase.storage.from('reports').getPublicUrl(storagePath)
-    const pdfUrl = urlData.publicUrl
-
-    await supabase
-      .from('paid_reports')
-      .update({ pdf_url: pdfUrl })
-      .eq('id', reportId)
-
-    return NextResponse.json({ pdf_url: pdfUrl, cached: false, size_kb: pdfData.file_size_kb })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg.slice(0, 300) }, { status: 500 })

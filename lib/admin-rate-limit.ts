@@ -131,3 +131,26 @@ export function clearAdminAuthFail(req: NextRequest): void {
   const ip = getClientIp(req)
   failedAttempts.delete(ip)
 }
+
+/**
+ * v5.4.16 P1(Codex 真審):檢查 IP 是否還在 lockout 內
+ * 用於 checkAdminAuth 失敗前先擋:鎖定中的 IP 直接拒絕、不浪費判斷
+ * 回:NextResponse(已鎖)或 null(未鎖)
+ */
+export function checkAdminAuthLockout(req: NextRequest): NextResponse | null {
+  const ip = getClientIp(req)
+  const entry = failedAttempts.get(ip)
+  if (!entry) return null
+  const now = Date.now()
+  if (entry.lockedUntil > now) {
+    const retryAfterSec = Math.ceil((entry.lockedUntil - now) / 1000)
+    return NextResponse.json(
+      { error: `IP 因連續 ${FAILED_ATTEMPTS_LIMIT} 次認證失敗已被鎖定、請 ${Math.ceil(retryAfterSec / 60)} 分鐘後再試` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(retryAfterSec) },
+      },
+    )
+  }
+  return null
+}

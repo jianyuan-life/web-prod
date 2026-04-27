@@ -60,83 +60,84 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `找不到 Email 為 ${email} 的用戶(查 ${nextPage} 頁)` }, { status: 404 })
     }
 
-    // 取得當前餘額(before_balance)
-    const { data: existing, error: selErr } = await supabase
-      .from('user_points')
-      .select('balance, total_earned, total_used')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    if (selErr) {
-      return NextResponse.json({ error: `查詢餘額失敗:${selErr.message}` }, { status: 500 })
-    }
+    // v5.4.16 P1 修(Codex 真審):用 atomic RPC 替代多步操作
+    // 解原跨表 race condition(update + insert 不在同 transaction)
+    // RPC 內部用 SELECT FOR UPDATE 鎖列 + 同 transaction insert
+    // 若 RPC 不存在(migration 未跑)、fallback 舊邏輯
+    const { data: rpcResult, error: rpcErr } = await supabase.rpc('admin_grant_or_deduct_points', {
+      p_user_id: user.id,
+      p_points: points,
+      p_description: description.trim(),
+      p_reference_id: `admin_${Date.now()}`,
+    })
 
-    const beforeBalance = existing?.balance || 0
-    const newBalance = beforeBalance + points  // points 可為負
+    let beforeBalance: number
+    let newBalance: number
 
-    // 防呆:扣點不可讓餘額 < 0
-    if (newBalance < 0) {
-      return NextResponse.json({
-        error: `扣點 ${Math.abs(points)} 點會讓餘額變負(目前 ${beforeBalance}、扣後 ${newBalance})`,
-        before_balance: beforeBalance,
-        attempted_delta: points,
-      }, { status: 400 })
-    }
-
-    // 更新 user_points(扣點 total_used+、發點 total_earned+)
-    const newEarned = (existing?.total_earned || 0) + (isDeduct ? 0 : points)
-    const newUsed = (existing?.total_used || 0) + (isDeduct ? Math.abs(points) : 0)
-
-    if (existing) {
-      // v5.4.8 P1 修:optimistic locking(race condition 防呆)
-      // 加 .eq('balance', beforeBalance) 條件、若 race conflict、affected = 0
-      const { data: updated, error: updErr } = await supabase.from('user_points').update({
-        balance: newBalance,
-        total_earned: newEarned,
-        total_used: newUsed,
-      })
+    if (rpcErr && (rpcErr.message.includes('function') || rpcErr.code === '42883')) {
+      // RPC 不存在(migration 未跑)、fallback 舊邏輯(optimistic lock)
+      console.warn('[grant-points] RPC admin_grant_or_deduct_points 不存在、fallback 舊邏輯')
+      const { data: existing, error: selErr } = await supabase
+        .from('user_points')
+        .select('balance, total_earned, total_used')
         .eq('user_id', user.id)
-        .eq('balance', beforeBalance)  // optimistic lock
-        .select()
-      if (updErr) {
-        return NextResponse.json({ error: `更新餘額失敗:${updErr.message}` }, { status: 500 })
+        .maybeSingle()
+      if (selErr) {
+        return NextResponse.json({ error: `查詢餘額失敗:${selErr.message}` }, { status: 500 })
       }
-      if (!updated || updated.length === 0) {
+      beforeBalance = existing?.balance || 0
+      newBalance = beforeBalance + points
+      if (newBalance < 0) {
         return NextResponse.json({
-          error: 'race condition:餘額在查詢與更新之間被別人改了、請重試',
+          error: `扣點 ${Math.abs(points)} 點會讓餘額變負(目前 ${beforeBalance}、扣後 ${newBalance})`,
           before_balance: beforeBalance,
           attempted_delta: points,
-        }, { status: 409 })
+        }, { status: 400 })
       }
-    } else {
-      // 新用戶:扣點不允許(無歷史餘額)
-      if (isDeduct) {
-        return NextResponse.json({ error: '新用戶無歷史餘額、無法扣點' }, { status: 400 })
+      const newEarned = (existing?.total_earned || 0) + (isDeduct ? 0 : points)
+      const newUsed = (existing?.total_used || 0) + (isDeduct ? Math.abs(points) : 0)
+      if (existing) {
+        const { data: updated, error: updErr } = await supabase.from('user_points').update({
+          balance: newBalance,
+          total_earned: newEarned,
+          total_used: newUsed,
+        })
+          .eq('user_id', user.id)
+          .eq('balance', beforeBalance)
+          .select()
+        if (updErr) return NextResponse.json({ error: `更新餘額失敗:${updErr.message}` }, { status: 500 })
+        if (!updated || updated.length === 0) {
+          return NextResponse.json({ error: 'race condition、請重試', before_balance: beforeBalance }, { status: 409 })
+        }
+      } else {
+        if (isDeduct) {
+          return NextResponse.json({ error: '新用戶無歷史餘額、無法扣點' }, { status: 400 })
+        }
+        const { error: insErr } = await supabase.from('user_points').insert({
+          user_id: user.id, balance: points, total_earned: points, total_used: 0,
+        })
+        if (insErr) return NextResponse.json({ error: `初始化失敗:${insErr.message}` }, { status: 500 })
       }
-      const { error: insErr } = await supabase.from('user_points').insert({
+      const { error: txErr } = await supabase.from('point_transactions').insert({
         user_id: user.id,
-        balance: points,
-        total_earned: points,
-        total_used: 0,
+        type: isDeduct ? 'admin_deduct' : 'admin_grant',
+        amount: points,
+        balance_after: newBalance,
+        description: description.trim(),
+        reference_id: `admin_${Date.now()}`,
       })
-      if (insErr) {
-        return NextResponse.json({ error: `初始化餘額失敗:${insErr.message}` }, { status: 500 })
-      }
-    }
-
-    // 記錄交易(amount 帶符號、type 區分 grant vs deduct)
-    // v5.4.10 audit:point_transactions.type 是 TEXT NOT NULL、無 CHECK constraint
-    // 任何字串都可 insert、不需 migration、admin_deduct 直接用
-    // 詳:supabase/migrations/v540_point_transactions_type_audit.md
-    const { error: txErr } = await supabase.from('point_transactions').insert({
-      user_id: user.id,
-      type: isDeduct ? 'admin_deduct' : 'admin_grant',
-      amount: points,
-      balance_after: newBalance,
-      description: description.trim(),
-      reference_id: `admin_${Date.now()}`,
-    })
-    if (txErr) {
-      return NextResponse.json({ error: `寫入交易紀錄失敗:${txErr.message}` }, { status: 500 })
+      if (txErr) return NextResponse.json({ error: `寫入交易失敗:${txErr.message}` }, { status: 500 })
+    } else if (rpcErr) {
+      // RPC 真錯(餘額不足、新用戶扣點等業務錯)
+      const isBusinessErr = rpcErr.message.includes('餘額變負') || rpcErr.message.includes('無法扣點')
+      return NextResponse.json({
+        error: rpcErr.message,
+      }, { status: isBusinessErr ? 400 : 500 })
+    } else {
+      // RPC 成功、解析結果(回傳 array)
+      const row = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult
+      beforeBalance = row?.before_balance ?? 0
+      newBalance = row?.after_balance ?? 0
     }
 
     // 稽核紀錄(Codex C3 P2:加 before/after balance + delta + action)
