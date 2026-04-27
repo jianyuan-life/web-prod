@@ -5,6 +5,7 @@ import Link from 'next/link'
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
+import LiveCounter from '@/components/LiveCounter'
 
 // ── 十二時辰 ──
 const SHICHEN = [
@@ -1008,6 +1009,11 @@ export default function QimenToolPage() {
                     <span>&#9889; 約 30-60 分鐘出報告</span>
                     <span>&#128230; PDF 永久保存</span>
                   </div>
+
+                  {/* v5.4.7 P3 social proof:已 X 份完整報告生成、增信任 */}
+                  <p className="text-xs text-text-muted/70 mb-4">
+                    已有 <LiveCounter type="paid" /> 份完整付費報告完成交付
+                  </p>
 
                   {/* v5.4.5 Item 1 批次 6:文案強化(Gemini 建議「術 vs 道」「終身藍圖」) */}
                   <div className="glass rounded-xl p-5 max-w-lg mx-auto mb-4 border border-gold/20">

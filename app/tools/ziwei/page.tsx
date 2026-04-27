@@ -6,6 +6,7 @@ import { searchCities, searchLocations, type LocationSearchResult } from '@/lib/
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
+import LiveCounter from '@/components/LiveCounter'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -1162,6 +1163,11 @@ export default function ZiweiToolPage() {
                       </Link>
                     </div>
                   </div>
+
+                  {/* v5.4.7 P3 social proof */}
+                  <p className="text-xs text-text-muted/70 mb-3">
+                    已有 <LiveCounter type="paid" /> 份完整付費報告完成交付
+                  </p>
 
                   <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">
                     <span>&#128274; Stripe 安全支付</span>

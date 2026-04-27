@@ -2,16 +2,20 @@
 
 import { useEffect, useState } from 'react'
 
-export default function LiveCounter() {
+// v5.4.7 P3:支援 type 參數(all/paid/free)
+// - type='all'(預設、首頁用):免費 + 付費合計
+// - type='paid'(free tools 頁用):只付費報告、social proof 更直接
+// - type='free':只免費用戶
+export default function LiveCounter({ type = 'all' }: { type?: 'all' | 'paid' | 'free' }) {
   const [count, setCount] = useState(0)
   const [target, setTarget] = useState(0)
 
   useEffect(() => {
-    fetch('/api/stats')
+    fetch(`/api/stats?type=${type}`)
       .then(r => r.json())
       .then(d => setTarget(d.count ?? 0))
       .catch(() => setTarget(0))
-  }, [])
+  }, [type])
 
   // 動態遞增動畫：約 2 秒從 0 到 target
   useEffect(() => {
