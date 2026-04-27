@@ -7,6 +7,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
+import { maskEmail } from '@/lib/privacy-mask'
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？',
@@ -176,8 +177,8 @@ export default function ContentReviewPage() {
                   {item.paid_reports?.client_name || '(已刪除)'}
                 </span>
                 <span className="text-[10px] text-gray-500">|</span>
-                <span className="text-xs text-gray-500">
-                  {item.paid_reports?.customer_email || '—'}
+                <span className="text-xs text-gray-500" title="個資保護:點 flag 詳情查完整 email">
+                  {item.paid_reports?.customer_email ? maskEmail(item.paid_reports.customer_email) : '—'}
                 </span>
               </div>
               <span className="text-[10px] text-gray-500 shrink-0">

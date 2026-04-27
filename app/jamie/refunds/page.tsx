@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback, Fragment } from 'react'
 import { useAdminAuth } from '../layout'
 import { adminFetch } from '@/lib/admin-fetch'
+import { maskEmail } from '@/lib/privacy-mask'
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
@@ -189,7 +190,7 @@ export default function RefundsPage() {
                       onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}>
                       <td className="px-4 py-3">
                         <div className="text-white">{r.client_name || '-'}</div>
-                        <div className="text-[10px] text-gray-500">{r.customer_email}</div>
+                        <div className="text-[10px] text-gray-500" title="個資保護:點退款詳情查完整 email">{maskEmail(r.customer_email)}</div>
                       </td>
                       <td className="px-4 py-3 text-amber-400">{PLAN_NAMES[r.plan_code] || r.plan_code}</td>
                       <td className="px-4 py-3 text-white">
@@ -253,7 +254,7 @@ export default function RefundsPage() {
             onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white mb-3">確認退款</h3>
             <div className="text-sm text-gray-300 mb-4">
-              客戶：<span className="text-white">{refundTarget.client_name}</span> ({refundTarget.customer_email})
+              客戶:<span className="text-white">{refundTarget.client_name}</span> (<span title="個資保護:確認後可在 audit log 查完整 email">{maskEmail(refundTarget.customer_email)}</span>)
               <br />
               方案：<span className="text-amber-400">{PLAN_NAMES[refundTarget.plan_code] || refundTarget.plan_code}</span>
               <br />

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
 import { adminFetch } from '@/lib/admin-fetch'
+import { maskEmail } from '@/lib/privacy-mask'
 
 const PLAN_NAMES: Record<string, string> = {
   C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
@@ -125,7 +126,7 @@ export default function ReportsPage() {
                   <span className="text-gray-500 text-xs">${report.amount_usd}</span>
                 </div>
                 <div className="text-[10px] text-gray-500 mt-0.5">
-                  {report.customer_email} / {new Date(report.created_at).toLocaleString('zh-TW')}
+                  <span title="個資保護:點報告詳情查完整 email">{maskEmail(report.customer_email)}</span> / {new Date(report.created_at).toLocaleString('zh-TW')}
                   {report.access_token && report.status === 'completed' && (
                     <a href={`/report/${report.access_token}`} target="_blank" rel="noopener noreferrer"
                       className="text-blue-400 hover:text-blue-300 ml-2">查看報告</a>

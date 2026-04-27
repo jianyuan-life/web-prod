@@ -7,6 +7,7 @@ import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
 import LiveCounter from '@/components/LiveCounter'
+import FreemiumPaywall from '@/components/FreemiumPaywall'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -1094,6 +1095,9 @@ export default function ZiweiToolPage() {
 
             {/* 速算概覽提示 */}
             <p className="text-xs text-text-muted/50 text-center">以上為命宮主星速算概覽，完整報告將根據您的完整命盤做 14 系統個人化深度分析</p>
+
+            {/* v5.4.17 P0 freemium paywall */}
+            <FreemiumPaywall systemName="紫微" />
 
             {/* 升級引導 */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))' }}>
