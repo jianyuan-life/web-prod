@@ -91,6 +91,11 @@ interface AnalysisItem {
   tables?: Array<{ title: string; headers?: string[]; rows?: string[][] }>
   details?: string | Record<string, unknown>
   info_boxes?: Array<{ title?: string; items?: string[] }>
+  // v5.6 P0 (round 2):calculator raw_data 直通、供 ETHICS_RULES raw_data 條件指令使用
+  // 包括:asc_confidence / time_precision_warning(06/07/09 birth-time 警告)
+  //       time_mode / time_unknown(子情境 A/B 分流)
+  //       未來可擴展:school_info / karmic_debt / homophone_taboo 等 v5.4.0 既有條件
+  raw_data?: Record<string, unknown>
 }
 
 interface CalcResult {
@@ -1613,6 +1618,18 @@ ${analyses.length}套系統排盤完整數據：
   for (const a of analysesToInclude) {
     userPrompt += `\n【${a.system}】評分：${a.score}分`
     if (a.summary) userPrompt += `\n摘要：${a.summary}`
+    // v5.6 P0 (round 2):注入 raw_data 精簡白名單(birth-time 精度 flag)、讓 ETHICS_RULES 06/07/09 disclaimer 規則可生效
+    // 不全傳避免 token bloat、只傳 ETHICS_RULES 條件指令需要的 key
+    if (a.raw_data && typeof a.raw_data === 'object') {
+      const flagsWhitelist = ['asc_confidence', 'time_precision_warning']
+      const flags: Record<string, unknown> = {}
+      for (const key of flagsWhitelist) {
+        if (a.raw_data[key] !== undefined) flags[key] = a.raw_data[key]
+      }
+      if (Object.keys(flags).length > 0) {
+        userPrompt += `\nbirth-time 精度標記：${JSON.stringify(flags)}`
+      }
+    }
     if (a.good_points?.length) {
       userPrompt += `\n好的地方：`
       for (const g of a.good_points) userPrompt += `\n- ${g}`
