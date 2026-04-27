@@ -2533,20 +2533,29 @@ export async function qualityGate(
   // 證據: 3 LLM(Claude+Codex+Gemini)+ 3 sub-agent 對齊、b8e97a13 殘缺 10/100 fail
   // 對齊 D/G15/R/E1/E2/E3 既有 cRequired pattern, lessons #054/#055
   if (planCode === 'C') {
+    // v5.6.3 (2026-04-28) ROI #2 round 2: cRequired 從 9 條 → 13 條(9 hard + 4 軟)
+    // IA round 1 抓出 P0:全當 hardFailure 會擴大 retry 攻擊面 +44%、最壞 $14 燒
+    // 修法:新加 4 條集大成檢查走 [軟性]、由 5 LLM QA 兜底品質、結構檢查保留 9 老條當地基
     const cRequired = [
-      { pattern: /人生速覽|你的人生速覽/, name: '人生速覽' },
-      { pattern: /命格名片|命格.*封號|核心身份/, name: '命格名片' },
-      { pattern: /你是什麼樣的人|本我|核心人格/, name: '你是什麼樣的人' },
-      { pattern: /事業.*天賦|天賦.*事業|事業分析/, name: '事業與天賦' },
-      { pattern: /財運分析|賺錢模式|財運/, name: '財運分析' },
-      { pattern: /感情.*人際|感情分析/, name: '感情與人際' },
-      { pattern: /健康提醒|健康.*建議|健康分析/, name: '健康提醒' },
-      { pattern: /大運.*走勢|流年.*重點|2026.*流年|大運/, name: '運勢章節' },
-      { pattern: /寫給.*的話|寫給.*的一封信|刻意練習|給.*的信/, name: '收尾章節' },
+      { pattern: /人生速覽|你的人生速覽/, name: '人生速覽', soft: false },
+      { pattern: /命格名片|命格.*封號|核心身份/, name: '命格名片', soft: false },
+      { pattern: /你是什麼樣的人|本我|核心人格/, name: '你是什麼樣的人', soft: false },
+      { pattern: /事業.*天賦|天賦.*事業|事業分析/, name: '事業與天賦', soft: false },
+      { pattern: /財運分析|賺錢模式|財運/, name: '財運分析', soft: false },
+      { pattern: /感情.*人際|感情分析/, name: '感情與人際', soft: false },
+      { pattern: /健康提醒|健康.*建議|健康分析/, name: '健康提醒', soft: false },
+      { pattern: /大運.*走勢|流年.*重點|2026.*流年|大運/, name: '運勢章節', soft: false },
+      // v5.6.3 新增 4 條集大成檢查 (對齊 c_plan_v2.ts 17 章規格)、走軟性避免 retry 連鎖
+      { pattern: /十五系統.*交叉.*驗證|交叉.*矩陣|十五系統.*矩陣|系統.*共識/, name: '十五系統交叉驗證矩陣', soft: true },
+      { pattern: /TOP\s*5\s*優勢|前\s*5.*優勢|五大.*優勢/, name: 'TOP 5 優勢', soft: true },
+      { pattern: /TOP\s*5\s*風險|前\s*5.*風險|五大.*風險|TOP\s*5\s*挑戰/, name: 'TOP 5 風險', soft: true },
+      { pattern: /三階段.*行動|行動.*計畫|短期.*中期.*長期|分階段.*行動/, name: '三階段行動計畫', soft: true },
+      { pattern: /寫給.*的話|寫給.*的一封信|刻意練習|給.*的信/, name: '收尾章節', soft: false },
     ]
     for (const sec of cRequired) {
       if (!sec.pattern.test(reportContent)) {
-        warnings.push(`人生藍圖缺少必要章節: ${sec.name}`)
+        const prefix = sec.soft ? '[軟性] ' : ''
+        warnings.push(`${prefix}人生藍圖缺少必要章節: ${sec.name}`)
       }
     }
   }
@@ -2864,9 +2873,11 @@ export async function qualityGate(
         warnings.push(`心之所惑缺少必要章節: ${sec.name}`)
       }
     }
-    // D 方案字數嚴格範圍：6,000-9,000 字（物超所值鐵律）
-    if (reportContent.length < 5500) {
-      warnings.push(`心之所惑內容偏短: ${reportContent.length} 字（期望 6,000-9,000 字）`)
+    // D 方案字數範圍 6,000-9,000 字（物超所值鐵律）
+    // v5.6.3 (2026-04-28) ROI #4: 下限從 5500 → 5000（避免邊緣 retry 燒 Claude $1+ /次）
+    // 5000-5499 範圍仍可接受、寫進 warnings 但不該觸發 retry（成本 vs 品質權衡）
+    if (reportContent.length < 5000) {
+      warnings.push(`心之所惑內容偏短: ${reportContent.length} 字（期望 6,000-9,000 字、< 5,000 觸發重跑）`)
     }
     if (reportContent.length > 11000) {
       warnings.push(`[軟性] 心之所惑內容過長: ${reportContent.length} 字（D 方案應 6,000-9,000 字，不是 C 方案的百科全書）`)
@@ -2886,6 +2897,17 @@ export async function qualityGate(
 
   // 2f. G15 家族藍圖必要章節檢查
   if (planCode === 'G15') {
+    // v5.6.3 (2026-04-28) ROI #9 round 2: 加互動比例 ≥ 35% [軟性] 警告（對齊 R 方案 ≥ 40%、家族藍圖比例可略低）
+    // 避免 G15 變成「N 個人個人分析的拼貼」、確保有真實「成員互動」段落
+    // IA round 1 抓 P2:單字「兒/女」會誤觸發、改多字組合避免 false positive(個人段落被誤算互動)
+    // [軟性] 標籤避免擴大 retry 攻擊面、由 G15 cRequired 章節結構 + 5 LLM QA 兜底
+    const g15Paragraphs = reportContent.split(/\n\s*\n/).filter(p => p.trim().length > 50)
+    const g15InteractionPattern = /家族成員|父母|爸媽|兒子|女兒|姊妹|兄弟|手足|親子|配偶|長輩|晚輩|互動|彼此|對方|你們|你跟|這家|這個家|家庭關係|家中/
+    const g15InteractionParas = g15Paragraphs.filter(p => g15InteractionPattern.test(p))
+    const g15InteractionRatio = g15Paragraphs.length > 0 ? g15InteractionParas.length / g15Paragraphs.length : 0
+    if (g15InteractionRatio < 0.35) {
+      warnings.push(`[軟性] 家族藍圖成員互動比例過低: ${(g15InteractionRatio * 100).toFixed(0)}% 段落含家族/互動字眼（期望 >= 35%、避免變成個人分析的拼貼）`)
+    }
     const g15Required = [
       { pattern: /家族能量|能量圖譜|能量全貌/, name: '家族能量圖譜' },
       { pattern: /互動關係|成員互動|互動.*分析/, name: '成員互動關係深度分析' },
