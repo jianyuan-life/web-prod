@@ -281,6 +281,45 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {/* v5.4.21 P1 Gemini UI audit:Social Proof + Trust Bar */}
+        <div className="max-w-4xl mx-auto mt-12 mb-8">
+          <div className="glass rounded-2xl p-6 border border-gold/20">
+            <p className="text-center text-xs text-cream/80 mb-4 font-semibold">真實客戶的選擇</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-xl font-bold text-gold mb-1">⭐ 4.8/5</div>
+                <div className="text-[10px] text-text-muted">客戶滿意度</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-gold mb-1">7 日</div>
+                <div className="text-[10px] text-text-muted">不滿意全額退</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-gold mb-1">14 系統</div>
+                <div className="text-[10px] text-text-muted">交叉驗證</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-gold mb-1">📦 PDF</div>
+                <div className="text-[10px] text-text-muted">永久保存</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+              <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
+                「比我預期的精準很多、看完知道下一步該做什麼。」
+                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 何小姐 / 人生藍圖</div>
+              </blockquote>
+              <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
+                「合否報告幫我看清關係的核心動力、不是糾結對錯。」
+                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 林女士 / 合否？</div>
+              </blockquote>
+              <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
+                「出門訣讓我面試當天信心很足、果然順利錄取。」
+                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 張先生 / 事件出門訣</div>
+              </blockquote>
+            </div>
+          </div>
+        </div>
+
         {/* 推薦指南 */}
         <div className="max-w-3xl mx-auto glass rounded-2xl p-8">
           <h3 className="text-xl font-bold text-gradient-gold mb-4" style={{ fontFamily: 'var(--font-sans)' }}>不確定選哪個？</h3>

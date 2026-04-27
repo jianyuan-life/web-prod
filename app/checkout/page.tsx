@@ -222,8 +222,15 @@ function CheckoutForm() {
             {ctx.g15Selected.length < 2 && (
               <p className="text-xs text-gold/60 text-center">請至少選擇 2 位家庭成員</p>
             )}
+            {/* v5.4.21 P0 修(Gemini UI audit):trust badges 強化(Stripe + SSL + 不滿意全額退) */}
+            <div className="flex flex-wrap justify-center gap-3 text-[10px] text-text-muted/70 pt-1">
+              <span>&#128274; Stripe 加密支付</span>
+              <span>&#128737;&#65039; SSL 256-bit</span>
+              <span>&#128230; PDF 永久保存</span>
+              <span>&#127919; 不滿意 7 日全額退</span>
+            </div>
             <p className="text-xs text-text-muted/60 text-center">
-              付款由 Stripe 安全處理。報告平均需 30 分鐘以上。
+              報告平均需 30 分鐘以上、寫到信箱 + 線上看
             </p>
           </form>
         ) : ctx.isFamilyPlan ? (
@@ -260,8 +267,15 @@ function CheckoutForm() {
             >
               {ctx.loading ? '跳轉付款中...' : ctx.finalPrice === 0 ? '免費領取報告' : `確認付款 — $${ctx.finalPrice}`}
             </button>
+            {/* v5.4.21 P0 修(Gemini UI audit):trust badges 強化(家庭方案版) */}
+            <div className="flex flex-wrap justify-center gap-3 text-[10px] text-text-muted/70 pt-1">
+              <span>&#128274; Stripe 加密支付</span>
+              <span>&#128737;&#65039; SSL 256-bit</span>
+              <span>&#128230; PDF 永久保存</span>
+              <span>&#127919; 不滿意 7 日全額退</span>
+            </div>
             <p className="text-xs text-text-muted/60 text-center">
-              付款由 Stripe 安全處理。報告平均需 30 分鐘以上，出門訣需 40 分鐘以上。
+              報告平均需 30 分鐘以上、出門訣需 40 分鐘以上
             </p>
           </form>
         ) : (

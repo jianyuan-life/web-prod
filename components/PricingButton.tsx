@@ -46,13 +46,12 @@ export default function PricingButton({ code, popular, seasonal, locked }: Prici
     E4: '鎖定全年擇吉佈局',
   }
 
+  // v5.4.21 P2 修(Gemini UI audit):未登入也直接寫購買導向 CTA、不再「免費註冊」誤導付費客戶
   const label = seasonal
     ? '立春前 30 天開放'
     : locked
       ? '需先有命格分析'
-      : loggedIn
-        ? (CTA_LABELS[code] || '選擇此方案')
-        : '免費註冊，開始探索'
+      : (CTA_LABELS[code] || '選擇此方案')
 
   return (
     <>
