@@ -230,12 +230,38 @@ export default function LoyaltyPage() {
   )
 }
 
+type RecentOp = {
+  id: string
+  action: string
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 function GrantPointsPanel({ adminKey, onSuccess }: { adminKey: string; onSuccess: () => void }) {
   const [email, setEmail] = useState('')
   const [points, setPoints] = useState<number>(0)
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
+  // v5.4.9 P3:Gemini P2「操作紀錄回顯」最近 5 筆 audit log
+  const [recentOps, setRecentOps] = useState<RecentOp[]>([])
+
+  // v5.4.9 P3 Codex P1 修:不帶 action、前端 filter 兩種(grant + deduct)
+  // 否則 ?action=grant_points API 過濾、扣點紀錄不會回來
+  const fetchRecent = useCallback(async () => {
+    if (!adminKey) return
+    try {
+      const res = await adminFetch('/api/admin/audit-log?limit=20', { adminKey })
+      if (!res.ok) return
+      const data = await res.json()
+      const grants = (data?.entries || data?.logs || data || []).filter((e: any) =>
+        e.action === 'grant_points' || e.action === 'deduct_points'
+      ).slice(0, 5)
+      setRecentOps(grants)
+    } catch { /* silent */ }
+  }, [adminKey])
+
+  useEffect(() => { fetchRecent() }, [fetchRecent])
 
   const handleGrant = async () => {
     if (!adminKey) return
@@ -277,6 +303,7 @@ function GrantPointsPanel({ adminKey, onSuccess }: { adminKey: string; onSuccess
         setPoints(0)
         setDescription('')
         onSuccess()
+        fetchRecent()  // v5.4.9 P3:更新最近 5 筆紀錄
       } else {
         // v5.4.3 Codex P1:細化錯誤訊息(401/403/429/parse fail)
         let errMsg = data?.error || data?.message || ''
@@ -357,6 +384,38 @@ function GrantPointsPanel({ adminKey, onSuccess }: { adminKey: string; onSuccess
           </span>
         )}
       </div>
+
+      {/* v5.4.9 P3 Gemini P2:最近 5 筆積分操作紀錄(避免重複發放) */}
+      {recentOps.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-white/5">
+          <h4 className="text-xs text-gray-400 mb-2">最近 5 筆操作(實時)</h4>
+          <div className="space-y-1.5">
+            {recentOps.map((op) => {
+              const meta = op.metadata || {}
+              const isDeduct = op.action === 'deduct_points'
+              const delta = (meta.delta as number) || (meta.points_granted as number) || 0
+              const targetEmail = (meta.email as string) || '?'
+              const beforeBal = meta.before_balance as number | undefined
+              const afterBal = (meta.after_balance as number | undefined) ?? (meta.new_balance as number | undefined)
+              const desc = (meta.description as string) || ''
+              const time = new Date(op.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+              return (
+                <div key={op.id} className="text-[10px] flex items-center gap-2 text-gray-400 min-w-0">
+                  <span className="text-gray-600 w-20 shrink-0">{time}</span>
+                  <span className={`shrink-0 ${isDeduct ? 'text-orange-400' : 'text-green-400'}`}>
+                    {isDeduct ? '扣除' : '發放'} {Math.abs(delta)}
+                  </span>
+                  <span className="text-gray-300 truncate min-w-0 max-w-[180px]" title={targetEmail}>{targetEmail}</span>
+                  {beforeBal !== undefined && afterBal !== undefined && (
+                    <span className="text-gray-600 shrink-0">{beforeBal}→{afterBal}</span>
+                  )}
+                  {desc && <span className="text-gray-500 truncate min-w-0 flex-1" title={desc}>{desc}</span>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
