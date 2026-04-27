@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Fragment } from 'react'
 import { useAdminAuth } from '../layout'
 import { adminFetch } from '@/lib/admin-fetch'
+import { maskEmail } from '@/lib/privacy-mask'
 
 const PLAN_NAMES: Record<string, string> = {
   C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
@@ -164,7 +165,7 @@ export default function OrdersPage() {
                   onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}>
                   <td className="px-4 py-3">
                     <div className="text-white">{order.client_name}</div>
-                    <div className="text-[10px] text-gray-500">{order.customer_email}</div>
+                    <div className="text-[10px] text-gray-500" title="個資保護:點訂單詳情查完整 email">{maskEmail(order.customer_email)}</div>
                   </td>
                   <td className="px-4 py-3 text-amber-400">{PLAN_NAMES[order.plan_code] || order.plan_code}</td>
                   <td className="px-4 py-3 text-white">${order.amount_usd}</td>

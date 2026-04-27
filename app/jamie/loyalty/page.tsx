@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
 import { adminFetch } from '@/lib/admin-fetch'
+import { maskEmail } from '@/lib/privacy-mask'
 
 type LoyaltyCustomer = {
   userId: string
@@ -153,8 +154,8 @@ export default function LoyaltyPage() {
                     <td className="px-4 py-3 text-xs text-gray-200 max-w-[120px] truncate">
                       {c.fullName || '(未填姓名)'}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-400 max-w-[200px] truncate">
-                      {c.email}
+                    <td className="px-4 py-3 text-xs text-gray-400 max-w-[200px] truncate" title="個資保護:點客戶詳情頁查完整 email">
+                      {maskEmail(c.email)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border ${tier.bgColor} ${tier.color}`}>
@@ -405,7 +406,7 @@ function GrantPointsPanel({ adminKey, onSuccess }: { adminKey: string; onSuccess
                   <span className={`shrink-0 ${isDeduct ? 'text-orange-400' : 'text-green-400'}`}>
                     {isDeduct ? '扣除' : '發放'} {Math.abs(delta)}
                   </span>
-                  <span className="text-gray-300 truncate min-w-0 max-w-[180px]" title={targetEmail}>{targetEmail}</span>
+                  <span className="text-gray-300 truncate min-w-0 max-w-[180px]" title="個資保護:點客戶詳情頁查完整 email(留 audit log)">{maskEmail(targetEmail)}</span>
                   {beforeBal !== undefined && afterBal !== undefined && (
                     <span className="text-gray-600 shrink-0">{beforeBal}→{afterBal}</span>
                   )}
