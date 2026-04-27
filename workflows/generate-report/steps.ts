@@ -2812,20 +2812,26 @@ export async function qualityGate(
 
   // 2d. R 方案「合否？」必要章節檢查
   if (planCode === 'R') {
+    // v5.6.5 (2026-04-28) ROI #8 (軟性): 加雙人對位視覺化檢查、避免 R 報告純文字弱於市面對手
+    // production 確認 (Supabase 撈 r_production_status.md):R 已通 4/4、待辦 #4 過期、CLAUDE.md 待關
+    // 12 天 0 新單 → funnel 斷、不是 AI 問題、本 ROI 補對位表強化視覺差異化
     const rRequired = [
-      { pattern: /你們的問題|關係描述/, name: '你們的問題' },
-      { pattern: /你們的答案|合否結論/, name: '你們的答案' },
-      { pattern: /化學反應|合盤分析/, name: '化學反應' },
-      { pattern: /好的地方|最好的/, name: '好的地方' },
-      { pattern: /需要注意|最該注意/, name: '需要注意的地方' },
-      { pattern: /改善建議|關係處方/, name: '改善建議' },
-      { pattern: /刻意練習/, name: '刻意練習' },
-      { pattern: /流年|2026|2027/, name: '關係流年' },
-      { pattern: /寫給.*的話/, name: '寫給你們的話' },
+      { pattern: /你們的問題|關係描述/, name: '你們的問題', soft: false },
+      { pattern: /你們的答案|合否結論/, name: '你們的答案', soft: false },
+      { pattern: /化學反應|合盤分析/, name: '化學反應', soft: false },
+      { pattern: /好的地方|最好的/, name: '好的地方', soft: false },
+      { pattern: /需要注意|最該注意/, name: '需要注意的地方', soft: false },
+      { pattern: /改善建議|關係處方/, name: '改善建議', soft: false },
+      { pattern: /刻意練習/, name: '刻意練習', soft: false },
+      { pattern: /流年|2026|2027/, name: '關係流年', soft: false },
+      { pattern: /寫給.*的話/, name: '寫給你們的話', soft: false },
+      // v5.6.5 ROI #8 軟性檢查:雙人對位視覺(八字並列 / 紫微合盤格式 / 對照表)
+      { pattern: /\|.*[男女夫妻甲方乙方].*\|.*[男女夫妻甲方乙方].*\||並列|對位|對照表|Synastry/, name: '雙人對位視覺(八字並列表 / 紫微合盤格式)', soft: true },
     ]
     for (const sec of rRequired) {
       if (!sec.pattern.test(reportContent)) {
-        warnings.push(`合否缺少必要章節: ${sec.name}`)
+        const prefix = sec.soft ? '[軟性] ' : ''
+        warnings.push(`${prefix}合否缺少必要章節: ${sec.name}`)
       }
     }
     // R 方案已禁止評分（命不該有分數），改為檢查是否有明確的合/不合結論
