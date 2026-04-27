@@ -27,7 +27,7 @@ export function useCheckoutForm() {
     month: params.get('month') || '1',
     day: params.get('day') || '1',
     hour: params.get('hour') || '12',
-    minute: params.get('minute') || '0',
+    minute: params.get('minute') || '30',
     gender: params.get('gender') || 'M',
     address: '', addressLat: 0, addressLng: 0,
     birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,

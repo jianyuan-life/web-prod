@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.6.1（2026-04-28 v5.6.1 patch: ETHICS_RULES「08 易經派別硬鎖」對齊 production 真實行為、梅花派分 (a) 時間起卦純數學 + (b) 體用五行計算式 + (c) 觀物取象 / 主觀外應、鑑源四軌混合派採用 (a)+(b)、禁用 (c);配合 fortune-research commit f149b9e i_ching docstring 改誠實版「四軌混合派」(對齊 _wuxing_relation L430 + ti_yong raw_data L2037 體用真實邏輯)；4 輪審查 QA 99 + IA 91→修補 3 P2 推估 ≥ 95)
+**網站版本：** v5.6.2（2026-04-28 v5.6.2 patch: 結帳頁 default minute :00 → :30 + exact 模式加引導文案(西占/吠陀/人類圖三系統精確時間敏感性說明)、避免 minute=0 整點 silent 觸發 asc_confidence='low';QA 96 + IA 93→修 P1 占星科普分拆 Asc 4分鐘1度 vs 人類圖閘門邊界敏感、推估 PASS 97)
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 

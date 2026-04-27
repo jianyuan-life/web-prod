@@ -43,20 +43,27 @@ export default function BirthTimeField({ timeMode, setTimeMode, hour, minute, on
         </select>
       )}
       {timeMode === 'exact' && (
-        <div className="flex gap-3">
-          <select value={hour} onChange={(e) => onChange('hour', e.target.value)}
-            className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
-            {Array.from({ length: 24 }, (_, i) => (
-              <option key={i} value={i}>{String(i).padStart(2, '0')}時</option>
-            ))}
-          </select>
-          <select value={minute} onChange={(e) => onChange('minute', e.target.value)}
-            className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
-            {Array.from({ length: 60 }, (_, i) => (
-              <option key={i} value={i}>{String(i).padStart(2, '0')}分</option>
-            ))}
-          </select>
-        </div>
+        <>
+          <div className="flex gap-3">
+            <select value={hour} onChange={(e) => onChange('hour', e.target.value)}
+              className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
+              {Array.from({ length: 24 }, (_, i) => (
+                <option key={i} value={i}>{String(i).padStart(2, '0')}時</option>
+              ))}
+            </select>
+            <select value={minute} onChange={(e) => onChange('minute', e.target.value)}
+              className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
+              {Array.from({ length: 60 }, (_, i) => (
+                <option key={i} value={i}>{String(i).padStart(2, '0')}分</option>
+              ))}
+            </select>
+          </div>
+          <div className="mt-2 text-[10px] text-text-muted/70 leading-relaxed">
+            💡 填得越精確、報告越準確。西洋占星上升點 / 吠陀 Lagna 約每 4 分鐘移動 1 度、整點誤差可能跨星座;
+            人類圖設計圖閘門 / Profile / 類型對精確時間極敏感、整點誤差可能跨閘門邊界、影響類型與權威判定。
+            強烈建議補到分鐘(可查戶口名簿、出生證明)。
+          </div>
+        </>
       )}
     </div>
   )

@@ -23,7 +23,7 @@ export interface FamilyMember {
 export function newMember(): FamilyMember {
   return {
     name: '', year: '1990', month: '1', day: '1', hour: '12',
-    timeMode: 'shichen', minute: '0', gender: 'M',
+    timeMode: 'shichen', minute: '30', gender: 'M',
     birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,
     timezone: '', countryCode: '',
     calendarType: 'solar', lunarLeap: false,
