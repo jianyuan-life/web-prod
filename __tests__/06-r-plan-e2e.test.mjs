@@ -148,7 +148,7 @@ test('高品質報告：雙方互動比例 >= 40% + 三段式總結 + 9 章節',
 
 ## 九、寫給你們的話
 兩個人走過的每一段路都是彼此的選擇。你們不是「命中注定」的組合，是「互相選擇」的組合。
-`.repeat(5)  // 確保 8,000 字
+`.repeat(15)  // 確保 8,000 字(原 5x 只 2870 字、v5.4.15 修為 15x)
 
   const result = qualityGateR(mockReport)
   assert(result.interactionRatio >= 0.40, `互動比例 ${(result.interactionRatio * 100).toFixed(0)}% 應 >= 40%`)

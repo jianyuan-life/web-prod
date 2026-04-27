@@ -49,6 +49,10 @@ const PUBLIC_PATTERNS = [
   /\/referral\/my-code/,                   // 取得推薦碼（需登入，cookie auth）
   /\/points\/balance/,                     // 點數餘額查詢（需登入，cookie auth）
   /\/points\/use/,                         // 點數折抵（需登入，cookie auth）
+  // v5.4.15 新分類(原未分類端點):
+  /\/ab-events\//,                         // A/B 測試事件追蹤(前端打點、無 PII)
+  /\/free-qimen\//,                        // 免費奇門排盤(同 free-bazi)
+  /\/unsubscribe\//,                       // 退訂(URL 帶 token、不需 admin)
 ]
 
 // 需要 ADMIN_KEY 的端點
@@ -64,9 +68,13 @@ const CRON_PATTERNS = [
 // 需要 Supabase Auth 的端點
 const AUTH_PATTERNS = [
   /\/reports\/route\.ts$/,      // 用戶報告查詢
+  /\/reports\/generate-pdf/,    // PDF 補生成(需 user 已購)v5.4.15 新增
+  /\/reports\/update-birth-location/, // 補出生地(需 user 持有報告)v5.4.15 新增
   /family-members/,             // 家庭成員管理
   /checkout\/search-reports/,   // 搜尋已完成報告（G15用）
   /checkout\/verify-family/,    // 家族驗證
+  /\/points\/transfer/,         // 積分贈與(需登入、Authorization header)v5.4.15 新增
+  /\/referral\/register/,       // 推薦碼註冊(需 user 認證)v5.4.15 新增
 ]
 
 // 內部端點（由其他伺服器呼叫）
@@ -94,17 +102,20 @@ test(`發現 ${routeFiles.length} 個 API route 檔案`, () => {
 })
 
 // 測試每個 admin 端點都有 ADMIN_KEY 驗證
+// v5.4.15 修:接受 ADMIN_KEY 字串 OR checkAdminAuth() helper(包裝 ADMIN_KEY、line 9 admin-auth.ts 真實在 process.env.ADMIN_KEY)
 test('所有 /admin/ 端點必須有 ADMIN_KEY 驗證', () => {
   const adminRoutes = routeFiles.filter(f => ADMIN_PATTERNS.some(p => p.test(normPath(f))))
   const unprotected = []
   for (const file of adminRoutes) {
     const content = readFileSync(file, 'utf-8')
-    if (!content.includes('ADMIN_KEY')) {
+    const hasAuthHelper = content.includes('checkAdminAuth(') || content.includes('checkAdminAuth ')
+    const hasRawKey = content.includes('ADMIN_KEY')
+    if (!hasAuthHelper && !hasRawKey) {
       unprotected.push(getRelativePath(file))
     }
   }
   assert(unprotected.length === 0,
-    `以下 admin 端點缺少 ADMIN_KEY 保護: ${unprotected.join(', ')}`)
+    `以下 admin 端點缺少 ADMIN_KEY 或 checkAdminAuth() 保護: ${unprotected.join(', ')}`)
 })
 
 // 測試每個 cron 端點都有 CRON_SECRET 驗證
@@ -122,6 +133,7 @@ test('所有 /cron/ 端點必須有 CRON_SECRET 驗證', () => {
 })
 
 // 測試需認證端點有 auth 檢查
+// v5.4.15 修:接受多種合法 auth pattern
 test('需認證端點必須有 Authorization 或 auth 驗證', () => {
   const authRoutes = routeFiles.filter(f => AUTH_PATTERNS.some(p => p.test(normPath(f))))
   const unprotected = []
@@ -131,7 +143,10 @@ test('需認證端點必須有 Authorization 或 auth 驗證', () => {
                     content.includes('getAuthEmail') ||
                     content.includes('getAuth') ||
                     content.includes('supabase.auth') ||
-                    content.includes('session_id')
+                    content.includes('session_id') ||
+                    content.includes('access_token') ||  // v5.4.15:報告 token 認
+                    content.includes('admin.getUserById') ||  // v5.4.15:service role 驗 userId(referral/register 用)
+                    content.includes('verifyAccessToken')
     if (!hasAuth) {
       unprotected.push(getRelativePath(file))
     }
@@ -196,7 +211,10 @@ test('admin/orders 有 ADMIN_KEY 保護（birth_data 只限 admin 存取）', ()
   if (!ordersFile) { skip('admin/orders 不存在'); return }
   const content = readFileSync(ordersFile, 'utf-8')
   // admin 端點有 ADMIN_KEY 保護，所以 birth_data 不會被未授權存取
-  assert(content.includes('ADMIN_KEY'), 'admin/orders 應有 ADMIN_KEY 保護')
+  // v5.4.15 修:接受 checkAdminAuth() helper(包裝 ADMIN_KEY)
+  const hasAuthHelper = content.includes('checkAdminAuth(') || content.includes('checkAdminAuth ')
+  const hasRawKey = content.includes('ADMIN_KEY')
+  assert(hasAuthHelper || hasRawKey, 'admin/orders 應有 ADMIN_KEY 或 checkAdminAuth() 保護')
 })
 
 done()

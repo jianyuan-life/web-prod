@@ -72,12 +72,28 @@ export async function POST(req: NextRequest) {
     const supabase = getServiceSupabase()
     const { data: report, error } = await supabase
       .from('paid_reports')
-      .select('id, plan_code, status, client_name, pdf_url, report_result, birth_data')
+      .select('id, plan_code, status, client_name, pdf_url, report_result, birth_data, customer_email, user_id, stripe_session_id, access_token')
       .eq('id', reportId)
       .maybeSingle()
 
     if (error || !report) {
       return NextResponse.json({ error: 'report not found' }, { status: 404 })
+    }
+
+    // v5.4.15 P0 修(test 5 安全 audit):本端點原零認證、任何人可觸發 PDF 生成 burn API
+    // 接受 3 種驗證之一:
+    //   1. Authorization Bearer ${ADMIN_KEY} — admin 觸發
+    //   2. body.access_token === report.access_token — 客戶持有報告 token
+    //   3. body.session_id === report.stripe_session_id — 客戶持有 Stripe session
+    const authHeader = req.headers.get('authorization') || ''
+    const providedAccessToken = (body?.access_token || '').toString().trim()
+    const providedSessionId = (body?.session_id || '').toString().trim()
+    const adminKey = process.env.ADMIN_KEY
+    const isAdminAuth = adminKey ? authHeader === `Bearer ${adminKey}` : false
+    const isAccessTokenAuth = providedAccessToken && providedAccessToken === report.access_token
+    const isSessionAuth = providedSessionId && providedSessionId === report.stripe_session_id
+    if (!isAdminAuth && !isAccessTokenAuth && !isSessionAuth) {
+      return NextResponse.json({ error: '未授權:需 admin token / access_token / session_id 之一' }, { status: 401 })
     }
 
     // 已存在 pdf_url 直接回傳
