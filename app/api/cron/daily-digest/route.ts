@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const startIso = startUtc.toISOString()
   const endIso = endUtc.toISOString()
 
-  const [reportsRes, costRes, feedbackRes] = await Promise.all([
+  const [reportsRes, costRes, feedbackRes, adminAuditRes] = await Promise.all([
     supabase
       .from('paid_reports')
       .select('id, plan_code, status, amount_usd, customer_email, created_at')
@@ -56,11 +56,18 @@ export async function GET(req: NextRequest) {
       .select('rating, comment, report_id, created_at')
       .gte('created_at', startIso)
       .lt('created_at', endIso),
+    // v5.4.12 P3:加 admin 操作昨日統計(grant/deduct/refund 等)
+    supabase
+      .from('admin_audit_log')
+      .select('action, metadata, created_at')
+      .gte('created_at', startIso)
+      .lt('created_at', endIso),
   ])
 
   const reports = reportsRes.data || []
   const costs = costRes.data || []
   const feedback = feedbackRes.data || []
+  const adminAudit = adminAuditRes.data || []
 
   // ── 報告統計 ─
   const totalReports = reports.length
@@ -128,10 +135,27 @@ export async function GET(req: NextRequest) {
     .map(([p, v]) => `${p}: $${v.toFixed(3)}`)
     .join(', ') || '無'
 
+  // v5.4.12 P3:統計昨日 admin 操作(透明化、給老闆看)
+  const adminStats = {
+    grant_points: adminAudit.filter(a => a.action === 'grant_points').length,
+    deduct_points: adminAudit.filter(a => a.action === 'deduct_points').length,
+    refund: adminAudit.filter(a => a.action === 'refund').length,
+    other: adminAudit.filter(a => !['grant_points', 'deduct_points', 'refund'].includes(a.action)).length,
+  }
+  const adminTotal = adminAudit.length
+
   const notesLines: string[] = []
   if (failedCalls > 0) notesLines.push(`失敗 API 呼叫: ${failedCalls}`)
   if (avgRating > 0) notesLines.push(`評分: ${avgRating}★ × ${feedback.length}`)
   if (lowFeedback.length > 0) notesLines.push(`⚠️ 低評分 ${lowFeedback.length} 份`)
+  if (adminTotal > 0) {
+    const parts: string[] = []
+    if (adminStats.grant_points > 0) parts.push(`發${adminStats.grant_points}`)
+    if (adminStats.deduct_points > 0) parts.push(`扣${adminStats.deduct_points}`)
+    if (adminStats.refund > 0) parts.push(`退${adminStats.refund}`)
+    if (adminStats.other > 0) parts.push(`其他${adminStats.other}`)
+    notesLines.push(`Admin 操作: ${parts.join('/')}(${adminTotal} 筆)`)
+  }
   notesLines.push(`成本明細: ${costBreakdownText}`)
 
   const sent = await notifyDaily({
@@ -169,6 +193,7 @@ export async function GET(req: NextRequest) {
       newCustomers,
       topPlans,
       lowFeedbackCount: lowFeedback.length,
+      adminActions: { total: adminTotal, ...adminStats },
       telegramSent: sent,
     },
   })
