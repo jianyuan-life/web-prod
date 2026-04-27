@@ -2512,6 +2512,28 @@ export async function qualityGate(
   }
 
   // 2c. E1 事件出門訣必要章節檢查（Top3 加乘時機）
+  // v5.6 P0(2026-04-27 最終地基修): C 方案章節必含 hardFailure
+  // 證據: 3 LLM(Claude+Codex+Gemini)+ 3 sub-agent 對齊、b8e97a13 殘缺 10/100 fail
+  // 對齊 D/G15/R/E1/E2/E3 既有 cRequired pattern, lessons #054/#055
+  if (planCode === 'C') {
+    const cRequired = [
+      { pattern: /人生速覽|你的人生速覽/, name: '人生速覽' },
+      { pattern: /命格名片|命格.*封號|核心身份/, name: '命格名片' },
+      { pattern: /你是什麼樣的人|本我|核心人格/, name: '你是什麼樣的人' },
+      { pattern: /事業.*天賦|天賦.*事業|事業分析/, name: '事業與天賦' },
+      { pattern: /財運分析|賺錢模式|財運/, name: '財運分析' },
+      { pattern: /感情.*人際|感情分析/, name: '感情與人際' },
+      { pattern: /健康提醒|健康.*建議|健康分析/, name: '健康提醒' },
+      { pattern: /大運.*走勢|流年.*重點|2026.*流年|大運/, name: '運勢章節' },
+      { pattern: /寫給.*的話|寫給.*的一封信|刻意練習|給.*的信/, name: '收尾章節' },
+    ]
+    for (const sec of cRequired) {
+      if (!sec.pattern.test(reportContent)) {
+        warnings.push(`人生藍圖缺少必要章節: ${sec.name}`)
+      }
+    }
+  }
+
   if (planCode === 'E1') {
     const e1Required = [
       { pattern: /事件判斷|事件吉凶|你的事件/, name: '事件判斷' },
