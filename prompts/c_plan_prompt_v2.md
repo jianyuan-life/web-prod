@@ -1,4 +1,22 @@
-# C 方案「人生藍圖」報告生成 Prompt v2.0
+# C 方案「人生藍圖」報告生成 Prompt v2.0(規格初版、production 已演化到 v5.6.x、見下方 drift 警告)
+
+> ⚠️ **本檔是 v2.0 設計初版規格、production 實作已演化、若要看 production 真相請對照 `prompts/c_plan_v2.ts`**
+>
+> | 維度 | 本規格 v2.0 | Production v5.6.x(c_plan_v2.ts)|
+> |:---|:---|:---|
+> | API Call 數 | 4 次並行(Call 1+2+3+4) | **3 次序列**(buildCall1/2/3) |
+> | 章節數 | ~20 章 | **17 章**(人生速覽+命格名片+你是+事業+財運+感情+健康+大運+流年+交叉矩陣+TOP5 優勢+TOP5 風險+三階段行動+年度曲線+幸運參數+給你的一句話+刻意練習+寫給你的話)|
+> | 預估字數 | 50,000-80,000 字 | ~32,000 字(認可版範本如何紀萳 ~46K、客戶感受好、無需 50K+ 灌水)|
+> | 模型 default | Claude Opus 4.6 | Claude Opus 4.6(`lib/ai/providers/claude.ts:25`、CLAUDE.md 寫 4.7 屬 drift、待老闆拍板)|
+> | qualityGate | 未實作 | `steps.ts` cRequired 13 條(9 hard + 4 [軟性]、v5.6.3 加)|
+>
+> Drift 來源:v5.3.49(2026-04-19)大還原回 4-6 + 認可版基線時、Call 數從 4 → 3 但本規格 .md 未同步;v5.5.2 加 cRequired 9 條、v5.6.3 加 4 條走 [軟性] 集大成檢查。
+>
+> 本規格保留作「設計脈絡參考」、不再對應 production 行為;production 修改以 `c_plan_v2.ts` + `steps.ts` 為準。
+
+---
+
+# C 方案「人生藍圖」報告生成 Prompt v2.0(原規格、保留作脈絡)
 
 > 版本：v2.0
 > 更新日期：2026-04-06
