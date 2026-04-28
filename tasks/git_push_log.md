@@ -5,6 +5,25 @@
 
 ---
 
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.17 | 8ab00bec
+- 動作:round 9 4-LLM 真審達標(QA 99 ✓ / IA 96 ✓ / Codex P2 修 / Gemini P1 修)
+  - IA P1:steps.ts:1528 isChumenji 漏 E4 → isChumenjiPlan
+  - Codex P2:E4 TOP1 array shape 跳過硬比對 → 加 Array.isArray flatten
+  - Gemini P1:JSON cleanup regex 寫死 TOP[135] → TOP\d+ 6 處
+- 改動範圍:5 檔、+18 / -15 行
+- type-check:✅ 0 error
+- 4 LLM round 9 達標、可結束 9 輪審查循環
+
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.16 | 0bfa2053
+- 動作:round 8 QA P1 + IA P1/P2 全清(workflows 8 處 ||chain + email 亮點 + report page 標題 + webhook E1 only + 註解 Y)
+- 改動範圍:9 檔、+23 / -18 行
+
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.15 | 2dbf23ac
+- 動作:Codex + Gemini round 8 P2 全清(parser matchAll + revenue trend 動態 + PLAN_COLORS 補)
+- 改動範圍:7 檔、+58 / -25 行
+
+---
+
 ### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.14 | 84afcf7d
 - 動作:IA round 7 8 P0 全清:① 補 E3/E4 fallback prompt(防 fallback 到 C「人生藍圖」、$89/$279 客戶拿錯內容)② getEmailCta E3/E4 補 ③ 7 處 ['E1','E2','E3','E4'] / inline planNames + 廢棄 Y / cron/followup-email / ReportClientButtons / pdf-download / jamie/accounting 全清
 - 改動範圍:9 檔、+87 / -31 行
