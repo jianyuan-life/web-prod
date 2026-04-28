@@ -24,19 +24,35 @@ declare global {
 
 function applyConsent(prefs: ConsentPrefs) {
   if (typeof window === 'undefined') return
-  if (!window.gtag) return
-  window.gtag('consent', 'update', {
-    analytics_storage: prefs.analytics ? 'granted' : 'denied',
-    ad_storage: prefs.marketing ? 'granted' : 'denied',
-    ad_user_data: prefs.marketing ? 'granted' : 'denied',
-    ad_personalization: prefs.marketing ? 'granted' : 'denied',
-  })
+
+  // GA4 consent mode v2 update
+  if (window.gtag) {
+    window.gtag('consent', 'update', {
+      analytics_storage: prefs.analytics ? 'granted' : 'denied',
+      ad_storage: prefs.marketing ? 'granted' : 'denied',
+      ad_user_data: prefs.marketing ? 'granted' : 'denied',
+      ad_personalization: prefs.marketing ? 'granted' : 'denied',
+    })
+  }
+
+  // v5.6.10 (Codex L3 review fix):Meta Pixel 也 honor marketing opt-out
+  // 行銷拒絕時:停用 Meta Pixel autoConfig + 撤銷 advanced matching、不再送追蹤事件
+  // (Meta Pixel 一旦載入無法完全移除、但可關閉資料收集)
+  const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq
+  if (fbq) {
+    if (prefs.marketing) {
+      fbq('consent', 'grant')
+    } else {
+      fbq('consent', 'revoke')
+    }
+  }
 }
 
 export default function CookieConsent() {
   const [show, setShow] = useState(false)
   const [showCustom, setShowCustom] = useState(false)
-  const [analytics, setAnalytics] = useState(true)
+  // v5.6.10 (Codex L3 review fix):自訂偏好預設關閉(對齊 GDPR「明確同意」原則)
+  const [analytics, setAnalytics] = useState(false)
   const [marketing, setMarketing] = useState(false)
 
   useEffect(() => {

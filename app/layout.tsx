@@ -72,6 +72,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   t.src=v;s=b.getElementsByTagName(e)[0];
                   s.parentNode.insertBefore(t,s)}(window, document,'script',
                   'https://connect.facebook.net/en_US/fbevents.js');
+                  // v5.6.10 (Codex L3 fix):預設拒絕 Meta Pixel 收集(GDPR 對齊)
+                  // 從 localStorage 讀已儲存偏好、若 marketing=true 則 grant、否則 revoke
+                  try {
+                    var stored = localStorage.getItem('jy_cookie_consent_v1');
+                    var prefs = stored ? JSON.parse(stored) : null;
+                    if (prefs && prefs.marketing) {
+                      fbq('consent', 'grant');
+                    } else {
+                      fbq('consent', 'revoke');
+                    }
+                  } catch(e) { fbq('consent', 'revoke'); }
                   fbq('init', '${process.env.NEXT_PUBLIC_META_PIXEL_ID}');
                   fbq('track', 'PageView');
                 `,
