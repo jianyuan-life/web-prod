@@ -5,6 +5,7 @@ import { PromotionTopBanner, PromotionPrice } from '@/components/PromotionBanner
 import SocialProof from '@/components/SocialProof'
 import FreeTryBanner from '@/components/FreeTryBanner'
 import FunnelPageHit from '@/components/FunnelPageHit'
+import TrustBar from '@/components/TrustBar'
 
 const PLANS = {
   personal: [
@@ -42,19 +43,19 @@ const PLANS = {
       features: ['描述事件背景＋期望結果（200 字）', '14 類事件精準匹配＋自由描述 AI 分類', '25 層古法評分（門/星/神/干/格局/神煞）', '個人年命宮交叉驗證', 'Top3 吉時＋方位度數＋信心等級', '行事曆邀約一鍵加入'],
       hasQuestion: true,
     },
-    { code: 'E2', name: '月度出門訣', price: 29,
-      valueHint: '單次購買、當月執行',
-      desc: '替該月度圈定一個當月最佳出行主吉方與吉時，適合每月補運、穩定運勢持續累積的人',
-      suitableFor: '每月補運、想讓好運累積、尚未決定週度密集補運的人',
-      features: ['農曆月份精算（立春／節氣換月）', '奇門紫白擇日派四層架構', '《沈氏玄空學》《地理辨正》《紫白訣》古籍背書', '紫白飛星月+年吉星並集擇方', '個人年命宮交叉驗證', '行事曆邀約一鍵加入', '晦日 21:00 前購買即算當月'],
+    { code: 'E2', name: '月度單盤', price: 29,
+      valueHint: '當月 1 個吉時、入門首選',
+      desc: '當月一次補運首選——替該月圈定 1 個最佳出行主吉方與吉時。適合每月補運、想讓好運累積、預算精打細算的入門客戶',
+      suitableFor: '每月補運、入門首選、不需密集補運的客戶',
+      features: ['當月 1 個吉時 + 主吉方', '農曆月份精算（立春／節氣換月）', '奇門紫白擇日派四層架構', '《沈氏玄空學》《地理辨正》《紫白訣》古籍背書', '個人年命宮交叉驗證', '行事曆邀約一鍵加入', '晦日 21:00 前購買即算當月'],
     },
-    { code: 'E3', name: '週度補運', price: 89,
-      valueHint: '4 週×每週 Top2＝8 吉時、持續補運最佳',
-      desc: '月度完整版——針對選定 1-3 個主題用神，4 週每週精算 Top2 吉時，共 8 個最佳時窗，讓您整月持續在對的能量中',
-      suitableFor: '需要事業／財運／感情持續補運、希望系統性接天時地利的人',
-      features: ['選 1-3 個主題（事業／財運／感情／健康／學業／貴人／化解小人／家庭）', '每週 2 個 Top 吉時、共 8 個時窗', '主題用神（值符／天心／開門等）對應評分', '個人年命宮交叉驗證', '行事曆邀約一鍵加入', '古法占事派正統：用神佔 60%'],
+    { code: 'E3', name: '月度精選', price: 89,
+      valueHint: '當月 8 個吉時、進階完整版',
+      desc: '當月持續密集補運——針對選定 1-3 個主題用神，4 週每週精算 Top2 吉時、共 8 個最佳時窗，讓您整月持續接天時地利',
+      suitableFor: '需要事業／財運／感情持續補運、希望系統性密集擇吉的進階客戶',
+      features: ['當月 8 個吉時（4 週 ×Top2）', '選 1-3 個主題（事業／財運／感情／健康／學業／貴人／化解小人／家庭）', '主題用神（值符／天心／開門等）對應評分', '個人年命宮交叉驗證', '行事曆邀約一鍵加入', '古法占事派正統：用神佔 60%'],
     },
-    { code: 'E4', name: '年度方案', price: 279, seasonal: true,
+    { code: 'E4', name: '年度全運', price: 279, seasonal: true,
       valueHint: '年盤＋12 月盤、立春前 30 天限時販售',
       desc: '年度完整方案——年盤 + 12 個月盤的古法精算，全年重要擇吉一次到位，每年立春前 30 天限時開放',
       suitableFor: '希望全年重要決策都有奇門吉時依據、年度擇吉一次搞定的人',
@@ -134,6 +135,10 @@ export default function PricingPage() {
         <PromotionTopBanner />
 
         <SocialProof />
+
+        {/* v5.6.10 R3 (一步一步、最高標準):Trust Bar 移到 H1 下方 above-the-fold */}
+        {/* 對應 5 家 audit:Co-Star/16P 信任元素需在「選方案」之前出現 */}
+        <TrustBar variant="pricing" />
 
         <Section title="個人命格分析" subtitle="了解自己，掌握人生方向" plans={PLANS.personal} />
         <Section title="家庭與關係" subtitle="家人之間的命格交織與互動" plans={PLANS.family} />
@@ -252,16 +257,16 @@ export default function PricingPage() {
               <thead>
                 <tr className="border-b border-gold/10">
                   <th className="text-left p-4 text-text-muted font-normal">項目</th>
-                  <th className="p-4 text-gold text-center font-semibold">事件 E1<br/><span className="text-xs text-text-muted font-normal">$59</span></th>
-                  <th className="p-4 text-gold text-center font-semibold">月度 E2<br/><span className="text-xs text-text-muted font-normal">$29</span></th>
-                  <th className="p-4 text-gold text-center font-semibold bg-gold/5">週度 E3<br/><span className="text-xs text-text-muted font-normal">$89</span></th>
-                  <th className="p-4 text-gold text-center font-semibold">年度 E4<br/><span className="text-xs text-text-muted font-normal">$279</span></th>
+                  <th className="p-4 text-gold text-center font-semibold">事件擇吉 E1<br/><span className="text-xs text-text-muted font-normal">$59</span></th>
+                  <th className="p-4 text-gold text-center font-semibold">月度單盤 E2<br/><span className="text-xs text-text-muted font-normal">$29</span></th>
+                  <th className="p-4 text-gold text-center font-semibold bg-gold/5">月度精選 E3<br/><span className="text-xs text-text-muted font-normal">$89</span></th>
+                  <th className="p-4 text-gold text-center font-semibold">年度全運 E4<br/><span className="text-xs text-text-muted font-normal">$279</span></th>
                 </tr>
               </thead>
               <tbody className="text-xs">
                 {[
-                  { feature: '對象', e1: '單一事件', e2: '當月補運', e3: '整月持續', e4: '整年佈局' },
-                  { feature: '吉時數', e1: 'Top3', e2: '主吉方 1 盤', e3: '8 個（4 週 ×2）', e4: '年盤＋12 月盤' },
+                  { feature: '對象', e1: '單一事件', e2: '當月入門', e3: '當月密集', e4: '整年佈局' },
+                  { feature: '吉時數', e1: 'Top3', e2: '當月 1 個', e3: '當月 8 個（4 週×Top2）', e4: '年盤＋12 月盤' },
                   { feature: '主題用神', e1: '自由描述', e2: '無', e3: '可選 1-3 個', e4: '無' },
                   { feature: '時間單位', e1: '時盤（兩小時）', e2: '月盤', e3: '時盤（8 個）', e4: '年盤＋月盤' },
                   { feature: '年命宮驗證', e1: '&#10003;', e2: '&#10003;', e3: '&#10003;', e4: '&#10003;' },

@@ -11,6 +11,8 @@ import FamilyMemberField from '@/components/checkout/FamilyMemberField'
 import CustomerNote from '@/components/checkout/CustomerNote'
 import PointsRedeem from '@/components/checkout/PointsRedeem'
 import FunnelPageHit from '@/components/FunnelPageHit'
+import TrustBar from '@/components/TrustBar'
+import CheckoutProgress from '@/components/checkout/CheckoutProgress'
 
 function CheckoutForm() {
   const ctx = useCheckoutForm()
@@ -33,6 +35,10 @@ function CheckoutForm() {
           </svg>
           返回方案
         </Link>
+
+        {/* v5.6.10 R3:checkout 進度條(填表 → 確認 → 付款)+ TrustBar(Stripe/退費/SSL) */}
+        <CheckoutProgress current={1} />
+
         <CheckoutHeader
           planCode={ctx.planCode}
           planName={ctx.plan.name}
@@ -221,6 +227,9 @@ function CheckoutForm() {
             )}
 
             {ctx.error && <p className="text-red-400 text-sm text-center">{ctx.error}</p>}
+
+            {/* v5.6.10 R3:確認付款前加完整 TrustBar(Stripe/退費/SSL) */}
+            <TrustBar variant="checkout" />
 
             <button
               type="submit"
