@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
       { source: '/free-tools', destination: '/tools/bazi', permanent: true },
       { source: '/login', destination: '/auth/login', permanent: true },
       { source: '/register', destination: '/auth/signup', permanent: true },
-      { source: '/about', destination: '/#about', permanent: false },
+      // v5.6.10 R4 移除:/about → /#about(原導首頁 anchor、現有獨立 /about 頁)
     ]
   },
 
