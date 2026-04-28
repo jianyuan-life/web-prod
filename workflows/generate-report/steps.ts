@@ -655,13 +655,18 @@ export function cleanFinalReport(text: string, clientName?: string): string {
   // `### <阿拉伯數字>、` 開頭的行，一律升格為 `## ...`。細分章節（`### 6.1 ...`
   // `### N.M ...`）不匹配此模式，保留不動。
   {
-    const h2PromoteRegex = /^### ([一二三四五六七八九十百]+[、\.]|\d+、)(.*)$/gm
+    // v5.7.22 真因修(e3fff2b2 鐵證「37 章節 < 300 字」):
+    //   原 regex 含 `\d+、` 把 ### 子節阿拉伯編號(### 1、命格封號 / ### 2、xxx)誤升成 ##
+    //   → 大量短章節 → quality gate「敷衍章節 < 300 字」reject → needs_human_review
+    //   修:只升格中文編號(一、二、...十七)、不升阿拉伯(子節常用 1、2、3)
+    //   AI prompt c_plan_v2.ts 主章節都用「## 一、xxx」中文、子節用 ### 1、阿拉伯
+    const h2PromoteRegex = /^### ([一二三四五六七八九十百]+[、\.])(.*)$/gm
     let promoteCount = 0
     cleaned = cleaned.replace(h2PromoteRegex, (_m, num, rest) => {
       promoteCount++
       return `## ${num}${rest}`
     })
-    if (promoteCount > 0) console.log(`[cleanFinalReport] h2 升格：${promoteCount} 個 ### 主章節 → ##`)
+    if (promoteCount > 0) console.log(`[cleanFinalReport] h2 升格(僅中文編號):${promoteCount} 個 ### 主章節 → ##`)
   }
 
   // 0b. v5.3.44 清 prompt 模板字數提示殘留（AI 把「（800-1200 字）」等範本指令原樣複製到正文）
