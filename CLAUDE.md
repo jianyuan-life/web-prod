@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.6.8（2026-04-28 Wave 5 Top 10 #5: 03 奇門 R141 八節旺相 raw_data 注入 + plan-prompts.ts 雙向 sync_with 標記 — 配合 fortune-research qimen_dunjia.py 加 raw_data['school_info']['bajie_wangfei_table'] 8 節氣 wang/fei 對照(《統宗》卷一 L122-123、Gemini Search Grounding 驗古籍真實);跨 4 LLM round 1 QA 99 + IA 68 P0 修(school_info 子鍵走既有白名單、metaFlags 不需改) + round 2 修 sync_with 雙向標記、不改打分加權避免翻盤)
+**網站版本：** v5.6.9（2026-04-28 Wave 5 Top 10 #6: 03 奇門 R151 建除十二神日級過濾 raw_data 注入 + plan-prompts.ts L181-194 R151 條件指令 — 配合 fortune-research qimen_dunjia.py 加 raw_data['school_info']['jianchu_check'](建/除/滿/平/定/執/破/危/成/收/開/閉 12 神序列、auspicious_days [除/滿/定/成/收/開] / inauspicious_days [破/危/閉] / neutral_days [建/平/執]、傳統擇日通則 +《選擇通書》);Combined QA+IA 96/100 PASS;遵循 #5 經驗教訓:plan-prompts.ts 同步加條件指令避免 AI 看不到 = 白做)
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
