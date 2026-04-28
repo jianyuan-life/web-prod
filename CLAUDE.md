@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.6.5（2026-04-28 v5.6.5 patch: task #11 R 方案 ROI #8 軟性對位表檢查 + R production 已通確認 — Sub-agent 撈 Supabase 實測 R 4/4 訂單 100% completed 已通、CLAUDE.md 待辦 #4 過期關閉、加 R cRequired 軟性檢查雙人對位視覺(八字並列 / 紫微合盤 / Synastry / 對照表)、避免 R 報告純文字弱於對手;真正 P0 改為 Stripe Live R funnel 確認)
+**網站版本：** v5.6.6（2026-04-28 Wave 5 Top 10 #2: 02 紫微 raw_data 真接入 production AI prompt — steps.ts 拆 3 個 metadata block(birth-time JSON / 紫微中文 label / v5.4.0 v54Flags 補注入)+ plan-prompts.ts L79 加紫微 raw_data 條件指令(類比 v5.4.0 套路)+ 古籍《全書》卷三〈起小限及斗君訣〉、跨 4 輪審查 round 3 QA 97 + IA 95 + Codex PASS + round 4 修 Gemini 2 P1 對齊;對應 c_plan_v2.ts L490 中文觸發語、整條鏈 calculator → steps.ts → plan-prompts.ts → c_plan_v2.ts 通暢)
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
@@ -759,7 +759,7 @@ TypeScript 零錯誤通過。
 - ✅ CI 環境變數修復（build 不再失敗）
 
 **審計結果：**
-- 34,458條規則驗證為真實（實際約38,600條）
+- **44,421+ 條規則**(2026-04-17 Python 精算 329 個 .md 檔列表項 + 表格列、對齊 jianyuan.life 首頁、whitepaper_v1.md L121 同步)— 取代舊估算「34,458 / 38,600」
 - 排盤引擎準確度 96%+，已用業界最佳庫
 - 全6方案結帳流程端對端驗證通過
 - 報告頁6方案渲染驗證通過

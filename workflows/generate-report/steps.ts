@@ -1621,13 +1621,47 @@ ${analyses.length}套系統排盤完整數據：
     // v5.6 P0 (round 2):注入 raw_data 精簡白名單(birth-time 精度 flag)、讓 ETHICS_RULES 06/07/09 disclaimer 規則可生效
     // 不全傳避免 token bloat、只傳 ETHICS_RULES 條件指令需要的 key
     if (a.raw_data && typeof a.raw_data === 'object') {
-      const flagsWhitelist = ['asc_confidence', 'time_precision_warning']
-      const flags: Record<string, unknown> = {}
-      for (const key of flagsWhitelist) {
-        if (a.raw_data[key] !== undefined) flags[key] = a.raw_data[key]
+      // v5.6.6 round 3 Wave 5 Top 10 #2: 拆 3 個 label、補 v5.4.0 漏注入的 key、4 LLM round 2 共識
+      // (1) birth-time 精度 JSON 注入(v5.6.0)
+      // (2) 紫微三核心中文 label(v5.6.6)
+      // (3) v5.4.0 既有條件指令的 raw_data 注入(karmic_debt/karmic_lessons/master_number_warning/homophone_taboo、之前漏)
+
+      // (1) birth-time 精度
+      const timeFlags: Record<string, unknown> = {}
+      if (a.raw_data['asc_confidence'] !== undefined) timeFlags['asc_confidence'] = a.raw_data['asc_confidence']
+      if (a.raw_data['time_precision_warning'] !== undefined) timeFlags['time_precision_warning'] = a.raw_data['time_precision_warning']
+      if (Object.keys(timeFlags).length > 0) {
+        userPrompt += `\nbirth-time 精度標記：${JSON.stringify(timeFlags)}`
       }
-      if (Object.keys(flags).length > 0) {
-        userPrompt += `\nbirth-time 精度標記：${JSON.stringify(flags)}`
+
+      // (2) 紫微三核心(中文 label、4 個 key 都判 undefined)
+      const mingZhu = a.raw_data['ming_zhu']
+      const shenZhu = a.raw_data['shen_zhu']
+      const douJun = a.raw_data['dou_jun']
+      const douJunPalace = a.raw_data['dou_jun_palace']
+      if (mingZhu !== undefined || shenZhu !== undefined || douJun !== undefined || douJunPalace !== undefined) {
+        const ziweiParts: string[] = []
+        if (mingZhu !== undefined && mingZhu !== null) ziweiParts.push(`命主=${mingZhu}`)
+        if (shenZhu !== undefined && shenZhu !== null) ziweiParts.push(`身主=${shenZhu}`)
+        if (douJun !== undefined && douJun !== null) ziweiParts.push(`流年斗君=${douJun}`)
+        if (douJunPalace !== undefined && douJunPalace !== null) ziweiParts.push(`斗君落宮=${douJunPalace}`)
+        if (ziweiParts.length > 0) {
+          // v5.6.6 round 4 Gemini P1 對齊:加粗體跟 plan-prompts.ts L79「**紫微核心參數**」一致、LLM 觸發更精準
+          userPrompt += `\n**紫微核心參數**：${ziweiParts.join('、')}`
+        }
+      }
+
+      // (3) v5.4.0 既有條件指令對應 raw_data 注入(plan-prompts.ts L75-78 已寫指令、之前 steps.ts 漏注入)
+      // round 4 Gemini P1:label 簡化「raw_data 擷取」更直白對應 prompt 的「raw_data 含 X」字眼
+      // round 4 IA P2:統一 strict undefined && null check
+      const v54Flags: Record<string, unknown> = {}
+      const v54Keys = ['karmic_debt', 'karmic_lessons', 'master_number_warning', 'homophone_taboo']
+      for (const key of v54Keys) {
+        const v = a.raw_data[key]
+        if (v !== undefined && v !== null) v54Flags[key] = v
+      }
+      if (Object.keys(v54Flags).length > 0) {
+        userPrompt += `\nraw_data 擷取(v5.4.0 條件指令對應)：${JSON.stringify(v54Flags)}`
       }
     }
     if (a.good_points?.length) {
