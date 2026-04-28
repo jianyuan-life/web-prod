@@ -186,7 +186,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     lowPrice: '39',
                     highPrice: '99',
                     priceCurrency: 'USD',
-                    offerCount: '6',
+                    offerCount: '8',
                   },
                 },
                 {
