@@ -11,7 +11,7 @@ import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { recordEmailSend } from '@/lib/email-send-log'
 import { notifyEmailFailed } from '@/lib/ai/observability/telegram'
-import { isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
+import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 import {
   getAgeGroup,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
@@ -2418,11 +2418,8 @@ export async function generatePDF(
 
   await emitProgress({ step: '生成PDF', progress: 80, message: '正在生成精美報告 PDF...' })
 
-  const planNames: Record<string, string> = {
-    C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-    R: '合否？', E1: '事件擇吉', E2: '月度單盤', Y: '年度運勢',
-  }
-  const planName = planNames[planCode] || '命理分析報告'
+  // v5.7.13:改 PLAN_NAMES from lib/plan-names(IA round 7 P1、廢棄 Y 砍掉)
+  const planName = PLAN_NAMES[planCode] || '命理分析報告'
 
   // PDF 專用預處理：清除殘留橫線 + 分數清理 + 轉換 Markdown 格式為 PDF 友好格式
   const pdfContent = reportContent
@@ -3531,7 +3528,7 @@ function getEmailCta(planCode: string, isCN: boolean): string {
     case 'C': return isCN ? '查看完整命格报告 →' : '查看完整命格報告 →'
     case 'D': return isCN ? '查看深度解答 →' : '查看深度解答 →'
     case 'G15': return isCN ? '查看家族分析报告 →' : '查看家族分析報告 →'
-    case 'E1': case 'E2': return isCN ? '查看最佳吉时推荐 →' : '查看最佳吉時推薦 →'
+    case 'E1': case 'E2': case 'E3': case 'E4': return isCN ? '查看最佳吉时推荐 →' : '查看最佳吉時推薦 →'
     case 'R': return isCN ? '查看合盘分析报告 →' : '查看合盤分析報告 →'
     default: return isCN ? '查看完整报告 →' : '查看完整報告 →'
   }
@@ -3551,11 +3548,8 @@ export async function sendReportEmail(
 
   await emitProgress({ step: '寄送通知', progress: 95, message: '正在寄送報告通知郵件...' })
 
-  const planNames: Record<string, string> = {
-    C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-    R: '合否？', E1: '事件擇吉', E2: '月度單盤', Y: '年度運勢',
-  }
-  const planName = planNames[planCode] || '命理分析報告'
+  // v5.7.13:改 PLAN_NAMES from lib/plan-names
+  const planName = PLAN_NAMES[planCode] || '命理分析報告'
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
   const reportUrl = `${siteUrl}/report/${accessToken}`
   const isCN = birthData.locale === 'zh-CN'
@@ -3799,11 +3793,8 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
   if (customerEmailFailed && retryCount >= 3 && !alreadySent) {
     try {
       const planCode = (reportData?.plan_code as string | undefined) || ''
-      const planNamesLocal: Record<string, string> = {
-        C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-        R: '合否？', E1: '事件擇吉', E2: '月度單盤', Y: '年度運勢',
-      }
-      const planName = planNamesLocal[planCode] || '命理報告'
+      // v5.7.13:改 PLAN_NAMES from lib/plan-names
+      const planName = PLAN_NAMES[planCode] || '命理報告'
 
       const birthDataObj = (reportData?.birth_data || {}) as Record<string, unknown>
       const rawLocale = typeof birthDataObj['locale'] === 'string'

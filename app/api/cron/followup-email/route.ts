@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
-import { PLAN_NAMES } from '@/lib/plan-names'
+import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 
 export const maxDuration = 60
 
@@ -160,7 +160,7 @@ export async function GET(req: NextRequest) {
     const planCode = report.plan_code || 'C'
     const planName = PLAN_NAMES[planCode] || '命理分析'
     const clientName = report.client_name || '您'
-    const isChumenji = planCode === 'E1' || planCode === 'E2'
+    const isChumenji = isChumenjiPlan(planCode)
 
     // 提取報告內容
     const reportContent = typeof report.report_result === 'string'

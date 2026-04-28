@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { trackFunnelClient } from '@/lib/funnel-tracker'
 import { buildPdfDownloadUrl, buildPdfDownloadFilename } from '@/lib/pdf-download'
+import { isChumenjiPlan } from '@/lib/plan-names'
 
 export default function ReportClientButtons({ pdfUrl, planCode, reportId, clientName, accessToken }: {
   pdfUrl: string | null
@@ -15,7 +16,7 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
   const [generateMsg, setGenerateMsg] = useState<string | null>(null)
   // v5.3.86 出門訣 E1-E4 取消 PDF 下載（Jamie 指令:深度綁定 web + 行事曆）
   // isChumenji 仍用來判斷樣式、但所有出門訣不渲染 PDF 按鈕
-  const isChumenji = planCode === 'E1' || planCode === 'E2' || planCode === 'E3' || planCode === 'E4'
+  const isChumenji = isChumenjiPlan(planCode)
   const hidePdfForChumenji = isChumenji  // 出門訣全部不顯示 PDF
 
   // PDF 下載追蹤（5 分鐘內同一報告不重複計算）

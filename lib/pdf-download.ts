@@ -3,13 +3,13 @@
 //   "Attempted to call buildPdfDownloadUrl() from the server but is on the client"
 // 搬到這裡（無 'use client'）就兩邊通用
 
+// v5.7.13:改 import lib/plan-names 集中管理(IA round 7 P0)
+import { PLAN_NAMES } from '@/lib/plan-names'
+
+// PDF 檔名用、PLAN_NAMES 直接用、R 方案 PDF 檔名特殊化(去問號)
 const PLAN_NAME_MAP: Record<string, string> = {
-  C: '人生藍圖',
-  D: '心之所惑',
-  G15: '家族藍圖',
-  R: '合否',
-  E1: '事件擇吉',
-  E2: '月度單盤',
+  ...PLAN_NAMES,
+  R: '合否',  // PDF 檔名不帶問號(避免某些 OS filename invalid)
 }
 
 export function buildPdfDownloadUrl(pdfUrl: string, planCode?: string, clientName?: string): string {
