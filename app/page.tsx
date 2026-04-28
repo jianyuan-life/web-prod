@@ -181,7 +181,7 @@ export default function HomePage() {
               icon: <><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></> },
             { num: '', label: '隱私保護', sub: '資料加密傳輸與儲存',
               icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /> },
-            { num: '$39', label: '起', sub: '8 種方案 · 4 大類別',
+            { num: '$29', label: '起', sub: '8 種方案 · 4 大類別',
               icon: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /> },
           ].map((s) => (
             <div key={s.label}>
@@ -215,7 +215,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { title: '傳統命理師', items: ['只用 1-2 套系統', '結論因人而異，難以驗證', '收費 $100-$300 美金', '等待 3-7 天出結果', '人為偏見影響判斷'], highlight: false },
-              { title: '鑒源命理', items: ['最多 14 套系統交叉分析', '44,421+ 條規則客觀運算', '最低 $39 美金起', '報告約 30-60 分鐘完成', '規則驅動，排盤可驗證'], highlight: true },
+              { title: '鑒源命理', items: ['最多 14 套系統交叉分析', '44,421+ 條規則客觀運算', '最低 $29 美金起', '報告約 30-60 分鐘完成', '規則驅動，排盤可驗證'], highlight: true },
               { title: '免費算命網站', items: ['套公式的罐頭回覆', '千篇一律的描述', '沒有個人化深度', '無法回答「為什麼」', '沒有行動建議'], highlight: false },
             ].map((col) => (
               <div key={col.title} className={`glass rounded-2xl p-6 relative ${col.highlight ? 'border-gold/25 shadow-[0_0_40px_rgba(201,168,76,0.08)]' : ''}`}>

@@ -3712,7 +3712,7 @@ export async function sendReportEmail(
 sendReportEmail.maxRetries = 2
 
 // ── Step 6: 標記失敗 + 發送告警 Email + 客戶致歉信 ──
-// L4 P0 升級：達最終失敗（retry_count >= 3）時自動寄客戶致歉信，承諾 24 小時人工介入或全額退款
+// L4 P0 升級：達最終失敗（retry_count >= 3）時自動寄客戶致歉信，承諾 24 小時人工接手協助補開新單（依電子商品慣例不支援退款，v5.7.8 升級）
 export async function markReportFailed(reportId: string, errorMessage: string) {
   "use step";
   const supabase = getSupabase()
@@ -3841,8 +3841,8 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       </ul>
       `
 
-      // v5.7.6:不退款、改「聯繫客服」單一 CTA
-      const ctaRefund = isCN ? '联系客服补开' : '聯繫客服補開'
+      // v5.7.8:不退款、改「聯繫客服補開」單一 CTA(原變數名 ctaRefund 改 ctaSupport 對齊政策)
+      const ctaSupport = isCN ? '联系客服补开' : '聯繫客服補開'
       const ctaContact = isCN ? '联系客服' : '聯繫客服'
       const refIdLabel = isCN ? '报告编号' : '報告編號'
       const brand = isCN ? '鉴 源' : '鑒 源'
@@ -3879,7 +3879,7 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 16px 0;">${titleText}</h1>
       ${apologyHtml}
       <div style="margin-top:24px;">
-        <a href="${supportMailtoUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 8px 4px 0;">${ctaRefund}</a>
+        <a href="${supportMailtoUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 8px 4px 0;">${ctaSupport}</a>
         <a href="mailto:${supportEmail}?subject=${encodeURIComponent((isCN ? '报告处理询问 ' : '報告處理詢問 ') + reportId.slice(0, 8))}" style="display:inline-block;background:transparent;color:#c9a84c;border:1px solid #c9a84c;font-weight:700;font-size:14px;padding:11px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 0;">${ctaContact}</a>
       </div>
       <p style="color:#6b7280;font-size:12px;margin:20px 0 0 0;">${refIdLabel}：${reportId.slice(0, 8)}</p>

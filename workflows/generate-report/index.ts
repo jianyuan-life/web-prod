@@ -450,7 +450,7 @@ export async function generateReportWorkflow(reportId: string) {
       const question = (birthData.question || birthData.customer_note || birthData.other_question || undefined) as string | undefined
 
       // v5.3.62：E1/E2/E3 出門訣全系列呼叫奇門引擎取 Top 結果、強制注入 Prompt
-      //   E1: 3 吉時（事件 Top3）、E2: 4 週每週 1 盤、E3: 4 週每週 Top 2 共 8 吉時
+      //   E1: 3 吉時（事件 Top3）、E2: 月家奇門古法單月 1 盤(v2.0)、E3: 4 週每週 Top 2 共 8 吉時
       if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
         console.log(`${planCode} 出門訣：呼叫引擎計算最佳時辰...`)
         chumenjiTop = await callChumenjiTop(planCode, birthData)

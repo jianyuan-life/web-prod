@@ -6,11 +6,16 @@ export const alt = '方案與定價 · 鑒源 JianYuan'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
+// v5.7.8:8 方案完整 grid(原 4 方案 IA Agent P0、影響社群分享轉化)
 const PLANS = [
+  { name: '月度單盤', price: '$29', sub: '月家奇門古法' },
   { name: '心之所惑', price: '$39', sub: '聚焦你最在乎的問題' },
-  { name: '人生藍圖', price: '$89', sub: '十四套系統交叉分析' },
-  { name: '合否？', price: '$59', sub: '雙人合盤關係解讀' },
   { name: '事件擇吉', price: '$59', sub: '奇門遁甲 Top3 吉時' },
+  { name: '合否？', price: '$59', sub: '雙人合盤關係解讀' },
+  { name: '家族藍圖', price: '$59', sub: '家庭互動分析' },
+  { name: '人生藍圖', price: '$89', sub: '十四套系統交叉分析' },
+  { name: '月度精選', price: '$89', sub: '4 週 8 吉時補運' },
+  { name: '年度全運', price: '$279', sub: '年盤 + 12 月盤' },
 ]
 
 export default async function Image() {
@@ -64,12 +69,13 @@ export default async function Image() {
           個人 · 家庭 · 關係 · 出門訣四大類別、從 $29 起
         </div>
 
-        {/* 4 卡片 grid */}
+        {/* v5.7.8:8 卡片 4×2 grid(原 4 方案 IA P0 升級到 8 方案) */}
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 16,
+            gridTemplateRows: 'repeat(2, 1fr)',
+            gap: 12,
             flex: 1,
           }}
         >
@@ -80,35 +86,35 @@ export default async function Image() {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                padding: 24,
+                padding: 14,
                 border: '1px solid rgba(201, 168, 76, 0.35)',
-                borderRadius: 16,
+                borderRadius: 12,
                 background: 'rgba(15, 22, 40, 0.5)',
               }}
             >
               <div
                 style={{
-                  fontSize: 24,
+                  fontSize: 18,
                   color: '#f5f0e8',
                   fontWeight: 700,
-                  marginBottom: 8,
+                  marginBottom: 4,
                 }}
               >
                 {p.name}
               </div>
               <div
                 style={{
-                  fontSize: 14,
+                  fontSize: 11,
                   color: 'rgba(245, 240, 232, 0.6)',
-                  marginBottom: 18,
-                  lineHeight: 1.4,
+                  marginBottom: 6,
+                  lineHeight: 1.3,
                 }}
               >
                 {p.sub}
               </div>
               <div
                 style={{
-                  fontSize: 36,
+                  fontSize: 24,
                   color: '#c9a84c',
                   fontWeight: 700,
                   letterSpacing: 1,

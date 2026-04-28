@@ -5,6 +5,17 @@
 
 ---
 
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.8 | 6d5fd19d
+- 動作:退費邏輯全清(不支援退款 + 4 大保證) + 8 方案命名統一(IA 抓 11 處 JSX 殘留全修) + sed 註解誤改復原 + 舊價 $89/$99 → $59/$29 + 「6 種方案 → 8 種方案」+「$39 起 → $29 起」
+- 改動範圍:78 檔、~+/-300 行(廣度 sed sweep:app/components/workflows/lib + i18n 雙語 + SubscribeCTA + blog 對比表 + AggregateOffer)
+- 為什麼:① Jamie P0 糾正「沒有退費這項目、所有頁面檢查清楚」(R3-R4 加 7 天無條件退費翻盤違規) ② 「所有人九十五分才能停」(IA Agent 第 3 輪抓出 11 處 JSX 文本沒被 sed 掃到、L4 Gemini 待 round 4)
+- type-check:✅ 零錯誤
+- 4 LLM 審查:L1 QA=95.5 PASS / L2 IA=86.7(本 commit 修 11 處 JSX 後待 round 4)/ L3 Codex=PASS(P3 only)/ L4 Gemini=待 round 4
+- Vercel deploy:⏳ 等中
+- 老闆驗收:⏳
+
+---
+
 ### 2026-04-27 ~18:30 | jianyuan-life/web-prod:main | v5.5.1 | 52d73502
 - 動作:promptfoo yaml 同步 7 修 + assertion #1 限縮(矩陣允「—」)
 - 改動範圍:1 檔(promptfoo_c_plan.yaml)、+101 / -27 行

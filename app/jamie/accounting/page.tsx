@@ -459,7 +459,7 @@ export default function AccountingPage() {
             {Object.entries(summary.break_even.break_even_count_per_plan).map(([code, count]) => (
               <div key={code} className="flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0">
                 <span className="text-gray-300">
-                  {({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月盤出門訣' } as Record<string, string>)[code] || code}
+                  {({ C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月度單盤' } as Record<string, string>)[code] || code}
                 </span>
                 <span className="text-amber-300">
                   賣 {count} 份回本 <span className="text-gray-500">(毛利 ${summary.break_even.avg_margin_per_plan[code]}/份)</span>

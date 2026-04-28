@@ -86,7 +86,7 @@ type DetailResp = {
 
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-  R: '合否？', E1: '事件擇吉', E2: '月盤出門訣',
+  R: '合否？', E1: '事件擇吉', E2: '月度單盤',
 }
 
 const REVIEWER_LABELS: Record<string, string> = {

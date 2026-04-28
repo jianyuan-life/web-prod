@@ -46,7 +46,7 @@ export default async function Image() {
             maxWidth: 1000,
           }}
         >
-          {['報告品質', '付款 & 退費', '隱私 & 資料', '報告生成', '出門訣專屬', '其他'].map((tag) => (
+          {['報告品質', '付款 & 服務保證', '隱私 & 資料', '報告生成', '出門訣專屬', '其他'].map((tag) => (
             <div
               key={tag}
               style={{

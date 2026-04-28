@@ -36,7 +36,7 @@ function CheckoutForm() {
           返回方案
         </Link>
 
-        {/* v5.6.10 R3:checkout 進度條(填表 → 確認 → 付款)+ TrustBar(Stripe/退費/SSL) */}
+        {/* v5.6.10 R3:checkout 進度條(填表 → 確認 → 付款)+ TrustBar(Stripe/服務保證/SSL) */}
         <CheckoutProgress current={1} />
 
         <CheckoutHeader
@@ -228,7 +228,7 @@ function CheckoutForm() {
 
             {ctx.error && <p className="text-red-400 text-sm text-center">{ctx.error}</p>}
 
-            {/* v5.6.10 R3:確認付款前加完整 TrustBar(Stripe/退費/SSL) */}
+            {/* v5.6.10 R3:確認付款前加完整 TrustBar(Stripe/服務保證/SSL) */}
             <TrustBar variant="checkout" />
 
             <button

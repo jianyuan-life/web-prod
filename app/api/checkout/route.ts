@@ -368,7 +368,7 @@ export async function POST(req: NextRequest) {
             .gte('balance', verifiedPointsToUse)
 
           if (!updateErr) {
-            const PLAN_NAMES_PTS: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月度單盤' }
+            const PLAN_NAMES_PTS: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月度單盤', E3: '月度精選', E4: '年度全運' }
             await supabase.from('point_transactions').insert({
               user_id: pointsUserId,
               type: 'use_checkout',
