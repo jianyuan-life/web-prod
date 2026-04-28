@@ -7,6 +7,29 @@ import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'edge'
 
+// v5.7.1 hotfix:Edge runtime 中文字體 fetch(預設無中文 fallback、會 silent 失敗 0 byte)
+let cachedFont: ArrayBuffer | null = null
+async function loadChineseFont(): Promise<ArrayBuffer | null> {
+  if (cachedFont) return cachedFont
+  try {
+    // Google Fonts API 取 Noto Sans TC Regular 子集 ttf
+    const cssRes = await fetch(
+      'https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&display=swap',
+      { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }
+    )
+    if (!cssRes.ok) return null
+    const css = await cssRes.text()
+    const m = css.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2)\)/)
+    if (!m) return null
+    const fontRes = await fetch(m[1])
+    if (!fontRes.ok) return null
+    cachedFont = await fontRes.arrayBuffer()
+    return cachedFont
+  } catch {
+    return null
+  }
+}
+
 function getServiceSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -76,6 +99,9 @@ export async function GET(req: Request) {
 
   const planName = PLAN_NAMES[planCode] || '命理分析'
   const hook = PLAN_HOOK[planCode] || '回到源頭、看清本質'
+
+  // v5.7.1:fetch 中文字體
+  const cnFont = await loadChineseFont()
 
   return new ImageResponse(
     (
@@ -163,7 +189,7 @@ export async function GET(req: Request) {
               color: '#f5f0e8',
               letterSpacing: 8,
               marginBottom: 30,
-              fontFamily: 'serif',
+              fontFamily: 'NotoTC, serif',
             }}
           >
             {clientName}
@@ -248,6 +274,10 @@ export async function GET(req: Request) {
         </div>
       </div>
     ),
-    { width: 1080, height: 1080 }
+    {
+      width: 1080,
+      height: 1080,
+      ...(cnFont ? { fonts: [{ name: 'NotoTC', data: cnFont, style: 'normal' as const, weight: 700 as const }] } : {}),
+    }
   )
 }
