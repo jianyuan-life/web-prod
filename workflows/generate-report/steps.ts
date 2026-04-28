@@ -1503,7 +1503,7 @@ function buildGenericUserPrompt(
   planCode?: string,
 ): string {
   // v5.3.73 P0 修復：birthData.plan_code 在 JSONB 裡為 null、以外層 planCode 參數為準
-  const effectivePlanCode = planCode || birthData.plan_code || ''
+  const effectivePlanCode: string = planCode || (birthData.plan_code as string) || ''
   // G15 家族方案（舊版 family 模式）安全防護：多人 birthData 不能走單人 prompt
   if (birthData.plan_type === 'family' && Array.isArray(birthData.members)) {
     let memberPrompts = '家庭成員資料：\n'
@@ -1523,9 +1523,10 @@ function buildGenericUserPrompt(
     return userPrompt
   }
 
-  // E1/E2/E3 出門訣：只傳奇門遁甲數據，不傳其他系統（避免 AI 混用）
+  // E1/E2/E3/E4 出門訣：只傳奇門遁甲數據，不傳其他系統（避免 AI 混用）
   // v5.3.73 P0 修復：用 effectivePlanCode（外層 planCode > birthData.plan_code、後者在 JSONB 裡常為 null）
-  const isChumenji = effectivePlanCode === 'E1' || effectivePlanCode === 'E2' || effectivePlanCode === 'E3'
+  // v5.7.17:IA round 9 P1 — 用 isChumenjiPlan 統一(原 E1||E2||E3 漏 E4、v5.8 立春前 30 天上線時連帶 bug)
+  const isChumenji = isChumenjiPlan(effectivePlanCode)
 
   let userPrompt = `${birthData.name || ''}，${birthData.gender === 'M' ? '男' : '女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時\n`
 
@@ -2670,7 +2671,7 @@ export async function qualityGate(
         warnings.push(`月度精選缺少必要章節: ${sec.name}`)
       }
     }
-    const jsonBlocks = (reportContent.match(/===TOP[135]_JSON_START===/g) || []).length
+    const jsonBlocks = (reportContent.match(/===TOP\d+_JSON_START===/g) || []).length
     if (jsonBlocks < 8) {
       warnings.push(`月度精選 JSON 區塊不足: 找到 ${jsonBlocks} 個（期望 8 個吉時卡片）`)
     }
@@ -2741,10 +2742,10 @@ export async function qualityGate(
     }
 
     // v5.3.73 P0：8 張卡片必須全部有 plain_advantage + plain_purpose（個人化、非罐頭）
-    const jsonBlockMatches = reportContent.matchAll(/===TOP[135]_JSON_START===([\s\S]+?)===TOP[135]_JSON_END===/g)
+    const jsonBlockMatches = reportContent.matchAll(/===TOP\d+_JSON_START===([\s\S]+?)===TOP\d+_JSON_END===/g)
     let hasAdvantageCount = 0
     let hasPurposeCount = 0
-    const totalJsonBlocks2 = (reportContent.match(/===TOP[135]_JSON_START===/g) || []).length
+    const totalJsonBlocks2 = (reportContent.match(/===TOP\d+_JSON_START===/g) || []).length
     for (const jm of jsonBlockMatches) {
       try {
         const jsonStr = (jm[1] || '').trim().replace(/^```json\s*/, '').replace(/```\s*$/, '').trim()
@@ -2806,13 +2807,15 @@ export async function qualityGate(
           else aiJsonMatches.push(parsed)
         } catch { /* noop */ }
       }
-      // TOP1_JSON 區塊（E2 每週一個，可能多個）
+      // TOP1_JSON 區塊（E2 每週一個、E3 8 個、E4 12 個、可能多個）
+      // v5.7.17:Codex round 9 P2 — TOP1 內可能是 array shape `[{...}]`(E3/E4 慣例)、必須 flatten 否則 aj.date undefined 跳過硬比對
       const top1Regex = /===TOP1_JSON_START===\s*([\s\S]*?)\s*===TOP1_JSON_END===/g
       let m: RegExpExecArray | null
       while ((m = top1Regex.exec(reportContent)) !== null) {
         try {
           const parsed = JSON.parse(m[1])
-          aiJsonMatches.push(parsed)
+          if (Array.isArray(parsed)) aiJsonMatches.push(...parsed)
+          else aiJsonMatches.push(parsed)
         } catch { /* noop */ }
       }
       // 舊版 TOP5_JSON（相容）

@@ -834,12 +834,12 @@ export async function generateReportWorkflow(reportId: string) {
 
   // 4b. 備用：如果引擎無結果，嘗試從 AI 報告中解析 JSON 標記（E3 也適用）
   if (!top5Timings && (isChumenjiPlan(planCode))) {
-    const jsonPattern = /===(TOP[135]_JSON_START)===\s*([\s\S]*?)\s*===(TOP[135]_JSON_END)===/g
+    const jsonPattern = /===(TOP\d+_JSON_START)===\s*([\s\S]*?)\s*===(TOP\d+_JSON_END)===/g
     let allJsonMatches: RegExpMatchArray[] = [...reportContent.matchAll(jsonPattern)]
 
     // 降級：AI 可能用不同的標記格式
     if (allJsonMatches.length === 0) {
-      const fallback = /[=-]{2,3}\s*TOP[135]_JSON_START\s*[=-]{2,3}\s*([\s\S]*?)\s*[=-]{2,3}\s*TOP[135]_JSON_END\s*[=-]{2,3}/g
+      const fallback = /[=-]{2,3}\s*TOP\d+_JSON_START\s*[=-]{2,3}\s*([\s\S]*?)\s*[=-]{2,3}\s*TOP\d+_JSON_END\s*[=-]{2,3}/g
       allJsonMatches = [...reportContent.matchAll(fallback)]
     }
 
@@ -910,7 +910,7 @@ export async function generateReportWorkflow(reportId: string) {
 
   // 清理報告中的 JSON 標記（不管有沒有成功解析，都不應出現在最終報告中、E3 也適用）
   if (isChumenjiPlan(planCode)) {
-    reportContent = reportContent.replace(/[=-]{2,3}\s*TOP[135]_JSON_(?:START|END)\s*[=-]{2,3}/g, '').trim()
+    reportContent = reportContent.replace(/[=-]{2,3}\s*TOP\d+_JSON_(?:START|END)\s*[=-]{2,3}/g, '').trim()
     reportContent = reportContent.replace(/```json?\s*\n\[[\s\S]*?"(?:date|direction)"[\s\S]*?\]\n\s*```/g, '').trim()
     reportContent = reportContent.replace(/\n{3,}/g, '\n\n')
   }
