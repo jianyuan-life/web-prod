@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.6.10（2026-04-28 Wave 5 Top 10 #7 Phase A 第 2 步: plan-prompts.ts L194-220 加 R150/R154 推薦層八字喜用神匹配條件指令 — 配合 fortune-research commit ed71b29 第 1 步 raw_data['school_info']['personalization_yongshen'];學術定位「鑑源現代命理綜合應用」(撤回 Round 1 段建業派幻覺、Gemini Search Grounding 抓 P0「《心悟》是清代王松茂非段建業」);5 行對 8 門/星 9 宮 + 完整五行相剋 + 中性靜默 + 3 條禁止行為;**4 家 round 1 全 ≥ 98**(QA 99 / IA 99 / Codex 98 / Gemini 100);Phase B 加打分權重需老闆拍板 4 證齊全)
+**網站版本：** v5.6.9（2026-04-28 Wave 5 Top 10 #6: 03 奇門 R151 建除十二神日級過濾 raw_data 注入 + plan-prompts.ts L181-194 R151 條件指令 — 配合 fortune-research qimen_dunjia.py 加 raw_data['school_info']['jianchu_check'](建/除/滿/平/定/執/破/危/成/收/開/閉 12 神序列、auspicious_days [除/滿/定/成/收/開] / inauspicious_days [破/危/閉] / neutral_days [建/平/執]、傳統擇日通則 +《選擇通書》);Combined QA+IA 96/100 PASS;遵循 #5 經驗教訓:plan-prompts.ts 同步加條件指令避免 AI 看不到 = 白做)
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
