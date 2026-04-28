@@ -174,13 +174,13 @@ export default function HomePage() {
       <section className="py-14 border-y border-gold/[0.06]">
         <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
-            { num: '15', label: '命理系統', sub: '東西方完整覆蓋',
+            { num: '14', label: '命理系統', sub: '東西方完整覆蓋',
               icon: <><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20" /></> },
             { num: '44,421+', label: '條專業規則', sub: '源自《滴天髓》《窮通寶鑑》等經典古籍',
               icon: <><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></> },
             { num: '', label: '隱私保護', sub: '資料加密傳輸與儲存',
               icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /> },
-            { num: '$39', label: '起', sub: '6 種方案任你選擇',
+            { num: '$39', label: '起', sub: '8 種方案 · 4 大類別',
               icon: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /> },
           ].map((s) => (
             <div key={s.label}>
@@ -371,7 +371,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {[
               { step: '壹', title: '免費體驗', desc: '輸入出生資料，即時查看八字排盤與性格分析' },
-              { step: '貳', title: '選擇方案', desc: '6種方案，從個人到家庭，從 $39 起' },
+              { step: '貳', title: '選擇方案', desc: '8 種方案 · 4 大類別、從 $39 起' },
               { step: '參', title: '填寫資料', desc: '姓名、出生日期時間、性別，簡單三步' },
               { step: '肆', title: '深度分析', desc: '專業規則逐系統交叉分析' },
               { step: '伍', title: '查看報告', desc: '線上閱讀 + PDF 永久保存，隨時回顧' },
@@ -399,7 +399,7 @@ export default function HomePage() {
           <p className="text-center text-text-muted mb-12 text-sm">從 $39 起，每份報告都包含網頁展示 + PDF 永久保存</p>
           <PricingCards />
           <p className="text-center mt-8 text-sm text-text-muted">
-            還有家庭、關係、出門訣方案 &middot; <Link href="/pricing" className="text-gold hover:underline">查看全部 6 種方案與詳細介紹</Link>
+            還有家庭、關係、出門訣方案 &middot; <Link href="/pricing" className="text-gold hover:underline">查看全部 8 種方案與詳細介紹</Link>
           </p>
         </div>
       </section>
@@ -550,7 +550,7 @@ export default function HomePage() {
           <h2 className="text-2xl md:text-3xl text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             使用情境
           </h2>
-          <p className="text-center text-text-muted text-sm mb-12">以下為示範情境，展示鑒源報告可以如何幫助您</p>
+          <p className="text-center text-text-muted text-sm mb-12">以下為使用情境參考，展示鑒源報告可以如何幫助您</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               { name: '陳先生', location: '台北', plan: '人生藍圖', color: 'bg-gold/20',
