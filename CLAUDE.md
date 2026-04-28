@@ -52,7 +52,7 @@ Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 | 資料庫 | Supabase (PostgreSQL) |
 | 付款 | Stripe |
 | 部署 | Vercel |
-| AI 報告 | Claude Opus 4.6（主力）+ DeepSeek（備援） |
+| AI 報告 | Claude Opus 4.6(主力、production `lib/ai/providers/claude.ts:25` defaultModel、v5.3.49 拍板回滾因 4.7 文風硬 + 43 份認可版用 4.6)+ DeepSeek(備援);⚠️ 根 CLAUDE.md 寫「4.7」與 production drift、待老闆拍板:① docs 改 4.6 對齊 production ② 升 4.7 翻盤(必 4 證齊全) |
 | 地理編碼 | Nominatim (OpenStreetMap) |
 | 國際化 | opencc-js (繁簡轉換) |
 
@@ -107,7 +107,7 @@ Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe 公開金鑰 | ✅ |
 | `STRIPE_WEBHOOK_SECRET` | Stripe Webhook 簽名密鑰 | ✅ |
 | `DEEPSEEK_API_KEY` | DeepSeek AI API 金鑰（備援）| ✅ |
-| `CLAUDE_API_KEY` | Claude Opus 4.6 API 金鑰（主力）| ✅ |
+| `CLAUDE_API_KEY` | Claude Opus API 金鑰(主力、當前 default = opus-4-6、見 L55 註)| ✅ |
 | `NEXT_PUBLIC_API_URL` | Python 排盤 API（Fly.io）| ✅ |
 | `NEXT_PUBLIC_SITE_URL` | 網站 URL | ✅ |
 | `RESEND_API_KEY` | Resend 郵件 API 金鑰 | ✅ |
@@ -142,7 +142,7 @@ Webhook → paid_reports 建立記錄（status: pending）
   ↓
 Python API（Fly.io）排盤 → 15套命理系統
   ↓
-Claude Opus 4.6 深度分析 → 生成報告內容
+Claude Opus(default opus-4-6、見 L55 註)深度分析 → 生成報告內容
   ↓
 Post-generation QA 自動比對排盤數據（防幻覺/截斷）
   ↓
