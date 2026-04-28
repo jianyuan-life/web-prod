@@ -91,7 +91,7 @@ export function useCheckoutForm() {
     false, false, false, false, false, false, false, false, false, false, false, false
   ])
 
-  // 方案 E3 週度補運：8 主題選擇（最多 3 個、按點選順序即 TOP 1/2/3）
+  // 方案 E3 月度精選：8 主題選擇（最多 3 個、按點選順序即 TOP 1/2/3）
   // code 對應 types.ts 的 E3_TOPICS、順序即為客戶的優先序
   const [e3SelectedTopics, setE3SelectedTopics] = useState<string[]>([])
 
@@ -416,7 +416,7 @@ export function useCheckoutForm() {
       const selected = eSelectedBlocks.filter(b => b).length
       if (selected < minSlots) {
         alert(planCode === 'E3'
-          ? '週度補運需勾選至少 3 個時辰（84 候選池）、才能挑每週 Top 2'
+          ? '月度精選需勾選至少 3 個時辰（84 候選池）、才能挑每週 Top 2'
           : '請至少勾選一個可配合的出行時段')
         return
       }
@@ -619,7 +619,7 @@ export function useCheckoutForm() {
     e1EventExactTime, setE1EventExactTime,
     // E1/E2 時段（E1/E3 用、E2/E4 不用）
     eSelectedBlocks, setESelectedBlocks,
-    // E3 週度補運主題（8 選 1-3、順序即 TOP 1/2/3）
+    // E3 月度精選主題（8 選 1-3、順序即 TOP 1/2/3）
     e3SelectedTopics, setE3SelectedTopics,
     // 金額
     extraMemberCount, extraPrice, rExtraCount, totalPrice, finalPrice,

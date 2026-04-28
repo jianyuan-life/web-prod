@@ -29,6 +29,7 @@ import {
   generatePlainPurpose,
   buildCalendarDescription,
 } from '@/lib/qimen-plain-text'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -119,11 +120,6 @@ interface ReportData {
   created_at: string
 }
 
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖', D: '心之所惑',
-  G15: '家族藍圖', R: '合否？',
-  E1: '事件擇吉', E2: '月度單盤',
-}
 
 // 將 AI markdown 內容解析為結構化區塊
 interface ContentSection {

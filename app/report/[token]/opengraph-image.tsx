@@ -4,19 +4,17 @@
 // 設計理念：東方命理的深沉質感 × 現代品牌的精緻排版
 // ============================================================
 
+// v5.7.10:加中文字體注入(IA round 5 P0)
 import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
+import { PLAN_NAMES } from '@/lib/plan-names'
+import { getOGFonts } from '@/lib/og-font'
 
 export const runtime = 'edge'
 export const alt = '鑒源命理分析報告'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖', D: '心之所惑',
-  G15: '家族藍圖', R: '合否？',
-  E1: '事件擇吉', E2: '月度單盤',
-}
 
 const PLAN_DESCRIPTIONS: Record<string, string> = {
   C: '十四大命理系統 · 完整命格分析',
@@ -25,15 +23,18 @@ const PLAN_DESCRIPTIONS: Record<string, string> = {
   R: '雙人合盤 · 關係解讀',
   E1: '奇門遁甲 · 事件最佳時機',
   E2: '奇門遁甲 · 月度吉時吉方',
+  E3: '奇門遁甲 · 月度精選 8 吉時',
+  E4: '奇門遁甲 · 年度全運(年盤+12 月盤)',
 }
 
 // 每個方案的象徵符號（用東方美學元素）
 const PLAN_SYMBOLS: Record<string, string> = {
-  C: '命', D: '惑', G15: '族', R: '合', E1: '時', E2: '月',
+  C: '命', D: '惑', G15: '族', R: '合', E1: '時', E2: '月', E3: '選', E4: '年',
 }
 
 export default async function OgImage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
+  const fonts = await getOGFonts(700)
 
   // 去識別化：不再讀取 client_name，只用方案代碼渲染（P0 隱私強化 2026-04-19）
   let planCode = 'C'
@@ -380,6 +381,7 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
     ),
     {
       ...size,
+      ...(fonts ? { fonts } : {}),
     },
   )
 }

@@ -5,6 +5,17 @@
 
 ---
 
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.9 | c68472f0
+- 動作:round 4 真審 P0/P1/P2 全修(QA 88→預期 95+ / IA 72→預期 95+ / Codex P2 修)— 首頁 $39 殘留 + 後台 3 處「月盤出門訣」+ pricing OG 4→8 方案 + generate-report E2 legacy prompt 對齊 v2.0 + steps 註解全額退款 + PLAN_NAMES_PTS 補 E3/E4 + ctaRefund → ctaSupport
+- 改動範圍:16 檔、+70 / -61 行
+- 為什麼:Jamie「九十五分才能停」、round 4 IA 抓到 2 P0 + Codex 抓到 1 P2 真 bug、必修才能上 95
+- type-check:✅ 0 error
+- 4 LLM round 5 審查:⏳ 啟動中
+- Vercel deploy:⏳ 等中
+- 老闆驗收:⏳
+
+---
+
 ### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.8 | 6d5fd19d
 - 動作:退費邏輯全清(不支援退款 + 4 大保證) + 8 方案命名統一(IA 抓 11 處 JSX 殘留全修) + sed 註解誤改復原 + 舊價 $89/$99 → $59/$29 + 「6 種方案 → 8 種方案」+「$39 起 → $29 起」
 - 改動範圍:78 檔、~+/-300 行(廣度 sed sweep:app/components/workflows/lib + i18n 雙語 + SubscribeCTA + blog 對比表 + AggregateOffer)

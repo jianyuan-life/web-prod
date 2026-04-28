@@ -660,9 +660,9 @@ ${PSYCHOLOGY_RULES}
 ## 最佳出行時機（單月 1 盤）
 詳細說明本月晦日 22:20-23:00 的盤局：值符值使、八神格局、吉門吉方、年命宮匹配。
 
-===TOP5_JSON_START===
+===TOP1_JSON_START===
 [{"rank":1,"title":"格局","date":"YYYY-MM-DD","time_start":"22:20","time_end":"23:00","direction":"方位","reason":"白話總結為什麼這個時機合本人 + 月盤重點 + 年命宮配合（至少 80 字）","confidence":"極高"}]
-===TOP5_JSON_END===
+===TOP1_JSON_END===
 
 ## 補運操作指南
 操作步驟：晦日 22:20 出發 → 朝吉方走 500 公尺 → 靜坐 40 分鐘接新月氣 → 子時跨過後直接回家 → 待滿 30 分鐘。

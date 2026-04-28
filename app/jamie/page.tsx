@@ -4,11 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from './layout'
 import { adminFetch } from '@/lib/admin-fetch'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
-const PLAN_NAMES: Record<string, string> = {
-  C:'人生藍圖', D:'心之所惑', G15:'家族藍圖', R:'合否？',
-  E1:'事件擇吉', E2:'月度單盤',
-}
 
 const PIE_COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899']
 

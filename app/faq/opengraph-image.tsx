@@ -1,5 +1,7 @@
 // /faq OG — v5.6.10 R6
+// v5.7.10:加中文字體注入(IA round 5 P0)
 import { ImageResponse } from 'next/og'
+import { getOGFonts } from '@/lib/og-font'
 
 export const runtime = 'edge'
 export const alt = '常見問題 FAQ · 鑒源 JianYuan'
@@ -7,6 +9,7 @@ export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 export default async function Image() {
+  const fonts = await getOGFonts(700)
   return new ImageResponse(
     (
       <div
@@ -73,6 +76,6 @@ export default async function Image() {
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, ...(fonts ? { fonts } : {}) }
   )
 }

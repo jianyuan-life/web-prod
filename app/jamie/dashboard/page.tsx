@@ -10,11 +10,8 @@ import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, CartesianGrid, Legend, PieChart, Pie, Cell,
 } from 'recharts'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-  R: '合否？', E1: '事件擇吉', E2: '月度單盤',
-}
 
 const PLAN_COLORS: Record<string, string> = {
   C: '#4E9AC7', D: '#10b981', G15: '#f59e0b',

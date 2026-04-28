@@ -8,11 +8,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
 import { maskEmail } from '@/lib/privacy-mask'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？',
-  E1: '事件擇吉', E2: '月度單盤',
-}
 
 const CATEGORY_LABEL: Record<string, string> = {
   politics: '政治',

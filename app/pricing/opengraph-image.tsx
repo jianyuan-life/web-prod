@@ -1,5 +1,7 @@
 // pricing 頁 OG — v5.6.10 R6 動態生成 1200x630
+// v5.7.10:加中文字體注入(IA round 5 P0、Edge runtime 預設無中文 fallback)
 import { ImageResponse } from 'next/og'
+import { getOGFonts } from '@/lib/og-font'
 
 export const runtime = 'edge'
 export const alt = '方案與定價 · 鑒源 JianYuan'
@@ -19,6 +21,7 @@ const PLANS = [
 ]
 
 export default async function Image() {
+  const fonts = await getOGFonts(700)
   return new ImageResponse(
     (
       <div
@@ -144,6 +147,6 @@ export default async function Image() {
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, ...(fonts ? { fonts } : {}) }
   )
 }

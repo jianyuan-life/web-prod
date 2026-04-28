@@ -2652,9 +2652,9 @@ export async function qualityGate(
     } else if (count > 1) {
       warnings.push(`月度單盤 JSON 區塊過多: 找到 ${count} 個（v2.0 期望 1 個單月盤）`)
     }
-    // 內容長度檢查（v2.0 極簡、500-800 字）
-    if (reportContent.length < 400) {
-      warnings.push(`月度單盤內容偏短: ${reportContent.length} 字（v2.0 期望 > 400 字）`)
+    // 內容長度檢查（v5.7.10 對齊 prompt 期望 1500-2500 字、原 400 太鬆 IA 抓 P1）
+    if (reportContent.length < 1500) {
+      warnings.push(`月度單盤內容偏短: ${reportContent.length} 字（v2.0 期望 1500-2500 字）`)
     }
   }
 

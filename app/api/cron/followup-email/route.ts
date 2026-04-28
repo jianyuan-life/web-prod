@@ -14,13 +14,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
 export const maxDuration = 60
 
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-  R: '合否？', E1: '事件擇吉', E2: '月度單盤',
-}
 
 // 從報告內容提取 3 個重點發現
 function extractKeyFindings(planCode: string, reportContent: string): string[] {

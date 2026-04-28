@@ -15,6 +15,7 @@
 import { useEffect, useState, useCallback, Fragment } from 'react'
 import { useAdminAuth } from '../layout'
 import { adminFetch } from '@/lib/admin-fetch'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
 type ReportRow = {
   report_id: string
@@ -84,10 +85,6 @@ type DetailResp = {
   }>
 }
 
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-  R: '合否？', E1: '事件擇吉', E2: '月度單盤',
-}
 
 const REVIEWER_LABELS: Record<string, string> = {
   gpt: 'GPT-4o',

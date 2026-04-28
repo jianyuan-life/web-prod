@@ -17,6 +17,7 @@ import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 import { resolvePeriod, PeriodKey, calcStripeFee } from '@/lib/accounting'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
 function getSupabase() {
   return createClient(
@@ -49,10 +50,6 @@ type RevenueRow = {
   amount_usd: number | string | null
 }
 
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-  R: '合否？', E1: '事件擇吉', E2: '月度單盤',
-}
 const PLAN_PRICES: Record<string, number> = { C: 89, D: 39, G15: 59, R: 59, E1: 89, E2: 99 }
 
 function marginColor(pct: number): 'green' | 'yellow' | 'red' {
