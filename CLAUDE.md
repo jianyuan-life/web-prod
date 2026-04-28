@@ -4,7 +4,11 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.7.17（2026-04-28、9 輪 4-LLM 真審達標 QA 99 ✓ / IA 96 ✓ / Codex 0 P0/P1 / Gemini 82 扣分為誤判;v5.7.7-v5.7.17 13 版累計修補摘要見下方「v5.7.x 9-Round 真審重構」section）
+**網站版本：** v5.7.21（2026-04-28、何宣逸 870bae9a 退費燒錢事件 5 項止血 + retry/cleanFinalReport/deploy pre-flight 修補）
+
+⚠️ **暫停新客戶下單**:v5.7.21 止血(MAX_QUALITY_RETRIES=0、不再 internal 重生 AI 燒錢)、但 quality gate「硬門檻 1 項失敗」真因未查、新客戶若踩同類 bug 仍會 needs_human_review。待 v5.7.22 完成 detailed log 真因 debug + 修補後才開放下單。
+
+歷史:v5.7.17（2026-04-28、9 輪 4-LLM 真審達標 QA 99 ✓ / IA 96 ✓ / Codex 0 P0/P1 / Gemini 82 扣分為誤判;v5.7.7-v5.7.17 13 版累計修補摘要見下方「v5.7.x 9-Round 真審重構」section）
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 

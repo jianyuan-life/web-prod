@@ -5,6 +5,31 @@
 
 ---
 
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.21 | c41fd6c6
+- 動作:何宣逸 870bae9a 燒 $21.24 P0 5 項止血:① MAX_QUALITY_RETRIES 1→0(不再 internal 重生 AI)② qualityGate detailed log(逐項列 hardFailures、解黑盒)③ deploy pre-flight 鐵律(jianyuan-deploy.md 第 0 步)
+- 改動範圍:4 檔、+17 / -5 行
+- 為什麼:何宣逸 C 方案 internal qualityRetry 燒 4 輪 Call 1+2+3、~$26 上限、必須止血
+- type-check:✅ 0 error
+- ⚠️ **暫停新客戶下單**:quality gate fail 真因待 v5.7.22 detailed log debug、避免新客戶踩同類 bug
+- Multi-Review:SKIP 緊急(commit message 標明 v5.7.22 補 4-LLM)
+
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.20 | 12a21f72
+- 動作:cleanFinalReport 砍 70% 內容修補(老闆「字多沒問題」糾正)
+  - 移除 normalizeSectionTitle + titlesAreSimilar 80% 模糊比對(誤合併整章砍)
+  - 改嚴格 exact match 字串比對
+  - 移除「刪除空章節 < 50 字」邏輯
+- 改動範圍:1 檔(steps.ts L711-781)、~30 行
+- 證據:何宣逸 870bae9a 第二次 ai_cost_log Call 1+2+3 寫 54,633 tokens(~55K 字)、ai_content 最終 16,487 字、砍 70%
+- 第三輪驗證:generation_progress.Call 1 確實有 ## 章節結構、修對
+- type-check:✅ 0 error
+
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.19 | c8208e21
+- 動作:Vercel build hotfix(reportId ReferenceError)
+- 根因:v5.7.14 加 E4 fallback prompt 用 `${'\\${reportId}'}` template literal escape、Turbopack collect page data 階段失敗
+- 改:`app/api/generate-report/route.ts` L721 改靜態字串「年度全運 [報告編號]」
+- ⚠️ 副作用:此 push 撞中何宣逸 C 方案 saveReportToSupabase 階段、deploy 切換中斷、燒第二輪 AI(lessons #058/#059)
+- type-check:✅ 0 error
+
 ### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.17 | 8ab00bec
 - 動作:round 9 4-LLM 真審達標(QA 99 ✓ / IA 96 ✓ / Codex P2 修 / Gemini P1 修)
   - IA P1:steps.ts:1528 isChumenji 漏 E4 → isChumenjiPlan
