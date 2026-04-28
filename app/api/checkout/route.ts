@@ -384,7 +384,7 @@ export async function POST(req: NextRequest) {
 
       // 免費方案也發訂單確認信
       if (customerEmail) {
-        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' }
+        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月度單盤', E3: '月度精選', E4: '年度全運' }
         const planName = PLAN_NAMES[planCode] || planCode
         const freeSubject = verifiedCouponCode
           ? `已收到您的訂單 — ${planName}（優惠碼 ${verifiedCouponCode}）`

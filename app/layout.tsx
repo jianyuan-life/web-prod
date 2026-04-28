@@ -183,8 +183,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   operatingSystem: 'Web',
                   offers: {
                     '@type': 'AggregateOffer',
-                    lowPrice: '39',
-                    highPrice: '99',
+                    lowPrice: '29',
+                    highPrice: '279',
                     priceCurrency: 'USD',
                     offerCount: '8',
                   },

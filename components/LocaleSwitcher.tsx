@@ -3,6 +3,25 @@
 import { getLocale, setLocale, type Locale } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 
+// 三語循環：繁 → 簡 → EN → 繁
+const NEXT: Record<Locale, Locale> = {
+  'zh-TW': 'zh-CN',
+  'zh-CN': 'en',
+  en: 'zh-TW',
+}
+
+const LABEL: Record<Locale, string> = {
+  'zh-TW': '繁',
+  'zh-CN': '简',
+  en: 'EN',
+}
+
+const TOOLTIP: Record<Locale, string> = {
+  'zh-TW': '切換為簡體中文',
+  'zh-CN': 'Switch to English',
+  en: 'Switch to Traditional Chinese',
+}
+
 export default function LocaleSwitcher() {
   const [locale, setLoc] = useState<Locale>('zh-TW')
 
@@ -15,19 +34,22 @@ export default function LocaleSwitcher() {
   }, [])
 
   const toggle = () => {
-    const newLocale = locale === 'zh-TW' ? 'zh-CN' : 'zh-TW'
-    setLoc(newLocale)
-    setLocale(newLocale) // 不會 reload，只發事件
+    const next = NEXT[locale]
+    setLoc(next)
+    setLocale(next) // 不會 reload，只發事件
   }
+
+  // 按鈕顯示「下一個語言的標籤」
+  const next = NEXT[locale]
 
   return (
     <button
       onClick={toggle}
       className="text-xs text-text-muted hover:text-gold transition-colors px-2 py-1 rounded border border-gold/10 hover:border-gold/30"
-      title={locale === 'zh-TW' ? '切換為簡體中文' : '切换为繁体中文'}
-      aria-label={locale === 'zh-TW' ? '切換為簡體中文' : '切換為繁體中文'}
+      title={TOOLTIP[locale]}
+      aria-label={TOOLTIP[locale]}
     >
-      {locale === 'zh-TW' ? '简' : '繁'}
+      {LABEL[next]}
     </button>
   )
 }

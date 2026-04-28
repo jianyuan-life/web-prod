@@ -122,7 +122,7 @@ interface ReportData {
 const PLAN_NAMES: Record<string, string> = {
   C: '人生藍圖', D: '心之所惑',
   G15: '家族藍圖', R: '合否？',
-  E1: '事件出門訣', E2: '月度出門訣',
+  E1: '事件擇吉', E2: '月度單盤',
 }
 
 // 將 AI markdown 內容解析為結構化區塊
