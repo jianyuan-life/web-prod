@@ -708,77 +708,38 @@ export function cleanFinalReport(text: string, clientName?: string): string {
     if (infoCount > 1) console.log(`[cleanFinalReport] 刪除 ${infoCount - 1} 個重複客戶資料區塊`)
   }
 
-  // 2. 合併重複章節（如「五、感情與人際」出現兩次，保留後者——品質重跑版本通常更好）
+  // 2. v5.7.20 拍板(Jamie 糾正「幹嘛砍字、字多沒問題」)
+  //    移除「合併重複章節」+「刪除空章節 < 50 字」激進邏輯
+  //    根因:何宣逸 C 方案 report_id=870bae9a-... 第二次跑 AI 寫 54,633 tokens(~55K 字)
+  //          但 cleanFinalReport 後 ai_content 只 16,487 字(砍 70%)、quality gate reject
+  //          真兇:normalizeSectionTitle 砍掉編號 + titlesAreSimilar 80% 模糊比對
+  //               → Call 1「一、命格」normalize 後 = "命格"、Call 3「一、整合矩陣」normalize 後 = "整合矩陣"
+  //               → 但若標題短(如「結語」「總結」)、80% 相似誤合併、整章被砍
+  //    新邏輯:只合併「完全相同字串」的標題、保留 AI 寫的全部 + 不刪「空章節」
+  //
+  // 2a. 嚴格合併重複章節(僅完全相同字串、保留後者品質通常更完整)
   const sections = cleaned.split(/(?=^## )/m)
-  const sectionMap = new Map<string, { index: number; content: string; length: number }>()
+  const sectionMap = new Map<string, number>()  // exact title → last index
   const duplicateIndices = new Set<number>()
-
-  // 標題正規化：移除編號、空白、括號內字數提示，只留核心關鍵字
-  function normalizeSectionTitle(raw: string): string {
-    return raw
-      .replace(/[（(][^）)]*[字词詞][）)]/g, '') // 移除「（~3,500字）」
-      .replace(/[（(]\s*~?\s*[\d,]+\s*[字词詞]?\s*[）)]/g, '') // 移除「(3500字)」
-      .replace(/^[\s\d.、：:一二三四五六七八九十百千]+/g, '') // 移除開頭編號
-      .replace(/[\s\d.、：:]+$/g, '') // 移除結尾編號
-      .trim()
-  }
-
-  // 兩個標題是否足夠相似（>80% 重疊）
-  function titlesAreSimilar(a: string, b: string): boolean {
-    if (a === b) return true
-    if (!a || !b) return false
-    // 取較短的為基準，檢查較長的是否包含它
-    const shorter = a.length <= b.length ? a : b
-    const longer = a.length > b.length ? a : b
-    if (longer.includes(shorter)) return true
-    // 逐字比較相似度
-    let matches = 0
-    const chars = shorter.split('')
-    for (const ch of chars) {
-      if (longer.includes(ch)) matches++
-    }
-    return matches / shorter.length > 0.8
-  }
-
   sections.forEach((sec, idx) => {
     const titleMatch = sec.match(/^## (.+?)[\n\r]/)
     if (!titleMatch) return
-    const normalizedTitle = normalizeSectionTitle(titleMatch[1])
-    if (!normalizedTitle) return
-
-    // 檢查是否與已知標題相似
-    let matchedKey: string | null = null
-    for (const [key] of sectionMap) {
-      if (titlesAreSimilar(key, normalizedTitle)) {
-        matchedKey = key
-        break
-      }
-    }
-
-    if (matchedKey) {
-      const existing = sectionMap.get(matchedKey)!
-      // 保留後者（品質重跑的版本通常更完整）
-      duplicateIndices.add(existing.index)
-      sectionMap.set(matchedKey, { index: idx, content: sec, length: sec.length })
-      console.log(`[cleanFinalReport] 合併重複章節: "${matchedKey}"（保留後者）`)
+    const exactTitle = titleMatch[1].trim()
+    if (!exactTitle) return
+    if (sectionMap.has(exactTitle)) {
+      const prevIdx = sectionMap.get(exactTitle)!
+      duplicateIndices.add(prevIdx)
+      sectionMap.set(exactTitle, idx)
+      console.log(`[cleanFinalReport] v5.7.20 嚴格合併重複章節(完全相同字串): "${exactTitle}"`)
     } else {
-      sectionMap.set(normalizedTitle, { index: idx, content: sec, length: sec.length })
+      sectionMap.set(exactTitle, idx)
     }
   })
-
   if (duplicateIndices.size > 0) {
     cleaned = sections.filter((_, idx) => !duplicateIndices.has(idx)).join('')
   }
 
-  // 3. 刪除空章節（## 標題後到下一個 ## 之間不到 50 字）
-  cleaned = cleaned.replace(/^## .+\n([\s\S]*?)(?=^## |$)/gm, (match, body) => {
-    const bodyText = body.replace(/\s/g, '')
-    if (bodyText.length < 50) {
-      console.log(`[cleanFinalReport] 刪除空章節: ${match.split('\n')[0]}`)
-      return ''
-    }
-    return match
-  })
+  // 2b. v5.7.20:不再「刪除空章節」(老闆「字多沒問題」)、保留 AI 寫的全部、即使章節短也保留
 
   // 4. 連續空行收攏
   cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n')
