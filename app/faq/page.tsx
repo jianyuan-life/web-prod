@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: '常見問題 FAQ',
-  description: '鑒源命理平台常見問題解答:報告品質、退費、隱私、付款、技術支援、命理系統說明。',
+  description: '鑒源命理平台常見問題解答:報告品質、付款、隱私、技術支援、命理系統說明。',
   alternates: { canonical: 'https://jianyuan.life/faq' },
 }
 
@@ -126,7 +126,7 @@ const SECTIONS: Section[] = [
       },
       {
         q: '報告生成失敗會怎樣？',
-        a: <>系統會自動重試最多 3 次。若仍失敗、24 小時內 email 通知 + 全額退款、客戶不需主動申請。</>,
+        a: <>系統會自動重試最多 3 次。若仍失敗、24 小時內 email 通知 + 客服協助補開新單、客戶不需主動申請、不會多扣款。</>,
       },
       {
         q: '需要提供什麼資料？',

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import PricingCards from '@/components/PricingCards'
 import LiveCounter from '@/components/LiveCounter'
 import StarField from '@/components/StarField'
+import TrustBar from '@/components/TrustBar'
 import Astrolabe from '@/components/Astrolabe'
 import ReportPreview from '@/components/ReportPreview'
 import HeroCTAExperiment from '@/components/HeroCTAExperiment'
@@ -195,6 +196,11 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* v5.7.4 R7-fix:首頁 above-fold 加 TrustBar(IA Agent P0「首頁缺 trust strip」) */}
+      <section className="px-6 -mt-4">
+        <TrustBar variant="pricing" />
       </section>
 
       {/* ========== 差異化對比 ========== */}
@@ -436,9 +442,9 @@ export default function HomePage() {
                     探索出門訣
                   </Link>
                   <div className="flex items-center gap-2 text-xs text-text-muted">
-                    <span className="text-gold">&#10003;</span> 事件出門訣 $59
+                    <span className="text-gold">&#10003;</span> 事件擇吉 $59
                     <span className="mx-1">|</span>
-                    <span className="text-gold">&#10003;</span> 月度出門訣 $29
+                    <span className="text-gold">&#10003;</span> 月度單盤 $29
                   </div>
                 </div>
               </div>
@@ -559,7 +565,7 @@ export default function HomePage() {
                 text: '幫全家四口人做了分析。我跟老公的合婚分析很精準——報告說我們在財務觀念上容易有摩擦，確實如此。更驚喜的是孩子的天賦分析，報告建議的學習方向跟孩子實際的興趣完全吻合。' },
               { name: '李先生', location: '深圳', plan: '心之所惑', color: 'bg-purple-500/20',
                 text: '本來半信半疑，先試了免費速算，性格分析準到我懷疑是不是有人偷看我的日記。後來花 $39 買了「心之所惑」問財運，報告不只告訴我運勢走向，還具體建議了投資時機和要避開的月份。' },
-              { name: '張小姐', location: '新加坡', plan: '事件出門訣', color: 'bg-blue-500/20',
+              { name: '張小姐', location: '新加坡', plan: '事件擇吉', color: 'bg-blue-500/20',
                 text: '面試前買了出門訣，按照建議在吉時出門，當天狀態出奇的好，最後拿到了 offer。但最讓我意外的是報告裡那段「寫給你的話」——它說我一直害怕的不是失敗，而是成功之後不知道怎麼面對。讀到那裡我愣了很久，覺得被完全看透了。' },
               { name: '林先生', location: '台中', plan: '合否？', color: 'bg-red-400/20',
                 text: '跟女友交往兩年一直在猶豫要不要結婚。報告不只分析了我們的相容性，還點出我在感情裡總是害怕「不夠好」所以不敢承諾。那段話讓我紅了眼眶——原來我猶豫的不是她對不對，而是我配不配。看完報告那天晚上就決定買戒指了。' },
@@ -608,7 +614,7 @@ export default function HomePage() {
             { q: '需要提供什麼資料？', a: '姓名、出生日期、出生時間（時辰）、性別。出生時間越精確，分析越準確。如果不確定出生時間，可以選擇最接近的時辰，部分不依賴時辰的系統仍可正常分析。' },
             { q: '14套系統會不會互相矛盾？', a: '不同系統觀察的角度不同，偶有差異屬正常。這正是鑒源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十四套系統交叉驗證才能得到更全面、更可靠的結論。' },
             { q: '付款安全嗎？', a: '所有付款透過國際知名的 Stripe 安全系統處理，支援信用卡和各種支付方式。您的信用卡資訊完全由 Stripe 處理，不會經過鑒源伺服器。Stripe 已通過 PCI DSS Level 1 認證，是全球最高等級的支付安全標準。' },
-            { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會為您免費重新生成，確保您獲得滿意的分析結果。' },
+            { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗運算資源，因此生成後不支援退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會為您免費重新生成，確保您獲得滿意的分析結果。' },
             { q: '什麼是出門訣？怎麼用？', a: '出門訣源自奇門遁甲的千年擇吉術，古籍《煙波釣叟歌》記載：「吉門吉方即行，凶門凶方即止。」我們的系統以 25 層評分體系（三吉門、三奇、八神、九星旺衰、天地盤干生剋、九遁格局等）精算每個時辰八方位的能量，再套入您的個人年命宮驗證。使用方法：在報告推薦的吉時準時出門，朝吉方走 500 公尺以上，到達後面朝吉方靜坐接氣 40 分鐘。如有重要事（面試、簽約、談判），接氣後直接前往，效果最強。支援 15 種事件分類（求財、事業、感情、考試、談判、婚姻等），報告附帶 Google Calendar 一鍵新增。' },
             { q: '報告是繁體還是簡體？', a: '根據您使用網站時的語言設定自動決定。網站右上角可隨時切換繁簡體，報告會以您選擇的語言版本生成。' },
             { q: '報告會不會讓我更焦慮？', a: '不會。鑒源的報告融合正向心理學框架，所有分析都以「理解自己、找到方向」為目標，而非製造恐懼。我們不說「命中注定」「今年大凶」這類話。即使命盤中有挑戰的面向，我們也會用你聽得懂的語言解釋它的意義，並給出具體可行的方向。每份報告的最後都有一段「寫給你的話」，是鑒源團隊用心為你寫的個人化寄語。' },

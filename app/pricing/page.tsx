@@ -36,7 +36,7 @@ const PLANS = {
     },
   ],
   chumenji: [
-    { code: 'E1', name: '事件出門訣', price: 59, popular: true,
+    { code: 'E1', name: '事件擇吉', price: 59, popular: true,
       valueHint: '針對單一重要事件、Top3 吉時',
       desc: '婚禮、面試、簽約、重大決策——以古法奇門遁甲精密計算事件前後所有時辰的盤面能量，結合您的年命宮推出 Top3 最佳出行方案',
       suitableFor: '即將進行的具體重要事件，想要在最有利能量下完成',
@@ -296,8 +296,8 @@ export default function PricingPage() {
                 <div className="text-[10px] text-text-muted">客戶滿意度</div>
               </div>
               <div>
-                <div className="text-xl font-bold text-gold mb-1">7 日</div>
-                <div className="text-[10px] text-text-muted">不滿意全額退</div>
+                <div className="text-xl font-bold text-gold mb-1">3 次</div>
+                <div className="text-[10px] text-text-muted">失敗自動重試</div>
               </div>
               <div>
                 <div className="text-xl font-bold text-gold mb-1">14 系統</div>
@@ -319,7 +319,7 @@ export default function PricingPage() {
               </blockquote>
               <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
                 「出門訣讓我面試當天信心很足、果然順利錄取。」
-                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 張先生 / 事件出門訣</div>
+                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 張先生 / 事件擇吉</div>
               </blockquote>
             </div>
           </div>
@@ -334,9 +334,9 @@ export default function PricingPage() {
             <p><strong className="text-cream">有特定困惑：</strong>「心之所惑」（$39）聚焦一個面向深入剖析。</p>
             <p><strong className="text-cream">全家分析：</strong>每位家人先各自購買「人生藍圖」（$89），再加購「家族藍圖」（$59）做家庭互動分析。</p>
             <p><strong className="text-cream">感情/合夥：</strong>「合否？」（$59）兩人命理交叉分析，看你們合不合。</p>
-            <p><strong className="text-cream">單一重要事件：</strong>「事件出門訣」（$59）針對一個事件推出 Top3 吉時方案。</p>
-            <p><strong className="text-cream">每月補運：</strong>先試「月度出門訣」（$29）當月執行，認可後升級「週度補運」（$89）持續補運。</p>
-            <p><strong className="text-cream">全年擇吉：</strong>「年度方案」（$279）立春前 30 天限時販售，全年重要決策一次搞定。</p>
+            <p><strong className="text-cream">單一重要事件：</strong>「事件擇吉」（$59）針對一個事件推出 Top3 吉時方案。</p>
+            <p><strong className="text-cream">每月補運：</strong>先試「月度單盤」（$29）當月執行，認可後升級「月度精選」（$89）持續補運。</p>
+            <p><strong className="text-cream">全年擇吉：</strong>「年度全運」（$279）立春前 30 天限時販售，全年重要決策一次搞定。</p>
           </div>
         </div>
 
@@ -349,10 +349,10 @@ export default function PricingPage() {
           {[
             { q: '命理分析真的準確嗎？', a: '鑒源的排盤計算使用確定性算法（壽星天文曆、Swiss Ephemeris），排盤結果可重複驗證，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的專業規則。我們最多用十四套系統交叉分析——當多數系統得出相同結論時，可信度遠高於單一系統。' },
             { q: '報告多久生成？', a: '個人報告（人生藍圖、心之所惑）約 30 分鐘；家族藍圖和合否根據人數而定；出門訣因需精密計算整月或整年的盤面能量，完成時間約 5-40 分鐘不等。付款後系統全自動運算，完成後即可於網頁上查看。' },
-            { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗大量運算資源，因此生成後不支持退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會免費重新生成。' },
+            { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗大量運算資源，因此生成後不支援退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會免費重新生成。' },
             { q: '付款方式有哪些？安全嗎？', a: '透過 Stripe（PCI DSS Level 1 認證）處理，支援 Visa、Mastercard、AMEX 等主流信用卡。您的卡號不會經過鑒源伺服器，全程加密。' },
             { q: '人生藍圖和心之所惑有什麼差別？', a: '「人生藍圖」是全面分析——動用十四套系統涵蓋性格、事業、財運、感情、健康、大運等所有面向。「心之所惑」則聚焦在你最在乎的一個問題，精選最相關的系統深入剖析。' },
-            { q: '四個出門訣方案怎麼選？', a: 'E1 事件出門訣（$59）針對單一重要事件推 Top3 吉時；E2 月度出門訣（$29）當月購買當月執行、晦日 21:00 前截止；E3 週度補運（$89）主題精選用神、4 週共 8 個吉時；E4 年度方案（$279）年盤＋12 月盤全年佈局、立春前 30 天限時。' },
+            { q: '四個出門訣方案怎麼選？', a: 'E1 事件擇吉（$59）針對單一重要事件推 Top3 吉時；E2 月度單盤（$29）當月購買當月執行、晦日 21:00 前截止;E3 月度精選（$89）主題精選用神、4 週共 8 個吉時；E4 年度全運（$279）年盤＋12 月盤全年佈局、立春前 30 天限時。' },
             { q: '不確定出生時間怎麼辦？', a: '可以選擇最接近的時辰。即使時間不完全精確，十四套系統中有多套不依賴精確時辰（如姓名學、數字能量學、生肖運勢等），仍能提供有價值的分析。' },
             { q: '出門訣為什麼不提供「隔天」替代方案？', a: '古法奇門遁甲「一時一盤」，每個時辰的盤面能量不同，隔天就是完全不同的能量組合。若錯過推薦的吉時，只能等待下一個系統推薦的時窗。' },
           ].map((faq) => (
