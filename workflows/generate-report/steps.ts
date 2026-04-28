@@ -3812,8 +3812,10 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       const emailLang = isCN ? 'zh-CN' : 'zh-TW'
 
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-      const refundUrl = `${siteUrl}/refund?report=${reportId}`
+      // v5.7.6:鑒源依電子商品慣例不支援退款、移除 refund link、改強化客服路徑
       const supportEmail = 'support@jianyuan.life'
+      const supportMailtoSubject = encodeURIComponent((isCN ? '报告处理协助 ' : '報告處理協助 ') + reportId.slice(0, 8))
+      const supportMailtoUrl = `mailto:${supportEmail}?subject=${supportMailtoSubject}&body=${encodeURIComponent('您好、我的報告生成失敗、煩請協助補開新單。報告編號:' + reportId.slice(0, 8))}`
       const subject = isCN
         ? `关于您的${planName}报告 — 我们正在处理`
         : `關於您的${planName}報告 — 我們正在處理`
@@ -3822,24 +3824,25 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       const apologyHtml = isCN ? `
       <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">您好，</p>
       <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">很抱歉通知您，您的<strong style="color:#c9a84c;">${planName}</strong>报告在生成过程中遇到技术问题，系统经多次自动重试仍未能完成。</p>
-      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">我们的团队已收到告警并介入处理。我们承诺：</p>
+      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">我们的团队已收到告警并介入处理：</p>
       <ul style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 20px 0;padding-left:20px;">
-        <li><strong style="color:#c9a84c;">24 小时内</strong>亲自为您重新生成报告并寄送</li>
-        <li>若您不愿等候，可随时申请<strong style="color:#c9a84c;">全额退款</strong>（Stripe 原路退回，3-5 个工作天到账）</li>
-        <li>报告已进入优先处理队列，请留意您的邮箱</li>
+        <li><strong style="color:#c9a84c;">24 小时内</strong>客服将协助您补开新单（不会多扣款）</li>
+        <li>报告已进入优先处理队列、由人工接手生成</li>
+        <li>请留意您的邮箱、若有任何疑问随时联系客服</li>
       </ul>
       ` : `
       <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">您好，</p>
       <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">很抱歉通知您，您的<strong style="color:#c9a84c;">${planName}</strong>報告在生成過程中遇到技術問題，系統經多次自動重試仍未能完成。</p>
-      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">我們的團隊已收到告警並介入處理。我們承諾：</p>
+      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">我們的團隊已收到告警並介入處理：</p>
       <ul style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 20px 0;padding-left:20px;">
-        <li><strong style="color:#c9a84c;">24 小時內</strong>親自為您重新生成報告並寄送</li>
-        <li>若您不願等候，可隨時申請<strong style="color:#c9a84c;">全額退款</strong>（Stripe 原路退回，3-5 個工作天到帳）</li>
-        <li>報告已進入優先處理佇列，請留意您的信箱</li>
+        <li><strong style="color:#c9a84c;">24 小時內</strong>客服將協助您補開新單(不會多扣款)</li>
+        <li>報告已進入優先處理佇列、由人工接手生成</li>
+        <li>請留意您的信箱、若有任何疑問隨時聯繫客服</li>
       </ul>
       `
 
-      const ctaRefund = isCN ? '申请全额退款' : '申請全額退款'
+      // v5.7.6:不退款、改「聯繫客服」單一 CTA
+      const ctaRefund = isCN ? '联系客服补开' : '聯繫客服補開'
       const ctaContact = isCN ? '联系客服' : '聯繫客服'
       const refIdLabel = isCN ? '报告编号' : '報告編號'
       const brand = isCN ? '鉴 源' : '鑒 源'
@@ -3876,7 +3879,7 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       <h1 style="color:#ffffff;font-size:22px;margin:0 0 16px 0;">${titleText}</h1>
       ${apologyHtml}
       <div style="margin-top:24px;">
-        <a href="${refundUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 8px 4px 0;">${ctaRefund}</a>
+        <a href="${supportMailtoUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 8px 4px 0;">${ctaRefund}</a>
         <a href="mailto:${supportEmail}?subject=${encodeURIComponent((isCN ? '报告处理询问 ' : '報告處理詢問 ') + reportId.slice(0, 8))}" style="display:inline-block;background:transparent;color:#c9a84c;border:1px solid #c9a84c;font-weight:700;font-size:14px;padding:11px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 0;">${ctaContact}</a>
       </div>
       <p style="color:#6b7280;font-size:12px;margin:20px 0 0 0;">${refIdLabel}：${reportId.slice(0, 8)}</p>

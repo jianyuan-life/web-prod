@@ -19,10 +19,10 @@ const PRICE_MAP: Record<string, { amount: number; name: string }> = {
   G15: { amount: 5900, name: '家族藍圖' },
   R: { amount: 5900, name: '合否？' },
   // v5.3.53 E 系列四方案定價（對應 pricing page 和 checkout types）
-  E1: { amount: 5900, name: '事件出門訣' },   // 原 $89 → $59（降價）
-  E2: { amount: 2900, name: '月度出門訣' },   // 原 $99 → $29（降價、單次當月）
-  E3: { amount: 8900, name: '週度補運' },     // 新方案 $89（MVP 為一次性付款、下一輪升級訂閱續訂）
-  E4: { amount: 27900, name: '年度方案' },  // 新方案 $279（一次性、立春前 30 天限時販售）
+  E1: { amount: 5900, name: '事件擇吉' },     // v5.7.6 命名統一(原「事件出門訣」)
+  E2: { amount: 2900, name: '月度單盤' },     // v5.7.6 命名統一(原「月度出門訣」)
+  E3: { amount: 8900, name: '月度精選' },     // v5.7.6 命名統一(原「週度補運」、實為當月 8 吉時)
+  E4: { amount: 27900, name: '年度全運' },    // v5.7.6 命名統一(原「年度方案」)
   // 加人附加費（G15 已改為固定 $59，不再加人加價）
   'R-ADD': { amount: 1900, name: '合否？加1人' },
 }
@@ -368,7 +368,7 @@ export async function POST(req: NextRequest) {
             .gte('balance', verifiedPointsToUse)
 
           if (!updateErr) {
-            const PLAN_NAMES_PTS: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件出門訣', E2: '月度出門訣' }
+            const PLAN_NAMES_PTS: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月度單盤' }
             await supabase.from('point_transactions').insert({
               user_id: pointsUserId,
               type: 'use_checkout',
