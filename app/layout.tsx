@@ -240,6 +240,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <Link href="/#systems" className="block hover:text-gold transition-colors">十四大系統</Link>
                   <Link href="/#how" className="block hover:text-gold transition-colors">分析流程</Link>
                   <Link href="/blog" className="block hover:text-gold transition-colors">命理知識</Link>
+                  <Link href="/about" className="block hover:text-gold transition-colors">關於鑒源</Link>
                   <Link href="/whitepaper" className="block hover:text-gold transition-colors">技術白皮書</Link>
                   <Link href="/faq" className="block hover:text-gold transition-colors">常見問題</Link>
                 </div>
