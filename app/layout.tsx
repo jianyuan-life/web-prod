@@ -240,6 +240,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <Link href="/#systems" className="block hover:text-gold transition-colors">十四大系統</Link>
                   <Link href="/#how" className="block hover:text-gold transition-colors">分析流程</Link>
                   <Link href="/blog" className="block hover:text-gold transition-colors">命理知識</Link>
+                  <Link href="/whitepaper" className="block hover:text-gold transition-colors">技術白皮書</Link>
+                  <Link href="/faq" className="block hover:text-gold transition-colors">常見問題</Link>
                 </div>
               </div>
               <div>
@@ -247,6 +249,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <div className="space-y-2 text-text-muted">
                   <Link href="/privacy" className="block hover:text-gold transition-colors">隱私政策</Link>
                   <Link href="/terms" className="block hover:text-gold transition-colors">使用條款</Link>
+                  <Link href="/refund" className="block hover:text-gold transition-colors">退費政策</Link>
                 </div>
               </div>
               <div>
