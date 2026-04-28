@@ -5,6 +5,7 @@
 // 資料源:report_result.analyses_summary = [{system, score}, ...] × 14-15 個系統
 // 引擎:recharts(已裝、~16KB tree-shaken)
 
+import { useEffect, useState } from 'react'
 import {
   Radar,
   RadarChart,
@@ -36,11 +37,19 @@ export default function SystemsRadar({
   data: SystemScore[]
   title?: string
 }) {
+  // v5.6.10 R5 hotfix:client-only mount 防 recharts SSR width=-1 + React #419 hydration
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   if (!data || data.length === 0) return null
 
-  // 確保資料按系統名穩定排序、並把 score 限制在 0-100
+  // 對齊 v5.3.95「對外清零南洋術數、十四套對齊」共識(IA Agent 5 家共識)
+  // 資料源 analyses_summary 實際含 15 個系統(含南洋術數)、過濾掉對齊對外宣傳
+  const EXCLUDE_SYSTEMS = new Set(['南洋術數', '南洋数术', '南洋'])
   const chartData = data
-    .filter((d) => d && d.system)
+    .filter((d) => d && d.system && !EXCLUDE_SYSTEMS.has(d.system))
     .map((d) => ({
       system: d.system,
       score: Math.max(0, Math.min(100, Number(d.score) || 0)),
@@ -50,6 +59,8 @@ export default function SystemsRadar({
 
   const avg = chartData.reduce((s, d) => s + d.score, 0) / chartData.length
   const peak = chartData.reduce((m, d) => (d.score > m.score ? d : m), chartData[0])
+  // 數量中文(對齊鑑源品牌風格、避免「14 套」/「15 套」digit-mix)
+  const countLabel = chartData.length === 14 ? '十四套' : chartData.length === 13 ? '十三套' : `${chartData.length} 套`
 
   return (
     <section className="my-8" aria-labelledby="systems-radar-title">
@@ -59,7 +70,7 @@ export default function SystemsRadar({
             {title}
           </h3>
           <p className="text-[11px] text-text-muted mt-0.5">
-            {chartData.length} 套系統交叉評分 · 平均 {avg.toFixed(1)} 分 · 最高{' '}
+            {countLabel}系統交叉評分 · 平均 {avg.toFixed(1)} 分 · 最高{' '}
             <span className="text-gold">{peak.system} ({peak.score})</span>
           </p>
         </div>
@@ -70,6 +81,14 @@ export default function SystemsRadar({
 
       <div className="glass rounded-2xl p-3 md:p-5 border border-gold/15">
         <div style={{ width: '100%', height: 360 }}>
+          {!mounted ? (
+            <div className="w-full h-full flex items-center justify-center text-text-muted/60 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gold/60 animate-pulse" />
+                載入評分圖表中...
+              </div>
+            </div>
+          ) : (
           <ResponsiveContainer>
             <RadarChart data={chartData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
               <PolarGrid stroke={COLORS.grid} strokeDasharray="2 4" />
@@ -110,6 +129,7 @@ export default function SystemsRadar({
               />
             </RadarChart>
           </ResponsiveContainer>
+          )}
         </div>
 
         {/* 評分區段視覺說明 */}
