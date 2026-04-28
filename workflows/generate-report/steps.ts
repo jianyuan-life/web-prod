@@ -1663,6 +1663,19 @@ ${analyses.length}套系統排盤完整數據：
       if (Object.keys(v54Flags).length > 0) {
         userPrompt += `\nraw_data 擷取(v5.4.0 條件指令對應)：${JSON.stringify(v54Flags)}`
       }
+
+      // (4) v5.6.6 Top 10 #4 Wave 5: school_info 派別 metadata + academic_reference 學術引用(biorhythm Hines 1998 PMID 9775660)
+      // IA round 1 抓 P0:之前白名單沒注入、AI 看不到、本次補
+      // 跨全 15 系統:school_info(派別/古籍/信心度)+ academic_reference(學術 critique、目前僅 14 biorhythm 有)
+      const metaFlags: Record<string, unknown> = {}
+      const metaKeys = ['school_info', 'academic_reference']
+      for (const key of metaKeys) {
+        const v = a.raw_data[key]
+        if (v !== undefined && v !== null) metaFlags[key] = v
+      }
+      if (Object.keys(metaFlags).length > 0) {
+        userPrompt += `\n派別 + 學術引用 metadata：${JSON.stringify(metaFlags)}`
+      }
     }
     if (a.good_points?.length) {
       userPrompt += `\n好的地方：`
