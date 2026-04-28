@@ -2268,7 +2268,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xl" style={{ background: 'rgba(197,150,58,0.15)' }}>🧭</div>
               <div>
                 <h2 className="text-lg font-semibold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>
-                  {report.plan_code === 'E1' ? 'Top3 加乘時機' : '本月最佳出行時機'}
+                  {report.plan_code === 'E1' ? 'Top3 加乘時機'
+                    : report.plan_code === 'E2' ? '本月最佳出行時機'
+                    : report.plan_code === 'E3' ? '月度精選 8 吉時'
+                    : report.plan_code === 'E4' ? '年度全運 12 月盤'
+                    : '本月最佳出行時機'}
                 </h2>
                 <p className="text-text-muted/50 text-xs mt-0.5">點擊「加入行事曆」可直接同步到 Google Calendar</p>
               </div>

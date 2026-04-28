@@ -2771,7 +2771,7 @@ export async function qualityGate(
   // v5.3.19：從 hardFail 降級為 soft warning（index.ts 已有 bannedTerms 自動 replace）
   //   AI 偶爾違反 prompt 寫出「八字/紫微/生氣位」等跨系統詞彙
   //   現在 index.ts 的 bannedTerms regex 會自動把這些詞 replace 掉，這裡只做 soft 紀錄
-  if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
+  if (isChumenjiPlan(planCode)) {
     const nonQimenTerms = [
       '用神', '喜神', '日主', '八字', '風水', '八宅', '本命卦',
       '天醫位', '生氣位', '延年位', '生物節律', '臨界日',
@@ -2793,7 +2793,7 @@ export async function qualityGate(
   // 2c-4. [CHUMENJI DEEP AUDIT 2026-04-18] 引擎硬比對：AI 輸出的 JSON 必須等於 chumenjiTop
   // 這是 P0 級修復 — 歷史發現 Claude Opus 4.6 在 E1/E2 偶爾覆寫引擎結果（自己編 date/time/door）
   // 從這裡起，AI JSON 的 (date, time_start, direction) 必須與引擎輸出 100% 一致，否則觸發 retry
-  if ((planCode === 'E1' || planCode === 'E2' || planCode === 'E3') && chumenjiTop?.results?.length) {
+  if ((isChumenjiPlan(planCode)) && chumenjiTop?.results?.length) {
     try {
       // 抽取 AI 寫的 JSON 區塊
       const aiJsonMatches: Array<{ date?: string; time_start?: string; direction?: string; title?: string }> = []
@@ -3499,7 +3499,7 @@ function getEmailHighlights(planCode: string, reportContent: string, isCN: boole
   } else if (planCode === 'G15') {
     highlights.push(isCN ? '家族成员的互动模式已解析' : '家族成員的互動模式已解析')
     highlights.push(isCN ? '家族能量流动与角色定位已完成' : '家族能量流動與角色定位已完成')
-  } else if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
+  } else if (isChumenjiPlan(planCode)) {
     // 出門訣 E1/E2/E3：提取 Top1 吉時 + 方位
     const timeMatch = text.match(/(?:最佳|第一|Top\s*1)[吉時时]*[：:]\s*(.{2,20})/)?.[1]
     const dirMatch = text.match(/(?:最佳|建議|建议)方位[：:]\s*(.{2,10})/)?.[1]

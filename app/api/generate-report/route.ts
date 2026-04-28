@@ -52,7 +52,7 @@ function getEmailHighlights(planCode: string, reportContent: string, isCN: boole
   } else if (planCode === 'G15') {
     highlights.push(isCN ? '家族成员的互动模式已解析' : '家族成員的互動模式已解析')
     highlights.push(isCN ? '家族能量流动与角色定位已完成' : '家族能量流動與角色定位已完成')
-  } else if (planCode === 'E1' || planCode === 'E2') {
+  } else if (isChumenjiPlan(planCode)) {
     const timeMatch = text.match(/(?:最佳|第一|Top\s*1)[吉時时]*[：:]\s*(.{2,20})/)?.[1]
     const dirMatch = text.match(/(?:最佳|建議|建议)方位[：:]\s*(.{2,10})/)?.[1]
     if (timeMatch) {
@@ -1089,7 +1089,7 @@ ${analyses.length}套系統排盤完整數據：
       }
     } else {
       // ============================================================
-      // 其他方案（D/R/G15/E1/E2/Y）：Claude 單次呼叫，失敗 fallback DeepSeek
+      // 其他方案（D/R/G15/E1/E2/E3/E4）：Claude 單次呼叫，失敗 fallback DeepSeek
       // ============================================================
       const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
       const userPrompt = buildGenericUserPrompt()

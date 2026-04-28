@@ -32,6 +32,7 @@ import {
   type BirthData,
   type ChumenjiTopResult,
 } from './steps'
+import { isChumenjiPlan } from '@/lib/plan-names'
 
 export async function generateReportWorkflow(reportId: string) {
   "use workflow";
@@ -451,7 +452,7 @@ export async function generateReportWorkflow(reportId: string) {
 
       // v5.3.62：E1/E2/E3 出門訣全系列呼叫奇門引擎取 Top 結果、強制注入 Prompt
       //   E1: 3 吉時（事件 Top3）、E2: 月家奇門古法單月 1 盤(v2.0)、E3: 4 週每週 Top 2 共 8 吉時
-      if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
+      if (isChumenjiPlan(planCode)) {
         console.log(`${planCode} 出門訣：呼叫引擎計算最佳時辰...`)
         chumenjiTop = await callChumenjiTop(planCode, birthData)
         if (chumenjiTop?.results?.length) {
@@ -692,7 +693,7 @@ export async function generateReportWorkflow(reportId: string) {
 
   // Step 3.6: E1/E2/E3 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）
   // v5.3.62：E3 月度精選也屬純奇門占事派、同禁八字/日主/用神/風水八宅等跨派詞
-  if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
+  if (isChumenjiPlan(planCode)) {
     try {
       const bannedTerms: [RegExp, string][] = [
         [/八字[^\n]{0,20}/g, ''],
@@ -743,7 +744,7 @@ export async function generateReportWorkflow(reportId: string) {
 
   // 4a. 優先使用引擎計算結果（不依賴 AI 輸出 JSON、E1/E2/E3 共用）
   // v5.3.80：E2 v2.0 修正——handler 直接回傳 title/time_start/time_end/execution_date_lunar 等，不再從 time_range 切
-  if ((planCode === 'E1' || planCode === 'E2' || planCode === 'E3') && chumenjiTop?.results?.length) {
+  if ((isChumenjiPlan(planCode)) && chumenjiTop?.results?.length) {
     top5Timings = chumenjiTop.results.map((r, i) => {
       const rr = r as unknown as Record<string, unknown>
       // time_start/time_end：E2 v2.0 引擎直接提供；E1/E3 仍從 time_range 切
@@ -832,7 +833,7 @@ export async function generateReportWorkflow(reportId: string) {
   }
 
   // 4b. 備用：如果引擎無結果，嘗試從 AI 報告中解析 JSON 標記（E3 也適用）
-  if (!top5Timings && (planCode === 'E1' || planCode === 'E2' || planCode === 'E3')) {
+  if (!top5Timings && (isChumenjiPlan(planCode))) {
     const jsonPattern = /===(TOP[135]_JSON_START)===\s*([\s\S]*?)\s*===(TOP[135]_JSON_END)===/g
     let allJsonMatches: RegExpMatchArray[] = [...reportContent.matchAll(jsonPattern)]
 
@@ -908,7 +909,7 @@ export async function generateReportWorkflow(reportId: string) {
   }
 
   // 清理報告中的 JSON 標記（不管有沒有成功解析，都不應出現在最終報告中、E3 也適用）
-  if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
+  if (isChumenjiPlan(planCode)) {
     reportContent = reportContent.replace(/[=-]{2,3}\s*TOP[135]_JSON_(?:START|END)\s*[=-]{2,3}/g, '').trim()
     reportContent = reportContent.replace(/```json?\s*\n\[[\s\S]*?"(?:date|direction)"[\s\S]*?\]\n\s*```/g, '').trim()
     reportContent = reportContent.replace(/\n{3,}/g, '\n\n')

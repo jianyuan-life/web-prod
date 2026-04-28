@@ -43,7 +43,7 @@ function extractKeyFindings(planCode: string, reportContent: string): string[] {
   } else if (planCode === 'G15') {
     findings.push('家族成員之間的能量互動模式已解析完成')
     findings.push('每位成員的角色定位與互動建議已整理')
-  } else if (planCode === 'E1' || planCode === 'E2') {
+  } else if (isChumenjiPlan(planCode)) {
     const bestTime = text.match(/(?:最佳|第一|Top\s*1)[吉時时]*[：:]\s*(.{2,20})/)?.[1]
     if (bestTime) findings.push(`最佳吉時：${bestTime.trim()}`)
     const direction = text.match(/(?:最佳|建議)方位[：:]\s*(.{2,10})/)?.[1]

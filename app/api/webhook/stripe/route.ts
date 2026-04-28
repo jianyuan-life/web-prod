@@ -294,8 +294,8 @@ export async function POST(req: NextRequest) {
           const topic = birthData?.topic || birthData?.analysis_topic || ''
           if (topic) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">分析主題</td><td style="padding:4px 0;">${topic}</td></tr>`)
 
-          // 出門訣顯示事件
-          if ((planCode === 'E1' || planCode === 'E2') && (birthData?.event_description || birthData?.eventDescription)) {
+          // 出門訣顯示事件(僅 E1 事件擇吉有 event_description、E2/E3/E4 不需要)
+          if (planCode === 'E1' && (birthData?.event_description || birthData?.eventDescription)) {
             const eventDesc = (birthData.event_description || birthData.eventDescription || '') as string
             if (eventDesc) orderInfoRows.push(`<tr><td style="color:#999;padding:4px 12px 4px 0;white-space:nowrap;">事件描述</td><td style="padding:4px 0;">${eventDesc.slice(0, 50)}</td></tr>`)
           }
