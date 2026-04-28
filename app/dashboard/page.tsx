@@ -137,24 +137,49 @@ function DashboardContent() {
       url += `?session_id=${encodeURIComponent(stripeSessionId)}`
     }
 
-    const res = await fetch(url, {
-      headers,
-      credentials: 'include',
-    })
+    // v5.6.10 (Round C):加 30s timeout 防 dashboard 永久「載入中...」(對應 Codex P1 + Claude Playwright 親見)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    let res: Response
+    try {
+      res = await fetch(url, {
+        headers,
+        credentials: 'include',
+        signal: controller.signal,
+      })
+    } catch (e) {
+      clearTimeout(timeoutId)
+      if (e instanceof Error && e.name === 'AbortError') {
+        console.error('fetchReports timeout(30s)')
+        throw new Error('TIMEOUT')
+      }
+      throw e
+    }
+    clearTimeout(timeoutId)
 
     if (res.status === 401) {
       // Auth 失敗：嘗試重新取得 session
       const { data: retrySession } = await supabase.auth.getSession()
       if (retrySession.session?.access_token) {
         setAuthToken(retrySession.session.access_token)
-        const retryRes = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${retrySession.session.access_token}` },
-          credentials: 'include',
-        })
-        if (retryRes.ok) {
-          const data = await retryRes.json()
-          setAuthFailed(false)
-          return data.reports || []
+        const retryController = new AbortController()
+        const retryTimeoutId = setTimeout(() => retryController.abort(), 30000)
+        try {
+          const retryRes = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${retrySession.session.access_token}` },
+            credentials: 'include',
+            signal: retryController.signal,
+          })
+          clearTimeout(retryTimeoutId)
+          if (retryRes.ok) {
+            const data = await retryRes.json()
+            setAuthFailed(false)
+            return data.reports || []
+          }
+        } catch (e) {
+          clearTimeout(retryTimeoutId)
+          if (e instanceof Error && e.name === 'AbortError') throw new Error('TIMEOUT')
+          throw e
         }
       }
       setAuthFailed(true)
@@ -308,9 +333,13 @@ function DashboardContent() {
       })
       .catch((err) => {
         // v5.3.1：API 失敗時標記錯誤，避免顯示「還沒有報告」誤導
+        // v5.6.10 (Round C):timeout 顯示更明確訊息
         const msg = err instanceof Error ? err.message : String(err)
         console.error('[dashboard] 查詢報告失敗:', msg)
-        setFetchError('系統暫時無法查詢您的報告，請稍後重新整理。若問題持續請聯絡 support@jianyuan.life')
+        const userMsg = msg === 'TIMEOUT'
+          ? '伺服器回應逾時(30 秒)、請按右上「我的報告」重新整理。若問題持續請聯絡 support@jianyuan.life'
+          : '系統暫時無法查詢您的報告，請稍後重新整理。若問題持續請聯絡 support@jianyuan.life'
+        setFetchError(userMsg)
         setLoading(false)
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps

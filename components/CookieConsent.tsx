@@ -1,0 +1,191 @@
+'use client'
+
+// v5.6.10 Round D:GDPR / ePrivacy Cookie Consent Banner
+// 對應 QA Agent P0 finding「Cookie consent 機制 0 實作 → 歐盟客戶觸發違規(罰款上限營收 4%)」
+// 實作:預設 GA4 consent denied、用戶選「全部接受」或「自訂」後升級
+
+import { useEffect, useState } from 'react'
+
+const STORAGE_KEY = 'jy_cookie_consent_v1'
+
+type ConsentPrefs = {
+  necessary: true // 必要 cookie 永遠 true、不可關
+  analytics: boolean
+  marketing: boolean
+  decided_at: string
+}
+
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void
+    dataLayer?: unknown[]
+  }
+}
+
+function applyConsent(prefs: ConsentPrefs) {
+  if (typeof window === 'undefined') return
+  if (!window.gtag) return
+  window.gtag('consent', 'update', {
+    analytics_storage: prefs.analytics ? 'granted' : 'denied',
+    ad_storage: prefs.marketing ? 'granted' : 'denied',
+    ad_user_data: prefs.marketing ? 'granted' : 'denied',
+    ad_personalization: prefs.marketing ? 'granted' : 'denied',
+  })
+}
+
+export default function CookieConsent() {
+  const [show, setShow] = useState(false)
+  const [showCustom, setShowCustom] = useState(false)
+  const [analytics, setAnalytics] = useState(true)
+  const [marketing, setMarketing] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (!stored) {
+        setShow(true)
+      }
+    } catch {
+      setShow(true)
+    }
+  }, [])
+
+  function save(prefs: Omit<ConsentPrefs, 'decided_at' | 'necessary'>) {
+    const full: ConsentPrefs = {
+      necessary: true,
+      analytics: prefs.analytics,
+      marketing: prefs.marketing,
+      decided_at: new Date().toISOString(),
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(full))
+    } catch {
+      /* localStorage blocked, 仍然 apply 本 session */
+    }
+    applyConsent(full)
+    setShow(false)
+  }
+
+  function acceptAll() {
+    save({ analytics: true, marketing: true })
+  }
+
+  function acceptNecessary() {
+    save({ analytics: false, marketing: false })
+  }
+
+  function saveCustom() {
+    save({ analytics, marketing })
+  }
+
+  if (!show) return null
+
+  return (
+    <div
+      role="dialog"
+      aria-labelledby="cookie-consent-title"
+      aria-describedby="cookie-consent-desc"
+      className="fixed bottom-0 inset-x-0 z-[1000] p-4 sm:p-6 bg-dark/95 backdrop-blur-xl border-t border-gold/30 shadow-2xl"
+      style={{ animation: 'slideUp 0.3s ease-out' }}
+    >
+      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+
+      <div className="max-w-6xl mx-auto">
+        {!showCustom ? (
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex-1">
+              <h3 id="cookie-consent-title" className="text-cream font-bold text-base mb-1">
+                🍪 Cookie 與隱私偏好
+              </h3>
+              <p id="cookie-consent-desc" className="text-text-muted text-sm leading-relaxed">
+                鑑源使用必要 Cookie 維持網站運作、分析 Cookie 改善服務體驗、行銷 Cookie 衡量廣告成效。
+                您可以選擇全部接受、僅必要、或自訂偏好。詳見{' '}
+                <a href="/privacy" className="text-gold underline hover:text-gold/80">
+                  隱私政策
+                </a>
+                。
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+              <button
+                onClick={() => setShowCustom(true)}
+                className="px-4 py-2 text-sm rounded-lg border border-gold/40 text-gold hover:bg-gold/10 transition-colors"
+              >
+                自訂偏好
+              </button>
+              <button
+                onClick={acceptNecessary}
+                className="px-4 py-2 text-sm rounded-lg border border-cream/30 text-cream hover:bg-cream/5 transition-colors"
+              >
+                僅必要 Cookie
+              </button>
+              <button
+                onClick={acceptAll}
+                className="px-5 py-2 text-sm rounded-lg bg-gold text-dark font-bold hover:bg-gold/90 transition-colors"
+              >
+                全部接受
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <h3 className="text-cream font-bold text-base mb-3">🍪 自訂 Cookie 偏好</h3>
+            <div className="space-y-3 mb-4">
+              <label className="flex items-start gap-3 cursor-not-allowed opacity-70">
+                <input type="checkbox" checked disabled className="mt-1" />
+                <div>
+                  <div className="text-cream text-sm font-medium">必要 Cookie(無法關閉)</div>
+                  <div className="text-text-muted text-xs">
+                    維持登入狀態、結帳流程、安全性。網站運作必須。
+                  </div>
+                </div>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={analytics}
+                  onChange={(e) => setAnalytics(e.target.checked)}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="text-cream text-sm font-medium">分析 Cookie(Google Analytics 4)</div>
+                  <div className="text-text-muted text-xs">
+                    匿名統計頁面瀏覽 / 停留時間、幫助我們改善網站體驗。
+                  </div>
+                </div>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={marketing}
+                  onChange={(e) => setMarketing(e.target.checked)}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="text-cream text-sm font-medium">行銷 Cookie(Meta Pixel / 廣告)</div>
+                  <div className="text-text-muted text-xs">
+                    衡量廣告成效、提供相關內容。關閉不影響網站功能。
+                  </div>
+                </div>
+              </label>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 justify-end">
+              <button
+                onClick={() => setShowCustom(false)}
+                className="px-4 py-2 text-sm rounded-lg border border-cream/30 text-cream hover:bg-cream/5 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={saveCustom}
+                className="px-5 py-2 text-sm rounded-lg bg-gold text-dark font-bold hover:bg-gold/90 transition-colors"
+              >
+                儲存偏好
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

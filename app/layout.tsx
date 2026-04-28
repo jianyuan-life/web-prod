@@ -9,6 +9,7 @@ import Tracker from '@/components/Tracker'
 import ReferralHandler from '@/components/ReferralHandler'
 import GlobalBackToTop from '@/components/GlobalBackToTop'
 import EmailLink from '@/components/EmailLink'
+import CookieConsent from '@/components/CookieConsent'
 import './globals.css'
 
 // v5.3.44 字型 variable 保留歷史命名（QA 稽核發現動了會破壞 200+ 處品牌標題視覺）
@@ -87,24 +88,52 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </noscript>
           </>
         )}
-        {/* Google Analytics 4 */}
+        {/* Google Analytics 4 + Consent Mode v2 (v5.6.10 Round D:GDPR/ePrivacy 合規) */}
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
           <>
-            <script
-              async
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
-            />
+            {/* Consent Mode v2 預設 denied、等用戶點 banner 才升級為 granted */}
             <script
               dangerouslySetInnerHTML={{
                 __html: `
                   window.dataLayer = window.dataLayer || [];
                   function gtag(){dataLayer.push(arguments);}
+                  // v5.6.10: GDPR / ePrivacy default consent state(歐盟訪客預設拒絕、需主動同意)
+                  gtag('consent', 'default', {
+                    'ad_storage': 'denied',
+                    'ad_user_data': 'denied',
+                    'ad_personalization': 'denied',
+                    'analytics_storage': 'denied',
+                    'functionality_storage': 'granted',
+                    'security_storage': 'granted',
+                    'wait_for_update': 500
+                  });
+                  // 若用戶已透過 banner 同意、從 localStorage 讀取偏好
+                  try {
+                    var stored = localStorage.getItem('jy_cookie_consent_v1');
+                    if (stored) {
+                      var prefs = JSON.parse(stored);
+                      if (prefs.analytics) {
+                        gtag('consent', 'update', { 'analytics_storage': 'granted' });
+                      }
+                      if (prefs.marketing) {
+                        gtag('consent', 'update', {
+                          'ad_storage': 'granted',
+                          'ad_user_data': 'granted',
+                          'ad_personalization': 'granted'
+                        });
+                      }
+                    }
+                  } catch(e) {}
                   gtag('js', new Date());
                   gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', {
                     page_path: window.location.pathname,
                   });
                 `,
               }}
+            />
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
             />
           </>
         )}
@@ -165,6 +194,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased" suppressHydrationWarning>
         <Tracker />
         <ReferralHandler />
+        <CookieConsent />
         <LocaleContent>
         <Navbar />
         <main className="pt-16">{children}</main>

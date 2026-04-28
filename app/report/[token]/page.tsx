@@ -610,6 +610,11 @@ function renderInlineMarkdown(text: string): string {
       /\{\s*"(?:week|rank|title|date|time_start|time_end|direction|reason|confidence|shensha_warning|zhishi_info|boost_explanation|plain_advantage|plain_purpose)"[\s\S]{0,3000}?\}\s*/g,
       '',
     )
+    // v5.6.10 (Round B):防 E1 array form raw JSON 外洩(實測 ai_content 結尾出現 [{rank,title,date,...}, {rank,...}, {rank,...}] 整段被當段落 render)
+    // 觸發策略:報告結尾出現 array 開頭 [ + 含 rank/title/date 的 timing object → 整段截斷到結尾
+    .replace(/\n*\[\s*\n*\s*\{\s*"(?:rank|week|title|date|time_start|time_end|direction|reason)"[\s\S]+$/g, '')
+    // 額外保險:單一 timing object 在段落內外洩(規避上面 array 截斷的邊界)
+    .replace(/\{\s*"rank"\s*:\s*\d+[\s\S]*?"plain_purpose"\s*:\s*\[[\s\S]*?\]\s*\}\s*,?\s*/g, '')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
     // 斜體（排除已被粗體處理的 **）
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')

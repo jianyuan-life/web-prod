@@ -89,7 +89,7 @@ export default function HomePage() {
               也許你正在尋找一個答案
             </span>
             <span className="text-gradient-gold font-semibold whitespace-nowrap">
-              用十四個維度，重新認識你自己
+              14 套命理系統交叉，看清真實的你
             </span>
           </h1>
           <p className="text-base text-text-muted leading-[2] mb-10 max-w-[520px] mx-auto">

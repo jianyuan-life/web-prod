@@ -82,10 +82,25 @@ export async function POST(req: NextRequest) {
         const { data } = await supabaseAuth.auth.getUser(authAccessToken)
         if (data?.user?.email) verifiedEmail = data.user.email
         if (data?.user?.id) verifiedUserId = data.user.id
-      } catch { /* auth 驗證失敗，用 fallback */ }
+      } catch { /* auth 驗證失敗，當訪客處理 */ }
     }
-    // Fallback: 前端傳來的 email
-    const customerEmail = (verifiedEmail || userEmail || birthData?.email || '').toLowerCase()
+    // v5.6.10 安全強化(對應 Codex audit P0):
+    // - 已登入用戶:body 傳的 email 必須跟 verified email 一致、否則拒(防假冒他人下單)
+    // - 未登入訪客:用 body 的 userEmail / birthData.email(保留 guest checkout funnel)
+    const bodyEmail = (userEmail || birthData?.email || '').toLowerCase().trim()
+    if (verifiedEmail) {
+      const verifiedLower = verifiedEmail.toLowerCase()
+      if (bodyEmail && bodyEmail !== verifiedLower) {
+        return NextResponse.json(
+          { error: '無權代他人下單;登入帳號 email 與表單 email 不符' },
+          { status: 403 }
+        )
+      }
+    }
+    const customerEmail = (verifiedEmail || bodyEmail).toLowerCase()
+    if (!customerEmail) {
+      return NextResponse.json({ error: '請提供 email 或先登入' }, { status: 400 })
+    }
 
     const stripeKey = process.env.STRIPE_SECRET_KEY
     if (!stripeKey || stripeKey === 'sk_test_placeholder') {
