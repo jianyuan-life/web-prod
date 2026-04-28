@@ -718,7 +718,7 @@ ${PSYCHOLOGY_RULES}
 
 ## ⚠️ 重要說明
 本方案的完整 prompt 結構正在最終調校(v5.8 立春前 30 天上線)、若客戶訂單意外觸發此 fallback、請人工接手:
-- 寄信至 support@jianyuan.life 開「年度全運 ${'\${reportId}'}」追蹤單
+- 寄信至 support@jianyuan.life 開「年度全運 [報告編號]」追蹤單
 - 不要勉強生成、避免品質不到位
 
 ## 報告結構（最低骨架）
