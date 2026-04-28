@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { isChumenjiPlan } from '@/lib/plan-names'
 
 const ALL_SYSTEMS = [
   { name: '八字命理', icon: '☰' },
@@ -32,7 +33,7 @@ const QIMEN_FACETS = [
 ]
 
 function getSystemsForPlan(planCode: string) {
-  return ['E1', 'E2', 'E3', 'E4'].includes(planCode) ? QIMEN_FACETS : ALL_SYSTEMS
+  return isChumenjiPlan(planCode) ? QIMEN_FACETS : ALL_SYSTEMS
 }
 
 // 各方案使用系統數 + 預估總分鐘數（以「下限」作為基準）
@@ -63,7 +64,7 @@ const PHASES_CHUMENJI = [
 ]
 
 function getPhases(planCode: string) {
-  return ['E1', 'E2', 'E3', 'E4'].includes(planCode) ? PHASES_CHUMENJI : PHASES_DEFAULT
+  return isChumenjiPlan(planCode) ? PHASES_CHUMENJI : PHASES_DEFAULT
 }
 
 // 命理小知識——讓客戶在等待時學到東西
@@ -96,7 +97,7 @@ const FACTS_CHUMENJI = [
 
 function FunFacts({ planCode }: { planCode: string }) {
   const [idx, setIdx] = useState(0)
-  const facts = ['E1', 'E2', 'E3', 'E4'].includes(planCode) ? FACTS_CHUMENJI : FACTS_DEFAULT
+  const facts = isChumenjiPlan(planCode) ? FACTS_CHUMENJI : FACTS_DEFAULT
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -447,7 +448,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         {showWhyLong && (
           <div className="mt-2 pl-3 border-l-2 border-gold/20 space-y-2 text-text-muted/85">
             <p className="leading-relaxed">
-              {['E1', 'E2', 'E3', 'E4'].includes(planCode) ? (
+              {isChumenjiPlan(planCode) ? (
                 <>鑑源古法奇門遁甲占事派擇吉——{
                   planCode === 'E4' ? '需排算一年 8,760 小時全局盤 + 12 張月盤'
                     : planCode === 'E3' ? '需排算未來 4 週、共 672 個時辰'

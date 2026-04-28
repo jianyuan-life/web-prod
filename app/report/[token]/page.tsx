@@ -1142,7 +1142,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     return result
   })()
   let top5Timings = report.report_result?.top5_timings || []
-  const isChumenji = ['E1', 'E2', 'E3', 'E4'].includes(report.plan_code)
+  const isChumenji = isChumenjiPlan(report.plan_code)
   const isE3 = report.plan_code === 'E3'  // v5.3.63 月度精選 8 卡片格式
   // v5.3.64 — E3 按日期+時間升序排列（客戶期待時間軸順序、而非分數排序）
   if (isE3 && top5Timings.length > 0) {

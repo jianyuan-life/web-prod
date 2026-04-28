@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
+import { ALL_PLAN_CODES } from '@/lib/plan-names'
 
 function getSupabase() {
   return createClient(
@@ -30,7 +31,8 @@ type Report = {
   created_at: string | null
 }
 
-const PLAN_CODES = ['C', 'D', 'G15', 'R', 'E1', 'E2'] as const
+// v5.7.13:用 ALL_PLAN_CODES 集中管理(原 hardcode 6 方案會吃掉 E3/E4 真實營收 — QA round 7 P0)
+const PLAN_CODES = ALL_PLAN_CODES
 
 export async function GET(req: NextRequest) {
   const rlFail = checkAdminRateLimit(req)

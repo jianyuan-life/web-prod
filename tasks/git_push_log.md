@@ -5,6 +5,26 @@
 
 ---
 
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.12 | aaeeeeef
+- 動作:Codex + Gemini round 6 抓 P0(@vercel/og 不支援 woff2)+ E2 字數閘門寬容
+- 改動範圍:5 檔、+20 / -12 行
+- 為什麼:share-card v5.7.1 註解已警告 fail 0 byte、Codex+Gemini 一致再抓、修 og-font 改 ttf endpoint
+- type-check:✅ 0 error
+
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.11 | f9165a5b
+- 動作:round 6 真審 P0/P1 全修(QA 91 + IA 71 → 預期都 ≥ 95)
+  - generate-report parser 加 TOP1+TOP3+TOP5 三家兼容(QA P0、漏修 markers leak)
+  - dashboard inline PLAN_NAMES 改 import + isChumenjiPlan helper
+  - report opengraph + page 4 處 ['E1','E2'] 改 isChumenjiPlan(E3/E4 客戶面文案修對)
+  - share-card 改 import lib/og-font + lib/plan-names(DRY 集中)
+  - checkout L371/L387 + webhook L252 inline dict 全改 import
+  - generate-report inline planNames 砍、改 import + 補 E3/E4
+  - E1 fallback prompt TOP5_JSON → TOP3_JSON 對齊主流程
+- 改動範圍:12 檔、+49 / -77 行
+- type-check:✅ 0 error
+
+---
+
 ### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.10 | 9c2c978b
 - 動作:round 5 IA 抓出 3 P0(19 處 PLAN_NAMES 散落 / 4 個 OG 缺中文字體 / E2 fallback TOP5 vs TOP1 衝突)+ 4 P1 全修
 - 改動範圍:33 檔、+122 / -99 行(2 個新檔:lib/plan-names.ts + lib/og-font.ts)

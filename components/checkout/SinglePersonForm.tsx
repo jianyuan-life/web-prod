@@ -8,6 +8,7 @@ import TimeBlockPicker from './TimeBlockPicker'
 import ThemePicker from './ThemePicker'
 import CustomerNote from './CustomerNote'
 import ConfirmationModal from './ConfirmationModal'
+import { isChumenjiPlan } from '@/lib/plan-names'
 import { D_TOPICS, E1_EVENT_TYPES, type CheckoutFormState as FormState } from './types'
 
 interface SinglePersonFormProps {
@@ -301,7 +302,7 @@ export default function SinglePersonForm({
         <div className="space-y-1.5 text-[11px] text-text-muted/70">
           <p>1. 跳轉至 Stripe 安全付款頁面完成付款</p>
           <p>2. 系統自動開始為您排盤運算與深度分析</p>
-          <p>3. 完整報告平均需 30 分鐘以上{['E1', 'E2'].includes(planCode) ? '，出門訣需 40 分鐘以上' : ''}</p>
+          <p>3. 完整報告平均需 30 分鐘以上{isChumenjiPlan(planCode) ? '，出門訣需 40 分鐘以上' : ''}</p>
           <p>4. 完成後寄送 Email 通知，也可在儀表板即時查看</p>
         </div>
       </div>

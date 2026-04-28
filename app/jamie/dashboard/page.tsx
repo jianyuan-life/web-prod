@@ -10,7 +10,7 @@ import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, CartesianGrid, Legend, PieChart, Pie, Cell,
 } from 'recharts'
-import { PLAN_NAMES } from '@/lib/plan-names'
+import { PLAN_NAMES, ALL_PLAN_CODES } from '@/lib/plan-names'
 
 
 const PLAN_COLORS: Record<string, string> = {
@@ -227,7 +227,7 @@ export default function DashboardPage() {
               <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} />
               <Tooltip contentStyle={{ background: '#0A0F1E', border: '1px solid rgba(78,154,199,0.3)', borderRadius: 8, fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              {['C', 'D', 'G15', 'R', 'E1', 'E2'].map(k => (
+              {ALL_PLAN_CODES.map(k => (
                 <Area key={k} type="monotone" dataKey={k} stackId="1"
                   stroke={PLAN_COLORS[k]} fill={`url(#grad-${k})`}
                   name={PLAN_NAMES[k]} />
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="h-6 bg-white/5 rounded overflow-hidden">
                       <div className="h-full rounded flex items-center justify-end pr-2 text-[10px] text-white/80 font-medium"
-                        style={{ width: `${Math.max(pct, 2)}%`, background: `linear-gradient(90deg, #4E9AC7 0%, ${PLAN_COLORS[['C', 'D', 'G15', 'R', 'E1', 'E2'][i % 6]] || '#4E9AC7'} 100%)` }}>
+                        style={{ width: `${Math.max(pct, 2)}%`, background: `linear-gradient(90deg, #4E9AC7 0%, ${PLAN_COLORS[ALL_PLAN_CODES[i % ALL_PLAN_CODES.length]] || '#4E9AC7'} 100%)` }}>
                         {pct}%
                       </div>
                     </div>

@@ -11,6 +11,7 @@ import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { recordEmailSend } from '@/lib/email-send-log'
 import { notifyEmailFailed } from '@/lib/ai/observability/telegram'
+import { isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 import {
   getAgeGroup,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
@@ -3112,6 +3113,8 @@ export async function aiReviewReport(
   }
 }> {
   "use step";
+  // v5.7.13:E3/E4 出門訣審核邏輯不同(月度精選/年度全運不適用 5 LLM C/D/R 通用審核流程)
+  // 故意跳過、return 85 預設值、後續若 E3/E4 加專屬審核器再升級
   if (!['C', 'D', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] }
 
   await emitProgress({ step: 'AI審核', progress: 72, message: '5 LLM 並行品質審核中...' })
@@ -3218,6 +3221,7 @@ export async function aiReviewReportLegacy(
   reportId?: string,
 ): Promise<{ score: number; issues: string[] }> {
   "use step";
+  // v5.7.13:E3/E4 故意跳過(同 aiReviewReport 註釋)、return 預設 85 不審核
   if (!['C', 'D', 'R', 'E1', 'E2', 'G15'].includes(planCode)) return { score: 85, issues: [] }
 
   await emitProgress({ step: 'AI審核(legacy)', progress: 72, message: '單 Claude 自審中...' })
@@ -3572,7 +3576,7 @@ export async function sendReportEmail(
         : (birthData.name || '')
       return isCN ? `${displayName}，您的报告已完成` : `${displayName}，您的報告已完成`
     })(),
-    systemCount: ['E1', 'E2'].includes(planCode)
+    systemCount: isChumenjiPlan(planCode)
       ? (isCN ? `${planName} · 奇门遁甲精算` : `${planName} · 奇門遁甲精算`)
       : planCode === 'G15'
       ? (isCN ? `${planName} · 家族互动分析` : `${planName} · 家族互動分析`)
@@ -3648,7 +3652,7 @@ export async function sendReportEmail(
         <p style="color:#6b7280;font-size:12px;margin:12px 0 0 0;">${emailText.linkNote}</p>
       </div>
     </div>
-    ${!['E1', 'E2'].includes(planCode) ? `
+    ${!isChumenjiPlan(planCode) ? `
     <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;margin-bottom:24px;">
       <div style="color:#c9a84c;font-size:13px;font-weight:600;margin-bottom:8px;">${emailText.promoTitle}</div>
       <p style="color:#9ca3af;font-size:13px;line-height:1.7;margin:0 0 16px 0;">${emailText.promoBody}</p>

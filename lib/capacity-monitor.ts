@@ -15,6 +15,7 @@
 //   if (!cap.allowed) return cap.message
 
 import { createClient } from '@supabase/supabase-js'
+import { isChumenjiPlan } from '@/lib/plan-names'
 
 const CAPACITY_MODE = (process.env.QIMEN_CAPACITY_MODE || 'open').toLowerCase()
 const CAPACITY_THRESHOLD = parseInt(process.env.QIMEN_CAPACITY_THRESHOLD || '20', 10)
@@ -42,7 +43,7 @@ export async function checkCapacity(planCode: string): Promise<CapacityDecision>
     }
   }
 
-  if (CAPACITY_MODE === 'throttle' && ['E1', 'E2', 'E3', 'E4'].includes(planCode)) {
+  if (CAPACITY_MODE === 'throttle' && isChumenjiPlan(planCode)) {
     return {
       allowed: false,
       mode: 'throttle',
