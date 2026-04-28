@@ -41,8 +41,10 @@ type Report = {
 }
 
 // 各方案使用的命理系統數量（0 表示不顯示系統數）
+// v5.7.18:IA round 9 P0 — 補 E3 + E4(原缺漏會讓 E3/E4 客戶 dashboard 顯示「0 套系統」、實際 E3/E4 是奇門)
+// v5.3.95 對外 14 套(原 15 套清零、E2 v2.0 月家奇門古法為主、其他輔助)
 const PLAN_SYSTEMS: Record<string, number> = {
-  C: 15, D: 0, G15: 15, R: 0, E1: 1, E2: 1,
+  C: 14, D: 0, G15: 14, R: 0, E1: 1, E2: 1, E3: 1, E4: 1,
 }
 
 function DashboardContent() {
