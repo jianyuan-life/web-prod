@@ -178,25 +178,8 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
           {shareLabel}
         </button>
 
-        {/* v5.6.10 R7:IG 分享圖卡(1080x1080)、社群轉發 */}
-        {accessToken && (
-          <a
-            href={`/api/share-card?token=${encodeURIComponent(accessToken)}`}
-            download={`鑒源_${clientName || '我的命格'}.png`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-all hover:scale-105"
-            style={{ background: 'rgba(232, 200, 122, 0.10)', border: '1px solid rgba(232, 200, 122, 0.30)', color: '#e8c87a' }}
-            title="生成 1080x1080 IG 分享圖卡(深藍金色品牌、含您的命格摘要)"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="2" width="20" height="20" rx="5" />
-              <circle cx="12" cy="12" r="4" />
-              <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" />
-            </svg>
-            IG 分享圖卡
-          </a>
-        )}
+        {/* v5.7.1:IG 分享圖卡按鈕暫隱藏 — Edge runtime 中文字體 fetch 仍 fail(0 byte PNG) */}
+        {/* API 保留 /api/share-card?token=...、待 v5.8 加 self-hosted 字體 binary 修穩定後開放 */}
       </div>
       {generateMsg && (
         <p className="text-xs text-text-muted mt-1">{generateMsg}</p>
