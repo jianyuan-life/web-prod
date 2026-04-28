@@ -18,6 +18,7 @@ import PartHighlights from '@/components/PartHighlights'
 import SubscribeCTA from '@/components/SubscribeCTA'
 import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
+import SystemsRadar from '@/components/report/SystemsRadar'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
 import {
@@ -2040,6 +2041,22 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             {personalityCard.talents.length === 0 && personalityCard.challenges.length === 0 && !personalityCard.firstImpression && !personalityCard.definition && (
               <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(personalityCard.rawContent) }} />
             )}
+          </div>
+        )}
+
+        {/* v5.6.10 R5 命理視覺化:14 系統評分雷達圖(對應 Gemini「致命傷」共識) */}
+        {/* 顯示條件:有 ≥3 套系統評分(C/D/G15 主要、出門訣 E1-E4 系統較少跳過) */}
+        {!isChumenji && analysesSummary.length >= 3 && (
+          <div className="no-print">
+            <SystemsRadar
+              data={analysesSummary as { system: string; score: number }[]}
+              title={
+                report.plan_code === 'C' ? '十四套命理系統交叉評分'
+                : report.plan_code === 'G15' ? '家族成員命格評分'
+                : report.plan_code === 'R' ? '雙人合盤系統評分'
+                : '系統評分'
+              }
+            />
           </div>
         )}
 
