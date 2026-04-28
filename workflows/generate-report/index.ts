@@ -509,7 +509,9 @@ export async function generateReportWorkflow(reportId: string) {
   //   不再用 avg/min 平均分（消除 Gemini 對多系統平台的結構性扣分偏見）
   //
   // 保留 LEGACY_HARD_MIN_SCORE 供 6 LLM 整個失效時降級用
-  const MAX_QUALITY_RETRIES = 1       // 原 3，避免 retry 死循環燒 $15-20/份
+  // v5.7.21:止血 — 0 retry、quality gate 失敗直接 needs_human_review、不再 internal 重生 AI 燒錢
+  // 原因:何宣逸 870bae9a 燒 $21.24(Call 1 ×4、Call 2/3 ×3)、retry 不修 AI 行為、燒錢無意義
+  const MAX_QUALITY_RETRIES = 0       // v5.7.21 從 1 → 0(原 3 → 1 → 0、根治 retry 燒錢)
   const LEGACY_HARD_MIN_SCORE = 75    // 6 LLM 全掛時才用這個分數門檻降級
 
   type FiveLLMSnapshot = {
@@ -546,6 +548,16 @@ export async function generateReportWorkflow(reportId: string) {
     } catch (e) {
       console.error('品質閘門執行失敗:', e)
       break
+    }
+    // v5.7.21:detailed log — 把每項 hardFailures / warnings 全部列出、防再「失敗 1 項」黑盒
+    if (gateResult) {
+      console.log(`[QualityGate Round ${roundNum}] 報告字數:${reportContent.length} / passed:${gateResult.passed} / hardFailures:${(gateResult.hardFailures || []).length} / softWarnings:${(gateResult.softWarnings || []).length}`)
+      if (gateResult.hardFailures && gateResult.hardFailures.length > 0) {
+        gateResult.hardFailures.forEach((hf, i) => console.log(`  🔴 hardFailure[${i + 1}]: ${hf}`))
+      }
+      if (gateResult.softWarnings && gateResult.softWarnings.length > 0) {
+        gateResult.softWarnings.forEach((sw, i) => console.log(`  🟡 softWarning[${i + 1}]: ${sw}`))
+      }
     }
 
     // 3b. 5 LLM Post-Gen QA 已砍（v5.3.31，老闆決定簡化：1 Claude 寫 + 結構硬檢查）
