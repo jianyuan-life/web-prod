@@ -7,6 +7,7 @@ import { recordRevenue } from '@/lib/accounting'
 import { recordEmailSend } from '@/lib/email-send-log'
 import { trackFunnelServer } from '@/lib/funnel-tracker'
 import { notifyStripeFailed } from '@/lib/ai/observability/telegram'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
 function getStripe() {
   // @ts-expect-error - Stripe SDK version mismatch
@@ -249,7 +250,6 @@ export async function POST(req: NextRequest) {
         }).eq('id', reportId)
 
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月度單盤', E3: '月度精選', E4: '年度全運' }
 
         // 付款後立即發訂單確認信（讓客戶知道我們收到了）
         try {

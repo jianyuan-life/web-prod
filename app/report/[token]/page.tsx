@@ -29,7 +29,7 @@ import {
   generatePlainPurpose,
   buildCalendarDescription,
 } from '@/lib/qimen-plain-text'
-import { PLAN_NAMES } from '@/lib/plan-names'
+import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -1044,7 +1044,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <h1 className="text-xl font-bold text-cream mb-2">
             {isFailed
               ? '報告生成遇到問題'
-              : ['E1','E2'].includes(report.plan_code) ? '奇門遁甲出門訣排算中'
+              : isChumenjiPlan(report.plan_code) ? '奇門遁甲出門訣排算中'
               : report.plan_code === 'G15' ? '家族藍圖分析進行中'
               : report.plan_code === 'R' ? '關係合盤分析進行中'
               : '命理分析進行中'}
@@ -1052,7 +1052,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <p className="text-text-muted text-sm mb-2">
             {isFailed
               ? '系統已記錄此次生成異常，客服將於 1–2 小時內為您重新生成並通知您'
-              : ['E1','E2'].includes(report.plan_code)
+              : isChumenjiPlan(report.plan_code)
               ? '系統正以 25 層古籍評分體系逐時辰排算奇門局，套入個人年命宮驗證吉位'
               : report.plan_code === 'G15'
               ? '正在為您的家庭成員進行多人命格交叉分析，整合家族互動關係'
@@ -1063,7 +1063,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           {!isFailed && (
             <>
               <p className="text-text-muted/60 text-xs mb-1">
-                {['E1','E2'].includes(report.plan_code) ? '出門訣排算通常需要 40–50 分鐘'
+                {isChumenjiPlan(report.plan_code) ? '出門訣排算通常需要 40–50 分鐘'
                   : report.plan_code === 'G15' ? '家族分析通常需要 30–45 分鐘'
                   : report.plan_code === 'R' ? '合盤分析通常需要 30–45 分鐘'
                   : '完整分析通常需要 40–60 分鐘'}
@@ -2693,7 +2693,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         })()}
 
         {/* ──── 出門訣推廣 ──── */}
-        {!['E1', 'E2'].includes(report.plan_code) && (
+        {!isChumenjiPlan(report.plan_code) && (
           <div className="section-card no-print" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.1), rgba(26,42,74,0.4))', border: '1px solid rgba(197,150,58,0.25)' }}>
             <div className="flex flex-col sm:flex-row gap-5 items-start">
               <div className="text-4xl shrink-0">&#9788;</div>

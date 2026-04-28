@@ -7,7 +7,7 @@
 // v5.7.10:加中文字體注入(IA round 5 P0)
 import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
-import { PLAN_NAMES } from '@/lib/plan-names'
+import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { getOGFonts } from '@/lib/og-font'
 
 export const runtime = 'edge'
@@ -66,7 +66,7 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
   const planName = PLAN_NAMES[planCode] || '命理分析'
   const planDesc = PLAN_DESCRIPTIONS[planCode] || '十四大命理系統精準分析'
   const planSymbol = PLAN_SYMBOLS[planCode] || '鑒'
-  const isChumenji = ['E1', 'E2'].includes(planCode)
+  const isChumenji = isChumenjiPlan(planCode)
 
   return new ImageResponse(
     (

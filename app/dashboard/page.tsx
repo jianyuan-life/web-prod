@@ -10,16 +10,7 @@ import * as fbpixel from '@/lib/fbpixel'
 import ReportProgress from '@/components/ReportProgress'
 import FamilyMembersManager from '@/components/FamilyMembersManager'
 import ReferralCard from '@/components/ReferralCard'
-
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖', D: '心之所惑',
-  G15: '家族藍圖', R: '合否？',
-  E1: '事件擇吉', E2: '月度單盤',
-  E3: '月度精選', E4: '年度全運',
-}
-
-// E 系列（出門訣）識別：用於判斷 PDF/Email/狀態文案
-const CHUMENJI_CODES = new Set(['E1', 'E2', 'E3', 'E4'])
+import { PLAN_NAMES, CHUMENJI_CODES } from '@/lib/plan-names'
 
 type Report = {
   id: string

@@ -4,48 +4,16 @@
 
 import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
+import { loadChineseFont } from '@/lib/og-font'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
 export const runtime = 'edge'
-
-// v5.7.1 hotfix:Edge runtime 中文字體 fetch(預設無中文 fallback、會 silent 失敗 0 byte)
-let cachedFont: ArrayBuffer | null = null
-async function loadChineseFont(): Promise<ArrayBuffer | null> {
-  if (cachedFont) return cachedFont
-  try {
-    // Google Fonts API 取 Noto Sans TC Regular 子集 ttf
-    const cssRes = await fetch(
-      'https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&display=swap',
-      { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }
-    )
-    if (!cssRes.ok) return null
-    const css = await cssRes.text()
-    const m = css.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2)\)/)
-    if (!m) return null
-    const fontRes = await fetch(m[1])
-    if (!fontRes.ok) return null
-    cachedFont = await fontRes.arrayBuffer()
-    return cachedFont
-  } catch {
-    return null
-  }
-}
 
 function getServiceSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   )
-}
-
-const PLAN_NAMES: Record<string, string> = {
-  C: '人生藍圖',
-  D: '心之所惑',
-  G15: '家族藍圖',
-  R: '合否？',
-  E1: '事件擇吉',
-  E2: '月度單盤',
-  E3: '月度精選',
-  E4: '年度全運',
 }
 
 const PLAN_HOOK: Record<string, string> = {

@@ -11,6 +11,7 @@ import {
 } from '@/prompts/c_plan_v2'
 import { validateReportAgainstData } from '@/workflows/generate-report/steps'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
+import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
@@ -619,7 +620,7 @@ ${PSYCHOLOGY_RULES}
 在報告正文最後面，必須輸出以下格式的 JSON 區塊（3 筆資料）。
 注意：直接輸出純 JSON，不要用 \`\`\`json\`\`\` 包裹。
 
-===TOP5_JSON_START===
+===TOP3_JSON_START===
 [
   {
     "rank": 1,
@@ -632,7 +633,7 @@ ${PSYCHOLOGY_RULES}
     "confidence": "極高"
   }
 ]
-===TOP5_JSON_END===`,
+===TOP3_JSON_END===`,
 
   // ========== E2 方案：月度單盤（$29）v2.0 月家奇門古法、單月 1 盤、農曆晦日 22:20-23:00 執行 ==========
   E2: `你是鑒源命理平台的奇門遁甲月運規劃師。客戶購買了「月度單盤」——月家奇門古法、單月 1 盤、農曆晦日 22:20-23:00 執行（跨子時接新月氣）。
@@ -1072,21 +1073,27 @@ ${analyses.length}套系統排盤完整數據：
       console.error('Post-generation QA 執行失敗（不阻塞）:', e)
     }
 
-    // Step 3.5: 解析出門訣 Top5 吉時 JSON（E1/E2 方案）
+    // Step 3.5: 解析出門訣吉時 JSON（E1/E2/E3/E4 方案）
+    // v5.7.10:E2 v2.0 改用 TOP1_JSON 單月 1 盤、E1 用 TOP3_JSON Top3 吉時、舊版用 TOP5_JSON、parser 三家兼容(對齊主流程 plan-prompts.ts)
     let top5Timings = null
+    const top1Match = reportContent.match(/===TOP1_JSON_START===\s*([\s\S]*?)\s*===TOP1_JSON_END===/)
+    const top3Match = reportContent.match(/===TOP3_JSON_START===\s*([\s\S]*?)\s*===TOP3_JSON_END===/)
     const top5Match = reportContent.match(/===TOP5_JSON_START===\s*([\s\S]*?)\s*===TOP5_JSON_END===/)
-    if (top5Match) {
+    const jsonMatch = top1Match || top3Match || top5Match
+    if (jsonMatch) {
       try {
-        top5Timings = JSON.parse(top5Match[1])
-        // 從正文中移除 JSON 區塊，保持乾淨
-        reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
+        top5Timings = JSON.parse(jsonMatch[1])
         console.info(`✅ 解析到 ${top5Timings.length} 筆吉時資料`)
       } catch (e) {
-        console.error('Top5 JSON 解析失敗:', e)
-        // 解析失敗仍然要移除 JSON 標記，避免原始 JSON 顯示給客戶
-        reportContent = reportContent.replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '').trim()
+        console.error('吉時 JSON 解析失敗:', e)
       }
     }
+    // 不論解析成功與否、都要移除 TOP1/TOP3/TOP5 JSON 區塊純文字、避免 markers leak 到客戶可見正文
+    reportContent = reportContent
+      .replace(/===TOP1_JSON_START===[\s\S]*?===TOP1_JSON_END===/g, '')
+      .replace(/===TOP3_JSON_START===[\s\S]*?===TOP3_JSON_END===/g, '')
+      .replace(/===TOP5_JSON_START===[\s\S]*?===TOP5_JSON_END===/g, '')
+      .trim()
 
     // Step 4: 存入 Supabase
     const reportResult: Record<string, unknown> = {
@@ -1101,15 +1108,11 @@ ${analyses.length}套系統排盤完整數據：
       reportResult.top5_timings = top5Timings
     }
 
-    const planNames: Record<string, string> = {
-      C: '人生藍圖', D: '心之所惑', G15: '家族藍圖',
-      R: '合否？', E1: '事件擇吉', E2: '月度單盤',
-    }
-    const planName = planNames[planCode] || '命理分析報告'
+    const planName = PLAN_NAMES[planCode] || '命理分析報告'
 
-    // Step 4.5: 生成 PDF（非出門訣方案）
+    // Step 4.5: 生成 PDF（非出門訣方案、E1-E4 全跳過）
     let pdfUrl: string | null = null
-    if (!['E1', 'E2'].includes(planCode)) {
+    if (!isChumenjiPlan(planCode)) {
       try {
         console.info('呼叫 Python API 生成 PDF...')
         // PDF 專用預處理：轉換 Markdown 格式為 PDF 友好格式

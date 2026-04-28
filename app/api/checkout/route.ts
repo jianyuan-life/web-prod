@@ -5,6 +5,7 @@ import crypto from 'crypto'
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { recordEmailSend } from '@/lib/email-send-log'
 import { trackFunnelServer } from '@/lib/funnel-tracker'
+import { PLAN_NAMES } from '@/lib/plan-names'
 
 function getSupabase() {
   return createClient(
@@ -368,13 +369,12 @@ export async function POST(req: NextRequest) {
             .gte('balance', verifiedPointsToUse)
 
           if (!updateErr) {
-            const PLAN_NAMES_PTS: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月度單盤', E3: '月度精選', E4: '年度全運' }
             await supabase.from('point_transactions').insert({
               user_id: pointsUserId,
               type: 'use_checkout',
               amount: -verifiedPointsToUse,
               balance_after: newBalance,
-              description: `${PLAN_NAMES_PTS[planCode] || planCode} 訂單折抵`,
+              description: `${PLAN_NAMES[planCode] || planCode} 訂單折抵`,
               reference_id: fakeSessionId,
             })
             console.info(`✅ 積分全額折抵扣除：${pointsUserId} -${verifiedPointsToUse}點，餘額 ${newBalance}`)
@@ -384,7 +384,6 @@ export async function POST(req: NextRequest) {
 
       // 免費方案也發訂單確認信
       if (customerEmail) {
-        const PLAN_NAMES: Record<string, string> = { C: '人生藍圖', D: '心之所惑', G15: '家族藍圖', R: '合否？', E1: '事件擇吉', E2: '月度單盤', E3: '月度精選', E4: '年度全運' }
         const planName = PLAN_NAMES[planCode] || planCode
         const freeSubject = verifiedCouponCode
           ? `已收到您的訂單 — ${planName}（優惠碼 ${verifiedCouponCode}）`

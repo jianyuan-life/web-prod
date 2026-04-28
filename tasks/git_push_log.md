@@ -5,6 +5,17 @@
 
 ---
 
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.10 | 9c2c978b
+- 動作:round 5 IA 抓出 3 P0(19 處 PLAN_NAMES 散落 / 4 個 OG 缺中文字體 / E2 fallback TOP5 vs TOP1 衝突)+ 4 P1 全修
+- 改動範圍:33 檔、+122 / -99 行(2 個新檔:lib/plan-names.ts + lib/og-font.ts)
+- 為什麼:抽常數集中管理、消除技術債(未來加方案只改一處)+ 修 OG 中文 □ 框框 + 修 E2 fallback prompt 對齊 v2.0
+- type-check:✅ 0 error
+- 4 LLM round 5: QA 97/100 ✓ / Codex PASS ✓ / IA 78 → 預期 round 6 ≥ 95 / Gemini 重跑中
+- Vercel deploy:⏳ 等中
+- 老闆驗收:⏳
+
+---
+
 ### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.9 | c68472f0
 - 動作:round 4 真審 P0/P1/P2 全修(QA 88→預期 95+ / IA 72→預期 95+ / Codex P2 修)— 首頁 $39 殘留 + 後台 3 處「月盤出門訣」+ pricing OG 4→8 方案 + generate-report E2 legacy prompt 對齊 v2.0 + steps 註解全額退款 + PLAN_NAMES_PTS 補 E3/E4 + ctaRefund → ctaSupport
 - 改動範圍:16 檔、+70 / -61 行
