@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.6.7（2026-04-28 Wave 5 Top 10 #4: 14 biorhythm Hines 1998 PMID academic_reference + steps.ts 加 (4) metaFlags 注入 school_info + academic_reference 跨 15 calculator — 配合 fortune-research biorhythm.py 加結構化 PMID 9775660 引用(《Comprehensive review of biorhythm theory》Hines T.M. 1998 Psychological Reports 83(1):19-64、134/35/99 數字、§1/§4/§5 critique sections、Codex+Gemini 連網實測 PMID 真);跨 4 LLM 雙輪 round 2 QA 98 + IA 95 全 PASS、補強法務 disclaimer 鏈)
+**網站版本：** v5.6.8（2026-04-28 Wave 5 Top 10 #5: 03 奇門 R141 八節旺相 raw_data 注入 + plan-prompts.ts 雙向 sync_with 標記 — 配合 fortune-research qimen_dunjia.py 加 raw_data['school_info']['bajie_wangfei_table'] 8 節氣 wang/fei 對照(《統宗》卷一 L122-123、Gemini Search Grounding 驗古籍真實);跨 4 LLM round 1 QA 99 + IA 68 P0 修(school_info 子鍵走既有白名單、metaFlags 不需改) + round 2 修 sync_with 雙向標記、不改打分加權避免翻盤)
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 
