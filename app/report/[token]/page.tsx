@@ -20,6 +20,7 @@ import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/R
 import ScrollSpy from '@/components/ScrollSpy'
 import SystemsRadar from '@/components/report/SystemsRadar'
 import WuxingEnergyBars from '@/components/report/WuxingEnergyBars'
+import ChumenjiTop3Bar from '@/components/report/ChumenjiTop3Bar'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
 import {
@@ -2215,6 +2216,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
               </CollapsibleSection>
             ))}
+          </div>
+        )}
+
+        {/* v5.6.10 R5-3:出門訣 Top3 能量強度條(E1 顯示、E2/E3/E4 跳過、IA P1) */}
+        {report.plan_code === 'E1' && top5Timings.length >= 2 && (
+          <div className="no-print">
+            <ChumenjiTop3Bar timings={top5Timings as { score?: number; title?: string; date?: string; time_start?: string; time_end?: string; direction?: string; shichen?: string; confidence?: string }[]} />
           </div>
         )}
 
