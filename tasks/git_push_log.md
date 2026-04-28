@@ -5,6 +5,20 @@
 
 ---
 
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.14 | 84afcf7d
+- 動作:IA round 7 8 P0 全清:① 補 E3/E4 fallback prompt(防 fallback 到 C「人生藍圖」、$89/$279 客戶拿錯內容)② getEmailCta E3/E4 補 ③ 7 處 ['E1','E2','E3','E4'] / inline planNames + 廢棄 Y / cron/followup-email / ReportClientButtons / pdf-download / jamie/accounting 全清
+- 改動範圍:9 檔、+87 / -31 行
+- type-check:✅ 0 error
+- 老闆驗收:⏳
+
+### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.13 | 41ea65f8
+- 動作:QA round 7 P0 全清(5 處 ['E1','E2'] 漏改 + 後台 6 方案 hardcode 吃 E3/E4 營收)+ 主動全 grep 同類 pattern(根治越修分數越低)
+- 改動範圍:12 檔、+49 / -20 行
+- production code 已 0 inline PLAN_NAMES dict 殘留
+- type-check:✅ 0 error
+
+---
+
 ### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.12 | aaeeeeef
 - 動作:Codex + Gemini round 6 抓 P0(@vercel/og 不支援 woff2)+ E2 字數閘門寬容
 - 改動範圍:5 檔、+20 / -12 行

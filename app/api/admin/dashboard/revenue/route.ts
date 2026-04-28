@@ -93,19 +93,20 @@ export async function GET(req: NextRequest) {
       trendMap[bucket]['other'] = (trendMap[bucket]['other'] || 0) + amt
     }
   }
+  // v5.7.15:trend response 用 PLAN_CODES 動態建構(原 hardcode 6 方案、E3/E4 數據在 trendMap 累加但被 trend response 丟掉、Codex round 8 P2)
   const trend = Object.entries(trendMap)
-    .map(([bucket, v]) => ({
-      bucket,
-      total: Math.round(v.total * 100) / 100,
-      C: Math.round((v['C'] || 0) * 100) / 100,
-      D: Math.round((v['D'] || 0) * 100) / 100,
-      G15: Math.round((v['G15'] || 0) * 100) / 100,
-      R: Math.round((v['R'] || 0) * 100) / 100,
-      E1: Math.round((v['E1'] || 0) * 100) / 100,
-      E2: Math.round((v['E2'] || 0) * 100) / 100,
-      other: Math.round((v['other'] || 0) * 100) / 100,
-    }))
-    .sort((a, b) => a.bucket.localeCompare(b.bucket))
+    .map(([bucket, v]) => {
+      const row: Record<string, string | number> = {
+        bucket,
+        total: Math.round(v.total * 100) / 100,
+        other: Math.round((v['other'] || 0) * 100) / 100,
+      }
+      for (const code of PLAN_CODES) {
+        row[code] = Math.round((v[code] || 0) * 100) / 100
+      }
+      return row
+    })
+    .sort((a, b) => String(a.bucket).localeCompare(String(b.bucket)))
 
   // ==== 方案銷售排行 ====
   const planStats: Record<string, { count: number; revenue: number; unique_customers: Set<string> }> = {}

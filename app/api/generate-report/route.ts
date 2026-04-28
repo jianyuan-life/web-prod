@@ -1137,18 +1137,33 @@ ${analyses.length}套系統排盤完整數據：
     }
 
     // Step 3.5: 解析出門訣吉時 JSON（E1/E2/E3/E4 方案）
-    // v5.7.10:E2 v2.0 改用 TOP1_JSON 單月 1 盤、E1 用 TOP3_JSON Top3 吉時、舊版用 TOP5_JSON、parser 三家兼容(對齊主流程 plan-prompts.ts)
-    let top5Timings = null
-    const top1Match = reportContent.match(/===TOP1_JSON_START===\s*([\s\S]*?)\s*===TOP1_JSON_END===/)
+    // v5.7.10:E2 v2.0 用 TOP1_JSON 單月 1 盤、E1 用 TOP3_JSON Top3 吉時、舊版 TOP5_JSON、parser 三家兼容
+    // v5.7.15:E3 fallback prompt 要求 8 個 TOP1_JSON、parser 改 matchAll 抓全部、合併成單一 array(Codex round 8 P2)
+    let top5Timings: unknown[] | null = null
+    const top1Matches = Array.from(reportContent.matchAll(/===TOP1_JSON_START===\s*([\s\S]*?)\s*===TOP1_JSON_END===/g))
     const top3Match = reportContent.match(/===TOP3_JSON_START===\s*([\s\S]*?)\s*===TOP3_JSON_END===/)
     const top5Match = reportContent.match(/===TOP5_JSON_START===\s*([\s\S]*?)\s*===TOP5_JSON_END===/)
-    const jsonMatch = top1Match || top3Match || top5Match
-    if (jsonMatch) {
+    if (top1Matches.length > 0) {
       try {
-        top5Timings = JSON.parse(jsonMatch[1])
-        console.info(`✅ 解析到 ${top5Timings.length} 筆吉時資料`)
+        // 多個 TOP1_JSON 區塊(E3 預期 8 個)、合併成單一 array
+        const merged: unknown[] = []
+        for (const m of top1Matches) {
+          const parsed = JSON.parse(m[1])
+          if (Array.isArray(parsed)) merged.push(...parsed)
+          else merged.push(parsed)
+        }
+        top5Timings = merged
+        console.info(`✅ 解析到 ${merged.length} 筆吉時資料(來自 ${top1Matches.length} 個 TOP1_JSON 區塊)`)
       } catch (e) {
-        console.error('吉時 JSON 解析失敗:', e)
+        console.error('TOP1 JSON 解析失敗:', e)
+      }
+    } else if (top3Match || top5Match) {
+      const m = top3Match || top5Match!
+      try {
+        top5Timings = JSON.parse(m[1])
+        console.info(`✅ 解析到 ${(top5Timings as unknown[]).length} 筆吉時資料`)
+      } catch (e) {
+        console.error('TOP3/5 JSON 解析失敗:', e)
       }
     }
     // 不論解析成功與否、都要移除 TOP1/TOP3/TOP5 JSON 區塊純文字、避免 markers leak 到客戶可見正文

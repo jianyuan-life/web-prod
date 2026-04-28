@@ -15,7 +15,10 @@ import { PLAN_NAMES, ALL_PLAN_CODES } from '@/lib/plan-names'
 
 const PLAN_COLORS: Record<string, string> = {
   C: '#4E9AC7', D: '#10b981', G15: '#f59e0b',
-  R: '#ef4444', E1: '#8b5cf6', E2: '#ec4899', other: '#6b7280',
+  R: '#ef4444', E1: '#8b5cf6', E2: '#ec4899',
+  // v5.7.15:Gemini round 8 P2 — 補 E3/E4 顏色(原 fallback 到 #4E9AC7 單色、無區隔)
+  E3: '#06b6d4', E4: '#facc15',
+  other: '#6b7280',
 }
 
 type Snapshot = {
