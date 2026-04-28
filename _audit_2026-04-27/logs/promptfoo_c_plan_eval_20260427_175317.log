@@ -1,0 +1,48 @@
+Cache is disabled.
+Starting evaluation eval-CKJ-2026-04-27T09:53:20
+Running 1 test cases (up to 1 at a time)...
+Grouping model-graded assertions by provider to minimize local-model reload overhead.
+temperature is deprecated on Claude Opus 4.7 and will be omitted. Remove temperature from your config (or unset ANTHROPIC_TEMPERATURE) to silence this warning.
+Anthropic Messages API call error: Connection error.
+
+[90m┌────────────────────────────────────────[39m[90m┬────────────────────────────────────────[39m[90m┬────────────────────────────────────────┐[39m
+[90m│[39m[1m[34m birth_data                             [39m[22m[90m│[39m[1m[34m client_name                            [39m[22m[90m│[39m[1m[34m [anthropic:messages:claude-opus-4-7]   [39m[22m[90m│[39m
+[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m 你是鑑源命理平台的首席命理顧問。為付…  [39m[22m[90m│[39m
+[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m Call 3 集大成段。                      [39m[22m[90m│[39m
+[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m ═════════════════════════════════════… [39m[22m[90m│[39m
+[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m 🔴 v5.5 雙軌策略(P0-7、最高優先)       [39m[22m[90m│[39m
+[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m ═════════════════════════════════════… [39m[22m[90m│[39m
+[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m 本段同時服務:                          [39m[22m[90m│[39m
+[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m                                        [39m[22m[90m│[39m[1m[34m - *...                                 [39m[22m[90m│[39m
+[90m├────────────────────────────────────────[39m[90m┼────────────────────────────────────────[39m[90m┼────────────────────────────────────────┤[39m
+[90m│[39m 【命主】何宣逸(男)、1990 年 1 月 15 日 [90m│[39m 何宣逸                                 [90m│[39m [ERROR] API call error: Connection     [90m│[39m
+[90m│[39m 14:30 出生於台北                       [90m│[39m                                        [90m│[39m error.                                 [90m│[39m
+[90m│[39m 【八字】己巳 / 丁丑 / 戊午 /           [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 己未(戊土日主、火土旺)                 [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 【紫微】命宮天機巨門在卯、身宮天梁在…  [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 【奇門】今日值符天英 /                 [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 值使景門、年命宮坤二                   [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 【生命靈數】命運數 5 / 缺數 5(★        [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 經典悖論案例)                          [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 【人類圖】Manifesting Generator        [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 6/2(角色 6/2 顯示生產者)               [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m 【吠陀】Cancer Lagna、Moon in          [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m│[39m Scorpio(月亮在天蠍、深沉敏感)...       [90m│[39m                                        [90m│[39m                                        [90m│[39m
+[90m└────────────────────────────────────────[39m[90m┴────────────────────────────────────────[39m[90m┴────────────────────────────────────────┘[39m
+✓ Eval complete (ID: eval-CKJ-2026-04-27T09:53:20)
+
+» View results: promptfoo view
+» Share with your team: https://promptfoo.app
+» Feedback: https://promptfoo.dev/feedback
+
+
+Results:
+  0 passed (0%)
+  0 failed (0%)
+  ✗ 1 error (100%)
+Duration: 3m 2s (concurrency: 1)
+
+
+There were some errors during the operation. See logs for more details.
+Error log: C:\Users\Administrator\.promptfoo\logs\promptfoo-error-2026-04-27_09-53-19-867Z.log
+Debug log: C:\Users\Administrator\.promptfoo\logs\promptfoo-debug-2026-04-27_09-53-19-867Z.log

@@ -18,10 +18,10 @@ export const EN_PLAN_NAMES: Record<string, string> = {
   '家族藍圖': 'Family Blueprint',
   '合否？': 'Compatibility Report',
   '合否': 'Compatibility Report',
-  '事件出門訣': 'Event Direction Guide',
-  '月度出門訣': 'Monthly Direction',
-  '週度補運': 'Weekly Fortune Boost',
-  '年度方案': 'Annual Blueprint',
+  '事件擇吉': 'Event Direction Guide',
+  '月度單盤': 'Monthly Direction',
+  '月度精選': 'Weekly Fortune Boost',
+  '年度全運': 'Annual Blueprint',
 }
 
 // 14 套系統名 / 派別 / 經典古籍
@@ -127,7 +127,7 @@ export const EN_UI: Record<string, string> = {
   '源自《滴天髓》《窮通寶鑑》等經典古籍': 'from classics such as Di Tian Sui and Qiong Tong Bao Jian',
   '隱私保護': 'Privacy protected',
   '資料加密傳輸與儲存': 'Encrypted transmission and storage',
-  '6 種方案任你選擇': '6 plans to choose from',
+  '8 種方案任你選擇': '8 plans to choose from',
   '起': 'from',
 
   // Differences
@@ -144,7 +144,7 @@ export const EN_UI: Record<string, string> = {
   '人為偏見影響判斷': 'Human bias affects judgement',
   '最多 14 套系統交叉分析': 'Up to 14 systems cross-analyzed',
   '44,421+ 條規則客觀運算': '44,421+ rules applied objectively',
-  '最低 $39 美金起': 'Starting from $39 USD',
+  '最低 $29 美金起': 'Starting from $29 USD',
   '報告約 30-60 分鐘完成': 'Report ready in ~30–60 minutes',
   '規則驅動，排盤可驗證': 'Rule-driven, charts are verifiable',
   '套公式的罐頭回覆': 'Formulaic canned responses',
@@ -230,7 +230,7 @@ export const EN_UI: Record<string, string> = {
   '免費體驗': 'Free Trial',
   '輸入出生資料，即時查看八字排盤與性格分析': 'Enter your birth data for an instant Bazi chart and personality analysis',
   '選擇方案': 'Choose a Plan',
-  '6種方案，從個人到家庭，從 $39 起': '6 plans from personal to family — starting at $39',
+  '8 種方案，從個人到家庭，從 $29 起': '8 plans from personal to family — starting at $29',
   '填寫資料': 'Provide Your Data',
   '姓名、出生日期時間、性別，簡單三步': 'Name, birth date/time and gender — just three simple steps',
   '深度分析': 'Deep Analysis',
@@ -241,9 +241,9 @@ export const EN_UI: Record<string, string> = {
   // Pricing section on home
   '方案': 'Plans',
   '選擇適合您的方案': 'Choose the plan that fits you',
-  '從 $39 起，每份報告都包含網頁展示 + PDF 永久保存': 'From $39 — every report includes a web view + permanent PDF',
+  '從 $29 起，每份報告都包含網頁展示 + PDF 永久保存': 'From $29 — every report includes a web view + permanent PDF',
   '還有家庭、關係、出門訣方案': 'There are also Family, Relationship, and Direction Guide plans',
-  '查看全部 6 種方案與詳細介紹': 'View all 6 plans in detail',
+  '查看全部 8 種方案與詳細介紹': 'View all 8 plans in detail',
 
   // Direction guide promo
   '鑒源特色': 'JianYuan Signature',
@@ -253,8 +253,8 @@ export const EN_UI: Record<string, string> = {
   '命理分析告訴你「你是誰」，出門訣告訴你「怎麼做」。源自《煙波釣叟歌》與《奇門遁甲統宗》的千年擇吉術，系統以 25 層評分體系精算每個時辰八方位的能量——三吉門、三奇、八神、九星旺衰、天地盤干生剋、九遁格局，再套入您的個人年命宮驗證，找出最適合您的吉時、方位與信心指數。在指定時間朝吉方走出 500 公尺，靜坐接氣 40 分鐘，讓天時地利的能量灌注到您身上。':
     'Metaphysics tells you who you are; the Direction Guide tells you how to act. Drawing on a 1,000-year-old day-picking art from Yan Bo Diao Sou Ge and Qi Men Dun Jia Tong Zong, a 25-layer scoring system evaluates the energy of every two-hour period across all eight directions — three auspicious gates, three wonders, eight spirits, nine stars, heaven-earth stem interactions, nine escapes — and cross-checks it against your personal Life Palace to find your best time, direction and confidence level. At the appointed hour, walk 500m toward the auspicious direction and sit in meditation for 40 minutes to draw in the timing of heaven and earth.',
   '探索出門訣': 'Explore Direction Guides',
-  '事件出門訣 $59': 'Event Direction $59',
-  '月度出門訣 $29': 'Monthly Direction $29',
+  '事件擇吉 $59': 'Event Direction $59',
+  '月度單盤 $29': 'Monthly Direction $29',
 
   // Founder section
   '為什麼是鑒源': 'Why JianYuan',
@@ -308,7 +308,7 @@ export const EN_UI: Record<string, string> = {
     'Life Blueprint is a full analysis — deploying all fourteen systems to cover personality, career, wealth, relationships, health, and major life cycles. Inner Quest focuses on the single question you care most about, using only the most relevant systems for a deep dive.',
   '人生藍圖和心之所惑有什麼差別？': 'What’s the difference between Life Blueprint and Inner Quest?',
   '四個出門訣方案怎麼選？': 'How do I choose among the four Direction Guide plans?',
-  'E1 事件出門訣（$59）針對單一重要事件推 Top3 吉時；E2 月度出門訣（$29）當月購買當月執行、晦日 21:00 前截止；E3 週度補運（$89）主題精選用神、4 週共 8 個吉時；E4 年度方案（$279）年盤＋12 月盤全年佈局、立春前 30 天限時。':
+  'E1 事件擇吉（$59）針對單一重要事件推 Top3 吉時；E2 月度單盤（$29）當月購買當月執行、晦日 21:00 前截止；E3 月度精選（$89）主題精選用神、4 週共 8 個吉時；E4 年度全運（$279）年盤＋12 月盤全年佈局、立春前 30 天限時。':
     'E1 Event Direction Guide ($59) picks Top3 auspicious hours for one important event; E2 Monthly Direction ($29) must be purchased and executed in the same lunar month, cut-off at 21:00 on the last lunar day; E3 Weekly Fortune Boost ($89) picks a theme and gives 8 auspicious hours across 4 weeks; E4 Annual Blueprint ($279) covers a full year with an annual chart plus 12 monthly charts, sold only in the 30 days before Lichun.',
   '不確定出生時間怎麼辦？': 'What if I’m not sure of my birth time?',
   '可以選擇最接近的時辰。即使時間不完全精確，十四套系統中有多套不依賴精確時辰（如姓名學、數字能量學、生肖運勢等），仍能提供有價值的分析。':
@@ -331,12 +331,12 @@ export const EN_UI: Record<string, string> = {
   '感情/合夥：': 'Romance / partnership: ',
   '「合否？」（$59）兩人命理交叉分析，看你們合不合。': 'Compatibility Report ($59) — a two-person cross-analysis to see how well you match.',
   '單一重要事件：': 'Single important event: ',
-  '「事件出門訣」（$59）針對一個事件推出 Top3 吉時方案。': 'Event Direction Guide ($59) — Top 3 auspicious times for one event.',
+  '「事件擇吉」（$59）針對一個事件推出 Top3 吉時方案。': 'Event Direction Guide ($59) — Top 3 auspicious times for one event.',
   '每月補運：': 'Monthly fortune boost: ',
-  '先試「月度出門訣」（$29）當月執行，認可後升級「週度補運」（$89）持續補運。':
+  '先試「月度單盤」（$29）當月執行，認可後升級「月度精選」（$89）持續補運。':
     'Start with Monthly Direction ($29) for one month; once satisfied, upgrade to Weekly Fortune Boost ($89) for ongoing boost.',
   '全年擇吉：': 'Year-long day-picking: ',
-  '「年度方案」（$279）立春前 30 天限時販售，全年重要決策一次搞定。':
+  '「年度全運」（$279）立春前 30 天限時販售，全年重要決策一次搞定。':
     'Annual Blueprint ($279) — limited to the 30 days before Lichun, handling every major decision of the year at once.',
 
   // Final CTA

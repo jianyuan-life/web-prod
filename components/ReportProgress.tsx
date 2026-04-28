@@ -41,9 +41,9 @@ const PLAN_CONFIG: Record<string, { systems: number; minMinutes: number; maxMinu
   D:   { systems: 0,  minMinutes: 25, maxMinutes: 45, label: '深度主題分析' },
   G15: { systems: 14, minMinutes: 40, maxMinutes: 70, label: '家族命理分析' },
   R:   { systems: 0,  minMinutes: 30, maxMinutes: 50, label: '合盤關係分析' },
-  E1:  { systems: 8,  minMinutes: 35, maxMinutes: 55, label: '事件出門訣排算' },
+  E1:  { systems: 8,  minMinutes: 35, maxMinutes: 55, label: '事件擇吉排算' },
   E2:  { systems: 8,  minMinutes: 40, maxMinutes: 65, label: '月度 360 時辰排算' },
-  E3:  { systems: 8,  minMinutes: 20, maxMinutes: 40, label: '週度補運 8 吉時排算' },
+  E3:  { systems: 8,  minMinutes: 20, maxMinutes: 40, label: '月度精選 8 吉時排算' },
   E4:  { systems: 8,  minMinutes: 40, maxMinutes: 70, label: '年度 + 12 月盤排算' },
 }
 

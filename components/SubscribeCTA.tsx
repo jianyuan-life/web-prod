@@ -6,7 +6,7 @@ interface SubscribeCTAProps {
 
 /**
  * 合篇末尾的出門訣導流 CTA — 一次性購買，不是月費訂閱
- * 產品：E1 事件出門訣 $89（單次事件）／E2 月度出門訣 $99（單次月盤）
+ * 產品：E1 事件擇吉 $59（單次事件 Top3 吉時）／E2 月度單盤 $29（月家奇門古法、單月 1 盤、農曆晦日 22:20 執行）
  */
 export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
   return (
@@ -67,7 +67,7 @@ export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
             style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)' }}
           >
             <div className="text-sm font-semibold mb-1" style={{ color: '#e6d89a' }}>
-              事件出門訣 · $89
+              事件擇吉 · $59
             </div>
             <div className="text-xs leading-6" style={{ color: 'rgba(255,255,255,0.75)' }}>
               為你某一件重要事件（求職／簽約／談判／告白／考試等）精算 Top 3 吉時 + 吉方
@@ -79,10 +79,10 @@ export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
             style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)' }}
           >
             <div className="text-sm font-semibold mb-1" style={{ color: '#e6d89a' }}>
-              月度出門訣 · $99
+              月度單盤 · $29
             </div>
             <div className="text-xs leading-6" style={{ color: 'rgba(255,255,255,0.75)' }}>
-              為你精算當月 4 週的吉時地圖 + 每週方位指南 + 建議色／忌方忌日
+              月家奇門古法精算當月主吉時 + 主吉方（農曆晦日 22:20–23:00 執行 · 跨子時接新月氣）
             </div>
           </div>
         </div>

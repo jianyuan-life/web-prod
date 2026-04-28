@@ -6,11 +6,12 @@
 description: 鑑源 v5.4.0 第二階段 prompt evaluation smoke test
 
 providers:
-  - id: openai:chat:gpt-4o-mini
+  - id: google:gemini-2.5-flash
     config:
-      apiKey: ${OPENAI_API_KEY}
-      max_tokens: 800
-      temperature: 0.3
+      apiKey: ${GEMINI_API_KEY}
+      generationConfig:
+        maxOutputTokens: 800
+        temperature: 0.3
 
 prompts:
   - |

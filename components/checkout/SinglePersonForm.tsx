@@ -39,7 +39,7 @@ interface SinglePersonFormProps {
   // E1/E2 時段
   eSelectedBlocks: boolean[]
   setESelectedBlocks: (v: boolean[]) => void
-  // E3 週度補運主題（8 選 1-3、順序即 TOP 1/2/3）
+  // E3 月度精選主題（8 選 1-3、順序即 TOP 1/2/3）
   e3SelectedTopics?: string[]
   setE3SelectedTopics?: React.Dispatch<React.SetStateAction<string[]>>
   // 備注
@@ -255,10 +255,10 @@ export default function SinglePersonForm({
       )}
 
       {/* v5.3.59 規格書對齊：
-          - E1 事件出門訣：勾選候選時辰（最少 1 個）
-          - E2 月度出門訣：極簡、不勾時辰（引擎自動給當月主吉時）
-          - E3 週度補運：勾選候選時辰（最少 3 個）+ 主題選擇（8 類選 1-3）
-          - E4 年度方案：極簡、不勾時辰（引擎自動給年盤+12月盤） */}
+          - E1 事件擇吉：勾選候選時辰（最少 1 個）
+          - E2 月度單盤：極簡、不勾時辰（引擎自動給當月主吉時）
+          - E3 月度精選：勾選候選時辰（最少 3 個）+ 主題選擇（8 類選 1-3）
+          - E4 年度全運：極簡、不勾時辰（引擎自動給年盤+12月盤） */}
       {/* E3 主題選擇（8 選 1-3、TOP 1/2/3 按點選順序）*/}
       {planCode === 'E3' && (
         <ThemePicker selectedTopics={e3SelectedTopics} onChange={setE3SelectedTopics} />
@@ -272,7 +272,7 @@ export default function SinglePersonForm({
       )}
       {planCode === 'E3' && (
         <p className="text-[10px] text-gold/60 mt-1">
-          ⓘ E3 週度補運需勾選至少 3 個時辰（候選池要 84 個以上才能挑 Top 2 × 4 週）
+          ⓘ E3 月度精選需勾選至少 3 個時辰（候選池要 84 個以上才能挑 Top 2 × 4 週）
         </p>
       )}
       {(planCode === 'E2' || planCode === 'E4') && (

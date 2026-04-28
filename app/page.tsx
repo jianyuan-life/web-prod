@@ -377,7 +377,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {[
               { step: '壹', title: '免費體驗', desc: '輸入出生資料，即時查看八字排盤與性格分析' },
-              { step: '貳', title: '選擇方案', desc: '8 種方案 · 4 大類別、從 $39 起' },
+              { step: '貳', title: '選擇方案', desc: '8 種方案 · 4 大類別、從 $29 起' },
               { step: '參', title: '填寫資料', desc: '姓名、出生日期時間、性別，簡單三步' },
               { step: '肆', title: '深度分析', desc: '專業規則逐系統交叉分析' },
               { step: '伍', title: '查看報告', desc: '線上閱讀 + PDF 永久保存，隨時回顧' },
@@ -402,7 +402,7 @@ export default function HomePage() {
           <h2 className="text-2xl md:text-3xl text-center mb-2 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             選擇適合您的方案
           </h2>
-          <p className="text-center text-text-muted mb-12 text-sm">從 $39 起，每份報告都包含網頁展示 + PDF 永久保存</p>
+          <p className="text-center text-text-muted mb-12 text-sm">從 $29 起，每份報告都包含網頁展示 + PDF 永久保存</p>
           <PricingCards />
           <p className="text-center mt-8 text-sm text-text-muted">
             還有家庭、關係、出門訣方案 &middot; <Link href="/pricing" className="text-gold hover:underline">查看全部 8 種方案與詳細介紹</Link>

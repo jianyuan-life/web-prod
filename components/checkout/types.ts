@@ -35,10 +35,10 @@ export const PLANS: Record<string, { name: string; price: number; systems: numbe
   D: { name: '心之所惑', price: 39, systems: 0 },
   G15: { name: '家族藍圖', price: 59, systems: 14 },
   R: { name: '合否？', price: 59, systems: 0 },
-  E1: { name: '事件出門訣', price: 59, systems: 1 },
-  E2: { name: '月度出門訣', price: 29, systems: 1 },
-  E3: { name: '週度補運', price: 89, systems: 1 },
-  E4: { name: '年度方案', price: 279, systems: 1 },
+  E1: { name: '事件擇吉', price: 59, systems: 1 },
+  E2: { name: '月度單盤', price: 29, systems: 1 },
+  E3: { name: '月度精選', price: 89, systems: 1 },
+  E4: { name: '年度全運', price: 279, systems: 1 },
 }
 
 
@@ -119,7 +119,7 @@ export interface CheckoutFormState {
 
 export const D_TOPICS = ['財運', '事業', '感情', '健康', '學業', '搬家', '問事（其他）']
 
-// E3 週度補運主題（可選 1-3 個）—對應後端 topic_yongshen_map.py 的 8 類
+// E3 月度精選主題（可選 1-3 個）—對應後端 topic_yongshen_map.py 的 8 類
 export const E3_TOPICS: Array<{ code: string; label: string; desc: string }> = [
   { code: 'career', label: '事業運', desc: '升遷、創業、專案推進' },
   { code: 'wealth', label: '財運', desc: '投資、求財、業務談判' },
@@ -131,7 +131,7 @@ export const E3_TOPICS: Array<{ code: string; label: string; desc: string }> = [
   { code: 'family', label: '家庭', desc: '家人關係、家運興旺' },
 ]
 
-// E1 事件出門訣 — 事件類型選單
+// E1 事件擇吉 — 事件類型選單
 // v5.3.93：砍重複「談判」→「談判/協商」、新增手術/訴訟/表白三類情感剛性事件
 // 對應奇門遁甲用神：財運→生/天財、貴人→德/九天、談判/簽約→開/杜、搬家→杜/死、求醫→天醫/天任、考試/面試→文/九地、求姻緣→天喜/紅鸞、旅行出行→開/驛馬、訴訟→景/玄武、手術→天醫/傷、表白→天喜/紅鸞
 export const E1_EVENT_TYPES = [

@@ -1147,7 +1147,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   })()
   let top5Timings = report.report_result?.top5_timings || []
   const isChumenji = ['E1', 'E2', 'E3', 'E4'].includes(report.plan_code)
-  const isE3 = report.plan_code === 'E3'  // v5.3.63 週度補運 8 卡片格式
+  const isE3 = report.plan_code === 'E3'  // v5.3.63 月度精選 8 卡片格式
   // v5.3.64 — E3 按日期+時間升序排列（客戶期待時間軸順序、而非分數排序）
   if (isE3 && top5Timings.length > 0) {
     top5Timings = [...top5Timings].sort((a, b) => {
@@ -2716,7 +2716,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     了解出門訣方案
                   </a>
                   <span className="text-xs text-text-muted/60 mt-2 sm:mt-0 sm:self-center">
-                    事件出門訣 $59 / 月度出門訣 $29
+                    事件擇吉 $59 / 月度單盤 $29
                   </span>
                 </div>
               </div>

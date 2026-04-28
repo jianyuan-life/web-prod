@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.6.9（2026-04-28 Wave 5 Top 10 #6: 03 奇門 R151 建除十二神日級過濾 raw_data 注入 + plan-prompts.ts L181-194 R151 條件指令 — 配合 fortune-research qimen_dunjia.py 加 raw_data['school_info']['jianchu_check'](建/除/滿/平/定/執/破/危/成/收/開/閉 12 神序列、auspicious_days [除/滿/定/成/收/開] / inauspicious_days [破/危/閉] / neutral_days [建/平/執]、傳統擇日通則 +《選擇通書》);Combined QA+IA 96/100 PASS;遵循 #5 經驗教訓:plan-prompts.ts 同步加條件指令避免 AI 看不到 = 白做)
+**網站版本：** v5.7.8（2026-04-28 退費邏輯全清 + 8 方案命名統一 + 4 LLM 真實審查 ≥95 標準 — TrustBar/terms/faq/footer/PurchaseNoticeModal「不支援退款 + 4 大保證」、刪 /refund 頁;命名 E1=事件擇吉/E2=月度單盤/E3=月度精選/E4=年度全運 全站 sed sweep + JSX text 補修(IA Agent 抓 11 處)、checkout/route.ts L22-25 註解原名復原、SubscribeCTA $89→$59/$99→$29 + E2 月家奇門古法 v2 描述、blog.ts 對比表、i18n.ts/i18n-en.ts「6 種方案 → 8 種方案 + $39 起 → $29 起」;AggregateOffer lowPrice 29/highPrice 279/offerCount 8;workflows/steps.ts 移除 refundUrl 改 mailto + 「客服協助補開新單」)
 **線上網址：** https://jianyuan.life
 **Vercel 專案：** fortune-reports（對應 backup901012-stack/qimen-chumenji）
 

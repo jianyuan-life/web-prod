@@ -136,7 +136,7 @@ export default async function Image() {
                 alignItems: 'center',
               }}
             >
-              從 $39 起
+              從 $29 起
             </div>
           </div>
         </div>

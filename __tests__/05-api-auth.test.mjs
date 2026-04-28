@@ -146,7 +146,8 @@ test('需認證端點必須有 Authorization 或 auth 驗證', () => {
                     content.includes('session_id') ||
                     content.includes('access_token') ||  // v5.4.15:報告 token 認
                     content.includes('admin.getUserById') ||  // v5.4.15:service role 驗 userId(referral/register 用)
-                    content.includes('verifyAccessToken')
+                    content.includes('verifyAccessToken') ||
+                    content.includes('getAuthUserId')  // v5.4.15:lib/auth-helper.ts 統一 user id 取得(family-members / points 等)
     if (!hasAuth) {
       unprotected.push(getRelativePath(file))
     }

@@ -8,8 +8,8 @@ const PLAN_NAME_MAP: Record<string, string> = {
   D: '心之所惑',
   G15: '家族藍圖',
   R: '合否',
-  E1: '事件出門訣',
-  E2: '月度出門訣',
+  E1: '事件擇吉',
+  E2: '月度單盤',
 }
 
 export function buildPdfDownloadUrl(pdfUrl: string, planCode?: string, clientName?: string): string {

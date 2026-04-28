@@ -150,7 +150,7 @@ export interface StructuredReportG15 {
   raw_markdown?: string
 }
 
-/** E1 方案（事件出門訣） */
+/** E1 方案（事件擇吉） */
 export interface StructuredReportE1 {
   schema_version: 'v2'
   plan_code: 'E1'
@@ -171,7 +171,7 @@ export interface StructuredReportE1 {
   raw_markdown?: string
 }
 
-/** E2 方案（月度出門訣） */
+/** E2 方案（月度單盤） */
 export interface StructuredReportE2 {
   schema_version: 'v2'
   plan_code: 'E2'

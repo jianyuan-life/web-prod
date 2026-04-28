@@ -311,7 +311,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {revenue && (
           <div className="bg-[#141c2e] rounded-xl border border-white/5 p-5">
-            <h2 className="text-base font-semibold text-white mb-3">E2 月度出門訣 — 續訂留存</h2>
+            <h2 className="text-base font-semibold text-white mb-3">E2 月度單盤 — 續訂留存</h2>
             <p className="text-[11px] text-gray-400 mb-4">以首次購買者為 100%，計算第 2/3/6/12 個月仍有回購的比例</p>
             <div className="grid grid-cols-4 gap-3">
               {(['m2', 'm3', 'm6', 'm12'] as const).map(k => {

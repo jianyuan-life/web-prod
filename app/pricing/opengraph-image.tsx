@@ -61,7 +61,7 @@ export default async function Image() {
             marginBottom: 40,
           }}
         >
-          個人 · 家庭 · 關係 · 出門訣四大類別、從 $39 起
+          個人 · 家庭 · 關係 · 出門訣四大類別、從 $29 起
         </div>
 
         {/* 4 卡片 grid */}

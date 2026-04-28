@@ -55,7 +55,7 @@ const SHARED_NOTICE = [
 // 各方案專屬須知
 const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; timing?: string }> = {
   E1: {
-    title: '事件出門訣須知',
+    title: '事件擇吉須知',
     items: [
       '針對「單一重要事件」精算 Top3 最佳吉時方案',
       '依事件描述自動匹配 14 大古法事件用神（面試／簽約／求財等）',
@@ -66,7 +66,7 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
     timing: '購買後約 5-10 分鐘即可查看',
   },
   E2: {
-    title: '月度出門訣須知',
+    title: '月度單盤須知',
     items: [
       '當月購買、當月執行、單次計費',
       '月盤古法排盤（立春／節氣換月）',
@@ -77,7 +77,7 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
     timing: '晦日 21:00 前購買屬當月、21:00 後切下月；坐盤接氣須於晦日當晚 22:20 後（亥末子初交替）',
   },
   E3: {
-    title: '週度補運須知',
+    title: '月度精選須知',
     items: [
       '月度計畫——選 1-3 個主題用神（事業／財運／感情／健康／學業／貴人／化解小人／家庭）',
       '4 週每週精算 Top2 吉時、共 8 個最佳時窗',
@@ -88,7 +88,7 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
     timing: '訂閱當月即生效、每 30 天自動續訂',
   },
   E4: {
-    title: '年度方案須知',
+    title: '年度全運須知',
     items: [
       '年盤＋12 個月盤的古法精算、全年擇吉一次到位',
       '立春前 30 天限時販售、錯過等明年',
@@ -285,7 +285,7 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
                   </div>
                   <p className="text-xs text-text leading-[1.7]">
                     古法「一時一盤」原則——月盤須在<strong className="text-red-300">{e2Window.lunar_month_display}</strong>亥子交替接氣才有效、錯過就失效。
-                    <br />若您無法在上述時段配合，建議改購 E3 週度補運（時窗較彈性）或 E1 事件出門訣。
+                    <br />若您無法在上述時段配合，建議改購 E3 月度精選（時窗較彈性）或 E1 事件擇吉。
                   </p>
                 </>
               )}

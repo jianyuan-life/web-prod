@@ -84,7 +84,7 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
     btn_analyze: '開始命理分析',
     btn_analyzing: '深度分析中，請稍候...',
     pricing_title: '方案與定價',
-    pricing_subtitle: '6 種方案，從了解自己到採取行動',
+    pricing_subtitle: '8 種方案，從了解自己到採取行動',
     login_title: '歡迎回來',
     signup_title: '建立帳號',
     footer_disclaimer: '本服務融合傳統命理學與現代科技，分析結果僅供參考，不構成任何醫療、投資或法律建議。',
@@ -233,7 +233,7 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
     btn_analyze: 'Start Analysis',
     btn_analyzing: 'Deep analysis in progress, please wait...',
     pricing_title: 'Plans & Pricing',
-    pricing_subtitle: '6 plans — from knowing yourself to taking action',
+    pricing_subtitle: '8 plans — from knowing yourself to taking action',
     login_title: 'Welcome Back',
     signup_title: 'Create Account',
     footer_disclaimer:

@@ -691,7 +691,7 @@ export async function generateReportWorkflow(reportId: string) {
   }
 
   // Step 3.6: E1/E2/E3 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）
-  // v5.3.62：E3 週度補運也屬純奇門占事派、同禁八字/日主/用神/風水八宅等跨派詞
+  // v5.3.62：E3 月度精選也屬純奇門占事派、同禁八字/日主/用神/風水八宅等跨派詞
   if (planCode === 'E1' || planCode === 'E2' || planCode === 'E3') {
     try {
       const bannedTerms: [RegExp, string][] = [
