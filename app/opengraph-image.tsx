@@ -125,7 +125,7 @@ export default async function Image() {
                 alignItems: 'center',
               }}
             >
-              7 天無條件退費
+              失敗自動重試
             </div>
             <div
               style={{

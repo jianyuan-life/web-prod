@@ -250,7 +250,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <div className="space-y-2 text-text-muted">
                   <Link href="/privacy" className="block hover:text-gold transition-colors">隱私政策</Link>
                   <Link href="/terms" className="block hover:text-gold transition-colors">使用條款</Link>
-                  <Link href="/refund" className="block hover:text-gold transition-colors">退費政策</Link>
                 </div>
               </div>
               <div>

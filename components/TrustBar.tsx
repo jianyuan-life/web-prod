@@ -27,7 +27,7 @@ export default function TrustBar({ variant = 'pricing' }: { variant?: Variant })
           <ShieldIcon /> Stripe 加密付款
         </span>
         <span className="flex items-center gap-1">
-          <RefundIcon /> 7 天不滿意退費
+          <RefundIcon /> 失敗自動重試
         </span>
         <span className="flex items-center gap-1">
           <LockIcon /> SSL/TLS 1.3
@@ -46,15 +46,15 @@ export default function TrustBar({ variant = 'pricing' }: { variant?: Variant })
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <TrustItem
             icon={<StarIcon />}
-            title="4.8 / 5"
-            sub="客戶滿意度"
-            tooltip="基於前 100 份報告反饋"
+            title="14 系統"
+            sub="交叉驗證"
+            tooltip="十四套東西方命理系統、三層加權架構、不是某位老師說"
           />
           <TrustItem
             icon={<RefundIcon />}
-            title="7 天無條件"
-            sub="不滿意全額退費"
-            tooltip="收到報告 7 天內、可申請全額退款、不需理由"
+            title="生成保證"
+            sub="失敗自動重試 3 次"
+            tooltip="若報告生成失敗、系統自動重試最多 3 次;若仍失敗、24 小時內客服協助處理"
           />
           <TrustItem
             icon={<ShieldIcon />}
@@ -73,7 +73,7 @@ export default function TrustBar({ variant = 'pricing' }: { variant?: Variant })
           <p className="text-center text-[11px] text-text-muted mt-4 leading-[1.8]">
             付款由 <strong className="text-gold/80">Stripe</strong> 處理 ·
             支援 <strong className="text-gold/80">Visa / MasterCard / Apple Pay / Google Pay</strong> ·
-            報告生成失敗自動重試 3 次、若仍失敗 24 小時內全額退款
+            報告為個人化數位商品、付款後即開始精密計算、依電子商品慣例不支援退款;生成失敗系統自動重試最多 3 次、若仍失敗客服協助補開新單
           </p>
         )}
       </div>

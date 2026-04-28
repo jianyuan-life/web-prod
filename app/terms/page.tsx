@@ -36,13 +36,15 @@ export default function TermsPage() {
           <li>健康問題請諮詢醫生，投資決策請諮詢專業理財顧問</li>
         </ul>
 
-        <h2 className="text-xl font-semibold text-white">5. 退款政策</h2>
+        <h2 className="text-xl font-semibold text-white">5. 服務保證</h2>
+        <p>鑒源報告為個人化數位商品、付款後即開始精密計算(14 套命理系統運算 + AI 整合)、依國際電子商品慣例<strong className="text-gold">不支援退款</strong>。為維護所有客戶的服務品質、我們提供以下保證:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>報告生成失敗：自動全額退款</li>
-          <li>7天內未查看報告：可申請全額退款</li>
-          <li>報告內容明顯錯誤：50%退款 + 免費重新生成</li>
-          <li>已查看超過7天或主觀不滿意：不予退款</li>
+          <li><strong>生成失敗自動重試:</strong>系統自動重試最多 3 次、若仍失敗 24 小時內客服協助補開新單</li>
+          <li><strong>內容明顯錯誤:</strong>(如出生資料解讀錯誤)免費重新生成、不再扣款</li>
+          <li><strong>系統重複扣款:</strong>因平台技術問題導致重複扣款、無條件退回多扣金額</li>
+          <li><strong>未經授權扣款:</strong>信用卡盜刷 / 家人誤購、提供 Stripe 交易紀錄即可申訴退回</li>
         </ul>
+        <p className="mt-2 text-sm text-text-muted">下單前請仔細確認方案內容、出生資料、付款金額。對於主觀不滿意 / 已查看報告等情況、依電子商品慣例不退費。如有任何疑慮、請先試用<a href="/tools/bazi" className="text-gold">免費速算</a>或閱讀<a href="/faq" className="text-gold">常見問題</a>。</p>
 
         <h2 className="text-xl font-semibold text-white">6. 管轄法律</h2>
         <p>本條款受香港特別行政區法律管轄。任何爭議應先通過友好協商解決，協商不成的提交香港國際仲裁中心仲裁。</p>

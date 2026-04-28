@@ -50,7 +50,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: '付款 & 退費',
+    title: '付款 & 服務保證',
     questions: [
       {
         q: '付款安全嗎？',
@@ -65,8 +65,17 @@ const SECTIONS: Section[] = [
         q: '可以退款嗎？',
         a: (
           <>
-            可以。鑒源提供 7 天無條件退費承諾、生成失敗自動退款、技術問題重複扣款全額退。
-            詳見 <Link href="/refund" className="text-gold underline">退費政策</Link>。
+            <strong className="text-gold">鑒源報告為個人化數位商品、付款後即開始精密計算、依國際電子商品慣例不支援退款。</strong>
+            為維護所有客戶服務品質、我們提供以下保證:生成失敗自動重試 3 次、若仍失敗 24 小時內客服協助補開;
+            內容明顯錯誤(如出生資料解讀錯誤)免費重新生成。詳見<Link href="/terms" className="text-gold underline">使用條款第 5 條</Link>。
+          </>
+        ),
+      },
+      {
+        q: '生成失敗會發生什麼？',
+        a: (
+          <>
+            系統會自動重試最多 3 次。若仍失敗、24 小時內 email 通知 + 客服協助補開新單(不需主動申請、不會多扣款)。
           </>
         ),
       },

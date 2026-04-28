@@ -133,7 +133,7 @@ export default async function Image() {
         >
           <span>✓ 14 套系統交叉</span>
           <span>✓ 44,421+ 條古籍規則</span>
-          <span>✓ 7 天無條件退費</span>
+          <span>✓ 失敗自動重試</span>
           <span>✓ Stripe 加密付款</span>
         </div>
       </div>
