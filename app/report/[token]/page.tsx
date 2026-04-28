@@ -19,6 +19,7 @@ import SubscribeCTA from '@/components/SubscribeCTA'
 import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
 import SystemsRadar from '@/components/report/SystemsRadar'
+import WuxingEnergyBars from '@/components/report/WuxingEnergyBars'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
 import {
@@ -1083,6 +1084,34 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
   const aiContent = report.report_result?.ai_content || ''
   const analysesSummary = report.report_result?.analyses_summary || []
+
+  // v5.6.10 R5-2:從 ai_content 解析五行能量分布(對應 Gemini「致命傷」第二招)
+  // 鑑源 prompt 通常會生「五行能量分布:木 30% / 火 20% / 土 25% / 金 15% / 水 10%」格式
+  const wuxingData = (() => {
+    if (!aiContent) return []
+    // 匹配多種格式:「木 30%」「木:30%」「木 30」(無 %)
+    const elements: ('木' | '火' | '土' | '金' | '水')[] = ['木', '火', '土', '金', '水']
+    const result: { element: '木' | '火' | '土' | '金' | '水'; percent: number }[] = []
+    for (const el of elements) {
+      const re = new RegExp(`${el}[\\s:：()（](\\d{1,3}(?:\\.\\d)?)\\s*%?`, 'g')
+      let bestMatch: number | null = null
+      let m: RegExpExecArray | null
+      while ((m = re.exec(aiContent)) !== null) {
+        const v = parseFloat(m[1])
+        if (v >= 0 && v <= 100 && (bestMatch === null || v > bestMatch)) {
+          bestMatch = v
+        }
+      }
+      if (bestMatch !== null) {
+        result.push({ element: el, percent: bestMatch })
+      }
+    }
+    // 必須 5 元素全有 + 總和合理(80-120 容錯)
+    if (result.length !== 5) return []
+    const total = result.reduce((s, d) => s + d.percent, 0)
+    if (total < 80 || total > 120) return []
+    return result
+  })()
   let top5Timings = report.report_result?.top5_timings || []
   const isChumenji = ['E1', 'E2', 'E3', 'E4'].includes(report.plan_code)
   const isE3 = report.plan_code === 'E3'  // v5.3.63 週度補運 8 卡片格式
@@ -2057,6 +2086,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 : '系統評分'
               }
             />
+          </div>
+        )}
+
+        {/* v5.6.10 R5-2:五行能量條(從 ai_content 解析、若無則 hide) */}
+        {!isChumenji && wuxingData.length === 5 && (
+          <div className="no-print">
+            <WuxingEnergyBars data={wuxingData} title="五行能量分布" />
           </div>
         )}
 
