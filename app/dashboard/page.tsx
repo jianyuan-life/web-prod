@@ -495,6 +495,32 @@ function DashboardContent() {
           </Link>
         </div>
 
+        {/* v5.6.10 R7:Daily Dashboard 雛形 placeholder(對應 Gemini 致命傷「無動態 dashboard」) */}
+        {!loading && reports.length > 0 && (
+          <div className="glass rounded-2xl p-5 mb-6 border border-gold/15" aria-labelledby="daily-section-title">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">🌅</span>
+                  <h2 id="daily-section-title" className="text-base font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+                    您的今日能量(Daily Dashboard)
+                  </h2>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gold/15 text-gold font-bold">即將推出</span>
+                </div>
+                <p className="text-xs text-text-muted leading-relaxed">
+                  鑒源即將推出「每日能量」雛形 — 基於您的八字命盤、奇門時盤、紫微流日、生物節律四大維度、即時計算當天最有利的行動方向、吉時、避忌方位。
+                  <br className="hidden sm:block" />
+                  與您的「人生藍圖」「出門訣」報告深度整合、每天 10 秒看完、永久回訪。
+                </p>
+              </div>
+              <div className="shrink-0 hidden sm:flex flex-col items-end gap-1">
+                <div className="text-[10px] text-text-muted">{new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })}</div>
+                <div className="text-[10px] text-gold/70">v5.7 規劃中</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 出門訣推廣 banner — 只對已有其他方案報告但沒有出門訣報告的用戶顯示 */}
         {!loading && reports.length > 0 &&
           reports.some(r => r.status === 'completed' && !CHUMENJI_CODES.has(r.plan_code)) &&

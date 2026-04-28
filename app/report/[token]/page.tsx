@@ -21,6 +21,7 @@ import ScrollSpy from '@/components/ScrollSpy'
 import SystemsRadar from '@/components/report/SystemsRadar'
 import WuxingEnergyBars from '@/components/report/WuxingEnergyBars'
 import ChumenjiTop3Bar from '@/components/report/ChumenjiTop3Bar'
+import DayunTimeline from '@/components/report/DayunTimeline'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
 import {
@@ -1086,6 +1087,37 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const aiContent = report.report_result?.ai_content || ''
   const analysesSummary = report.report_result?.analyses_summary || []
 
+  // v5.6.10 R7:從 ai_content 解析大運起伏時間軸(對應 Gemini「致命傷」第三招、R5-4 接線)
+  // 鑑源 prompt 通常寫「30-40 歲 乙未大運(食神格局):...」格式
+  // 額外抓 「20-30 / 30-40 / 40-50」這類年齡範圍 + 干支 + 主題
+  const dayunData = (() => {
+    if (!aiContent) return []
+    // matches:「30-40 歲 / 30-40歲 / 30 至 40 歲」+ 後續 0-50 字內含「干支大運」
+    const stages: Array<{ age_start: number; age_end: number; pillar?: string; theme?: string; energy?: number }> = []
+    const re = /(\d{1,2})\s*[-–~至到]\s*(\d{1,2})\s*歲[^\n]{0,80}?([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])(?:大運)?[^\n]{0,80}?([(（][^)）]{0,30}[)）])?/g
+    let m: RegExpExecArray | null
+    const seen = new Set<string>()
+    while ((m = re.exec(aiContent)) !== null) {
+      const start = parseInt(m[1])
+      const end = parseInt(m[2])
+      if (end <= start || end - start > 15 || start < 0 || end > 120) continue
+      const pillar = m[3] + m[4]
+      const themeRaw = (m[5] || '').replace(/[（）()]/g, '').trim()
+      const key = `${start}-${end}-${pillar}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      // energy 啟發式:藏「機會 / 黃金 / 高峰 / 上升 / 旺」 → 高;「考驗 / 起伏 / 困頓 / 低 / 險」 → 低
+      const around = aiContent.slice(Math.max(0, m.index - 50), m.index + 200)
+      let energy = 60
+      if (/黃金|高峰|大旺|機會|衝刺|爆發|旺運/.test(around)) energy = 85
+      else if (/考驗|挑戰|起伏|低谷|轉折|波折/.test(around)) energy = 35
+      else if (/穩定|平順|蓄勢|沉澱/.test(around)) energy = 65
+      stages.push({ age_start: start, age_end: end, pillar, theme: themeRaw || undefined, energy })
+    }
+    if (stages.length < 3) return []  // 少於 3 個不顯示(資料不足)
+    return stages.sort((a, b) => a.age_start - b.age_start).slice(0, 8)  // 最多 8 個 stage
+  })()
+
   // v5.6.10 R5-2:從 ai_content 解析五行能量分布(對應 Gemini「致命傷」第二招)
   // 鑑源 prompt 通常會生「五行能量分布:木 30% / 火 20% / 土 25% / 金 15% / 水 10%」格式
   const wuxingData = (() => {
@@ -2094,6 +2126,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {!isChumenji && wuxingData.length === 5 && (
           <div className="no-print">
             <WuxingEnergyBars data={wuxingData} title="五行能量分布" />
+          </div>
+        )}
+
+        {/* v5.6.10 R7:大運起伏時間軸(從 ai_content 解析、若無則 hide) */}
+        {!isChumenji && dayunData.length >= 3 && (
+          <div className="no-print">
+            <DayunTimeline data={dayunData} title="大運起伏時間軸" />
           </div>
         )}
 
