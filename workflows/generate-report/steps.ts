@@ -817,34 +817,29 @@ export function cleanFinalReport(text: string, clientName?: string): string {
     console.log(`[cleanFinalReport] 繁體化：轉換 ${conversions} 個簡體字`)
   }
 
-  // v5.7.27 簡轉繁誤字修正(opencc 上下文判斷不對的常見錯誤)
-  // 證據:7a10ce3c v5.7.26 grep 「隻是」6 次 / 「不隻」2 次 / 「隻有」「隻能」各 1 次
-  // 真因:opencc 把簡體「只」(zhǐ 副詞 + zhī 量詞)全轉「隻」(僅量詞)、誤把副詞「只是/只有/只能/不只」轉成「隻是/隻有/隻能/不隻」
-  // 修:詞組級覆蓋(優先 word > char、避免破壞真量詞如「一隻」「兩隻」「隻字片語」)
-  const TYPO_FIX_DICT: Record<string, string> = {
-    '隻是': '只是',
-    '隻有': '只有',
-    '隻能': '只能',
-    '隻要': '只要',
-    '隻會': '只會',
-    '隻好': '只好',
-    '隻怕': '只怕',
-    '不隻': '不只',
-    '隻為了': '只為了',
-    '隻不過': '只不過',
-    '隻剩': '只剩',
-    '隻在': '只在',
-    '隻有一': '只有一',
-  }
+  // v5.7.29 通用簡轉繁誤字修正(取代 v5.7.27 的 13 詞 dict、解 dict 永遠不全的根因)
+  // 證據:eval v3 通用 regex 抓到老 dict 漏 29 處錯字(隻做/隻需/隻記/隻見/隻堆/隻說/隻動/隻收/隻靠 等)
+  // 邏輯:
+  //   - 「只」中文兩讀:zhǐ(副詞、僅僅)→ 繁體「只」 / zhī(量詞、一隻)→ 繁體「隻」
+  //   - opencc 把簡體「只」全轉「隻」、誤把副詞變量詞
+  //   - 通用解:若「隻」前不是量詞前綴(數字/兩/幾/數/每/其)、則「隻」為副詞誤、改回「只」
+  // 白名單:量詞前綴 [一二三四五六七八九十百千萬兩數幾每其\d十百] + 「字片語」結尾
+  const ZHI_TYPO_RE = /(?<![一二三四五六七八九十百千萬兩數幾每其\d十百])隻(?=[一-龥])/g
+  // 排除合法量詞 context(隻字片語、本隻、整隻、半隻、單隻)
+  const ZHI_LEGIT_CONTEXTS = ['隻字片語', '單隻', '整隻', '半隻', '本隻']
   let typoFixCount = 0
-  for (const [wrong, right] of Object.entries(TYPO_FIX_DICT)) {
-    const before = cleaned.length
-    cleaned = cleaned.split(wrong).join(right)
-    const after = cleaned.length
-    if (before !== after) typoFixCount += (before - after) / Math.max(1, wrong.length - right.length)
+  // mark legit 「隻」 with placeholder 避免被誤替換
+  const PLACEHOLDER = ''  // private use area
+  for (const legit of ZHI_LEGIT_CONTEXTS) {
+    const masked = legit.replace('隻', PLACEHOLDER)
+    cleaned = cleaned.split(legit).join(masked)
   }
+  // apply universal fix
+  cleaned = cleaned.replace(ZHI_TYPO_RE, () => { typoFixCount++; return '只' })
+  // restore placeholders
+  cleaned = cleaned.split(PLACEHOLDER).join('隻')
   if (typoFixCount > 0) {
-    console.log(`[cleanFinalReport] v5.7.27 typo fix:${typoFixCount} 處簡轉繁誤字修正`)
+    console.log(`[cleanFinalReport] v5.7.29 通用 typo fix:${typoFixCount} 處「隻→只」(副詞誤判量詞)`)
   }
 
   console.log(`[cleanFinalReport] 最終清理完成，${cleaned.length} 字`)
