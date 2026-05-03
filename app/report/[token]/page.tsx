@@ -1132,8 +1132,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       const start = parseInt(m[1])
       const end = parseInt(m[2])
       const span = end - start
-      // 大運鐵律放寬:每柱 8-11 年(起運因人不同 ±2 容差、避免漏抓「20-31 / 30-41」這種跨歲)
-      if (span < 8 || span > 11) continue
+      // v5.7.42:span 容差再放寬 6-11(原 8-11)
+      // 證據:HJN ai 寫「33-39 歲(庚午大運)」span=6(未滿一柱、起運中段)、被原規則拒、UI 跳 20-29→40-49
+      // 修:接受 6-11 容差、後續 dedup by pillar/age 仍會去重、避免大運柱缺漏
+      if (span < 6 || span > 11) continue
       if (start < 0 || end > 120) continue
       const pillar = m[3] + m[4]
       // 同干支已抓過 → 跳(大運 60 甲子順排、10 年 1 柱、不重複)
@@ -1247,6 +1249,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     if (/附錄|術語對照/.test(t)) return false
     // 主題式報告：命格名片已用專屬卡片渲染，從章節列表中移除
     if (personalityCard && /命格名片/.test(t)) return false
+    // v5.7.42:人生速覽已被 personalityCard 卡片消化(callout 三 quote 都在 personalityCard.talents/challenges/yearTheme)
+    // 證據:Gemini visual eval 標 P0「『你最大的天賦』描述重複 2 次」 — 命格名片卡片 + 章節「人生速覽」都顯示同一 callout
+    if (personalityCard && /^你的人生速覽|^人生速覽/.test(t)) return false
     // 過濾報告標題行
     if (/全方位命格分析報告/.test(t)) return false
     // 過濾重複的評分表（上面已有可視化圖表）
