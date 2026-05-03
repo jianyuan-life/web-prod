@@ -166,8 +166,10 @@ function isLegalPersonaTitle(title: string): boolean {
 
 // 從 markdown 中提取命格名片數據
 function parsePersonalityCard(markdown: string): PersonalityCardData | null {
-  // 嘗試匹配「命格名片」章節（支援 ## 一、命格名片 或 ## 命格名片）
-  const cardMatch = markdown.match(/^##?\s*(?:[一二三四五六七八九十]+、\s*)?命格名片\s*\n([\s\S]*?)(?=\n##?\s|$)/m)
+  // v5.7.34 P0 修:原 /m flag 讓 $ 匹配每行尾、cardMatch 只抓到 40 字(第一個 quote 段)、整個 table 全丟
+  // 證據:何宥諄 bd517ae5 截圖天賦 Top 5 只 1 條(callout fallback)、實際 ai_content 含完整 5 條表
+  // 修:① 移除 /m flag 讓 $ 只匹配字串末尾 ② 起點用 (?:^|\n) 取代 ^ 維持 line-anchor
+  const cardMatch = markdown.match(/(?:^|\n)##?\s*(?:[一二三四五六七八九十]+、\s*)?命格名片\s*\n([\s\S]*?)(?=\n##?\s|$(?![\s\S]))/)
   if (!cardMatch) return null
 
   const content = cardMatch[1].trim()
@@ -248,7 +250,8 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   const talents: string[] = []
   const searchContent = content + '\n' + (fullText.match(/人生速覽[\s\S]*?(?=\n##?\s|$)/)?.[0] || '')
   // Level 1: 嚴格抓「天賦 Top \d」表格 section(優先)
-  const talentTableSection = searchContent.match(/天賦\s*Top\s*\d+\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:課題\s*Top\s*\d+|\*{0,2}\s*\d+\.\s*課題|##\s|###\s|$))/i)
+  // v5.7.34:加 $(?![\s\S]) 真正的字串末尾(原 $ 在 /i flag 行為不同、無 m flag 時 $ 已是 EOS、但顯式更安全)
+  const talentTableSection = searchContent.match(/天賦\s*Top\s*\d+\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:課題\s*Top\s*\d+|\*{0,2}\s*\d+\.\s*課題|##\s|###\s|$(?![\s\S])))/i)
   // Level 2: 一般「天賦|優勢|天生強項」section(不含 callout 變體、避免 shadow)
   const talentGeneralSection = !talentTableSection && searchContent.match(/(?:^|\n)\s*\*{0,2}\d*\.?\s*(?:天賦|優勢|天生強項)\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:###?\s*\d+\.\s*(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該)|(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該))|$)/i)
   const talentSection = talentTableSection || talentGeneralSection
@@ -276,7 +279,8 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
 
   // challenges 同樣 3 級 fallback
   const challenges: string[] = []
-  const challengeTableSection = searchContent.match(/課題\s*Top\s*\d+\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:第一印象|真實的你|關鍵字|2026|##\s|###\s|$))/i)
+  // v5.7.34:加 \*{0,2}\s*\d+\.\s* 前綴匹配「**5. 第一印象」結構(原只匹配赤裸的「第一印象」、整本表全吞)
+  const challengeTableSection = searchContent.match(/課題\s*Top\s*\d+\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:\*{0,2}\s*\d+\.\s*)?(?:第一印象|真實的你|真實的他|關鍵字|2026)|\n##\s|\n###\s|$)/i)
   const challengeGeneralSection = !challengeTableSection && searchContent.match(/(?:^|\n)\s*\*{0,2}\d*\.?\s*(?:課題|挑戰|需要注意|你最該注意的課題)\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:###?\s*\d+\.\s*(?:天賦|第一印象|真實的你|關鍵字|2026)|(?:第一印象|真實的你|關鍵字|2026))|$)/i)
   const challengeSection = challengeTableSection || challengeGeneralSection
   if (challengeSection) {
