@@ -1574,7 +1574,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
           <div className="text-text-muted/50 text-xs mt-3 flex items-center justify-center gap-3 relative z-10">
             {/* P0-6（2026-04-17）：用固定 ISO 格式避免 server/client timezone 差異觸發 hydration error */}
-            <span suppressHydrationWarning>{(() => {
+            {/* v5.7.36 加 label「報告日期」防客戶誤以為是出生日期(Gemini visual eval 標 P0) */}
+            <span suppressHydrationWarning>報告日期 {(() => {
               const d = new Date(report.created_at)
               const y = d.getUTCFullYear()
               const m = String(d.getUTCMonth() + 1).padStart(2, '0')
