@@ -669,6 +669,20 @@ export function cleanFinalReport(text: string, clientName?: string): string {
     if (promoteCount > 0) console.log(`[cleanFinalReport] h2 升格(僅中文編號):${promoteCount} 個 ### 主章節 → ##`)
   }
 
+  // 0c. v5.7.25 反向降格(子節攤平還原、Opus 4.6 真因修)
+  //   證據:7a10ce3c 重跑(2026-05-03 v5.7.24 prompt)後 ai_content 含 52 個 ##、0 個 ###
+  //         Opus 寫「## 情感模式」「## 思維模式」等(本應 `### 情感模式` 在「## 二、你是什麼樣的人」下)
+  //         結果 quality gate「20 個章節 < 300 字」rejected、跟前一輪同樣 fail mode
+  //   修:把「## XXX」其中 XXX 不以「中文編號(一-百)+、/.」或「阿拉伯編號+、/.」開頭、
+  //       且不含「附錄/藍圖/全運/報告」(這些是合理 ## 主章節或 H1 標題)、降為 ### 子節
+  //   注意:此 block 必在 0(中文編號升 ##)之後跑、不會影響升好的主章節
+  {
+    const h2DemoteRegex = /^## (?![一二三四五六七八九十百]+[、\.])(?!\d+[、\.])(?!附錄)(?!.*(?:藍圖|全運|^報告)).+$/gm
+    const matches = cleaned.match(h2DemoteRegex) || []
+    cleaned = cleaned.replace(h2DemoteRegex, (m) => '### ' + m.slice(3))  // '## ' = 3 chars → '### '
+    if (matches.length > 0) console.log(`[cleanFinalReport] v5.7.25 h2 降格(子節攤平還原):${matches.length} 個 ## → ###`)
+  }
+
   // 0b. v5.3.44 清 prompt 模板字數提示殘留（AI 把「（800-1200 字）」等範本指令原樣複製到正文）
   // 支援：（800-1200字）/ （~3,500字）/ （3000 字）/ （800-1200 字）/ （2,500 字）
   {
