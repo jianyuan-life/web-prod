@@ -75,59 +75,13 @@ function visibleTextLength(html: string): number {
   return html.replace(/<[^>]*>/g, '').replace(/\s+/g, '').length
 }
 
-export default function SectionExpander({ fullHtml, sectionTitle }: SectionExpanderProps) {
-  const [expanded, setExpanded] = useState(false)
-  const highlightHtml = extractHighlights(fullHtml)
-  const hasMore = highlightHtml.length < fullHtml.length * 0.8 // 如果提取的重點不到全文 80%，才顯示展開按鈕
+export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle }: SectionExpanderProps) {
+  // v5.7.46 根治:預設展開全文(老闆 lesson #061「底層根治、不 patch」)
+  // 證據:Gemini visual eval P0「課題 Top 5 沒顯示」「思維模式截斷天機是」「命理依據塔羅惡魔牌綜...」
+  // 真因:原預設只顯示 extractHighlights 摘要、未點展開鈕看不到全文、Gemini OCR 認為是截斷 bug
+  // 客戶體驗:付費 $89 應預設看全文、摘要 UX 反而讓客戶覺得內容缺失
+  // 修:直接 return 全文、移除展開按鈕邏輯
+  return <div dangerouslySetInnerHTML={{ __html: safeHtml(fullHtml) }} />
 
-  // 某些章節預設展開（短章節、寫給你的話、刻意練習）
-  const alwaysExpand = /寫給|刻意練習|你的問題|你們的問題|你的答案|你們的答案/.test(sectionTitle)
-
-  // P0-5 修復（2026-04-17）：報告頁中段 ~480px 空白區域
-  // 原因：extractHighlights 只抽取「粗體/引言框/emoji/邊框」，若某章節都是純段落文字會抽成空 HTML
-  //      此時 SectionExpander 會渲染一個空 div + 展開按鈕，中間留下約 480px 空白（卡片本身 padding + 一行按鈕）
-  // 修法：highlights 可見文字不足 80 字時，視為抽取失敗，直接展示全文（不留空白骨架）
-  const highlightVisible = visibleTextLength(highlightHtml)
-  const highlightsFallbackEmpty = highlightVisible < 80
-
-  if (alwaysExpand || !hasMore || highlightsFallbackEmpty) {
-    return <div dangerouslySetInnerHTML={{ __html: safeHtml(fullHtml) }} />
-  }
-
-  return (
-    <div>
-      <div dangerouslySetInnerHTML={{ __html: safeHtml(expanded ? fullHtml : highlightHtml) }} />
-      <button
-        onClick={() => setExpanded(!expanded)}
-        aria-expanded={expanded}
-        className="mt-4 inline-flex items-center gap-2 text-sm font-medium transition-all px-4 py-2 rounded-lg no-print"
-        style={{
-          color: '#c9a84c',
-          background: expanded ? 'rgba(197,150,58,0.10)' : 'rgba(197,150,58,0.04)',
-          border: '1px solid rgba(197,150,58,0.32)',
-          cursor: 'pointer',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(197,150,58,0.15)'
-          e.currentTarget.style.transform = 'translateY(-1px)'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = expanded ? 'rgba(197,150,58,0.10)' : 'rgba(197,150,58,0.04)'
-          e.currentTarget.style.transform = 'translateY(0)'
-        }}
-      >
-        <span
-          style={{
-            display: 'inline-block',
-            transition: 'transform 0.3s ease',
-            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}
-          aria-hidden
-        >
-          &#9660;
-        </span>
-        {expanded ? '收起詳細分析' : '展開完整分析（含命理佐證）'}
-      </button>
-    </div>
-  )
+  // v5.7.46:舊摘要 UX 已移除、預設展開全文(見上方 return)
 }
