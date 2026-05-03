@@ -1351,11 +1351,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .report-bold { color: var(--color-cream); font-weight: 600; }
         .report-li { margin-left: 1.5rem; color: var(--color-text); list-style: disc; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
         .report-li-num { margin-left: 1.5rem; color: var(--color-text); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
-        /* v5.3.44 IA 稽核修正：段距 2rem（32px）> 行距 30.6px，符合 Apple HIG「段距 > 行距」原則 */
-        .report-p { color: var(--color-text); line-height: 1.8; margin-bottom: 2rem; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
-        /* v5.7.34 響應式內文限寬:容器在 lg+ 放寬到 1280px,但純文字段落維持 720px 閱讀寬度
-           表格 / 圖表 / div wrapper 不限,自動撐滿善用版面 */
-        .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 760px; }
+        /* v5.7.50 視覺層級加強(老闆要求 100 分):字大 行高長 段距大 */
+        .report-p { color: var(--color-text); line-height: 1.95; margin-bottom: 2.5rem; font-size: 1.125rem; font-family: var(--font-body); letter-spacing: 0.012em; }
+        /* 內文段落自限 800px 維持 32-38 漢字/行 */
+        .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 800px; margin-bottom: 1.5rem; }
+        .report-p > p + p { margin-top: 1.25rem; }
+        /* v5.7.50 強化粗體視覺 */
+        .report-p strong, .report-p b { color: #d4af37; font-weight: 600; }
+        /* v5.7.50 引用塊更高質感 */
+        .report-p blockquote { border-left: 3px solid rgba(212,175,55,0.5); background: rgba(212,175,55,0.04); padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; }
         /* v5.7.38 表格 break-out:大螢幕 14 欄矩陣表撐到 viewport 95vw、容器外置中
            小螢幕(< 1024px)維持容器內 100% + horizontal scroll */
         @media (min-width: 1024px) {
@@ -1396,7 +1400,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         /* v5.3.44 手機版適配（保持 17px 甜蜜點，不縮字，僅微調 padding）*/
         @media (max-width: 640px) {
           .section-card { padding: 18px; margin-bottom: 16px; }
-          .report-p, .report-li, .report-li-num { font-size: 1rem; line-height: 1.75; }
+          .report-p, .report-li, .report-li-num { font-size: 1.0625rem; line-height: 1.85; }
           .report-h3 { font-size: 1.05rem !important; padding-left: 8px; }
           h1 { font-size: 1.6rem !important; }
           h2 { font-size: 1.15rem !important; }
@@ -2058,26 +2062,35 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               background: 'radial-gradient(circle, rgba(197,150,58,1) 0%, transparent 70%)',
             }} />
 
-            {/* v5.7.49 命盤資料速覽(Gemini/Claude P0 標「核心命盤未顯示」、付費 $89 必看)
-                從 birth_data 抽八字、從 ai_content 抽紫微命宮 */}
+            {/* v5.7.50 命盤資料速覽 — 八字 4 柱表格化(Gemini P0「應顯示完整四柱」)
+                從 birth_data 抽八字 + ai_content 抽紫微命宮 */}
             {(() => {
-              const bd = report.birth_data || {}
-              // 從 ai_content 抽紫微命宮(若有)
               const mgMatch = (aiContent || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?\s*[（(]?[甲乙丙丁戊己庚辛壬癸]?[子丑寅卯辰巳午未申酉戌亥]?[）)]?/)
               const mingGong = mgMatch ? mgMatch[1] : ''
-              // 從 client_data 抽八字
-              const bazi = (report.report_result as Record<string, unknown>)?.client_data && (((report.report_result as Record<string, unknown>).client_data as Record<string, unknown>).bazi) || ''
-              if (!bazi && !mingGong) return null
+              const baziStr = String((report.report_result as Record<string, unknown>)?.client_data && (((report.report_result as Record<string, unknown>).client_data as Record<string, unknown>).bazi) || '')
+              const pillars = baziStr.trim().split(/\s+/).filter(p => p.length === 2)
+              if (pillars.length < 4 && !mingGong) return null
               return (
-                <div className="mb-4 px-4 py-3 rounded-lg" style={{
-                  background: 'rgba(197,150,58,0.05)',
-                  border: '1px solid rgba(197,150,58,0.15)',
+                <div className="mb-5 px-5 py-4 rounded-xl" style={{
+                  background: 'rgba(197,150,58,0.06)',
+                  border: '1px solid rgba(197,150,58,0.2)',
                 }}>
-                  <div className="text-gold/50 text-[10px] tracking-[3px] mb-1.5 text-center">您的命盤資料</div>
-                  <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-sm text-cream/85" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
-                    {bazi ? <span><span className="text-gold/60">八字:</span> {String(bazi)}</span> : null}
-                    {mingGong ? <span><span className="text-gold/60">紫微命宮:</span> {mingGong}</span> : null}
-                  </div>
+                  <div className="text-gold/60 text-[11px] tracking-[3px] mb-3 text-center font-semibold">📊 您的命盤速覽</div>
+                  {pillars.length === 4 && (
+                    <div className="grid grid-cols-4 gap-3 mb-3">
+                      {[{label:'年柱',v:pillars[0]},{label:'月柱',v:pillars[1]},{label:'日柱',v:pillars[2]},{label:'時柱',v:pillars[3]}].map((p,i)=>(
+                        <div key={i} className="text-center px-2 py-3 rounded-lg" style={{background:'rgba(0,0,0,0.2)', border:'1px solid rgba(197,150,58,0.15)'}}>
+                          <div className="text-gold/40 text-[9px] tracking-[2px] mb-1.5">{p.label}</div>
+                          <div className="text-cream text-base font-bold" style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {mingGong && (
+                    <div className="text-center text-sm text-cream/80 pt-2 border-t border-gold/10">
+                      <span className="text-gold/60">🌟 紫微命宮:</span> <span className="font-semibold">{mingGong}</span>
+                    </div>
+                  )}
                 </div>
               )
             })()}
