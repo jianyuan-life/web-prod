@@ -2664,6 +2664,24 @@ export async function qualityGate(
         }
       }
     }
+
+    // v5.7.55 廢話檢測 7 黑名單(細分 #7 報告語氣 P0、ROI 高)
+    // 證據:LLM evals 連續標「以下我們」「接下來」「現在」廢話開頭、共識報告語氣鐵律最大缺口
+    const FORBIDDEN_PHRASES_BLACKLIST: { regex: RegExp; name: string }[] = [
+      { regex: /(?:^|\n)\s*接下來(?:我們)?(?:將|會|要)?[來去]?(?:看|分析|了解|介紹|談)/g, name: '廢話開頭「接下來」' },
+      { regex: /(?:^|\n)\s*以下(?:就)?(?:是|為|讓我們)/g, name: '廢話開頭「以下是/讓我們」' },
+      { regex: /(?:^|\n)\s*現在(?:我們)?(?:就)?[來去]?(?:看|分析|了解|談)/g, name: '廢話開頭「現在我們」' },
+      { regex: /(?:^|\n)\s*在這個章節(?:中|裡)/g, name: '廢話開頭「在這個章節」' },
+      { regex: /(?:^|\n)\s*在本章中?/g, name: '廢話開頭「在本章中」' },
+      { regex: /(?:^|\n)\s*上一章(?:看到|提到|談到)/g, name: '廢話開頭「上一章看到」' },
+      { regex: /(?:^|\n)\s*讓我們(?:來)?(?:看|分析|了解)/g, name: '廢話開頭「讓我們來看」' },
+    ]
+    for (const { regex, name } of FORBIDDEN_PHRASES_BLACKLIST) {
+      const matches = reportContent.match(regex)
+      if (matches && matches.length > 0) {
+        warnings.push(`[軟性][廢話檢測] ${name}:命中 ${matches.length} 次(細分 #7 報告語氣 P0)`)
+      }
+    }
   }
 
   if (planCode === 'E1') {
