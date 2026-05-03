@@ -677,10 +677,17 @@ export function cleanFinalReport(text: string, clientName?: string): string {
   //       且不含「附錄/藍圖/全運/報告」(這些是合理 ## 主章節或 H1 標題)、降為 ### 子節
   //   注意:此 block 必在 0(中文編號升 ##)之後跑、不會影響升好的主章節
   {
-    const h2DemoteRegex = /^## (?![一二三四五六七八九十百]+[、\.])(?!\d+[、\.])(?!附錄)(?!.*(?:藍圖|全運|^報告)).+$/gm
+    // v5.7.28 修 v5.7.25 P0(logic review 抓):
+    //   原 (?!附錄) 對 「## 附錄一、節氣表」/「## 附錄 A」 仍 match → 誤降
+    //   原 (?!.*^報告) 邏輯顛倒(^ 在中括號外無錨定行首作用)、需用更嚴 lookahead
+    // 修法:
+    //   (?!附錄) → (?!附錄[\s一二三四五六七八九十百\d、\.]) 涵蓋「附錄+空白/編號/標點」開頭
+    //   (?!.*(?:藍圖|全運|^報告)) → (?!.*(?:藍圖|全運|報告)) 不錨定行首、避開行內任何「報告」字眼章節
+    //   (?!附件)、(?!參考)、(?!尾聲)、(?!作者)、(?!版權) 額外保留合理 ## 主章節
+    const h2DemoteRegex = /^## (?![一二三四五六七八九十百]+[、\.])(?!\d+[、\.])(?!附錄[\s一二三四五六七八九十百\d、\.])(?!附件)(?!參考)(?!尾聲)(?!作者)(?!版權)(?!.*(?:藍圖|全運|報告)).+$/gm
     const matches = cleaned.match(h2DemoteRegex) || []
-    cleaned = cleaned.replace(h2DemoteRegex, (m) => '### ' + m.slice(3))  // '## ' = 3 chars → '### '
-    if (matches.length > 0) console.log(`[cleanFinalReport] v5.7.25 h2 降格(子節攤平還原):${matches.length} 個 ## → ###`)
+    cleaned = cleaned.replace(h2DemoteRegex, (m) => '### ' + m.slice(3))
+    if (matches.length > 0) console.log(`[cleanFinalReport] v5.7.25/v5.7.28 h2 降格(子節攤平還原):${matches.length} 個 ## → ###`)
   }
 
   // 0b. v5.3.44 清 prompt 模板字數提示殘留（AI 把「（800-1200 字）」等範本指令原樣複製到正文）
