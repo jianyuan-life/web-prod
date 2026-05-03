@@ -1328,6 +1328,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .report-li-num { margin-left: 1.5rem; color: var(--color-text); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
         /* v5.3.44 IA 稽核修正：段距 2rem（32px）> 行距 30.6px，符合 Apple HIG「段距 > 行距」原則 */
         .report-p { color: var(--color-text); line-height: 1.8; margin-bottom: 2rem; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
+        /* v5.7.34 響應式內文限寬:容器在 lg+ 放寬到 1280px,但純文字段落維持 720px 閱讀寬度
+           表格 / 圖表 / div wrapper 不限,自動撐滿善用版面 */
+        .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 760px; }
         /* v5.3.44 IA 稽核補：h1/h2 Major Third 比例（1.25 倍），配 17px 正文維持垂直節奏
            h1 = 17 × 1.25³ = 33.2px / h2 = 17 × 1.25² = 26.56px / h3 = 17 × 1.25 = 21.25px
            但 h3 已設 18px（Tailwind 1.125rem），改設 h1/h2 為 Major Third 且 font-family 顯式用 --font-body */
@@ -1481,10 +1484,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
-      {/* v5.3.44 欄寬鎖 680px：Bringhurst 黃金欄寬 32 漢字/行（18px × 1.0625rem）
-           舊 max-w-3xl = 768px 在 1440px 螢幕一行 42+ 漢字、在超寬螢幕破 50 漢字，
-           超過 40 漢字讀者會頻繁「line skip」視線迷路。Stripe/Vercel/Medium 共識 640-720px。 */}
-      <div className="max-w-[680px] mx-auto px-6 pt-12">
+      {/* v5.7.34 響應式重構:電腦 UI 用電腦方式、手機 UI 用手機方式
+           - sm (<768): max-w-[680px] 維持手機單欄 + Bringhurst 32 漢字
+           - md (≥768): 720px 平板
+           - lg (≥1024): 960px 善用筆電版面
+           - xl (≥1280): 1120px 善用桌面
+           - 2xl (≥1536): 1280px 大螢幕
+           內文 prose 段落仍用 prose-p:max-w-[680px] 自限維持閱讀寬度
+           表格 / 圖表 / 命格名片自動撐滿容器寬、不再擠在 680px 中間 */}
+      <div className="max-w-[680px] md:max-w-[720px] lg:max-w-[960px] xl:max-w-[1120px] 2xl:max-w-[1280px] mx-auto px-6 lg:px-10 pt-12">
 
         {/* 品牌標題 */}
         <div className="text-center mb-3 no-print">
