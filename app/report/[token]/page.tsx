@@ -2772,14 +2772,23 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             const sStyle = sectionStyles[sec.type]
             const tldr = extractTLDR(sec.content, 70)
 
-            // 章節標題下的 TL;DR 灰字摘要
+            // v5.7.54 章首 pullQuote 摘要 box(8 sub-agent 共識 P0 — F-pattern anchor)
+            // 取代原 TL;DR 灰字 italic、改成有底色 + 左金邊 + 大字、視覺 anchor 強
             const tldrNode = tldr ? (
-              <div
-                className="text-xs mt-1 leading-6"
-                style={{ color: 'rgba(255,255,255,0.48)', fontStyle: 'italic' }}
+              <blockquote
+                className="my-4 px-5 py-3 text-base leading-relaxed"
+                style={{
+                  color: '#e8dcb2',
+                  background: 'linear-gradient(90deg, rgba(197,150,58,0.08), rgba(197,150,58,0.02))',
+                  borderLeft: '3px solid rgba(197,150,58,0.5)',
+                  borderRadius: '0 8px 8px 0',
+                  fontStyle: 'normal',
+                  fontWeight: 500,
+                }}
               >
+                <span className="text-gold/50 text-[10px] tracking-[2px] uppercase mr-2">本章重點</span>
                 {tldr}
-              </div>
+              </blockquote>
             ) : null
 
             // v5.3.75：E 系列出門訣砍掉 CollapsibleSection 摺疊、改純 div 全展開（老闆指示）
