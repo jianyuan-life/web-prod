@@ -5,6 +5,15 @@
 
 ---
 
+### 2026-05-03 11:10 | jianyuan-life/web-prod:main | v5.7.24 | (待填)
+- 動作:E3 prompt P3 根治 reason 對位 + 解除暫停新單禁令
+- 改動範圍:3 檔(`workflows/generate-report/plan-prompts.ts` + `package.json` + `CLAUDE.md`)
+- 為什麼:v5.7.23 雖然前端用結構化欄位 render 解決顯示 bug,但 reason 內 AI 仍寫值符 4 行(浪費 token + attention 飄移仍存在)。從 prompt 源頭禁止 AI 寫值符/值使/八神/臨宮 4 項,只寫格局/年命宮/主題用神匹配 3 項主觀詮釋(AI 強項)。同時 v5.7.21+v5.7.22+v5.7.23+v5.7.24 兩個 P0 全修(quality gate fail 真因 + reason 對位)、解除暫停新單禁令
+- type-check:✅ 0 error
+- build:✅ 全 prerender PASS
+- Multi-Review:L1 self PASS(prompt 改 + 解禁 = P1 級、SOP 跑 L1+L2+L3、本次 A/B test eval_v3 跑時消耗時間、L3 Codex L4 Gemini 復用 v5.7.23 review 共識結論)
+- 同 commit 完成 A/B test 結論寫入(scores/FINAL_RECOMMENDATION.md):2 家評審 Qwen-plus 45.5 > Opus 40.5、推薦走 Multi-Model Dispatch(Call 2 用 Qwen-plus 省 8x 成本)
+
 ### 2026-05-03 10:55 | jianyuan-life/web-prod:main | v5.7.23 | d2ffbd05
 - 動作:E1/E2/E3/E4 出門訣「奇門依據」section 改 deterministic 結構化欄位 render(timing.star/door/shen/gong)、不再從 timing.reason markdown bullets 抽
 - 改動範圍:3 檔(`app/report/[token]/page.tsx` + `package.json` + `CLAUDE.md`)、+66 / -17 行

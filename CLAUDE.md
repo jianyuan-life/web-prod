@@ -4,9 +4,9 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.7.23（2026-05-03、E1/E2/E3/E4 出門訣「奇門依據」section 改 deterministic 結構化欄位 render，徹底修 reason 對位 bug）
+**網站版本：** v5.7.24（2026-05-03、E3 prompt 根治 reason 對位:從 prompt 移除「值符/值使/八神/臨宮」4 行 placeholder、AI 只寫格局/年命宮/主題用神匹配 3 項主觀詮釋、值符 4 項由前端從結構化欄位 render）
 
-⚠️ **暫停新客戶下單**:v5.7.21 止血(MAX_QUALITY_RETRIES=0、不再 internal 重生 AI 燒錢) + v5.7.22 cleanFinalReport L658 真因修(### 子節阿拉伯編號誤升 ## 變短章節)。待老闆拍板是否開放下單。
+✅ **開放新客戶下單**(2026-05-03):v5.7.21 止血(MAX_QUALITY_RETRIES=0)+ v5.7.22 cleanFinalReport L658 真因修(### 阿拉伯編號誤升 ##)+ v5.7.23 reason 對位 P0 修(前端結構化欄位 render)+ v5.7.24 prompt 根治(從源頭禁止 AI 寫值符/值使/八神/臨宮)= 兩個 P0 bug 全修、quality gate fail 真因 + reason 對位 bug 雙 line 鎖。新單可進。
 
 歷史:
 - v5.7.22（2026-04-28、cleanFinalReport L658 regex bug 修：移除 `\d+、` 避免 ### 1、子節被誤升 ##、解 quality gate「硬門檻 N 個章節 < 300 字」鐵證）
