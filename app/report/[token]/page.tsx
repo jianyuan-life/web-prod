@@ -2356,25 +2356,71 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     </div>
                   )}
 
-                  {/* 奇門依據（v5.3.17 改：預設展開，展現專業性）
-                      老闆：專業度要展現出來，客戶看不懂沒關係，但我看得懂可以跟客戶解釋
-                      例：玉女守門這種好格局不顯示老闆就無從得知 */}
+                  {/* 奇門依據（v5.7.23 修正：值符/值使/八神/臨宮 4 項用 deterministic 結構化欄位 render
+                      不再從 timing.reason markdown 抽—修 Claude 寫 reason 時把 8 個 timing 盤面對掉的 bug
+                      實證：5 位 E3 客戶 38/72 timing 錯位（52.8%）、Python 後端 zhifu_star/zhishi_door 早就 deterministic、bug 100% 在前端取錯來源
+                      reason 殘留段落（格局/年命宮/主題能量）仍顯示作 AI 詮釋
+                      v5.3.17 註：預設展開，展現專業性 */}
                   <details className="mb-4 group" open>
                     <summary className="cursor-pointer text-xs text-gold/60 hover:text-gold select-none transition-colors flex items-center gap-1 mb-2">
                       <span className="group-open:rotate-90 transition-transform">▸</span>
                       <span className="font-medium">🔮 奇門依據{report.plan_code === 'E1' ? '（為什麼這個時間能加乘）' : ''}</span>
                     </summary>
-                    <div className="px-4 py-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid rgba(197,150,58,0.5)' }}>
-                      {/* v5.3.75：奇門依據支援 markdown bullets 多行渲染 */}
+                    <div className="px-4 py-3 rounded-lg space-y-1" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid rgba(197,150,58,0.5)' }}>
+                      {/* 結構化欄位：值符/值使/八神/臨宮 — 來自 Python 排盤引擎 deterministic 輸出 */}
+                      {timing.star && (
+                        <div className="text-text-muted/90 text-sm leading-7">
+                          <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 值符</span>：{timing.star}
+                        </div>
+                      )}
+                      {timing.door && (
+                        <div className="text-text-muted/90 text-sm leading-7">
+                          <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 值使</span>：{timing.door}
+                        </div>
+                      )}
+                      {timing.shen && (
+                        <div className="text-text-muted/90 text-sm leading-7">
+                          <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 八神</span>：{timing.shen}
+                        </div>
+                      )}
+                      {timing.gong && (() => {
+                        const g = String(timing.gong).trim()
+                        const gongStr = g.endsWith('宮') ? g : g + '宮'
+                        return (
+                          <div className="text-text-muted/90 text-sm leading-7">
+                            <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 臨宮</span>：{gongStr}{timing.direction ? `（${timing.direction}）` : ''}
+                          </div>
+                        )
+                      })()}
+                      {/* AI 詮釋殘留段落（保留格局/年命宮/主題能量等 AI 詮釋）
+                          v5.7.23 修：逐欄條件刪 — 只在結構化欄位有值時才刪 reason 對應 label，避免結構化空+reason 也被刪 = 空白（Codex P1）
+                          regex 涵蓋變體：bullet/數字編號/markdown 粗體/中文星門後綴/全形冒號 */}
                       <div className="text-text-muted/90 text-sm leading-7 space-y-1" dangerouslySetInnerHTML={{
-                        __html: String(timing.reason || '')
-                          .replace(/[（(]基礎\d+[×x][\s\S]*?[）)]/g, '')
-                          .replace(/[（(][+-]\d+[）)]/g, '')
-                          .replace(/\s+-\s+\*\*/g, '\n- **')
-                          .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#c9a84c">$1</strong>')
-                          .replace(/^-\s*(.+?)$/gm, '<div class="ml-1">• $1</div>')
-                          .replace(/\n/g, '')
-                          .trim()
+                        __html: ((): string => {
+                          let text = String(timing.reason || '')
+                          const labels: Array<[string, boolean]> = [
+                            ['值符', Boolean(timing.star)],
+                            ['值使', Boolean(timing.door)],
+                            ['八神', Boolean(timing.shen)],
+                            ['臨宮', Boolean(timing.gong)],
+                          ]
+                          for (const [label, hasField] of labels) {
+                            if (!hasField) continue
+                            // 涵蓋變體：- * • · > / 1. / ### / **值符**/值符星/值使門 / 全形冒號
+                            const reStr = '^\\s*(?:[-*\\u2022\\u00B7\\uFF1E>]|\\d+[.\\u3001])?\\s*\\*{0,2}\\s*' + label + '(?:\\u661F|\\u9580)?\\s*\\*{0,2}\\s*[:\\uFF1A][^\\n]*$'
+                            const re = new RegExp(reStr, 'gm')
+                            text = text.replace(re, '')
+                          }
+                          return text
+                            .replace(/[（(]基礎\d+[×x][\s\S]*?[）)]/g, '')
+                            .replace(/[（(][+-]\d+[）)]/g, '')
+                            .replace(/\s+-\s+\*\*/g, '\n- **')
+                            .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#c9a84c">$1</strong>')
+                            .replace(/^-\s*(.+?)$/gm, '<div class="ml-1">• $1</div>')
+                            .replace(/\n{2,}/g, '\n')
+                            .replace(/\n/g, '')
+                            .trim()
+                        })()
                       }} />
                     </div>
                   </details>
