@@ -73,7 +73,7 @@ export function ReadingTime({ textLength }: { textLength: number }) {
   const essenceMin = Math.min(15, Math.max(8, Math.round(minutes / 6)))
   return (
     <span className="text-text-muted/60 text-xs">
-      精華 {essenceMin} 分 · 完整 {minutes} 分
+      精華閱讀 {essenceMin} 分鐘 · 完整 {minutes} 分鐘
     </span>
   )
 }

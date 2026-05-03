@@ -1516,7 +1516,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            - 2xl (≥1536): 1280px 大螢幕
            內文 prose 段落仍用 prose-p:max-w-[680px] 自限維持閱讀寬度
            表格 / 圖表 / 命格名片自動撐滿容器寬、不再擠在 680px 中間 */}
-      <div className="max-w-[680px] md:max-w-[720px] lg:max-w-[960px] xl:max-w-[1120px] 2xl:max-w-[1280px] mx-auto px-6 lg:px-10 pt-12">
+      <div className="max-w-[680px] md:max-w-[720px] lg:max-w-[1100px] xl:max-w-[1320px] 2xl:max-w-[1480px] mx-auto px-6 lg:px-12 xl:px-16 pt-12">
 
         {/* 品牌標題 */}
         <div className="text-center mb-3 no-print">
@@ -1619,13 +1619,26 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 fontFamily: 'var(--font-sans)',
                 textWrap: 'balance',
               }}>
-                {report.plan_code === 'C'
-                  ? `接下來的幾分鐘，會改變${report.client_name}看自己的方式。`
-                  : report.plan_code === 'D'
-                  ? `那個讓${report.client_name}卡住的原因，命盤早就寫好了答案。`
-                  : report.plan_code === 'G15'
-                  ? `這個家的故事，比${report.client_name}以為的更深。`
-                  : '從這裡開始，看見最真實的自己。'}
+                {(() => {
+                  // v5.7.41:依年齡段切換 tagline 語氣 — toddler/child 對父母寫、其他對本人
+                  // (對應 Gemini visual eval P2「對 2 歲不該寫『改變看自己的方式』」)
+                  const age = report.birth_data?.year ? new Date().getFullYear() - report.birth_data.year : 0
+                  const isMinor = age > 0 && age <= 12
+                  if (report.plan_code === 'C') {
+                    return isMinor
+                      ? `接下來的幾分鐘，會改變您理解${report.client_name}的方式。`
+                      : `接下來的幾分鐘，會改變${report.client_name}看自己的方式。`
+                  }
+                  if (report.plan_code === 'D') {
+                    return isMinor
+                      ? `那個讓您困惑${report.client_name}行為的原因,命盤早就寫好了答案。`
+                      : `那個讓${report.client_name}卡住的原因,命盤早就寫好了答案。`
+                  }
+                  if (report.plan_code === 'G15') {
+                    return `這個家的故事，比${report.client_name}以為的更深。`
+                  }
+                  return '從這裡開始，看見最真實的自己。'
+                })()}
               </p>
             </div>
           )}
