@@ -18,6 +18,7 @@ import PartHighlights from '@/components/PartHighlights'
 import SubscribeCTA from '@/components/SubscribeCTA'
 import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
+import SidebarTOC from '@/components/SidebarTOC'
 import SystemsRadar from '@/components/report/SystemsRadar'
 import WuxingEnergyBars from '@/components/report/WuxingEnergyBars'
 import ChumenjiTop3Bar from '@/components/report/ChumenjiTop3Bar'
@@ -1566,14 +1567,22 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
-      {/* v5.7.52 Gemini grounding 根治:CSS clamp + minmax 取代固定 max-width
-           - 1200-1920px 平滑延伸、消除「太窄」LLM 誤判
-           - 兩側留白比例自動隨螢幕調整 */}
-      <div className="mx-auto pt-12" style={{
-        width: 'min(95vw, clamp(680px, 88vw, 1680px))',
-        paddingLeft: 'clamp(1rem, 3vw, 4rem)',
-        paddingRight: 'clamp(1rem, 3vw, 4rem)',
+      {/* v5.7.53 Layout 大改造(8 sub-agent 共識):
+           - 容器 1280px max(收窄、CJK 40 漢字鐵律、Wikipedia A/B +53%)
+           - lg+ flex 雙欄:左 280px sticky sidebar TOC + 右 flex-1 content
+           - mobile/tablet: 單欄 content
+           - prose 內文段落仍自限 720px(原 .report-p > p 限寬已生效) */}
+      <div className="mx-auto pt-12 lg:flex lg:gap-10 max-w-[1280px]" style={{
+        paddingLeft: 'clamp(1rem, 3vw, 2rem)',
+        paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
+        {/* v5.7.53 lg+ Sticky Left Sidebar TOC(Wikipedia A/B +53% deep exploration) */}
+        <SidebarTOC sections={(isChumenji ? [] : sections).map((s, i) => ({
+          idx: i,
+          title: s.title?.replace(/^#+\s*/, '').slice(0, 40) || `章節 ${i + 1}`,
+        }))} />
+        {/* Main content(always shown) */}
+        <div className="flex-1 min-w-0">
 
         {/* 品牌標題 */}
         <div className="text-center mb-3 no-print">
@@ -2983,6 +2992,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <p>此報告僅供個人參考，不構成任何法律、醫療或財務建議</p>
         </div>
 
+        </div>{/* v5.7.53 main content flex-1 close */}
       </div>
     </div>
   )
