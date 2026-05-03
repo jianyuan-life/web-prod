@@ -265,7 +265,12 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
       }
       const cleaned = line.replace(/^[\s\-•·*>]+/, '').replace(/\*{1,2}/g, '').trim()
       if (cleaned && cleaned.length > 1 && cleaned.length < 80) {
-        if (/^[|｜]?\s*排名/.test(cleaned) || /^[-:]+$/.test(cleaned.replace(/\|/g, ''))) continue
+        // v5.7.37 真因修:原只 skip「排名」、實際 AI 寫「排序 / 名次 / 序號」表頭、整行被當 talent push
+        // 截圖證據:雨露甘霖客戶天賦 Top 5 第一個 tag = 「| 排序 | 天賦 | 一句話說明 |」
+        // 修:① 任何含 markdown table 結構符號 | 的 header keywords 行都 skip ② markdown separator |---|---| skip
+        if (/^[|｜]?\s*(?:排名|排序|名次|序號|分類|類型|項目|說明|描述|天賦|課題|挑戰|要點)\s*[|｜]/.test(cleaned)) continue
+        if (/^[|｜][-:\s|｜]+[|｜]?$/.test(cleaned)) continue
+        if (/^[-:]+$/.test(cleaned.replace(/\|/g, ''))) continue
         const labelMatch = cleaned.match(/^(.+?)[：:—–]\s*/)
         talents.push(labelMatch ? labelMatch[1].trim() : cleaned)
       }
@@ -293,7 +298,12 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
       }
       const cleaned = line.replace(/^[\s\-•·*>]+/, '').replace(/\*{1,2}/g, '').trim()
       if (cleaned && cleaned.length > 1 && cleaned.length < 80) {
-        if (/^[|｜]?\s*排名/.test(cleaned) || /^[-:]+$/.test(cleaned.replace(/\|/g, ''))) continue
+        // v5.7.37 真因修:原只 skip「排名」、實際 AI 寫「排序 / 名次 / 序號」表頭、整行被當 talent push
+        // 截圖證據:雨露甘霖客戶天賦 Top 5 第一個 tag = 「| 排序 | 天賦 | 一句話說明 |」
+        // 修:① 任何含 markdown table 結構符號 | 的 header keywords 行都 skip ② markdown separator |---|---| skip
+        if (/^[|｜]?\s*(?:排名|排序|名次|序號|分類|類型|項目|說明|描述|天賦|課題|挑戰|要點)\s*[|｜]/.test(cleaned)) continue
+        if (/^[|｜][-:\s|｜]+[|｜]?$/.test(cleaned)) continue
+        if (/^[-:]+$/.test(cleaned.replace(/\|/g, ''))) continue
         const labelMatch = cleaned.match(/^(.+?)[：:—–]\s*/)
         challenges.push(labelMatch ? labelMatch[1].trim() : cleaned)
       }
