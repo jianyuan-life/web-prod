@@ -370,14 +370,21 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
     || fullText.match(/2026一句話\*{0,2}[：:]\s*(.+?)$/m)
   if (yearMatch) yearTheme = cleanMd(yearMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
 
+  // v5.7.47:talents/challenges 去重(Gemini 標 P1「行動派 標籤重複出現 2 次」)
+  // 用 Set 去重保留首次出現順序
+  const dedupTalents = Array.from(new Set(talents))
+  const dedupChallenges = Array.from(new Set(challenges))
+  // keywords 也去重
+  const dedupKeywords = keywords ? Array.from(new Set(keywords)) : keywords
+
   return {
     title: title || '命格名片',
     definition,
-    talents: talents.slice(0, 5),       // v5.7.30 修:Top 3 → Top 5(對齊 c_plan_v2.ts:469 prompt 規格 v5.5.1 修 #7)
-    challenges: challenges.slice(0, 5),  // 同上、課題 Top 5
+    talents: dedupTalents.slice(0, 5),
+    challenges: dedupChallenges.slice(0, 5),
     firstImpression,
     trueself,
-    keywords,
+    keywords: dedupKeywords,
     yearTheme,
     rawContent: content,
   }
