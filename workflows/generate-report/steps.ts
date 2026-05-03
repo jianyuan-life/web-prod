@@ -2633,7 +2633,8 @@ export async function qualityGate(
     const cRequired = [
       { pattern: /人生速覽|你的人生速覽/, name: '人生速覽', soft: false },
       { pattern: /命格名片|命格.*封號|核心身份/, name: '命格名片', soft: false },
-      { pattern: /你是什麼樣的人|本我|核心人格/, name: '你是什麼樣的人', soft: false },
+      // v5.7.47:加父母版變體(toddler/child voice=parent 寫「您的孩子是什麼樣的人」)
+      { pattern: /你是什麼樣的人|您的孩子是什麼樣的人|你的孩子是什麼樣的人|寶寶是什麼樣的人|本我|核心人格/, name: '你是什麼樣的人', soft: false },
       { pattern: /事業.*天賦|天賦.*事業|事業分析/, name: '事業與天賦', soft: false },
       { pattern: /財運分析|賺錢模式|財運/, name: '財運分析', soft: false },
       { pattern: /感情.*人際|感情分析/, name: '感情與人際', soft: false },
