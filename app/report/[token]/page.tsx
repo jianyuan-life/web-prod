@@ -241,53 +241,54 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
     if (quoteMatch) definition = cleanMd(quoteMatch[1]).replace(/^[「「"']|[」」"']$/g, '')
   }
 
-  // 提取天賦 Top 3（從命格名片章節或全文搜尋）
+  // v5.7.32 重寫:talents/challenges parse 拆「嚴格表格優先 + callout fallback + 兒童版變體」3 級 fallback
+  // 證據:之前 fallback「你最大的天賦」 callout 在 regex 第一個 alternation、shadow「天賦 Top 5」表格 → 只 push 1 條(老闆截圖證實 2 個客戶 talents 截斷)
+  // 兒童版 ai_content 寫「您孩子最大的天賦」、舊 regex 只匹配「你」→ 兒童版完全 fail talents=[]
+  // 修:① 嚴格抓「天賦 Top \d」表格、5 條完整 push ② callout fallback 用「你最大的天賦|您(?:的)?孩子最大的天賦|寶寶最大的天賦」
   const talents: string[] = []
   const searchContent = content + '\n' + (fullText.match(/人生速覽[\s\S]*?(?=\n##?\s|$)/)?.[0] || '')
-  const talentSection = searchContent.match(/(?:天賦|優勢|天生強項|你最大的天賦)\s*(?:Top\s*\d+)?\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:###?\s*\d+\.\s*(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該)|(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該))|$)/i)
-    || searchContent.match(/(?:天賦|優勢)\s*(?:Top\s*\d+)\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\n)/i)
+  // Level 1: 嚴格抓「天賦 Top \d」表格 section(優先)
+  const talentTableSection = searchContent.match(/天賦\s*Top\s*\d+\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:課題\s*Top\s*\d+|\*{0,2}\s*\d+\.\s*課題|##\s|###\s|$))/i)
+  // Level 2: 一般「天賦|優勢|天生強項」section(不含 callout 變體、避免 shadow)
+  const talentGeneralSection = !talentTableSection && searchContent.match(/(?:^|\n)\s*\*{0,2}\d*\.?\s*(?:天賦|優勢|天生強項)\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:###?\s*\d+\.\s*(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該)|(?:課題|挑戰|需要注意|第一印象|真實的你|關鍵字|2026|你最該))|$)/i)
+  const talentSection = talentTableSection || talentGeneralSection
   if (talentSection) {
     for (const line of talentSection[1].split('\n')) {
-      // 支援 markdown 表格行：「| 1 | **洞察力碾壓級別** | 八字偏印格... |」
       const tableMatch = line.match(/\|\s*\d+\s*\|\s*\*{0,2}([^|*]+?)\*{0,2}\s*\|/)
       if (tableMatch) {
         const label = tableMatch[1].trim()
         if (label && label.length > 1 && label.length < 60) talents.push(label)
         continue
       }
-      // 支援 bullet / numbered list 格式
       const cleaned = line.replace(/^[\s\-•·*>]+/, '').replace(/\*{1,2}/g, '').trim()
       if (cleaned && cleaned.length > 1 && cleaned.length < 80) {
-        // 跳過表格表頭行（排名、天賦、佐證等）
         if (/^[|｜]?\s*排名/.test(cleaned) || /^[-:]+$/.test(cleaned.replace(/\|/g, ''))) continue
         const labelMatch = cleaned.match(/^(.+?)[：:—–]\s*/)
         talents.push(labelMatch ? labelMatch[1].trim() : cleaned)
       }
     }
   }
-  // 如果命格名片裡沒找到，嘗試從全文 > 引言框格式提取（「> **你最大的天賦**：...」）
+  // Level 3 fallback: callout quote(成人 + 兒童 + 父母版本)
   if (talents.length === 0) {
-    const talentQuote = fullText.match(/你最大的天賦\*{0,2}[：:]\s*(.+?)(?:\n|$)/m)
-    if (talentQuote) talents.push(cleanMd(talentQuote[1]).slice(0, 40))
+    const talentQuote = fullText.match(/(?:你|您|您的孩子|您孩子|寶寶)\s*最大的天賦\*{0,2}[：:]\s*(.+?)(?:\n|$)/m)
+    if (talentQuote) talents.push(cleanMd(talentQuote[1]).slice(0, 60))  // v5.7.32:slice(40 → 60)避免文字過短
   }
 
-  // 提取課題 Top 3
+  // challenges 同樣 3 級 fallback
   const challenges: string[] = []
-  const challengeSection = searchContent.match(/(?:課題|挑戰|需要注意|你最該注意的課題)\s*(?:Top\s*\d+)?\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:###?\s*\d+\.\s*(?:天賦|第一印象|真實的你|關鍵字|2026)|(?:第一印象|真實的你|關鍵字|2026))|$)/i)
-    || searchContent.match(/(?:課題|挑戰)\s*(?:Top\s*\d+)\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\n)/i)
+  const challengeTableSection = searchContent.match(/課題\s*Top\s*\d+\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:第一印象|真實的你|關鍵字|2026|##\s|###\s|$))/i)
+  const challengeGeneralSection = !challengeTableSection && searchContent.match(/(?:^|\n)\s*\*{0,2}\d*\.?\s*(?:課題|挑戰|需要注意|你最該注意的課題)\*{0,2}[：:]*\s*\n([\s\S]*?)(?=\n\s*(?:###?\s*\d+\.\s*(?:天賦|第一印象|真實的你|關鍵字|2026)|(?:第一印象|真實的你|關鍵字|2026))|$)/i)
+  const challengeSection = challengeTableSection || challengeGeneralSection
   if (challengeSection) {
     for (const line of challengeSection[1].split('\n')) {
-      // 支援 markdown 表格行：「| 1 | **孤島症候群** | 八字偏印格... |」
       const tableMatch = line.match(/\|\s*\d+\s*\|\s*\*{0,2}([^|*]+?)\*{0,2}\s*\|/)
       if (tableMatch) {
         const label = tableMatch[1].trim()
         if (label && label.length > 1 && label.length < 60) challenges.push(label)
         continue
       }
-      // 支援 bullet / numbered list 格式
       const cleaned = line.replace(/^[\s\-•·*>]+/, '').replace(/\*{1,2}/g, '').trim()
       if (cleaned && cleaned.length > 1 && cleaned.length < 80) {
-        // 跳過表格表頭行
         if (/^[|｜]?\s*排名/.test(cleaned) || /^[-:]+$/.test(cleaned.replace(/\|/g, ''))) continue
         const labelMatch = cleaned.match(/^(.+?)[：:—–]\s*/)
         challenges.push(labelMatch ? labelMatch[1].trim() : cleaned)
@@ -295,8 +296,8 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
     }
   }
   if (challenges.length === 0) {
-    const challengeQuote = fullText.match(/你最該注意的課題\*{0,2}[：:]\s*(.+?)(?:\n|$)/m)
-    if (challengeQuote) challenges.push(cleanMd(challengeQuote[1]).slice(0, 40))
+    const challengeQuote = fullText.match(/(?:你|您|您的孩子|您孩子|寶寶)\s*最該注意的課題\*{0,2}[：:]\s*(.+?)(?:\n|$)/m)
+    if (challengeQuote) challenges.push(cleanMd(challengeQuote[1]).slice(0, 60))
   }
 
   // 提取「第一印象」和「真實的你」
@@ -676,6 +677,20 @@ function sanitizeReportHtml(html: string): string {
 
 // 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
 function renderSectionMarkdown(content: string): string {
+  // v5.7.32 全面過濾廢話 meta label(老闆「客戶不需要看 meta 標籤、多客戶有感說詞」)
+  // 證據:截圖顯示「🪞 你看得懂的版本」label 出現在每章、純廢話、客戶讀體驗破壞
+  // 過濾規則:
+  //   - 「### 🪞 你看得懂的版本」/ 「### 你看得懂的版本」整行移除(留 body)
+  //   - 「> 📚 命理深析(PDF 專屬深度版)」label 移除、留 blockquote 內容
+  //   - 「### 🔮 ... 」prompt 殘留 prefix 移除
+  //   - 章節開頭「以下是」「接下來」「在本章中」「我們來看」 transition 廢話刪
+  content = content
+    .replace(/^###\s*🪞\s*你看得懂的版本\s*$\n?/gm, '')
+    .replace(/^###\s*你看得懂的版本\s*$\n?/gm, '')
+    .replace(/^>\s*\*{0,2}\s*📚\s*\*{0,2}\s*命理深析[^\n]*\n?/gm, '> ')
+    .replace(/^>\s*\*{0,2}\s*命理深析\s*[(（]\s*PDF\s*專屬深度版\s*[)）]\s*\*{0,2}\s*\n?/gm, '> ')
+    .replace(/^(?:接下來|以下是|現在|讓我們|我們來看|在本章中?|這一章節?|本章我們?)[，,。、]?\s*/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
   // 按 ### 分割子章節
   const subParts = content.split(/^### /m)
   if (subParts.length <= 1) {
@@ -1090,17 +1105,18 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const dayunData = (() => {
     if (!aiContent) return []
     const stages: Array<{ age_start: number; age_end: number; pillar?: string; theme?: string; energy?: number }> = []
-    // 嚴格:X-Y 歲(連字符直接相連)、其後 ≤ 25 字內必含「干支+大運」連續
-    const re = /(\d{1,2})\s*[-–~]\s*(\d{1,2})\s*歲[^\n]{0,25}?([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])\s*大運/g
+    // v5.7.32 放寬:同時抓「X-Y 歲...干支大運」+「→Y 歲 干支」箭頭格式(AI 寫法多樣)
+    // 嚴規格仍鎖定 8-11 年/柱(大運鐵律 ±2 容差)、避免漏 70-80 歲
+    const re = /(\d{1,2})\s*[-–~]\s*(\d{1,2})\s*歲[^\n]{0,30}?([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])\s*大運/g
     let m: RegExpExecArray | null
-    const seenPillar = new Set<string>()       // 同干支只能出現 1 次(大運順排不重複)
-    const seenAgeRange = new Set<string>()     // 同年齡範圍去重
+    const seenPillar = new Set<string>()
+    const seenAgeRange = new Set<string>()
     while ((m = re.exec(aiContent)) !== null) {
       const start = parseInt(m[1])
       const end = parseInt(m[2])
       const span = end - start
-      // 大運鐵律:每柱 9 或 10 年(起運因人不同有 ±1 容差)
-      if (span !== 9 && span !== 10) continue
+      // 大運鐵律放寬:每柱 8-11 年(起運因人不同 ±2 容差、避免漏抓「20-31 / 30-41」這種跨歲)
+      if (span < 8 || span > 11) continue
       if (start < 0 || end > 120) continue
       const pillar = m[3] + m[4]
       // 同干支已抓過 → 跳(大運 60 甲子順排、10 年 1 柱、不重複)
