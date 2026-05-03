@@ -5,6 +5,19 @@
 
 ---
 
+### 2026-05-03 10:55 | jianyuan-life/web-prod:main | v5.7.23 | d2ffbd05
+- 動作:E1/E2/E3/E4 出門訣「奇門依據」section 改 deterministic 結構化欄位 render(timing.star/door/shen/gong)、不再從 timing.reason markdown bullets 抽
+- 改動範圍:3 檔(`app/report/[token]/page.tsx` + `package.json` + `CLAUDE.md`)、+66 / -17 行
+- 為什麼:5 位 E3 客戶 38/72 timing(52.8%)的「奇門依據」標題 vs reason 對掉 — Claude 寫 reason 時對 8 timing attention 飄移、把不同 timing 盤面對掉
+- 根因:Python 後端 zhifu_star/zhishi_door 早就 deterministic、ChumenjiTopItem 早就有 star/door/shen/gong 結構化欄位、但前端從 timing.reason markdown bullets 抽
+- 修法:只動前端 1 個 component、零 Python / workflow / prompt 改動;逐欄條件刪 reason label(Codex P1)、regex 加強涵蓋變體(Codex/Gemini P1)、timing.gong trim(Codex P2)
+- 不需重生成歷史報告(timing 結構化欄位已存在 Supabase)
+- type-check:✅ 0 error
+- build:✅ 全 prerender PASS
+- Multi-Review:L1 self PASS / L3 Codex PASS(P0=0、P1=2 修、P2=1 修) / L4 Gemini PASS(P0=0、P1=2 修)
+- Vercel deploy:⏳ 等中
+- 老闆驗收:⏳ Playwright 即將驗證
+
 ### 2026-04-28 | jianyuan-life/web-prod:main | v5.7.21 | c41fd6c6
 - 動作:何宣逸 870bae9a 燒 $21.24 P0 5 項止血:① MAX_QUALITY_RETRIES 1→0(不再 internal 重生 AI)② qualityGate detailed log(逐項列 hardFailures、解黑盒)③ deploy pre-flight 鐵律(jianyuan-deploy.md 第 0 步)
 - 改動範圍:4 檔、+17 / -5 行
