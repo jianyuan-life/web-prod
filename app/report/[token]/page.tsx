@@ -1083,35 +1083,51 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const aiContent = report.report_result?.ai_content || ''
   const analysesSummary = report.report_result?.analyses_summary || []
 
-  // v5.6.10 R7:從 ai_content 解析大運起伏時間軸(對應 Gemini「致命傷」第三招、R5-4 接線)
-  // 鑑源 prompt 通常寫「30-40 歲 乙未大運(食神格局):...」格式
-  // 額外抓 「20-30 / 30-40 / 40-50」這類年齡範圍 + 干支 + 主題
+  // v5.7.26 大運 regex 收緊(修 v5.6.10 R7 誤配 bug)
+  // 證據:7a10ce3c 何宣逸 UI 渲染 8 個大運柱、其中 3-7 號全錯位(20-22/24-25/24-26/28-30 戊子重複 4 次)
+  // 真因:原 regex `[^\n]{0,80}?` 跨 80 字撈、把不相關的年齡敘述+附近干支字眼誤配
+  // 修:① 限「X-Y 歲」與「干支」距離 ≤ 25 字 ② 必須「大運」字眼緊跟 ③ end-start 必為 9 或 10(大運鐵律)④ 同干支去重
   const dayunData = (() => {
     if (!aiContent) return []
-    // matches:「30-40 歲 / 30-40歲 / 30 至 40 歲」+ 後續 0-50 字內含「干支大運」
     const stages: Array<{ age_start: number; age_end: number; pillar?: string; theme?: string; energy?: number }> = []
-    const re = /(\d{1,2})\s*[-–~至到]\s*(\d{1,2})\s*歲[^\n]{0,80}?([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])(?:大運)?[^\n]{0,80}?([(（][^)）]{0,30}[)）])?/g
+    // 嚴格:X-Y 歲(連字符直接相連)、其後 ≤ 25 字內必含「干支+大運」連續
+    const re = /(\d{1,2})\s*[-–~]\s*(\d{1,2})\s*歲[^\n]{0,25}?([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])\s*大運/g
     let m: RegExpExecArray | null
-    const seen = new Set<string>()
+    const seenPillar = new Set<string>()       // 同干支只能出現 1 次(大運順排不重複)
+    const seenAgeRange = new Set<string>()     // 同年齡範圍去重
     while ((m = re.exec(aiContent)) !== null) {
       const start = parseInt(m[1])
       const end = parseInt(m[2])
-      if (end <= start || end - start > 15 || start < 0 || end > 120) continue
+      const span = end - start
+      // 大運鐵律:每柱 9 或 10 年(起運因人不同有 ±1 容差)
+      if (span !== 9 && span !== 10) continue
+      if (start < 0 || end > 120) continue
       const pillar = m[3] + m[4]
-      const themeRaw = (m[5] || '').replace(/[（）()]/g, '').trim()
-      const key = `${start}-${end}-${pillar}`
-      if (seen.has(key)) continue
-      seen.add(key)
+      // 同干支已抓過 → 跳(大運 60 甲子順排、10 年 1 柱、不重複)
+      if (seenPillar.has(pillar)) continue
+      // 同年齡範圍已抓 → 跳
+      const ageKey = `${start}-${end}`
+      if (seenAgeRange.has(ageKey)) continue
+      seenPillar.add(pillar)
+      seenAgeRange.add(ageKey)
       // energy 啟發式:藏「機會 / 黃金 / 高峰 / 上升 / 旺」 → 高;「考驗 / 起伏 / 困頓 / 低 / 險」 → 低
       const around = aiContent.slice(Math.max(0, m.index - 50), m.index + 200)
       let energy = 60
       if (/黃金|高峰|大旺|機會|衝刺|爆發|旺運/.test(around)) energy = 85
       else if (/考驗|挑戰|起伏|低谷|轉折|波折/.test(around)) energy = 35
       else if (/穩定|平順|蓄勢|沉澱/.test(around)) energy = 65
-      stages.push({ age_start: start, age_end: end, pillar, theme: themeRaw || undefined, energy })
+      stages.push({ age_start: start, age_end: end, pillar, energy })
     }
     if (stages.length < 3) return []  // 少於 3 個不顯示(資料不足)
-    return stages.sort((a, b) => a.age_start - b.age_start).slice(0, 8)  // 最多 8 個 stage
+    // 排序 + 限 8 + 過濾年齡重疊(若 stage_n.age_start < stage_{n-1}.age_end → 丟)
+    const sorted = stages.sort((a, b) => a.age_start - b.age_start)
+    const noOverlap: typeof stages = []
+    for (const s of sorted) {
+      const prev = noOverlap[noOverlap.length - 1]
+      if (prev && s.age_start < prev.age_end) continue  // 重疊 → 丟
+      noOverlap.push(s)
+    }
+    return noOverlap.slice(0, 10)  // 最多 10 個 stage(80 歲 / 10 年 = 8、容差 10)
   })()
 
   // v5.6.10 R5-2:從 ai_content 解析五行能量分布(對應 Gemini「致命傷」第二招)
