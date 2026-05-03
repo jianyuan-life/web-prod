@@ -810,6 +810,36 @@ export function cleanFinalReport(text: string, clientName?: string): string {
     console.log(`[cleanFinalReport] 繁體化：轉換 ${conversions} 個簡體字`)
   }
 
+  // v5.7.27 簡轉繁誤字修正(opencc 上下文判斷不對的常見錯誤)
+  // 證據:7a10ce3c v5.7.26 grep 「隻是」6 次 / 「不隻」2 次 / 「隻有」「隻能」各 1 次
+  // 真因:opencc 把簡體「只」(zhǐ 副詞 + zhī 量詞)全轉「隻」(僅量詞)、誤把副詞「只是/只有/只能/不只」轉成「隻是/隻有/隻能/不隻」
+  // 修:詞組級覆蓋(優先 word > char、避免破壞真量詞如「一隻」「兩隻」「隻字片語」)
+  const TYPO_FIX_DICT: Record<string, string> = {
+    '隻是': '只是',
+    '隻有': '只有',
+    '隻能': '只能',
+    '隻要': '只要',
+    '隻會': '只會',
+    '隻好': '只好',
+    '隻怕': '只怕',
+    '不隻': '不只',
+    '隻為了': '只為了',
+    '隻不過': '只不過',
+    '隻剩': '只剩',
+    '隻在': '只在',
+    '隻有一': '只有一',
+  }
+  let typoFixCount = 0
+  for (const [wrong, right] of Object.entries(TYPO_FIX_DICT)) {
+    const before = cleaned.length
+    cleaned = cleaned.split(wrong).join(right)
+    const after = cleaned.length
+    if (before !== after) typoFixCount += (before - after) / Math.max(1, wrong.length - right.length)
+  }
+  if (typoFixCount > 0) {
+    console.log(`[cleanFinalReport] v5.7.27 typo fix:${typoFixCount} 處簡轉繁誤字修正`)
+  }
+
   console.log(`[cleanFinalReport] 最終清理完成，${cleaned.length} 字`)
   return cleaned.trim()
 }
