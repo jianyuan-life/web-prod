@@ -358,8 +358,8 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   return {
     title: title || '命格名片',
     definition,
-    talents: talents.slice(0, 3),
-    challenges: challenges.slice(0, 3),
+    talents: talents.slice(0, 5),       // v5.7.30 修:Top 3 → Top 5(對齊 c_plan_v2.ts:469 prompt 規格 v5.5.1 修 #7)
+    challenges: challenges.slice(0, 5),  // 同上、課題 Top 5
     firstImpression,
     trueself,
     keywords,
@@ -2063,7 +2063,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {personalityCard.talents.length > 0 && (
                   <div>
                     <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#6ab04c' }}>
-                      <span>&#10003;</span> 天賦 Top 3
+                      <span>&#10003;</span> 天賦 Top 5
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {personalityCard.talents.map((t, i) => (
@@ -2082,7 +2082,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {personalityCard.challenges.length > 0 && (
                   <div>
                     <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#e0963a' }}>
-                      <span>&#9888;</span> 課題 Top 3
+                      <span>&#9888;</span> 課題 Top 5
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {personalityCard.challenges.map((c, i) => (
