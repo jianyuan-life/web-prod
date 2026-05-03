@@ -589,7 +589,10 @@ function renderInlineMarkdown(text: string): string {
       const firstRow = trList[0] || ''
       const headerRow = firstRow.replace(/<td/g, '<th').replace(/<\/td>/g, '</th>').replace(/style="[^"]*"/g, 'style="padding:10px 14px;border-bottom:2px solid rgba(201,168,76,0.3);font-size:12px;font-weight:600;color:rgba(201,168,76,0.8);text-align:left;white-space:nowrap"')
       const bodyRows = trList.slice(1).join('')
-      return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:320px;font-size:13px">${headerRow}${bodyRows}</table></div>`
+      // v5.7.38 表格 break-out:14 欄矩陣表在 1280 主容器仍橫滑、桌面 1920 還有空間
+      // 用 viewport-width 撐到滿、容器外 negative margin、置中、保留 horizontal scroll fallback
+      // class="table-breakout" 對應 globals 自定 CSS:大螢幕 break out 到 95vw、小螢幕仍 100% 容器內
+      return `<div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:320px;font-size:13px">${headerRow}${bodyRows}</table></div>`
     })
     .replace(/___TABLE_SEP___/g, '')
     // 安全網：如果上面的表格轉換沒抓到，把殘留的 | 分隔行轉成可讀格式
@@ -1341,6 +1344,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         /* v5.7.34 響應式內文限寬:容器在 lg+ 放寬到 1280px,但純文字段落維持 720px 閱讀寬度
            表格 / 圖表 / div wrapper 不限,自動撐滿善用版面 */
         .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 760px; }
+        /* v5.7.38 表格 break-out:大螢幕 14 欄矩陣表撐到 viewport 95vw、容器外置中
+           小螢幕(< 1024px)維持容器內 100% + horizontal scroll */
+        @media (min-width: 1024px) {
+          .table-breakout {
+            width: min(95vw, 1600px) !important;
+            position: relative;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: none !important;
+          }
+        }
         /* v5.3.44 IA 稽核補：h1/h2 Major Third 比例（1.25 倍），配 17px 正文維持垂直節奏
            h1 = 17 × 1.25³ = 33.2px / h2 = 17 × 1.25² = 26.56px / h3 = 17 × 1.25 = 21.25px
            但 h3 已設 18px（Tailwind 1.125rem），改設 h1/h2 為 Major Third 且 font-family 顯式用 --font-body */
