@@ -130,6 +130,15 @@ function classifyC(title: string): ChapterPart {
   if (/心態調整|成長路徑|成長|心態重建|自省|每日練習/.test(t)) return 'he'
   if (/總結|進階|寫給|收尾|結語|給你的一句話|給你的|一封信|力量宣告|系統.*關鍵發現/.test(t)) return 'he'
   if (/命理依據速覽|命理依據|速覽表|15.*系統速覽|系統速覽/.test(t)) return 'he'
+  // v5.7.40 加 v5.3.98 新增章節:TOP 5 優勢 / TOP 5 風險 / 三階段行動 / 年度運勢曲線 / 幸運參數 / 十五系統交叉
+  // 證據:HJN 32 歲 v5.7.39 ai_content 17 章節順序連續、但 Gemini 看 mobile 截圖標「九十十一十二十四四五六亂序」
+  // 根因:這 6 章標題未命中 classifyC 規則 → fallback to 'qi' → 跑到起篇前面 → 整體順序錯亂
+  if (/TOP\s*5\s*優勢|前\s*5.*優勢|五大.*優勢|TOP\s*5\s*天賦/.test(t)) return 'he'
+  if (/TOP\s*5\s*風險|前\s*5.*風險|五大.*風險|TOP\s*5\s*挑戰/.test(t)) return 'he'
+  if (/三階段.*行動|行動.*計畫|短期.*中期.*長期|分階段.*行動/.test(t)) return 'he'
+  if (/年度運勢曲線|運勢曲線|年度.*曲線/.test(t)) return 'he'
+  if (/幸運參數|幸運元素總表|幸運參數速查/.test(t)) return 'he'
+  if (/(?:十五|15).*系統.*交叉|交叉驗證.*矩陣|系統.*驗證.*矩陣/.test(t)) return 'he'
 
   return 'qi' // 預設丟起（認可版內容量以起篇為主）
 }
