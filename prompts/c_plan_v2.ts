@@ -96,14 +96,35 @@ const SCHOOL_LOCK = `【🔒 派別硬鎖（禁止混派混寫，違反視為不
 
 依《紫微斗數全書》卷三〈諸星論〉+ 中州派整合;每組 1-2 句解讀為入門基準、實際解讀必含廟旺 + 三方四正 + 四化。`
 
-// ── 年齡分層判斷 ──
-export function getAgeGroup(birthYear: number): 'toddler' | 'child' | 'teen' | 'adult' | 'elder' {
+// ── 年齡分層判斷(v5.7.39:Adult 19-60 拆 4 段、依 9 份全球研究共識)──
+// 8 段切法依據:Erikson 8 stages + Levinson eras + 紫微大限 10 年 + 八字大運 10 年 + Saturn return 28-30/56-60
+export type LifeStage = 'toddler' | 'child' | 'teen' | 'young_adult' | 'early_mid' | 'mid' | 'pre_senior' | 'elder' | 'adult'  // 'adult' = deprecated v5.5 enum、保留 backward-compat、新 callsite 不應返回
+
+export function getAgeGroup(birthYear: number): LifeStage {
   const age = new Date().getFullYear() - birthYear
-  if (age <= 6) return 'toddler'
-  if (age <= 12) return 'child'
-  if (age <= 18) return 'teen'
-  if (age <= 60) return 'adult'
-  return 'elder'
+  if (age <= 6) return 'toddler'      // 0-6 嬰幼兒
+  if (age <= 12) return 'child'        // 7-12 學齡兒
+  if (age <= 18) return 'teen'         // 13-18 青少年
+  if (age <= 30) return 'young_adult'  // 19-30 青年(Quarter-life crisis、Saturn return 28-30、Arnett emerging adulthood)
+  if (age <= 40) return 'early_mid'    // 31-40 早中年(Levinson Settling Down、結婚生子高峰、35 危機)
+  if (age <= 50) return 'mid'          // 41-50 中年(Jung Individuation、Mid-life Transition、U-curve 47 谷底)
+  if (age <= 60) return 'pre_senior'   // 51-60 中老年過渡(空巢、退休前奏、Saturn return 56-60)
+  return 'elder'                        // 61+ 長者(Erikson 統整 vs 絕望)
+}
+
+// ── 取得當前年柱(動態 ganzhi、防 2026 寫死跨年爆) ──
+export function computeCurrentYearGanzhi(date: Date = new Date()): string {
+  // 簡化版立春切換(2/4 前用前一年):精準算 leap 應用 Python API、本地簡化 ok 因 prompt 用
+  const year = date.getMonth() < 1 || (date.getMonth() === 1 && date.getDate() < 4)
+    ? date.getFullYear() - 1
+    : date.getFullYear()
+  const STEMS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
+  const BRANCHES = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
+  // 1984 = 甲子年 baseline
+  const offset = year - 1984
+  const stem = STEMS[((offset % 10) + 10) % 10]
+  const branch = BRANCHES[((offset % 12) + 12) % 12]
+  return `${stem}${branch}`
 }
 
 // ── 年齡分層的寫作指引 ──
@@ -128,23 +149,90 @@ const AGE_INSTRUCTIONS: Record<string, string> = {
 - 可淺談感情觀（引導型），但不寫桃花運或「幾歲遇到對的人」
 - 不寫：投資理財、婚姻分析、創業評估`,
 
-  adult: `【寫作對象：本人｜成人 19-60 歲】
+  young_adult: `【寫作對象：本人｜青年 19-30 歲】
 報告標題格式：「○○○ 人生藍圖」
-- 直接用「你」稱呼
-- 全面涵蓋：事業方向/財運策略/感情模式/健康地圖/人際關係
-- 無禁寫內容`,
+- 直接用「你」稱呼、像同儕級陪伴而非說教長輩
+- 聚焦：自我探索 vs 承諾、職涯定位、感情模式啟蒙、財務獨立第一步、住居選擇
+- 涵蓋:Quarter-life crisis(承認 75% 同齡人有焦慮)、Saturn return 28-30、Arnett emerging adulthood 五特徵
+- 強調探索期合理性、不催促「30 前該完成 X」
+- 不寫:婚姻倦怠、退休規劃、晚年子女問題`,
 
-  elder: `【寫作對象：本人｜長者 60+ 歲】
-報告標題格式：「○○○ 人生藍圖（智慧長者版）」
-- 用「您」稱呼，語氣尊重但依然犀利
-- 聚焦：健康養生、晚運、子女關係、心靈安頓、人生回顧
-- 不寫：創業建議（除非仍在職）、桃花運（除非客戶特別詢問）`,
+  early_mid: `【寫作對象：本人｜早中年 31-40 歲】
+報告標題格式:「○○○ 人生藍圖」
+- 直接用「你」稱呼、直面決策壓力
+- 聚焦:升遷拼搏、結婚生子、房貸、雙薪衝突、父母老化提前、Levinson Settling Down
+- 涵蓋:三明治世代壓力、夾心優先順序、35 歲職場危機、第一胎平均 32-34
+- 強調「取捨哲學」、不過度催「成家立業」單軌
+- 不寫:退休、晚年照護(可預告 40-50)`,
+
+  mid: `【寫作對象：本人｜中年 41-50 歲】
+報告標題格式:「○○○ 人生藍圖」
+- 直接用「你」稱呼、深度反思語氣
+- 聚焦:Jung Individuation(整合 shadow)、轉職轉業、婚倦、子女青春期、父母失能、健康首次警訊
+- **用「Jung 人生下半場」框架取代「中年危機」恐嚇語**(Sub-agent 全球共識)
+- 涵蓋:Mid-life Transition(Levinson)、47 歲幸福 U 谷底反轉
+- 不寫:預言中年破財、預言父母離世具體日(永久禁)`,
+
+  pre_senior: `【寫作對象:本人｜中老年過渡 51-60 歲】
+報告標題格式:「○○○ 人生藍圖」
+- 直接用「你」稱呼、智者對話 + 賦權語氣
+- 聚焦:空巢、退休前奏、mentor 角色、父母過世、健康黃燈、Saturn return 56-60
+- 涵蓋:退休 SOP 5 維(財務+健康+社交+興趣+意義)、Encore careers、第二人生課程
+- **強調個體化完成期、不退場話術**
+- 不寫:預測壽命、子女不孝催費、養生品推銷`,
+
+  elder: `【寫作對象:本人 + 預埋對子女｜長者 61+ 歲】
+報告標題格式:「○○○ 人生藍圖(智慧長者版)」
+- 用「您」稱呼、語氣尊重不哄
+- 雙軌寫:對長者尊重 + 預埋給子女理解段落(self_with_children 模式)
+- 聚焦:Life Review、智慧傳承、健康養生、晚運、心靈安頓、家族關係
+- 涵蓋:Erikson 統整 vs 絕望、Joan Erikson 第 9 階段(80+)、Gerotranscendence
+- 字級加大、結構簡化
+- ❌❌❌ **絕對禁**:壽命預測 / 嚴重病具體預言 / 「拖累子女」內疚 / 續命儀式 / 宗教恐嚇`,
+
+  // backward-compat:舊 'adult' enum value 保留(若 production code 還在用)
+  adult: `【DEPRECATED — adult 已拆 4 段、改用 young_adult/early_mid/mid/pre_senior】
+若看到此 instructions、表示 getAgeGroup() 未升級、請聯繫工程師。
+fallback:寫成人通用版、無禁寫但建議客戶說明具體年齡以獲精準分析。`,
+}
+
+// ── 多語禁詞集(quality gate 掃描、9 份全球研究跨源)──
+export const FORBIDDEN_WORDS_BY_STAGE: Record<LifeStage, string[]> = {
+  toddler: ['戀愛', '桃花', '婚姻', '投資理財', '職場策略', '創業', '婚事', '夫妻'],
+  child: ['戀愛', '桃花', '婚姻', '投資理財', '創業'],
+  teen: ['投資理財', '婚姻分析', '創業評估', '幾歲遇到對的人'],
+  young_adult: ['婚姻倦怠', '退休規劃', '晚年子女'],
+  early_mid: ['退休規劃', '晚年照護'],
+  mid: ['預言中年破財', '父母離世日', '中年必死', '45 不轉就死'],
+  pre_senior: ['壽命預測', '子女不孝', '養生品', '老來孤獨'],
+  elder: ['壽命', '幾年後過世', '拖累子女', '續命', '不久於人世', '回光返照', 'life expectancy', '수명예측', '寿命予測', 'prédiction de mort'],
+  adult: [],
 }
 
 // ── 犀利版 system prompt（所有 call 共用）── v5.5 雙軌策略
-function getSystemPrompt(locale?: string): string {
+function getSystemPrompt(locale?: string, ageContext?: { age: number; stage: LifeStage; stageLabel: string; voice: string; currentYearGanzhi: string }): string {
   const lang = locale === 'zh-CN' ? '簡體中文' : '繁體中文'
-  return `你是鑒源命理平台的首席命理顧問。你正在為付費客戶撰寫「人生藍圖」報告。
+  // v5.7.39 鐵律 header(對應 v5.3.31 性別鐵律置頂前例、避免 AI 寫超齡內容)
+  const ageHeader = ageContext ? `
+
+═══════════════════════════════════════════════════════════════
+🔴🔴🔴 客戶當前狀態鐵律(置頂、最高優先、超齡內容 = 報告作廢)
+═══════════════════════════════════════════════════════════════
+- **客戶當前年齡**:${ageContext.age} 歲
+- **人生階段**:${ageContext.stageLabel}(${ageContext.stage})
+- **寫作對象 / voice**:${ageContext.voice}
+- **當前年柱**:${ageContext.currentYearGanzhi}(動態算、勿寫死「2026 丙午年」)
+
+**鐵律**:
+1. 任何超齡內容 = 報告作廢(2 歲不寫感情危機 / 70+ 不寫升學)
+2. voice 切換必嚴守(infant→對父母 / adult→對本人 / elder→雙軌對長者+子女)
+3. **流年動態替換**:prompt 內若出現「2026 丙午年」/「2026年丙午年」字眼、一律替換為「${ageContext.currentYearGanzhi}年(西元 ${new Date().getFullYear()}年)」、勿照抄寫死
+4. 違反禁詞清單(stage forbidden words)= quality gate fail
+5. 對 ${ageContext.stage} 階段、嚴格遵守該段 AGE_INSTRUCTIONS 紅線(寫作對象 / 禁寫項)
+═══════════════════════════════════════════════════════════════
+` : ''
+
+  return `你是鑒源命理平台的首席命理顧問。你正在為付費客戶撰寫「人生藍圖」報告。${ageHeader}
 
 ═══════════════════════════════════════════════════════════════
 🆕 v5.5 雙軌策略宣言(P0-7、最高優先級、所有後續規則的總綱)
@@ -428,8 +516,44 @@ ${SCHOOL_LOCK}`
 // Call 1：命格名片 + 你是什麼樣的人 + 事業與天賦 + 財運分析
 // 目標字數 ~12,000字，max_tokens 16000
 // ============================================================
-export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string): string {
-  return `${getSystemPrompt(locale)}
+// v5.7.39 helper:from birthYear → age + stage + voice + currentYearGanzhi
+export function buildAgeContext(birthYear: number) {
+  const age = new Date().getFullYear() - birthYear
+  const stage = getAgeGroup(birthYear)
+  const STAGE_LABEL: Record<LifeStage, string> = {
+    toddler: '0-6 嬰幼兒',
+    child: '7-12 學齡兒',
+    teen: '13-18 青少年',
+    young_adult: '19-30 青年',
+    early_mid: '31-40 早中年',
+    mid: '41-50 中年',
+    pre_senior: '51-60 中老年過渡',
+    elder: '61+ 長者',
+    adult: 'DEPRECATED',
+  }
+  const VOICE: Record<LifeStage, string> = {
+    toddler: 'parent(對父母寫、主詞「您的孩子」)',
+    child: 'parent(對父母寫)',
+    teen: 'parent_and_self(對父母 +對本人雙視角)',
+    young_adult: 'self(對本人寫、同儕級陪伴)',
+    early_mid: 'self(對本人寫、決策直面)',
+    mid: 'self(對本人寫、深度反思)',
+    pre_senior: 'self(對本人寫、智者賦權)',
+    elder: 'self_with_children(對長者尊重 + 預埋對子女)',
+    adult: 'self',
+  }
+  return {
+    age,
+    stage,
+    stageLabel: STAGE_LABEL[stage],
+    voice: VOICE[stage],
+    currentYearGanzhi: computeCurrentYearGanzhi(),
+  }
+}
+
+export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string, birthYear?: number): string {
+  const ageContext = birthYear ? buildAgeContext(birthYear) : undefined
+  return `${getSystemPrompt(locale, ageContext)}
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 ${clientNeed ? `\n【客戶特定需求】${clientNeed}\n所有分析請優先圍繞客戶的需求展開，但不要遺漏其他重要面向。` : ''}
@@ -578,8 +702,10 @@ export function buildCall2Prompt(
   ageGroup: string,
   call1Summary: string,
   locale?: string,
+  birthYear?: number,
 ): string {
-  return `${getSystemPrompt(locale)}
+  const ageContext = birthYear ? buildAgeContext(birthYear) : undefined
+  return `${getSystemPrompt(locale, ageContext)}
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 
@@ -710,8 +836,10 @@ export function buildCall3Prompt(
   clientName: string,
   call1and2Summary: string,
   locale?: string,
+  birthYear?: number,
 ): string {
-  return `${getSystemPrompt(locale)}
+  const ageContext = birthYear ? buildAgeContext(birthYear) : undefined
+  return `${getSystemPrompt(locale, ageContext)}
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 

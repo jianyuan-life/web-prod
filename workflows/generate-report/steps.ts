@@ -14,6 +14,7 @@ import { notifyEmailFailed } from '@/lib/ai/observability/telegram'
 import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 import {
   getAgeGroup,
+  FORBIDDEN_WORDS_BY_STAGE,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
   buildUserPrompt, buildAppendix,
   extractCall1Summary, extractCall1And2Summary,
@@ -1940,7 +1941,7 @@ export async function aiGenerateCall1(
   const ageGroup = getAgeGroup(birthData.year)
   const clientNeed = question || undefined
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
-  const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale)
+  const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale, birthData.year)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 1', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -1960,7 +1961,7 @@ export async function aiGenerateCall2(
   const ageGroup = getAgeGroup(birthData.year)
   const call1Summary = extractCall1Summary(call1Content)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
-  const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale)
+  const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale, birthData.year)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 2', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -1987,7 +1988,7 @@ export async function aiGenerateCall3(
   }
 
   const maxTokens = 128000
-  const systemPrompt = buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale)
+  const systemPrompt = buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale, birthData.year)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call 3', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -2630,6 +2631,17 @@ export async function qualityGate(
       if (!sec.pattern.test(reportContent)) {
         const prefix = sec.soft ? '[軟性] ' : ''
         warnings.push(`${prefix}人生藍圖缺少必要章節: ${sec.name}`)
+      }
+    }
+
+    // v5.7.39 年齡段禁詞掃描(對應 9 份全球研究共識、infant 不寫戀愛 / elder 不寫壽命預測)
+    if (birthData?.year) {
+      const stage = getAgeGroup(birthData.year)
+      const forbidden = FORBIDDEN_WORDS_BY_STAGE[stage] || []
+      for (const word of forbidden) {
+        if (reportContent.includes(word)) {
+          warnings.push(`[軟性][年齡段禁詞] ${stage} 段違反禁詞「${word}」(對應 toddler/elder 倫理鐵律、9 國研究共識)`)
+        }
       }
     }
   }
