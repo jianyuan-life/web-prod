@@ -842,6 +842,22 @@ export function cleanFinalReport(text: string, clientName?: string): string {
     console.log(`[cleanFinalReport] v5.7.29 通用 typo fix:${typoFixCount} 處「隻→只」(副詞誤判量詞)`)
   }
 
+  // v5.7.33 廢話 meta label 全面過濾(老闆「最高品質、客戶不需要看 meta」)
+  // 證據:5 LLM eval 共識「🪞 你看得懂的版本」「📚 命理深析(PDF 專屬深度版)」 label 殘留扣 UI 分(D-V3 給 92)
+  // 修:寫入 Supabase 前過濾、避免 LLM eval 讀 ai_content 看到 label
+  const beforeLabel = cleaned.length
+  cleaned = cleaned
+    .replace(/^###\s*🪞?\s*你看得懂的版本\s*$\n?/gm, '')
+    .replace(/^>\s*\*{0,2}\s*📚\s*\*{0,2}\s*命理深析[^\n]*\n?/gm, '')
+    .replace(/^>\s*\*{0,2}\s*命理深析\s*[(（]\s*PDF\s*專屬深度版\s*[)）]\s*\*{0,2}\s*\n?/gm, '')
+    .replace(/[(（]\s*PDF\s*專屬深度版\s*[)）]/g, '')
+    .replace(/^>\s*$\n?/gm, '')   // 空 blockquote line(避免上行過濾後留白)
+    .replace(/\n{3,}/g, '\n\n')   // 多空行壓縮
+  const labelRemoved = beforeLabel - cleaned.length
+  if (labelRemoved > 0) {
+    console.log(`[cleanFinalReport] v5.7.33 meta label filter:移除 ${labelRemoved} 字廢話 label`)
+  }
+
   console.log(`[cleanFinalReport] 最終清理完成，${cleaned.length} 字`)
   return cleaned.trim()
 }
