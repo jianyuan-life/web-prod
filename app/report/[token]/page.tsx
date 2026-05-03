@@ -1615,39 +1615,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <ReadingTime textLength={report.report_result?.ai_content?.length || 0} />
           </div>
 
-          {/* v5.3.48 Wave 3.1：首屏破冰語（老闆 docx P1） */}
-          {/* 客戶進入報告頁前 3 秒的「情感鉤子」—— 24px 金色 Serif 大字 + 淡入動畫
-              模板化按方案分流，不依賴 ai_content 解析（避免 SSR 複雜度） */}
-          {!isChumenji && !isRelationship && (
-            <div className="mt-8 pt-6 relative z-10" style={{ borderTop: '1px solid rgba(201,168,76,0.12)' }}>
-              <p className="text-[22px] sm:text-[24px] leading-[1.65] text-gold/90 font-medium tracking-wide" style={{
-                fontFamily: 'var(--font-sans)',
-                textWrap: 'balance',
-              }}>
-                {(() => {
-                  // v5.7.41:依年齡段切換 tagline 語氣 — toddler/child 對父母寫、其他對本人
-                  // (對應 Gemini visual eval P2「對 2 歲不該寫『改變看自己的方式』」)
-                  const age = report.birth_data?.year ? new Date().getFullYear() - report.birth_data.year : 0
-                  const isMinor = age > 0 && age <= 12
-                  if (report.plan_code === 'C') {
-                    return isMinor
-                      ? `接下來的幾分鐘，會改變您理解${report.client_name}的方式。`
-                      : `接下來的幾分鐘，會改變${report.client_name}看自己的方式。`
-                  }
-                  if (report.plan_code === 'D') {
-                    return isMinor
-                      ? `那個讓您困惑${report.client_name}行為的原因,命盤早就寫好了答案。`
-                      : `那個讓${report.client_name}卡住的原因,命盤早就寫好了答案。`
-                  }
-                  if (report.plan_code === 'G15') {
-                    return `這個家的故事，比${report.client_name}以為的更深。`
-                  }
-                  return '從這裡開始，看見最真實的自己。'
-                })()}
-              </p>
-            </div>
+          {/* v5.7.45 砍掉首屏破冰 slogan(Gemini visual eval 2 客戶 4 視口都標 P1-P2 廢話、客戶已付費不需再被推銷)
+              {/* 原 v5.3.48 Wave 3.1 slogan 已移除、直接讓報告內容說話 */}
+          {false && !isChumenji && !isRelationship && (
+            <div></div>
           )}
-          {isRelationship && (
+          {false && isRelationship && (
             <div className="mt-8 pt-6 relative z-10" style={{ borderTop: '1px solid rgba(201,168,76,0.12)' }}>
               <p className="text-[22px] sm:text-[24px] leading-[1.65] text-gold/90 font-medium tracking-wide" style={{
                 fontFamily: 'var(--font-sans)',
@@ -2678,7 +2651,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
             >
               <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--color-gold)' }}>
-                <span className="text-xs text-gold/40 font-mono font-bold mr-2">{String(i + 1).padStart(2, '0')}</span>
+                {/* v5.7.45 砍「02」雙編號前綴 */}
                 {sec.title}
               </h2>
               <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(contentToRender) }} />
@@ -2766,7 +2739,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 id={`sec-${globalIdx}`}
                 title={sec.title}
                 titleColor="var(--color-gold)"
-                chapterLabel={<span className="text-xs text-gold/40 font-mono font-bold">{String(chapterNum).padStart(2, '0')}</span>}
                 defaultExpanded={true}
                 className="glass"
                 style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}

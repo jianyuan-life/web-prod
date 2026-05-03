@@ -702,6 +702,25 @@ export function cleanFinalReport(text: string, clientName?: string): string {
     }
   }
 
+  // v5.7.45 內部術語清理(Gemini visual eval 標 P1「對客戶意義不明、像 debug log」)
+  // 證據:HYC + HJN 都標出「(系統交叉驗證)」「多系統共識」「最高純血量」「J 牌」是內部術語洩漏
+  {
+    const internalTermsBefore = cleaned.length
+    cleaned = cleaned
+      .replace(/[（(]\s*系統交叉驗證\s*[）)]/g, '')                 // (系統交叉驗證) → 砍
+      .replace(/多系統共識/g, '綜合分析')                         // 多系統共識 → 綜合分析
+      .replace(/[二三四五六七八九十]?\s*系統共識/g, '綜合分析')      // N 系統共識 → 綜合分析
+      .replace(/最高純血量\s*[（(]?\s*\d+\s*[）)]?/g, '')          // 最高純血量(95) → 砍
+      .replace(/純血量\s*[（(]?\s*\d+\s*[）)]?/g, '')              // 純血量 95 → 砍
+      .replace(/\bJ\s*牌\b/g, '')                                  // J 牌(內部術語)→ 砍
+      .replace(/\(\s*ajna\s*\)/gi, '(Ajna 中心)')                 // 修術語錯誤
+      .replace(/[，,]\s*[，,]+/g, ',')                             // 連續逗號清
+      .replace(/[（(]\s*[）)]/g, '')                               // 空括號清
+    if (cleaned.length !== internalTermsBefore) {
+      console.log(`[cleanFinalReport] v5.7.45 清內部術語: -${internalTermsBefore - cleaned.length} 字`)
+    }
+  }
+
   // 1. 刪除重複報告標題（保留第一個）
   // 策略 A：如果有客戶名字，匹配含客戶名的 h1/h2 標題
   if (clientName) {
