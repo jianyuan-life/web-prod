@@ -596,10 +596,11 @@ function renderInlineMarkdown(text: string): string {
       const firstRow = trList[0] || ''
       const headerRow = firstRow.replace(/<td/g, '<th').replace(/<\/td>/g, '</th>').replace(/style="[^"]*"/g, 'style="padding:10px 14px;border-bottom:2px solid rgba(201,168,76,0.3);font-size:12px;font-weight:600;color:rgba(201,168,76,0.8);text-align:left;white-space:nowrap"')
       const bodyRows = trList.slice(1).join('')
-      // v5.7.38 表格 break-out:14 欄矩陣表在 1280 主容器仍橫滑、桌面 1920 還有空間
-      // 用 viewport-width 撐到滿、容器外 negative margin、置中、保留 horizontal scroll fallback
-      // class="table-breakout" 對應 globals 自定 CSS:大螢幕 break out 到 95vw、小螢幕仍 100% 容器內
-      return `<div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:320px;font-size:13px">${headerRow}${bodyRows}</table></div>`
+      // v5.7.52 Sticky Column(Gemini 建議、Notion 範本):第一欄黏住左邊、解 12 月表第一欄截斷
+      // 表頭 + body 第一欄 position:sticky left:0、加陰影標識
+      const headerStickyRow = headerRow.replace(/<th\s+style="([^"]*)"/i, '<th style="$1;position:sticky;left:0;z-index:11;background:rgba(15,22,40,0.95);box-shadow:2px 0 4px rgba(0,0,0,0.3)"')
+      const bodyStickyRows = bodyRows.replace(/<tr([^>]*)><td/g, '<tr$1><td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7;position:sticky;left:0;z-index:10;background:rgba(15,22,40,0.92);box-shadow:2px 0 4px rgba(0,0,0,0.2)"')
+      return `<div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:320px;font-size:13px">${headerStickyRow}${bodyStickyRows}</table></div>`
     })
     .replace(/___TABLE_SEP___/g, '')
     // 安全網：如果上面的表格轉換沒抓到，把殘留的 | 分隔行轉成可讀格式
@@ -1565,15 +1566,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
-      {/* v5.7.34 響應式重構:電腦 UI 用電腦方式、手機 UI 用手機方式
-           - sm (<768): max-w-[680px] 維持手機單欄 + Bringhurst 32 漢字
-           - md (≥768): 720px 平板
-           - lg (≥1024): 960px 善用筆電版面
-           - xl (≥1280): 1120px 善用桌面
-           - 2xl (≥1536): 1280px 大螢幕
-           內文 prose 段落仍用 prose-p:max-w-[680px] 自限維持閱讀寬度
-           表格 / 圖表 / 命格名片自動撐滿容器寬、不再擠在 680px 中間 */}
-      <div className="max-w-[680px] md:max-w-[720px] lg:max-w-[1100px] xl:max-w-[1320px] 2xl:max-w-[1480px] mx-auto px-6 lg:px-12 xl:px-16 pt-12">
+      {/* v5.7.52 Gemini grounding 根治:CSS clamp + minmax 取代固定 max-width
+           - 1200-1920px 平滑延伸、消除「太窄」LLM 誤判
+           - 兩側留白比例自動隨螢幕調整 */}
+      <div className="mx-auto pt-12" style={{
+        width: 'min(95vw, clamp(680px, 88vw, 1680px))',
+        paddingLeft: 'clamp(1rem, 3vw, 4rem)',
+        paddingRight: 'clamp(1rem, 3vw, 4rem)',
+      }}>
 
         {/* 品牌標題 */}
         <div className="text-center mb-3 no-print">
