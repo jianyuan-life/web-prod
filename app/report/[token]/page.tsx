@@ -2058,6 +2058,30 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               background: 'radial-gradient(circle, rgba(197,150,58,1) 0%, transparent 70%)',
             }} />
 
+            {/* v5.7.49 命盤資料速覽(Gemini/Claude P0 標「核心命盤未顯示」、付費 $89 必看)
+                從 birth_data 抽八字、從 ai_content 抽紫微命宮 */}
+            {(() => {
+              const bd = report.birth_data || {}
+              // 從 ai_content 抽紫微命宮(若有)
+              const mgMatch = (aiContent || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?\s*[（(]?[甲乙丙丁戊己庚辛壬癸]?[子丑寅卯辰巳午未申酉戌亥]?[）)]?/)
+              const mingGong = mgMatch ? mgMatch[1] : ''
+              // 從 client_data 抽八字
+              const bazi = (report.report_result as Record<string, unknown>)?.client_data && (((report.report_result as Record<string, unknown>).client_data as Record<string, unknown>).bazi) || ''
+              if (!bazi && !mingGong) return null
+              return (
+                <div className="mb-4 px-4 py-3 rounded-lg" style={{
+                  background: 'rgba(197,150,58,0.05)',
+                  border: '1px solid rgba(197,150,58,0.15)',
+                }}>
+                  <div className="text-gold/50 text-[10px] tracking-[3px] mb-1.5 text-center">您的命盤資料</div>
+                  <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-sm text-cream/85" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+                    {bazi ? <span><span className="text-gold/60">八字:</span> {String(bazi)}</span> : null}
+                    {mingGong ? <span><span className="text-gold/60">紫微命宮:</span> {mingGong}</span> : null}
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* 人格封號 */}
             <div className="text-center mb-2">
               <div className="text-gold/50 text-[10px] tracking-[4px] mb-2 uppercase">命格名片</div>
