@@ -1129,8 +1129,49 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const dayunData = (() => {
     if (!aiContent) return []
     const stages: Array<{ age_start: number; age_end: number; pillar?: string; theme?: string; energy?: number }> = []
-    // v5.7.32 放寬:同時抓「X-Y 歲...干支大運」+「→Y 歲 干支」箭頭格式(AI 寫法多樣)
-    // 嚴規格仍鎖定 8-11 年/柱(大運鐵律 ±2 容差)、避免漏 70-80 歲
+    // v5.7.51 雙向抓 + 限同句:解 HYC 大運 timeline 跳號錯配 bug
+    // 證據:HYC ai 寫「(當前丙辰大運(2-11 歲))」干支在前 + 「12-21 歲乙卯大運」干支在後、原 regex 只匹配後者、跨段抓到不對的干支
+    // 修:① 加干支在前的 pattern「干支大運...年齡」② 限同段 \s 不跨換行 ③ 表格行也抓
+    const stages_raw: Array<[number, number, string, string]> = []  // [start, end, pillar, source]
+    // Pattern A:「年齡 X-Y 歲... 干支大運」(原)
+    const reA = /(\d{1,2})\s*[-–~]\s*(\d{1,2})\s*歲[^\n（(]{0,15}?([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])\s*大運/g
+    // Pattern B:「干支大運(年齡 X-Y 歲)」干支在前
+    const reB = /([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])\s*大運\s*[（(]?\s*(\d{1,2})\s*[-–~]\s*(\d{1,2})\s*歲/g
+    // Pattern C:財運時間表行「| 干支 | X-Y 歲 |」表格格式
+    const reC = /\|\s*([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])\s*[（(]?[^|]*[）)]?\s*\|\s*(\d{1,2})\s*[-–~]\s*(\d{1,2})\s*歲/g
+    let m: RegExpExecArray | null
+    for (const re of [reA, reB, reC]) {
+      while ((m = re.exec(aiContent)) !== null) {
+        if (re === reA) {
+          stages_raw.push([parseInt(m[1]), parseInt(m[2]), m[3] + m[4], 'A'])
+        } else {
+          stages_raw.push([parseInt(m[3]), parseInt(m[4]), m[1] + m[2], re === reB ? 'B' : 'C'])
+        }
+      }
+    }
+    // dedup by pillar、優先 C 表格 > B 干支前 > A 年齡前(reverse keep last)
+    const seenPillar = new Set<string>()
+    const seenAge = new Set<string>()
+    const out: typeof stages_raw = []
+    for (const s of stages_raw.sort((x,y) => x[3].localeCompare(y[3]) || x[0] - y[0])) {
+      const ageKey = `${s[0]}-${s[1]}`
+      if (seenPillar.has(s[2]) || seenAge.has(ageKey)) continue
+      const span = s[1] - s[0]
+      if (span < 6 || span > 11 || s[0] < 0 || s[1] > 120) continue
+      seenPillar.add(s[2])
+      seenAge.add(ageKey)
+      out.push(s)
+    }
+    out.sort((a,b) => a[0] - b[0])
+    for (const [start, end, pillar] of out) {
+      stages.push({ age_start: start, age_end: end, pillar, energy: 60 })
+    }
+    return stages
+  })()
+  // 註:以下原 regex 邏輯保留為 fallback、但通常 v5.7.51 新邏輯已抓全
+  const _legacy_dayun = (() => {
+    if (!aiContent) return []
+    const stages: Array<{ age_start: number; age_end: number; pillar?: string; theme?: string; energy?: number }> = []
     const re = /(\d{1,2})\s*[-–~]\s*(\d{1,2})\s*歲[^\n]{0,30}?([甲乙丙丁戊己庚辛壬癸])([子丑寅卯辰巳午未申酉戌亥])\s*大運/g
     let m: RegExpExecArray | null
     const seenPillar = new Set<string>()
@@ -2051,69 +2092,73 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 命格名片卡片（主題式報告專屬）──── */}
+        {/* ──── 命格名片卡片（主題式報告專屬）── v5.7.51 桌面大改版:Hero 區+命盤區雙欄 ──── */}
         {personalityCard && (
-          <div className="rounded-2xl p-8 mb-8 relative overflow-hidden" style={{
-            background: 'linear-gradient(135deg, rgba(26,42,74,0.6), rgba(15,22,40,0.8))',
-            border: '1px solid rgba(197,150,58,0.3)',
+          <div className="rounded-2xl p-8 lg:p-10 mb-8 relative overflow-hidden" style={{
+            background: 'linear-gradient(135deg, rgba(26,42,74,0.7), rgba(15,22,40,0.85))',
+            border: '1px solid rgba(197,150,58,0.35)',
           }}>
             {/* 背景裝飾 */}
-            <div className="absolute top-0 right-0 w-40 h-40 opacity-5" style={{
+            <div className="absolute top-0 right-0 w-72 h-72 opacity-[0.08]" style={{
               background: 'radial-gradient(circle, rgba(197,150,58,1) 0%, transparent 70%)',
             }} />
 
-            {/* v5.7.50 命盤資料速覽 — 八字 4 柱表格化(Gemini P0「應顯示完整四柱」)
-                從 birth_data 抽八字 + ai_content 抽紫微命宮 */}
-            {(() => {
-              const mgMatch = (aiContent || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?\s*[（(]?[甲乙丙丁戊己庚辛壬癸]?[子丑寅卯辰巳午未申酉戌亥]?[）)]?/)
-              const mingGong = mgMatch ? mgMatch[1] : ''
-              const baziStr = String((report.report_result as Record<string, unknown>)?.client_data && (((report.report_result as Record<string, unknown>).client_data as Record<string, unknown>).bazi) || '')
-              const pillars = baziStr.trim().split(/\s+/).filter(p => p.length === 2)
-              if (pillars.length < 4 && !mingGong) return null
-              return (
-                <div className="mb-5 px-5 py-4 rounded-xl" style={{
-                  background: 'rgba(197,150,58,0.06)',
-                  border: '1px solid rgba(197,150,58,0.2)',
+            {/* v5.7.51 桌面 lg+ 雙欄:左 Hero(封號+定義)/ 右 命盤速覽 */}
+            <div className="lg:grid lg:grid-cols-[1.3fr_1fr] lg:gap-8 mb-6">
+              {/* Hero 區:封號 + 一句話定義 */}
+              <div className="text-center lg:text-left lg:flex lg:flex-col lg:justify-center">
+                <div className="text-gold/50 text-[11px] tracking-[5px] mb-3 uppercase">命格名片</div>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-wide mb-4" style={{
+                  color: '#c9a84c',
+                  fontFamily: 'var(--font-sans)',
+                  textShadow: '0 0 30px rgba(197,150,58,0.4)',
+                  letterSpacing: '0.05em',
                 }}>
-                  <div className="text-gold/60 text-[11px] tracking-[3px] mb-3 text-center font-semibold">📊 您的命盤速覽</div>
-                  {pillars.length === 4 && (
-                    <div className="grid grid-cols-4 gap-3 mb-3">
-                      {[{label:'年柱',v:pillars[0]},{label:'月柱',v:pillars[1]},{label:'日柱',v:pillars[2]},{label:'時柱',v:pillars[3]}].map((p,i)=>(
-                        <div key={i} className="text-center px-2 py-3 rounded-lg" style={{background:'rgba(0,0,0,0.2)', border:'1px solid rgba(197,150,58,0.15)'}}>
-                          <div className="text-gold/40 text-[9px] tracking-[2px] mb-1.5">{p.label}</div>
-                          <div className="text-cream text-base font-bold" style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {mingGong && (
-                    <div className="text-center text-sm text-cream/80 pt-2 border-t border-gold/10">
-                      <span className="text-gold/60">🌟 紫微命宮:</span> <span className="font-semibold">{mingGong}</span>
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
+                  {personalityCard.title}
+                </h2>
+                {personalityCard.definition && (
+                  <p className="text-cream/85 text-base lg:text-lg leading-relaxed">
+                    {personalityCard.definition}
+                  </p>
+                )}
+              </div>
 
-            {/* 人格封號 */}
-            <div className="text-center mb-2">
-              <div className="text-gold/50 text-[10px] tracking-[4px] mb-2 uppercase">命格名片</div>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-wide" style={{
-                color: '#c9a84c',
-                fontFamily: 'var(--font-sans)',
-                textShadow: '0 0 20px rgba(197,150,58,0.3)',
-              }}>
-                {personalityCard.title}
-              </h2>
+              {/* 右欄:命盤速覽(桌面才顯示在右、手機在下) */}
+              {(() => {
+                const mgMatch = (aiContent || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?\s*[（(]?[甲乙丙丁戊己庚辛壬癸]?[子丑寅卯辰巳午未申酉戌亥]?[）)]?/)
+                const mingGong = mgMatch ? mgMatch[1] : ''
+                const baziStr = String((report.report_result as Record<string, unknown>)?.client_data && (((report.report_result as Record<string, unknown>).client_data as Record<string, unknown>).bazi) || '')
+                const pillars = baziStr.trim().split(/\s+/).filter(p => p.length === 2)
+                if (pillars.length < 4 && !mingGong) return null
+                return (
+                  <div className="mt-6 lg:mt-0 px-6 py-5 rounded-2xl" style={{
+                    background: 'rgba(197,150,58,0.08)',
+                    border: '1px solid rgba(197,150,58,0.25)',
+                  }}>
+                    <div className="text-gold/70 text-xs tracking-[3px] mb-4 text-center font-semibold">您的命盤速覽</div>
+                    {pillars.length === 4 && (
+                      <div className="grid grid-cols-4 gap-2.5 mb-4">
+                        {[{label:'年柱',v:pillars[0]},{label:'月柱',v:pillars[1]},{label:'日柱',v:pillars[2]},{label:'時柱',v:pillars[3]}].map((p,i)=>(
+                          <div key={i} className="text-center px-2 py-3.5 rounded-xl" style={{background:'rgba(0,0,0,0.3)', border:'1px solid rgba(197,150,58,0.2)'}}>
+                            <div className="text-gold/45 text-[10px] tracking-[2px] mb-2">{p.label}</div>
+                            <div className="text-cream text-lg font-bold" style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {mingGong && (
+                      <div className="text-center text-sm text-cream/85 pt-3 border-t border-gold/15">
+                        <span className="text-gold/60 mr-2">紫微命宮</span>
+                        <span className="font-bold text-base">{mingGong}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
 
-            {/* 一句話定義 */}
-            {personalityCard.definition && (
-              <p className="text-center text-cream/80 text-sm leading-relaxed mb-6 max-w-lg mx-auto">
-                {personalityCard.definition}
-              </p>
-            )}
-            {!personalityCard.definition && <div className="mb-4" />}
+            {/* sub-section divider */}
+            <div className="h-px my-6 bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
 
             {/* 關鍵字標籤 */}
             {personalityCard.keywords && personalityCard.keywords.length > 0 && (
