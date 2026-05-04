@@ -1668,35 +1668,42 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </div>
               </div>
 
-              {/* v5.9.4 Layer 2 改三欄對照表(Claude 指定):系統 → 訊號 → 優勢 */}
+              {/* v5.9.6 Layer 2 改 3 KPI 視覺卡(Claude「去 50% 文字、加 300% 視覺信號」)*/}
               <div className="px-4 py-3 rounded-xl mb-3" style={{ background: 'rgba(197,150,58,0.08)', border: '1px solid rgba(197,150,58,0.30)' }}>
                 <div className="flex items-start gap-2">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-dark font-bold text-xs" style={{ background: '#c9a84c' }}>2</div>
                   <div className="flex-1">
-                    <div className="text-gold/85 text-[10px] tracking-[2px] mb-2 font-semibold">🔮 為什麼 · 系統交叉因果鏈</div>
-                    <div className="grid grid-cols-3 gap-2 mb-2 text-[11px]">
-                      <div className="px-2 py-1.5 rounded" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(155,89,182,0.30)' }}>
-                        <div className="text-purple-300/65 text-[9px] tracking-wider mb-0.5">系統</div>
-                        <div className="text-cream font-semibold">14 套</div>
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider" style={{ background: '#c9a84c', color: '#0a0e1a' }}>STEP 2</span>
+                      <span className="text-gold/85 text-[11px] tracking-wider font-semibold">命盤儀表板</span>
+                    </div>
+                    {/* 3 KPI 卡 — 優勢分數 / 課題象限 / 方向箭頭 */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* KPI 1:優勢分數 (大字 + 條) */}
+                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(106,176,76,0.12)', border: '1px solid rgba(106,176,76,0.35)' }}>
+                        <div className="text-green-400/65 text-[9px] tracking-wider mb-1">核心優勢</div>
+                        <div className="text-2xl font-bold text-green-400 mb-0.5">85</div>
+                        <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{topTalent || '—'}</div>
+                        <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #6ab04c 85%, rgba(106,176,76,0.15) 85%)' }}/>
                       </div>
-                      <div className="px-2 py-1.5 rounded" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(122,159,207,0.30)' }}>
-                        <div className="text-blue-300/65 text-[9px] tracking-wider mb-0.5">訊號</div>
-                        <div className="text-cream font-semibold">{personalityCard.title}</div>
+                      {/* KPI 2:課題象限 (橘色) */}
+                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(224,150,58,0.12)', border: '1px solid rgba(224,150,58,0.35)' }}>
+                        <div className="text-orange-400/65 text-[9px] tracking-wider mb-1">主要課題</div>
+                        <div className="text-2xl font-bold text-orange-400 mb-0.5">75</div>
+                        <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{topChallenge || '—'}</div>
+                        <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #e0963a 75%, rgba(224,150,58,0.15) 75%)' }}/>
                       </div>
-                      <div className="px-2 py-1.5 rounded" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(106,176,76,0.30)' }}>
-                        <div className="text-green-400/65 text-[9px] tracking-wider mb-0.5">優勢</div>
-                        <div className="text-cream font-semibold">{topTalent}</div>
+                      {/* KPI 3:2026 方向箭頭 (紫色) */}
+                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(155,89,182,0.12)', border: '1px solid rgba(155,89,182,0.35)' }}>
+                        <div className="text-purple-300/65 text-[9px] tracking-wider mb-1 flex items-center gap-1">
+                          <span>2026 方向</span>
+                          <span>↗</span>
+                        </div>
+                        <div className="text-2xl font-bold text-purple-300 mb-0.5">60</div>
+                        <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{yearTheme ? yearTheme.slice(0, 8) : '聚焦深耕'}</div>
+                        <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #bb8fce 60%, rgba(155,89,182,0.15) 60%)' }}/>
                       </div>
                     </div>
-                    <div className="text-cream/85 text-[12px] leading-relaxed">
-                      最強訊號 <span className="text-green-400 font-semibold">「{topTalent}」</span> 由 14 套交叉確認;最該避免 <span className="text-orange-400 font-semibold">「{topChallenge}」</span>(陷阱)。
-                    </div>
-                    {/* v5.9.5 加橋接句(Claude P1「邏輯跳躍」修) */}
-                    {yearTheme && (
-                      <div className="mt-2 pt-2 border-t border-gold/15 text-[11px] text-gold/70 leading-relaxed">
-                        <span className="font-semibold">↓ 因此 2026 應該:</span> {yearTheme.slice(0, 50)}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -1732,6 +1739,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#6ab04c', color: '#fff' }}>持續習慣</span>
                         <span><span className="text-text-muted/65">每月初 / 規劃時:</span>{seasonAdvice}、對齊節氣定本月主軸</span>
                       </div>
+                    </div>
+                    {/* v5.9.6 加「3 天反應 + 4 週檢視」反饋迴圈(Claude 指定) */}
+                    <div className="mt-3 pt-2.5 border-t border-green-500/15 text-[11px] text-text-muted/65 leading-relaxed">
+                      <span className="font-semibold text-green-400/75">📊 驗證方法:</span>用以上 1 招做 1 個決策、3 天後觀察反應、4 週後對照本章節重新檢視 — 看「{personalityCard.title}」型對你準不準。
                     </div>
                   </div>
                 </div>
