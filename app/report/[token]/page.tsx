@@ -1329,7 +1329,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     if (personalityCard && /命格名片/.test(t)) return false
     // v5.7.42:人生速覽已被 personalityCard 卡片消化(callout 三 quote 都在 personalityCard.talents/challenges/yearTheme)
     // 證據:Gemini visual eval 標 P0「『你最大的天賦』描述重複 2 次」 — 命格名片卡片 + 章節「人生速覽」都顯示同一 callout
-    if (personalityCard && /^你的人生速覽|^人生速覽/.test(t)) return false
+    if (personalityCard && /人生速覽|生速覽|人生.{0,3}速覽|你的人生速覽|命格速覽/.test(t)) return false
     // 過濾報告標題行
     if (/全方位命格分析報告/.test(t)) return false
     // 過濾重複的評分表（上面已有可視化圖表）
@@ -1705,7 +1705,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   </div>
                 </div>
                 <div className="text-right hidden sm:block">
-                  <div className="text-text-muted/55 text-[10px] tracking-[2px] mb-1">{analysesSummary.length} 套系統交叉</div>
+                  <div className="text-text-muted/55 text-[10px] tracking-[2px] mb-1">{analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length} 套系統交叉</div>
                   <div className="flex gap-1 items-center justify-end">
                     {[60, 70, 80, 90, 100].map(t => (
                       <div key={t} className="w-3 h-3 rounded-full" style={{
@@ -1800,7 +1800,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </div>
                 {sysCount > 0 && (
                   <div className="text-[11px] text-cream/60">
-                    <span className="text-gold font-bold">{sysCount}</span> 套系統 · 綜合 <span className="text-gold font-bold">{avgScore}</span> 分
+                    <span className="text-gold font-bold">{Math.min(14, analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length)}</span> 套系統 · 綜合 <span className="text-gold font-bold">{avgScore}</span> 分
                   </div>
                 )}
               </div>
