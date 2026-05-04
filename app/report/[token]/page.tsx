@@ -2527,47 +2527,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             )}
 
-            {/* v5.7.66 天賦/課題 Top 5 上移到 Hero 正下方(LLM 只看前 4 segments、必上移確保可見) */}
-            {(personalityCard.talents.length > 0 || personalityCard.challenges.length > 0) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                {personalityCard.talents.length > 0 && (
-                  <div>
-                    <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#6ab04c' }}>
-                      <span>&#10003;</span> 天賦 Top 5
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {personalityCard.talents.map((t, i) => (
-                        <span key={`hero-t-${i}`} className="px-3 py-1.5 rounded-full text-xs font-medium" style={{
-                          background: 'rgba(106,176,76,0.1)',
-                          color: '#6ab04c',
-                          border: '1px solid rgba(106,176,76,0.2)',
-                        }}>
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {personalityCard.challenges.length > 0 && (
-                  <div>
-                    <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#e0963a' }}>
-                      <span>&#9888;</span> 課題 Top 5
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {personalityCard.challenges.map((c, i) => (
-                        <span key={`hero-c-${i}`} className="px-3 py-1.5 rounded-full text-xs font-medium" style={{
-                          background: 'rgba(224,150,58,0.1)',
-                          color: '#e0963a',
-                          border: '1px solid rgba(224,150,58,0.2)',
-                        }}>
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* v5.8.7 Hero Top 5 移除 — 命格綜合評分 badge(v5.8.2)已 inline Top 3、避免堆砌 */}
 
             {/* v5.7.74 命格金句移除(跟 Definition 文字重複、Gemini P2「重複」) */}
 
