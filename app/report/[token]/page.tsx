@@ -2261,6 +2261,48 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               })()}
             </div>
 
+            {/* v5.7.66 天賦/課題 Top 5 上移到 Hero 正下方(LLM 只看前 4 segments、必上移確保可見) */}
+            {(personalityCard.talents.length > 0 || personalityCard.challenges.length > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                {personalityCard.talents.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#6ab04c' }}>
+                      <span>&#10003;</span> 天賦 Top 5
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {personalityCard.talents.map((t, i) => (
+                        <span key={`hero-t-${i}`} className="px-3 py-1.5 rounded-full text-xs font-medium" style={{
+                          background: 'rgba(106,176,76,0.1)',
+                          color: '#6ab04c',
+                          border: '1px solid rgba(106,176,76,0.2)',
+                        }}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {personalityCard.challenges.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#e0963a' }}>
+                      <span>&#9888;</span> 課題 Top 5
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {personalityCard.challenges.map((c, i) => (
+                        <span key={`hero-c-${i}`} className="px-3 py-1.5 rounded-full text-xs font-medium" style={{
+                          background: 'rgba(224,150,58,0.1)',
+                          color: '#e0963a',
+                          border: '1px solid rgba(224,150,58,0.2)',
+                        }}>
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* v5.7.63 命格金句 + 分享 CTA(Spotify Wrapped 範本、Gemini 標 +2 社交貨幣) */}
             {personalityCard.title && personalityCard.definition && (
               <div className="mb-5 px-5 py-4 rounded-xl relative" style={{
@@ -2374,49 +2416,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             )}
 
-            {/* 天賦 vs 課題 標籤 */}
-            {(personalityCard.talents.length > 0 || personalityCard.challenges.length > 0) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                {/* 天賦（綠色標籤）*/}
-                {personalityCard.talents.length > 0 && (
-                  <div>
-                    <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#6ab04c' }}>
-                      <span>&#10003;</span> 天賦 Top 5
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {personalityCard.talents.map((t, i) => (
-                        <span key={i} className="px-3 py-1.5 rounded-full text-xs font-medium" style={{
-                          background: 'rgba(106,176,76,0.1)',
-                          color: '#6ab04c',
-                          border: '1px solid rgba(106,176,76,0.2)',
-                        }}>
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* 課題（橙色標籤）*/}
-                {personalityCard.challenges.length > 0 && (
-                  <div>
-                    <div className="text-xs font-semibold mb-2.5 flex items-center gap-1.5" style={{ color: '#e0963a' }}>
-                      <span>&#9888;</span> 課題 Top 5
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {personalityCard.challenges.map((c, i) => (
-                        <span key={i} className="px-3 py-1.5 rounded-full text-xs font-medium" style={{
-                          background: 'rgba(224,150,58,0.1)',
-                          color: '#e0963a',
-                          border: '1px solid rgba(224,150,58,0.2)',
-                        }}>
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* v5.7.66 天賦/課題已移到 Hero 正下方、此處移除避免重複 */}
 
             {/* 2026 年度一句話 */}
             {personalityCard.yearTheme && (
