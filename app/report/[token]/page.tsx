@@ -16,7 +16,7 @@ import CollapsibleSection from '@/components/CollapsibleSection'
 import PartSection from '@/components/PartSection'
 import PartHighlights from '@/components/PartHighlights'
 import SubscribeCTA from '@/components/SubscribeCTA'
-import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
+import { ReadingProgressBar, BackToTopButton, ReadingTime, FloatingActionPanel } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
 import SidebarTOC from '@/components/SidebarTOC'
 import FiveElementsRadar from '@/components/FiveElementsRadar'
@@ -1586,6 +1586,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       <ReadingProgressBar />
       {/* #13 回到頂部浮動按鈕 */}
       <BackToTopButton />
+      <FloatingActionPanel />
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
