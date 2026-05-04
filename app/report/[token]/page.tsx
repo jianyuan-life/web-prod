@@ -1620,17 +1620,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <span>⚡ 命格 5 大核心洞察</span>
                 <span className="text-text-muted/45 text-[9px]">14 套系統交叉提取</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {insights.map((item, i) => (
-                  <div key={i} className="px-3 py-2.5 rounded-lg" style={{
+                  <div key={i} className="px-4 py-3 rounded-lg" style={{
                     background: 'rgba(0,0,0,0.25)',
                     border: `1px solid ${item.color}30`,
                   }}>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <span style={{ color: item.color, fontSize: '14px' }}>{item.icon}</span>
-                      <span className="text-[9px] tracking-wider" style={{ color: `${item.color}99` }}>{item.label}</span>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span style={{ color: item.color, fontSize: '16px' }}>{item.icon}</span>
+                      <span className="text-[10px] tracking-wider font-semibold" style={{ color: `${item.color}aa` }}>{item.label}</span>
                     </div>
-                    <div className="text-cream text-xs font-semibold leading-tight line-clamp-2">{item.value}</div>
+                    <div className="text-cream text-sm font-semibold leading-snug">{item.value}</div>
                   </div>
                 ))}
               </div>
