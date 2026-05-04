@@ -3307,6 +3307,53 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           })
         })()}
 
+        {/* v5.7.90 立即可做的 3 件事(報告末、放大 v5.7.86 命中模式、Action 集中) */}
+        {!isChumenji && !isRelationship && personalityCard?.title && (() => {
+          const t = personalityCard.title || ''
+          const topTalent = personalityCard.talents[0] || '直覺'
+          const topChallenge = personalityCard.challenges[0] || '內耗'
+          const today = new Date()
+          const m = today.getMonth() + 1
+          const monthAdvice = m >= 3 && m <= 5 ? '木旺 春季適合啟動新計畫' : m >= 6 && m <= 8 ? '火旺 夏季適合衝刺執行' : m >= 9 && m <= 11 ? '金旺 秋季適合收穫總結' : '水旺 冬季適合深度規劃'
+          return (
+            <div className="rounded-2xl px-7 py-6 mb-8 no-print" style={{
+              background: 'linear-gradient(135deg, rgba(106,176,76,0.12), rgba(197,150,58,0.08))',
+              border: '2px solid rgba(106,176,76,0.35)',
+            }}>
+              <div className="text-center mb-5">
+                <div className="text-green-400/70 text-[11px] tracking-[3px] mb-2 font-semibold">⚡ 看完報告後 立即可做的 3 件事</div>
+                <div className="text-cream text-base font-medium">把命格洞察轉化為今晚就能執行的 action</div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="px-4 py-4 rounded-xl" style={{ background: 'rgba(106,176,76,0.10)', border: '1px solid rgba(106,176,76,0.30)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: '#6ab04c' }}>1</div>
+                    <div className="text-green-400 text-[10px] tracking-[2px] font-semibold">用上你的天賦</div>
+                  </div>
+                  <div className="text-cream text-sm leading-relaxed mb-2">本週挑 1 件事、刻意用「{topTalent}」這個天賦完成它</div>
+                  <div className="text-text-muted/60 text-[10px]">→ 連續 3 週、累積身體記憶</div>
+                </div>
+                <div className="px-4 py-4 rounded-xl" style={{ background: 'rgba(224,150,58,0.10)', border: '1px solid rgba(224,150,58,0.30)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: '#e0963a' }}>2</div>
+                    <div className="text-orange-400 text-[10px] tracking-[2px] font-semibold">化解你的課題</div>
+                  </div>
+                  <div className="text-cream text-sm leading-relaxed mb-2">下次「{topChallenge}」出現時、深呼吸 5 秒、問自己:「這是命格自動反應、還是我真心要這樣?」</div>
+                  <div className="text-text-muted/60 text-[10px]">→ 不消滅、是覺察</div>
+                </div>
+                <div className="px-4 py-4 rounded-xl" style={{ background: 'rgba(197,150,58,0.10)', border: '1px solid rgba(197,150,58,0.30)' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: '#c9a84c' }}>3</div>
+                    <div className="text-gold text-[10px] tracking-[2px] font-semibold">順流今月節氣</div>
+                  </div>
+                  <div className="text-cream text-sm leading-relaxed mb-2">{monthAdvice}—「{t}」本月最該做的:對應這個節氣模式調整節奏</div>
+                  <div className="text-text-muted/60 text-[10px]">→ 對照 12 月決策日曆</div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* ──── 出門訣推廣 ──── */}
         {!isChumenjiPlan(report.plan_code) && (
           <div className="section-card no-print" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.1), rgba(26,42,74,0.4))', border: '1px solid rgba(197,150,58,0.25)' }}>
