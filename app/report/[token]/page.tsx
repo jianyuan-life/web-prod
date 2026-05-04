@@ -1617,6 +1617,65 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
 
+        {/* v5.9.3 3 層洞察金字塔(Claude TOP 1 共識 +15 分):結論 → 機制 → 行動 */}
+        {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && personalityCard.definition && (() => {
+          const conclusion = personalityCard.definition.slice(0, 60)
+          const topTalent = personalityCard.talents[0] || ''
+          const topChallenge = personalityCard.challenges[0] || ''
+          const yearTheme = personalityCard.yearTheme || ''
+          const today = new Date()
+          const m = today.getMonth() + 1
+          const seasonAdvice = m >= 3 && m <= 5 ? '春季啟動新計畫、能量上升期' : m >= 6 && m <= 8 ? '夏季衝刺執行、火力全開' : m >= 9 && m <= 11 ? '秋季收成總結、收斂蓄勢' : '冬季深度規劃、藏氣養神'
+          return (
+            <div className="rounded-2xl px-6 py-5 mb-4" style={{
+              background: 'linear-gradient(135deg, rgba(231,76,60,0.08), rgba(197,150,58,0.05), rgba(106,176,76,0.06))',
+              border: '1.5px solid rgba(197,150,58,0.40)',
+              boxShadow: '0 0 30px rgba(197,150,58,0.10)',
+            }}>
+              <div className="text-gold/70 text-[10px] tracking-[3px] mb-3 font-semibold">🎯 你的命格 3 層洞察</div>
+
+              {/* Layer 1:核心結論(紅色高亮、最大字) */}
+              <div className="px-4 py-3 rounded-xl mb-3" style={{ background: 'rgba(231,76,60,0.10)', border: '1px solid rgba(231,76,60,0.30)' }}>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-xs" style={{ background: '#e74c3c' }}>1</div>
+                  <div className="flex-1">
+                    <div className="text-red-400/80 text-[10px] tracking-[2px] mb-1 font-semibold">⚡ 一句結論 · {personalityCard.title}</div>
+                    <div className="text-cream text-base font-semibold leading-relaxed">{conclusion}{conclusion.length >= 60 ? '...' : ''}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Layer 2:為什麼(命理機制) */}
+              <div className="px-4 py-3 rounded-xl mb-3" style={{ background: 'rgba(197,150,58,0.08)', border: '1px solid rgba(197,150,58,0.30)' }}>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-dark font-bold text-xs" style={{ background: '#c9a84c' }}>2</div>
+                  <div className="flex-1">
+                    <div className="text-gold/85 text-[10px] tracking-[2px] mb-1 font-semibold">🔮 為什麼 · 命理機制</div>
+                    <div className="text-cream/90 text-sm leading-relaxed">
+                      14 套系統交叉得出此結論。最強訊號:<span className="text-green-400 font-semibold">{topTalent}</span>(優勢)、最該注意:<span className="text-orange-400 font-semibold">{topChallenge}</span>(課題)。{yearTheme && `2026 年:${yearTheme.slice(0, 35)}`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Layer 3:你該怎麼做(3 個行動項) */}
+              <div className="px-4 py-3 rounded-xl" style={{ background: 'rgba(106,176,76,0.08)', border: '1px solid rgba(106,176,76,0.30)' }}>
+                <div className="flex items-start gap-2">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-xs" style={{ background: '#6ab04c' }}>3</div>
+                  <div className="flex-1">
+                    <div className="text-green-400/85 text-[10px] tracking-[2px] mb-2 font-semibold">✅ 你該怎麼做 · 立即行動 3 件事</div>
+                    <ul className="space-y-1 text-cream/90 text-[13px] leading-relaxed">
+                      <li>① 本週用「<span className="text-green-400">{topTalent}</span>」優勢做 1 件具體事(累積 21 天形成新習慣)</li>
+                      <li>② 下次「{topChallenge}」出現時、停 5 秒問自己:這是命格反應還是真實意願?</li>
+                      <li>③ 順流節氣:{seasonAdvice}、本月對應這節奏調整</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* v5.7.89 Quick Insights — 5 條核心洞察(Co-Star + Mint 範本、訊號最強) */}
         {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && (() => {
           const insights = []
