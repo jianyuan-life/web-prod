@@ -1681,7 +1681,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider" style={{ background: '#c9a84c', color: '#0a0e1a' }}>STEP 2</span>
                       <span className="text-gold/85 text-[11px] tracking-wider font-semibold">命盤儀表板</span>
                     </div>
-                    {/* v5.9.8 撤回決策樹文字版(Claude:Layer 2 元素過多、邊界模糊)、改純 KPI 卡保乾淨 */}
+                    {/* v5.10.0 Layer 2 加 SVG 因果流程圖(Claude P1「決策樹視覺化」) */}
+                    <div className="flex items-center justify-center gap-1 mb-2 text-[11px]">
+                      <span className="px-2 py-1 rounded font-semibold" style={{ background: 'rgba(106,176,76,0.15)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.30)' }}>{topTalent || '優勢'}</span>
+                      <span className="text-gold/60 font-bold">→</span>
+                      <span className="px-2 py-1 rounded font-semibold" style={{ background: 'rgba(155,89,182,0.15)', color: '#bb8fce', border: '1px solid rgba(155,89,182,0.30)' }}>2026</span>
+                      <span className="text-gold/60 font-bold">→</span>
+                      <span className="px-2 py-1 rounded font-semibold" style={{ background: 'rgba(197,150,58,0.15)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.30)' }}>3 行動</span>
+                    </div>
                     {/* 3 KPI 卡 — 優勢分數 / 課題象限 / 方向箭頭 */}
                     <div className="grid grid-cols-3 gap-2">
                       {/* KPI 1:優勢分數 (大字 + 條) */}
@@ -1758,9 +1765,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                         )
                       })()}
                     </div>
-                    {/* v5.9.6 加「3 天反應 + 4 週檢視」反饋迴圈(Claude 指定) */}
-                    <div className="mt-3 pt-2.5 border-t border-green-500/15 text-[11px] text-text-muted/65 leading-relaxed">
-                      <span className="font-semibold text-green-400/75">📊 驗證方法:</span>用以上 1 招做 1 個決策、3 天後觀察反應、4 週後對照本章節重新檢視 — 看「{personalityCard.title}」型對你準不準。
+                    {/* v5.10.0 加每個 action 驗證指標(Claude P1「驗證指標」修) */}
+                    <div className="mt-3 pt-2.5 border-t border-green-500/15">
+                      <div className="text-green-400/85 text-[10px] tracking-[2px] mb-2 font-semibold">📊 成功指標(每項 action 對應)</div>
+                      <div className="text-cream/75 text-[11px] leading-relaxed space-y-1">
+                        <div>· 行動 1 達標:本週收到 1 個具體正面反饋(同事 / 主管 / 結果)</div>
+                        <div>· 行動 2 達標:21 天後可以無延遲識別「{topChallenge}」並切換</div>
+                        <div>· 行動 3 達標:月底回看時、本月 60% 重大決策符合節氣節奏</div>
+                      </div>
                     </div>
                   </div>
                 </div>
