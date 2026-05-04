@@ -75,48 +75,7 @@ function visibleTextLength(html: string): number {
   return html.replace(/<[^>]*>/g, '').replace(/\s+/g, '').length
 }
 
-// v5.7.73 抽第一句精華(粗體優先、blockquote 次之、第一段 fallback)
-function extractTLDR(html: string): string {
-  // 1. 第一個粗體句(strong/b)
-  const boldMatch = html.match(/<(?:strong|b)[^>]*>([^<]{10,180})<\/(?:strong|b)>/i)
-  if (boldMatch) return boldMatch[1].trim()
-  // 2. 第一個 blockquote 內容
-  const bqMatch = html.match(/<blockquote[^>]*>[\s\S]*?<p[^>]*>([^<]{10,200})<\/p>[\s\S]*?<\/blockquote>/i)
-  if (bqMatch) return bqMatch[1].replace(/[「」"']/g, '').trim()
-  // 3. 第一個非標題段落(skip h1-h6)
-  const pMatch = html.match(/<p[^>]*>([^<]{30,250})<\/p>/i)
-  if (pMatch) {
-    const text = pMatch[1].trim()
-    // 跳過 transition 詞開頭
-    if (/^(?:接下來|以下是|現在|讓我們|我們)/.test(text)) {
-      const next = html.match(/<p[^>]*>(?!.*?(?:接下來|以下是|現在|讓我們|我們))([^<]{30,250})<\/p>/i)
-      if (next) return next[1].trim()
-    }
-    // 取第一個句號前
-    const firstSentence = text.split(/[。！？!?]/)[0]
-    if (firstSentence.length >= 20 && firstSentence.length <= 150) return firstSentence
-    return text.slice(0, 130) + (text.length > 130 ? '...' : '')
-  }
-  return ''
-}
-
+// v5.7.83 撤回 v5.7.73 TL;DR 重複(page.tsx renderChapter 已有 tldrNode)
 export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle }: SectionExpanderProps) {
-  const tldr = extractTLDR(fullHtml)
-  const safe = safeHtml(fullHtml)
-  if (!tldr) {
-    return <div dangerouslySetInnerHTML={{ __html: safe }} />
-  }
-  return (
-    <div>
-      {/* v5.7.73 章節 TL;DR pull-quote(漸進式揭露、Notion toggle 範本、Gemini 標 P1 +4-9) */}
-      <div className="mb-4 px-5 py-3 rounded-lg" style={{
-        background: 'linear-gradient(135deg, rgba(197,150,58,0.10), rgba(197,150,58,0.03))',
-        borderLeft: '3px solid rgba(197,150,58,0.55)',
-      }}>
-        <div className="text-gold/55 text-[10px] tracking-[2px] mb-1 font-semibold">★ 重點一句話</div>
-        <div className="text-cream/95 text-[15px] leading-relaxed font-medium italic">「{tldr}」</div>
-      </div>
-      <div dangerouslySetInnerHTML={{ __html: safe }} />
-    </div>
-  )
+  return <div dangerouslySetInnerHTML={{ __html: safeHtml(fullHtml) }} />
 }
