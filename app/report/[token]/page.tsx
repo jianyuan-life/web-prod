@@ -1419,7 +1419,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            5. margin-bottom 0.85rem → 1.25rem（Apple HIG：段距比行高更大才有呼吸）
            6. color var(--color-text-muted) 已在 globals.css 從 #6880a0 升級 #b3b8c5 (AA+ 7.8:1)
         */
+        /* v5.9.9 font 統一(GPT-4o P2「font consistency」修):全用 var(--font-body)、字級階梯固定 */
+        .report-h2 { font-size: 1.375rem; font-weight: 700; color: var(--color-gold); margin: 2rem 0 1rem; font-family: var(--font-body); line-height: 1.4; letter-spacing: 0.015em; }
         .report-h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gold); margin: 1.75rem 0 0.75rem; font-family: var(--font-body); padding-left: 12px; border-left: 3px solid rgba(201,168,76,0.85); line-height: 1.5; letter-spacing: 0.02em; }
+        .report-h4 { font-size: 1rem; font-weight: 600; color: var(--color-cream); margin: 1.25rem 0 0.5rem; font-family: var(--font-body); line-height: 1.5; }
         .report-bold { color: var(--color-cream); font-weight: 600; }
         .report-li { margin-left: 1.5rem; color: var(--color-text); list-style: disc; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
         .report-li-num { margin-left: 1.5rem; color: var(--color-text); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
