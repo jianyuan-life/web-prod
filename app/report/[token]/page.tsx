@@ -1329,7 +1329,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     if (personalityCard && /命格名片/.test(t)) return false
     // v5.7.42:人生速覽已被 personalityCard 卡片消化(callout 三 quote 都在 personalityCard.talents/challenges/yearTheme)
     // 證據:Gemini visual eval 標 P0「『你最大的天賦』描述重複 2 次」 — 命格名片卡片 + 章節「人生速覽」都顯示同一 callout
-    if (personalityCard && /人生速覽|生速覽|人生.{0,3}速覽|你的人生速覽|命格速覽/.test(t)) return false
+    if (personalityCard && /人生速覽|生速覽|人生.{0,3}速覽|你的人生速覽|命格速覽|天賦.{0,5}Top|核心特質速覽/.test(t)) return false
     // 過濾報告標題行
     if (/全方位命格分析報告/.test(t)) return false
     // 過濾重複的評分表（上面已有可視化圖表）

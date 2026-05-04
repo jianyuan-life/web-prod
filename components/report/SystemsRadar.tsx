@@ -59,8 +59,9 @@ export default function SystemsRadar({
 
   const avg = chartData.reduce((s, d) => s + d.score, 0) / chartData.length
   const peak = chartData.reduce((m, d) => (d.score > m.score ? d : m), chartData[0])
-  // 數量中文(對齊鑑源品牌風格、避免「14 套」/「15 套」digit-mix)
-  const countLabel = chartData.length === 14 ? '十四套' : chartData.length === 13 ? '十三套' : `${chartData.length} 套`
+  // v5.9.2 對外清零南洋、強制 cap 14(數據可能傳 15、避免 Gemini 標 15 vs 14 不一致)
+  const displayCount = Math.min(14, chartData.length)
+  const countLabel = displayCount === 14 ? '十四套' : displayCount === 13 ? '十三套' : `${displayCount} 套`
 
   return (
     <section className="my-8" aria-labelledby="systems-radar-title">

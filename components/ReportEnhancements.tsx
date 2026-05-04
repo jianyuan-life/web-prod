@@ -42,7 +42,7 @@ export function FloatingActionPanel() {
   }, [])
   if (!show) return null
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 no-print">
+    <div className="fixed bottom-20 right-4 z-50 flex flex-col gap-2 no-print">
       <button
         onClick={() => window.print()}
         className="px-3 h-11 rounded-full flex items-center gap-1.5 transition-all hover:scale-105 text-xs font-semibold"
