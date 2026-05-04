@@ -109,20 +109,38 @@ export default function DayunTimeline({
                   </div>
                 </div>
 
-                {/* 年齡區間 */}
-                <div className="text-[10px] text-text-muted mb-0.5">
-                  {s.age_start}-{s.age_end ?? s.age_start + 10}
+                {/* v5.7.88 加西元年份 + 年齡 + 干支大字、Gemini「過於簡陋」P1 修 */}
+                <div className="text-[10px] text-text-muted mb-0.5 font-semibold">
+                  {s.age_start}-{s.age_end ?? s.age_start + 10} 歲
                 </div>
+
+                {/* 西元年份(從當前年齡推算) */}
+                {(() => {
+                  const currentYear = new Date().getFullYear()
+                  const currentAgeApprox = currentAge || 30  // fallback 30
+                  const yearStart = currentYear - currentAgeApprox + s.age_start
+                  const yearEnd = currentYear - currentAgeApprox + (s.age_end ?? s.age_start + 10)
+                  return (
+                    <div className="text-[9px] text-gold/45 mb-1">
+                      {yearStart}-{yearEnd}
+                    </div>
+                  )
+                })()}
 
                 {/* 干支 */}
                 {s.pillar && (
                   <div
-                    className="text-xs font-bold text-cream mb-0.5"
+                    className="text-sm font-bold text-cream mb-0.5"
                     style={{ fontFamily: 'var(--font-sans)' }}
                   >
                     {s.pillar}
                   </div>
                 )}
+
+                {/* 能量分數 */}
+                <div className="text-[9px] text-text-muted/55 mb-1">
+                  能量 {s.energy}
+                </div>
 
                 {/* 主題(若有) */}
                 {s.theme && (
