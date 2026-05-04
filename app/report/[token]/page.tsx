@@ -1634,13 +1634,36 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             }}>
               <div className="text-gold/70 text-[10px] tracking-[3px] mb-3 font-semibold">🎯 你的命格 3 層洞察</div>
 
-              {/* Layer 1:核心結論(紅色高亮、最大字) */}
-              <div className="px-4 py-3 rounded-xl mb-3" style={{ background: 'rgba(231,76,60,0.10)', border: '1px solid rgba(231,76,60,0.30)' }}>
-                <div className="flex items-start gap-2">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-xs" style={{ background: '#e74c3c' }}>1</div>
+              {/* v5.9.5 Layer 1 加 emoji icon + 色塊背景強化(Claude P1「視覺命中 0.5 秒」) */}
+              <div className="px-4 py-3 rounded-xl mb-3 relative overflow-hidden" style={{
+                background: 'linear-gradient(135deg, rgba(231,76,60,0.18), rgba(231,76,60,0.06))',
+                border: '1px solid rgba(231,76,60,0.35)',
+              }}>
+                <div className="absolute top-0 right-0 w-32 h-32 opacity-20 pointer-events-none" style={{
+                  background: 'radial-gradient(circle, rgba(231,76,60,0.6), transparent 70%)',
+                }}/>
+                <div className="flex items-start gap-3 relative z-10">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl" style={{
+                    background: 'rgba(231,76,60,0.20)',
+                    border: '1.5px solid rgba(231,76,60,0.50)',
+                  }}>
+                    {(() => {
+                      const t = personalityCard.title || ''
+                      if (/太陽|火|烈|炎/.test(t)) return '☀'
+                      if (/雨露|水|霖|江/.test(t)) return '💧'
+                      if (/木|林|森/.test(t)) return '🌲'
+                      if (/金|鋼|鐵/.test(t)) return '⚔'
+                      if (/土|山|岳/.test(t)) return '⛰'
+                      return '✨'
+                    })()}
+                  </div>
                   <div className="flex-1">
-                    <div className="text-red-400/80 text-[10px] tracking-[2px] mb-1 font-semibold">⚡ 一句結論 · {personalityCard.title}</div>
-                    <div className="text-cream text-base font-semibold leading-relaxed">{conclusion}{conclusion.length >= 60 ? '...' : ''}</div>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider" style={{ background: '#e74c3c', color: '#fff' }}>STEP 1</span>
+                      <span className="text-red-400/85 text-[11px] tracking-wider font-semibold">一句結論</span>
+                    </div>
+                    <div className="text-gold text-lg font-bold mb-1 leading-tight">{personalityCard.title}</div>
+                    <div className="text-cream text-sm font-medium leading-relaxed">{conclusion}{conclusion.length >= 60 ? '...' : ''}</div>
                   </div>
                 </div>
               </div>
@@ -1666,8 +1689,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       </div>
                     </div>
                     <div className="text-cream/85 text-[12px] leading-relaxed">
-                      最強訊號 <span className="text-green-400 font-semibold">「{topTalent}」</span> 由 14 套交叉確認;最該避免 <span className="text-orange-400 font-semibold">「{topChallenge}」</span>(陷阱)。{yearTheme && `2026 方向:${yearTheme.slice(0, 30)}`}
+                      最強訊號 <span className="text-green-400 font-semibold">「{topTalent}」</span> 由 14 套交叉確認;最該避免 <span className="text-orange-400 font-semibold">「{topChallenge}」</span>(陷阱)。
                     </div>
+                    {/* v5.9.5 加橋接句(Claude P1「邏輯跳躍」修) */}
+                    {yearTheme && (
+                      <div className="mt-2 pt-2 border-t border-gold/15 text-[11px] text-gold/70 leading-relaxed">
+                        <span className="font-semibold">↓ 因此 2026 應該:</span> {yearTheme.slice(0, 50)}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1690,17 +1719,18 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <div className="flex-1">
                     <div className="text-green-400/85 text-[10px] tracking-[2px] mb-2 font-semibold">✅ 你該怎麼做 · 按優先序執行</div>
                     <div className="space-y-2 text-cream/90 text-[13px] leading-relaxed">
+                      {/* v5.9.5 micro-action 具體化(Claude P1「時間+場景+對象」)*/}
                       <div className="flex items-start gap-2">
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#e74c3c', color: '#fff' }}>本週必做</span>
-                        <span>用「<span className="text-green-400 font-semibold">{topTalent}</span>」優勢做 1 件具體事 — <span className="text-text-muted/70">如果只能挑 1 件、選這個</span></span>
+                        <span><span className="text-text-muted/65">明天 / 工作場景:</span>用「<span className="text-green-400 font-semibold">{topTalent}</span>」打破會議僵局或做關鍵決策(如果只能挑 1 件、就這個)</span>
                       </div>
                       <div className="flex items-start gap-2">
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#c9a84c', color: '#0a0e1a' }}>月內完成</span>
-                        <span>練習對「{topChallenge}」5 秒覺察、累積 21 次形成新習慣</span>
+                        <span><span className="text-text-muted/65">日常 / 21 天:</span>「{topChallenge}」浮現時、深呼吸 5 秒、自問:命格反應 or 真心要?</span>
                       </div>
                       <div className="flex items-start gap-2">
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#6ab04c', color: '#fff' }}>持續習慣</span>
-                        <span>順流節氣:{seasonAdvice}、每月初定方向</span>
+                        <span><span className="text-text-muted/65">每月初 / 規劃時:</span>{seasonAdvice}、對齊節氣定本月主軸</span>
                       </div>
                     </div>
                   </div>
