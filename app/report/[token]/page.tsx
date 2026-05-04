@@ -2500,15 +2500,20 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(106,176,76,0.06))',
                 border: '1px solid rgba(197,150,58,0.3)',
               }}>
-                <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 font-semibold">📅 今日指引(動態)</div>
+                <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 font-semibold">📅 今日指引(實時更新)</div>
                 <div className="text-cream/90 text-sm leading-relaxed">
                   {(() => {
                     const t = personalityCard.title || ''
-                    const day = new Date().getDay()
+                    const today = new Date()
+                    const day = today.getDay()
+                    const m = today.getMonth() + 1
+                    const d = today.getDate()
+                    const monthEle = m >= 3 && m <= 5 ? '春木旺' : m >= 6 && m <= 8 ? '夏火旺' : m >= 9 && m <= 11 ? '秋金旺' : '冬水旺'
+                    const dayEle = ['子水','丑土','寅木','卯木','辰土','巳火','午火','未土','申金','酉金','戌土','亥水'][day]
                     const advice = [
-                      `身為「${t}」、今日適合 ${day % 2 === 0 ? '主動行動' : '靜心觀察'}、收回散出去的注意力`,
-                      `「${t}」的本能是 ${day < 3 ? '突破' : '收斂'}、今日記得對自己溫柔`,
-                      `今天「${t}」的能量在 ${day === 0 || day === 6 ? '休養' : '聚焦'}、給自己 10 分鐘獨處`,
+                      `${m}月${d}日(${dayEle})— 「${t}」逢${monthEle}、適合${day % 2 === 0 ? '主動推進、能量上升' : '靜心觀察、整理思緒'}`,
+                      `${m}月${d}日 ${dayEle}日 — 「${t}」本能是${day < 3 ? '突破' : '收斂'}、${monthEle}加持、今日宜對自己溫柔`,
+                      `${m}月${d}日(${monthEle}/${dayEle})— 今天「${t}」能量在${day === 0 || day === 6 ? '休養恢復' : '聚焦執行'}、給自己 10 分鐘獨處`,
                     ][day % 3]
                     return advice
                   })()}
