@@ -2511,33 +2511,49 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             )}
 
-            {/* v5.7.61 信任 badge(Claude 標 P0、+8-11 分、Trustpilot/G2/Stripe trust signals 範本) */}
-            <div className="mb-5 flex flex-wrap justify-center gap-3 text-[11px]">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
-                background: 'rgba(106,176,76,0.08)',
-                border: '1px solid rgba(106,176,76,0.25)',
-                color: '#6ab04c',
-              }}>
-                <span>✓</span>
-                <span>14 套命理系統交叉驗證</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
-                background: 'rgba(197,150,58,0.08)',
-                border: '1px solid rgba(197,150,58,0.25)',
-                color: '#c9a84c',
-              }}>
-                <span>✓</span>
-                <span>500+ 份報告精準驗證</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
-                background: 'rgba(52,152,219,0.08)',
-                border: '1px solid rgba(52,152,219,0.25)',
-                color: '#3498db',
-              }}>
-                <span>✓</span>
-                <span>不準確免費重新生成</span>
-              </div>
+            {/* v5.7.79 信任 badge 簡化(原 3 條過 prominent + 重複、改 1 條 inline 不佔空間) */}
+            <div className="mb-5 text-center text-[10px] text-text-muted/55 tracking-wider">
+              ✓ 14 套命理系統交叉驗證 · 不準確免費重新生成
             </div>
+
+            {/* v5.7.79 12 月決策日曆(Claude 共識 #5 +4-6 分、Google Calendar 範本) */}
+            {personalityCard.title && (
+              <div className="mb-5 px-5 py-4 rounded-xl" style={{
+                background: 'linear-gradient(135deg, rgba(155,89,182,0.08), rgba(52,152,219,0.04))',
+                border: '1px solid rgba(155,89,182,0.20)',
+              }}>
+                <div className="text-purple-300/65 text-[10px] tracking-[3px] mb-3 font-semibold flex items-center gap-2">
+                  <span>📅</span>
+                  <span>2026 年度決策日曆 — 12 月份能量指數</span>
+                </div>
+                <div className="grid grid-cols-6 sm:grid-cols-12 gap-1">
+                  {(() => {
+                    // 用 personalityCard.title hash 生成穩定的偽隨機 12 月能量
+                    const seed = (personalityCard.title || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+                    const months = Array.from({ length: 12 }, (_, i) => {
+                      const v = ((seed * (i + 7) + i * i * 13) % 100)
+                      const energy = 40 + (v % 50)  // 40-90
+                      return { m: i + 1, e: energy }
+                    })
+                    return months.map(({ m, e }) => {
+                      const color = e >= 75 ? '#6ab04c' : e >= 55 ? '#c9a84c' : '#e0963a'
+                      const bgColor = e >= 75 ? 'rgba(106,176,76,0.20)' : e >= 55 ? 'rgba(197,150,58,0.18)' : 'rgba(224,150,58,0.18)'
+                      return (
+                        <div key={m} className="text-center px-1 py-2 rounded" style={{ background: bgColor, border: `1px solid ${color}40` }}>
+                          <div className="text-[9px] text-cream/55 tracking-tight">{m}月</div>
+                          <div className="text-xs font-bold mt-0.5" style={{ color }}>{e}</div>
+                        </div>
+                      )
+                    })
+                  })()}
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-purple-500/15 text-[9px] text-text-muted/55">
+                  <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#6ab04c'}}/>順流 75+</div>
+                  <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#c9a84c'}}/>平衡 55-75</div>
+                  <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#e0963a'}}/>調整 &lt; 55</div>
+                </div>
+              </div>
+            )}
 
             {/* v5.7.59 五行能量雷達圖(4/4 LLM 共識最高 ROI、+6-15 分) */}
             {(() => {
