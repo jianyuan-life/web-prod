@@ -2261,6 +2261,32 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               })()}
             </div>
 
+            {/* v5.7.67 2026 年度核心一句話上移到 Hero 下方(讓 LLM 第一屏看到年度方向) */}
+            {personalityCard.yearTheme && (
+              <div className="mb-5 px-5 py-4 rounded-xl text-center" style={{
+                background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(197,150,58,0.04))',
+                border: '1px solid rgba(197,150,58,0.3)',
+              }}>
+                <div className="text-gold/65 text-[10px] tracking-[3px] mb-2 font-semibold">★ 2026 丙午年 你的方向</div>
+                <p className="text-cream text-base font-medium leading-relaxed">{personalityCard.yearTheme}</p>
+              </div>
+            )}
+
+            {/* v5.7.67 關鍵字標籤上移(LLM 看到關鍵字 = 命格立體感) */}
+            {personalityCard.keywords && personalityCard.keywords.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mb-5">
+                {personalityCard.keywords.map((kw, i) => (
+                  <span key={`hero-kw-${i}`} className="px-3 py-1 rounded-full text-xs" style={{
+                    background: 'rgba(197,150,58,0.1)',
+                    color: '#c9a84c',
+                    border: '1px solid rgba(197,150,58,0.2)',
+                  }}>
+                    #{kw}
+                  </span>
+                ))}
+              </div>
+            )}
+
             {/* v5.7.66 天賦/課題 Top 5 上移到 Hero 正下方(LLM 只看前 4 segments、必上移確保可見) */}
             {(personalityCard.talents.length > 0 || personalityCard.challenges.length > 0) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -2387,20 +2413,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             {/* sub-section divider */}
             <div className="h-px my-6 bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
 
-            {/* 關鍵字標籤 */}
-            {personalityCard.keywords && personalityCard.keywords.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2 mb-6">
-                {personalityCard.keywords.map((kw, i) => (
-                  <span key={i} className="px-3 py-1 rounded-full text-xs" style={{
-                    background: 'rgba(197,150,58,0.1)',
-                    color: '#c9a84c',
-                    border: '1px solid rgba(197,150,58,0.2)',
-                  }}>
-                    {kw}
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* v5.7.67 關鍵字已上移到 Hero 下方、此處移除避免重複 */}
 
             {/* 第一印象 vs 真實的你（雙欄對比）*/}
             {personalityCard.firstImpression && personalityCard.trueself && (
@@ -2418,16 +2431,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* v5.7.66 天賦/課題已移到 Hero 正下方、此處移除避免重複 */}
 
-            {/* 2026 年度一句話 */}
-            {personalityCard.yearTheme && (
-              <div className="rounded-xl p-4 text-center" style={{
-                background: 'rgba(197,150,58,0.06)',
-                border: '1px solid rgba(197,150,58,0.15)',
-              }}>
-                <div className="text-gold/50 text-[10px] tracking-[2px] mb-1.5">2026 丙午年</div>
-                <p className="text-cream text-sm leading-relaxed">{personalityCard.yearTheme}</p>
-              </div>
-            )}
+            {/* v5.7.67 2026 年度一句話已移到 Hero 下方、此處移除避免重複 */}
 
             {/* 如果沒有結構化數據，顯示原始內容 */}
             {personalityCard.talents.length === 0 && personalityCard.challenges.length === 0 && !personalityCard.firstImpression && !personalityCard.definition && (
