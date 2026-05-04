@@ -1623,7 +1623,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               background: 'linear-gradient(135deg, rgba(155,89,182,0.06), rgba(52,152,219,0.04), rgba(106,176,76,0.04))',
               border: '1px solid rgba(197,150,58,0.30)',
             }}>
-              <div className="text-gold/65 text-[11px] tracking-[3px] mb-3 font-semibold flex items-center justify-between">
+              <div className="text-gold/65 text-[11px] tracking-[3px] mb-3 font-semibold flex items-center justify-between report-fade-in">
                 <span>⚡ 命格 5 大核心洞察</span>
                 <span className="text-text-muted/45 text-[9px]">14 套系統交叉提取</span>
               </div>
