@@ -2,12 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import LocaleSwitcher from './LocaleSwitcher'
 import { getLocale, UI_TEXT } from '@/lib/i18n'
 
 export default function Navbar() {
+  const pathname = usePathname()
+  // v5.7.75 在 /report/* 頁面隱藏「免費註冊」按鈕(訪客已透過 access_token 取得報告 = 視為已登入感)
+  const isReportPage = pathname?.startsWith('/report/')
   const [user, setUser] = useState<User | null>(null)
   const [txt, setTxt] = useState(UI_TEXT['zh-TW'])
   const [toolsOpen, setToolsOpen] = useState(false)
@@ -179,6 +183,9 @@ export default function Navbar() {
                   {(user.user_metadata?.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}
                 </div>
               </>
+            ) : isReportPage ? (
+              // v5.7.75 報告頁訪客 = 已透過 token 取得、不再推銷註冊(Gemini P0「不該顯示免費註冊」修)
+              <Link href="/auth/login" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_login}</Link>
             ) : (
               <>
                 <Link href="/auth/login" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_login}</Link>
