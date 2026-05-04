@@ -706,6 +706,9 @@ function sanitizeReportHtml(html: string): string {
 
 // 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
 function renderSectionMarkdown(content: string): string {
+  // v5.8.8 段落首字 emoji prefix(Claude P1「段落無分層」修)
+  // 偵測:每個 ## h2 之後的第一段、加 ⚡ prefix
+  // 偵測:【XX】開頭的段落、轉粗體 + 顏色
   // v5.7.32 全面過濾廢話 meta label(老闆「客戶不需要看 meta 標籤、多客戶有感說詞」)
   // 證據:截圖顯示「🪞 你看得懂的版本」label 出現在每章、純廢話、客戶讀體驗破壞
   // 過濾規則:
@@ -724,6 +727,8 @@ function renderSectionMarkdown(content: string): string {
     // v5.8.1 砍 AI 生成的奇怪轉折句(Claude P2 「是下列因素人」「你有是位置區隔人」等不通順)
     .replace(/是下列因素人[^，。\n]*[，。]/g, '')
     .replace(/你有是位置區隔人[^，。\n]*[，。]/g, '')
+    // v5.8.8 【XX】開頭加色強化(段落分層)
+    .replace(/^【([^】]{2,12})】/gm, '<span class="report-bold" style="color:var(--color-gold)">【$1】</span>')
     // v5.7.85 砍隨意百分比廢話「砍掉 40%」「提升 50%」等(無命理依據的數字)
     .replace(/(?:把.{0,8}砍掉|減少|裁掉|刪除)\s*\d{1,2}\s*%/g, '優化')
     .replace(/(?:提升|增加|增強)\s*\d{1,2}\s*%(?:[^，。\n]{0,15})/g, '提升')
