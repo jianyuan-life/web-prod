@@ -32,6 +32,8 @@ export default function DayunTimeline({
   title?: string
 }) {
   const [mounted, setMounted] = useState(false)
+  // v5.7.92 互動化:點擊柱顯示細節(Gemini #2 +6 分)
+  const [activeIdx, setActiveIdx] = useState<number | null>(null)
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -47,6 +49,11 @@ export default function DayunTimeline({
         ? currentAge >= d.age_start && (d.age_end == null || currentAge < d.age_end)
         : !!d.is_current,
   }))
+
+  // 預設展開「當下」
+  const currentIdx = stages.findIndex((s) => s.is_current)
+  const displayIdx = activeIdx !== null ? activeIdx : currentIdx >= 0 ? currentIdx : 0
+  const displayStage = stages[displayIdx]
 
   const peak = stages.reduce((m, d) => (d.energy > m.energy ? d : m), stages[0])
   const valley = stages.reduce((m, d) => (d.energy < m.energy ? d : m), stages[0])
@@ -79,8 +86,15 @@ export default function DayunTimeline({
         >
           {stages.map((s, idx) => {
             const heightPct = mounted ? Math.max(15, s.energy) : 0
+            const isActive = idx === displayIdx
             return (
-              <div key={idx} className="flex flex-col items-center text-center">
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setActiveIdx(idx === activeIdx ? null : idx)}
+                className="flex flex-col items-center text-center cursor-pointer transition-transform hover:scale-[1.04] focus:outline-none focus:ring-2 focus:ring-gold/40 rounded"
+                aria-label={`${s.age_start}-${s.age_end ?? s.age_start + 10} 歲、${s.pillar} 大運、能量 ${s.energy}`}
+              >
                 {/* 柱形 */}
                 <div className="w-full h-32 flex items-end mb-2 relative">
                   <div
@@ -88,10 +102,16 @@ export default function DayunTimeline({
                     style={{
                       height: `${heightPct}%`,
                       background: STAGE_BG(s.energy),
-                      border: s.is_current
+                      border: isActive
+                        ? '2px solid #c9a84c'
+                        : s.is_current
                         ? '2px solid #c9a84c'
                         : '1px solid rgba(245, 240, 232, 0.1)',
-                      boxShadow: s.is_current ? '0 0 15px rgba(201, 168, 76, 0.5)' : 'none',
+                      boxShadow: isActive
+                        ? '0 0 25px rgba(201, 168, 76, 0.6)'
+                        : s.is_current
+                        ? '0 0 15px rgba(201, 168, 76, 0.5)'
+                        : 'none',
                     }}
                   >
                     {s.is_current && (
@@ -151,10 +171,37 @@ export default function DayunTimeline({
                     {s.theme}
                   </div>
                 )}
-              </div>
+              </button>
             )
           })}
         </div>
+
+        {/* v5.7.92 互動詳情面板:點擊柱顯示這個大運期細節 */}
+        {displayStage && (
+          <div className="mt-5 px-5 py-4 rounded-xl" style={{
+            background: 'rgba(197,150,58,0.08)',
+            border: '1px solid rgba(197,150,58,0.30)',
+          }}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="text-2xl font-bold text-gold" style={{ fontFamily: 'var(--font-sans)' }}>
+                  {displayStage.pillar}
+                </div>
+                <div>
+                  <div className="text-cream text-sm font-semibold">{displayStage.age_start}-{displayStage.age_end ?? displayStage.age_start + 10} 歲大運</div>
+                  <div className="text-text-muted text-[11px] mt-0.5">能量指數 {displayStage.energy} / 100 · {displayStage.is_current ? '正在經歷' : displayStage.age_start > (currentAge || 30) ? '未來十年' : '已過'}</div>
+                </div>
+              </div>
+              {activeIdx !== null && (
+                <button onClick={() => setActiveIdx(null)} className="text-text-muted/60 hover:text-cream text-xs">×</button>
+              )}
+            </div>
+            <div className="text-cream/85 text-sm leading-relaxed mt-2">
+              {displayStage.theme || `${displayStage.pillar} 大運主題:${displayStage.energy >= 75 ? '能量高峰、適合主動推進大計畫' : displayStage.energy >= 50 ? '穩定發展期、適合厚積薄發' : '轉折調整期、宜謹慎、避免重大決策'}`}
+            </div>
+            <div className="text-text-muted/45 text-[10px] mt-2 text-right">↑ 點擊上方柱形切換其他大運期</div>
+          </div>
+        )}
 
         {/* 圖例 */}
         <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-gold/10 text-[10px]">
