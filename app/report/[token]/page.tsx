@@ -1662,6 +1662,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           }
           const dayMaster = String(baziRaw.day_master || (pillars[2] ? pillars[2][0] : ''))
           const wuxingJu = String(ziweiRaw.wuxing_ju || '')
+          // v5.7.81 抽紫微命宮主星(Claude P1「命宮只顯示亥、缺主星」修)
+          const ai81 = String(report.report_result?.ai_content || '')
+          let mingZhu = ''
+          const mzM = ai81.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,8})/)
+          if (mzM) mingZhu = mzM[1].trim().slice(0, 10)
+          else {
+            const mzM2 = ai81.match(/紫微命盤[^：。\n]{0,30}?([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,6})\s*坐?(?:於|在)?\s*命宮/)
+            if (mzM2) mingZhu = mzM2[1]
+          }
           const sysCount = analysesSummary.length
           const avgScore = sysCount > 0 ? Math.round(analysesSummary.reduce((a, x: { score: number }) => a + (x.score || 0), 0) / sysCount) : 0
           if (pillars.length < 3 && !mingGong) return null
@@ -1700,7 +1709,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {mingGong && (
                   <div className="px-2 py-2 rounded-lg" style={{ background: 'rgba(155,89,182,0.10)', border: '1px solid rgba(155,89,182,0.25)' }}>
                     <div className="text-purple-300/60 text-[9px] tracking-[1px] mb-1">紫微命宮</div>
-                    <div className="text-cream font-bold text-sm">{mingGong}</div>
+                    <div className="text-cream font-bold text-sm">{mingZhu ? `${mingZhu} 在 ${mingGong}` : mingGong}</div>
                   </div>
                 )}
                 {wuxingJu && (
