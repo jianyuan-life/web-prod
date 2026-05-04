@@ -1578,17 +1578,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            - lg+ flex 雙欄:左 280px sticky sidebar TOC + 右 flex-1 content
            - mobile/tablet: 單欄 content
            - prose 內文段落仍自限 720px(原 .report-p > p 限寬已生效) */}
-      <div className="mx-auto pt-12 lg:flex lg:gap-8 max-w-[1600px]" style={{
+      <div className="mx-auto pt-12 max-w-[1280px]" style={{
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
-        {/* v5.7.53 lg+ Sticky Left Sidebar TOC(Wikipedia A/B +53% deep exploration) */}
-        <SidebarTOC sections={(isChumenji ? [] : sections).map((s, i) => ({
-          idx: i,
-          title: s.title?.replace(/^#+\s*/, '').slice(0, 40) || `章節 ${i + 1}`,
-        }))} />
-        {/* Main content(always shown) */}
-        <div className="flex-1 min-w-0">
+        {/* v5.7.80 SidebarTOC 移除 — 改單欄 max-w 1280(LLM 多次標「主內容區擠到 600px」、原因可能 sidebar 撐爆寬度) */}
+        {/* Main content full width */}
+        <div className="w-full">
 
         {/* 品牌標題 */}
         <div className="text-center mb-3 no-print">
