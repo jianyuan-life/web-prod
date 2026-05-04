@@ -1417,8 +1417,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         /* v5.3.44 IA 稽核補：h1/h2 Major Third 比例（1.25 倍），配 17px 正文維持垂直節奏
            h1 = 17 × 1.25³ = 33.2px / h2 = 17 × 1.25² = 26.56px / h3 = 17 × 1.25 = 21.25px
            但 h3 已設 18px（Tailwind 1.125rem），改設 h1/h2 為 Major Third 且 font-family 顯式用 --font-body */
-        h1.report-h1, .report-main h1 { font-size: 2.074rem; line-height: 1.3; font-family: var(--font-body); font-weight: 700; margin: 2.5rem 0 1.25rem; color: var(--color-cream); letter-spacing: 0.01em; }
-        h2.report-h2, .report-main h2 { font-size: 1.728rem; line-height: 1.35; font-family: var(--font-body); font-weight: 700; margin: 3rem 0 1rem; color: var(--color-cream); letter-spacing: 0.015em; border-bottom: 1px solid rgba(201,168,76,0.2); padding-bottom: 0.75rem; }
+        /* v5.7.57 Apple HIG 1.250 Major Third 嚴格比例(細分 #6 P0)
+           Body 18px → H3 22.5px → H2 28.125px → H1 35.16px
+           段距比例 1.5em / 章節 3em(macro/micro 雙層) */
+        h1.report-h1, .report-main h1 { font-size: 2.197rem; line-height: 1.25; font-family: var(--font-body); font-weight: 700; margin: 3em 0 1.5em; color: var(--color-cream); letter-spacing: 0.01em; }
+        h2.report-h2, .report-main h2 { font-size: 1.758rem; line-height: 1.3; font-family: var(--font-body); font-weight: 700; margin: 3em 0 1.25em; color: var(--color-cream); letter-spacing: 0.015em; border-bottom: 2px solid rgba(201,168,76,0.25); padding-bottom: 0.85rem; }
         .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
         /* 目錄連結 hover/active/scrollspy 態 */
         .toc-link { position: relative; transition: all 0.18s ease; border-left: 2px solid transparent; }
