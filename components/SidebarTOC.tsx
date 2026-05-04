@@ -24,6 +24,8 @@ export default function SidebarTOC({ sections }: { sections: SectionItem[] }) {
         maxHeight: 'calc(100vh - 8rem)',
         overflowY: 'auto',
         paddingRight: '1rem',
+        width: '240px',           // v5.7.70 鎖固定寬、避免擠壓主內容(原無寬度、長標題會撐到 380px+)
+        flex: '0 0 240px',         // 不收縮不擴張、固定 240px
       }}
     >
       <div className="text-gold/50 text-[10px] tracking-[3px] mb-3 uppercase font-semibold">本報告章節</div>
