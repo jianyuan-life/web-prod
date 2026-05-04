@@ -1625,9 +1625,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               {/* v5.7.96 加 hover effect 強化 polish */}
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {insights.map((item, i) => (
-                  <div key={i} className="px-4 py-3 rounded-lg" style={{
+                  <div key={i} className="px-4 py-3 rounded-lg transition-all duration-200 hover:scale-[1.03] hover:-translate-y-0.5" style={{
                     background: 'rgba(0,0,0,0.25)',
                     border: `1px solid ${item.color}30`,
+                    boxShadow: `0 0 12px ${item.color}10`,
                   }}>
                     <div className="flex items-center gap-2 mb-2">
                       <span style={{ color: item.color, fontSize: '16px' }}>{item.icon}</span>
