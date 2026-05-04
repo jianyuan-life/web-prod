@@ -2625,6 +2625,44 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#c9a84c'}}/>平衡 55-75</div>
                   <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#e0963a'}}/>調整 &lt; 55</div>
                 </div>
+
+                {/* v5.7.95 本月關鍵日期 + 具體行動(從當月推、Claude #5 加強) */}
+                {(() => {
+                  const today = new Date()
+                  const month = today.getMonth() + 1
+                  const year = today.getFullYear()
+                  const lastDay = new Date(year, month, 0).getDate()
+                  // 簡易節氣:春分/夏至/秋分/冬至 對應 21
+                  const jiqi = month === 3 ? '春分(3/20-21)' : month === 6 ? '夏至(6/21-22)' : month === 9 ? '秋分(9/22-23)' : month === 12 ? '冬至(12/21-22)' : null
+                  // 推 3 個關鍵日期(初一/十五/月底前)
+                  const keyDays = [
+                    { d: 1, label: '月初', advice: '宜啟動新計畫、訂月度目標' },
+                    { d: 15, label: '月中', advice: '檢視進度、調整節奏' },
+                    { d: lastDay - 2, label: '月末', advice: '收斂結算、規劃下月' },
+                  ]
+                  return (
+                    <div className="mt-4 pt-4 border-t border-purple-500/15">
+                      <div className="text-purple-300/65 text-[10px] tracking-[2px] mb-3 font-semibold">📍 本月({month}月)關鍵日期</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {keyDays.map((kd, i) => (
+                          <div key={i} className="px-3 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(155,89,182,0.20)' }}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-purple-300/85 font-bold text-sm">{month}/{kd.d}</span>
+                              <span className="text-purple-300/55 text-[9px] tracking-wider">{kd.label}</span>
+                            </div>
+                            <div className="text-cream/85 text-[11px] leading-tight">{kd.advice}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {jiqi && (
+                        <div className="mt-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(197,150,58,0.10)', border: '1px solid rgba(197,150,58,0.30)' }}>
+                          <span className="text-gold/80 text-[11px] font-semibold">★ 重要節氣:{jiqi}</span>
+                          <span className="text-text-muted/65 text-[10px] ml-2">能量轉換點、宜靜心覺察</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
