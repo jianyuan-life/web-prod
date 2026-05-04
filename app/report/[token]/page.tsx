@@ -3327,25 +3327,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <div className="report-p">
                   <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
                 </div>
-                {/* v5.8.3 章節 mini visual element(共識度條、Claude 「視覺化不足」P2 修) */}
-                {(() => {
-                  const t = sec.title || ''
-                  const matchSysCount = (text: string, rx: RegExp) => (text.match(rx) || []).length
-                  const sysScore = matchSysCount(sec.content || '', /八字|紫微|奇門|姓名|西占|吠陀|易經|人類圖|塔羅|數字|九星|生肖|節律|南洋/g)
-                  if (sysScore < 2) return null
-                  const consensusLevel = Math.min(5, sysScore)
-                  return (
-                    <div className="mt-4 px-4 py-2 rounded-lg flex items-center gap-3 text-[11px]" style={{ background: 'rgba(106,176,76,0.05)', border: '1px solid rgba(106,176,76,0.15)' }}>
-                      <div className="text-green-400/65 tracking-[2px] font-semibold">本章 引用 {sysScore} 套系統 · 共識度</div>
-                      <div className="flex gap-0.5 items-center">
-                        {[1,2,3,4,5].map(i => (
-                          <div key={i} className="w-3 h-1.5 rounded" style={{ background: i <= consensusLevel ? '#6ab04c' : 'rgba(255,255,255,0.10)' }} />
-                        ))}
-                      </div>
-                      <div className="text-green-400/55 ml-1">{consensusLevel >= 4 ? '高' : consensusLevel >= 2 ? '中' : '低'}</div>
-                    </div>
-                  )
-                })()}
+                {/* v5.8.6 撤回 v5.8.3 章節 mini bar(過度視覺、GPT-4o 因 clutter 降分) */}
                 {/* v5.7.86 章節末「💡 這對你的意義」自動 callout(從 sec.title 推 context、Claude 共識 #2 +12-14) */}
                 <div className="mt-5 px-4 py-3 rounded-lg" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.2)' }}>
                   <div className="text-green-400/70 text-[10px] tracking-[2px] mb-2 font-semibold">💡 這對你的意義</div>
