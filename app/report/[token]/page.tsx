@@ -2168,12 +2168,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 const ziweiRaw = (ziweiAna.raw_data || {}) as Record<string, unknown>
                 const fp = (baziRaw.four_pillars || {}) as Record<string, { gan?: string; zhi?: string }>
 
-                // v5.7.68 八字四柱:多源 fallback、容忍 3 柱(時辰未明)、寬鬆顯示(Gemini P0「只顯示 3 柱」修)
+                // v5.7.69 八字四柱:多源 fallback + AI 內容 regex(實測 HJN 客戶 client_data.bazi=null/raw_data 空、必加 AI 內容掃描)
                 let pillars: string[] = []
                 const baziStr = String(cd.bazi || '')
                 const baziSplit = baziStr.trim().split(/\s+/).filter(p => p.length === 2)
                 if (baziSplit.length >= 3) {
-                  // 接受 3 或 4 柱(時辰未明客戶 = 3 柱、為避免 deal-breaker)
                   pillars = baziSplit.slice(0, 4)
                 } else if (fp.year && fp.month && fp.day) {
                   pillars = [
@@ -2182,6 +2181,24 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     `${fp.day.gan || ''}${fp.day.zhi || ''}`,
                     fp.hour ? `${fp.hour.gan || ''}${fp.hour.zhi || ''}` : '',
                   ].filter(p => p.length === 2)
+                } else {
+                  // v5.7.69 AI 內容掃描:抓「八字:癸卯 丁巳 丙寅 癸巳」「年柱:癸卯」等格式
+                  const ai = String(aiContent || '')
+                  // 模式 A:「八字 [癸卯 丁巳 丙寅 癸巳]」連續 3-4 柱
+                  const aiBazi = ai.match(/八字[：:\s]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])(?:\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]))?/)
+                  if (aiBazi) {
+                    pillars = [aiBazi[1], aiBazi[2], aiBazi[3], aiBazi[4] || ''].filter(p => p && p.length === 2)
+                  } else {
+                    // 模式 B:逐柱抓「年柱:癸卯 月柱:丁巳 日柱:丙寅 時柱:癸巳」
+                    const yearM = ai.match(/年柱[：:\s]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])/)
+                    const monthM = ai.match(/月柱[：:\s]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])/)
+                    const dayM = ai.match(/日柱[：:\s]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])/)
+                    const hourM = ai.match(/時柱[：:\s]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])/)
+                    const candidates = [yearM?.[1] || '', monthM?.[1] || '', dayM?.[1] || '', hourM?.[1] || '']
+                    if (candidates.filter(p => p.length === 2).length >= 3) {
+                      pillars = candidates
+                    }
+                  }
                 }
 
                 // 2. 紫微命宮:多源 fallback(raw_data → AI 內容 regex)
