@@ -1576,7 +1576,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            - lg+ flex 雙欄:左 280px sticky sidebar TOC + 右 flex-1 content
            - mobile/tablet: 單欄 content
            - prose 內文段落仍自限 720px(原 .report-p > p 限寬已生效) */}
-      <div className="mx-auto pt-12 lg:flex lg:gap-10 max-w-[1280px]" style={{
+      <div className="mx-auto pt-12 lg:flex lg:gap-10 max-w-[1440px]" style={{
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
@@ -2157,33 +2157,103 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 )}
               </div>
 
-              {/* 右欄:命盤速覽(桌面才顯示在右、手機在下) */}
+              {/* v5.7.64 命盤速覽根治(Gemini P0 35 分主因「無命盤資料」) — 多源 fallback */}
               {(() => {
-                const mgMatch = (aiContent || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?\s*[（(]?[甲乙丙丁戊己庚辛壬癸]?[子丑寅卯辰巳午未申酉戌亥]?[）)]?/)
-                const mingGong = mgMatch ? mgMatch[1] : ''
-                const baziStr = String((report.report_result as Record<string, unknown>)?.client_data && (((report.report_result as Record<string, unknown>).client_data as Record<string, unknown>).bazi) || '')
-                const pillars = baziStr.trim().split(/\s+/).filter(p => p.length === 2)
-                if (pillars.length < 4 && !mingGong) return null
+                const rr = (report.report_result || {}) as Record<string, unknown>
+                const cd = (rr.client_data || {}) as Record<string, unknown>
+                const ana = (rr.analyses || {}) as Record<string, unknown>
+                const baziAna = (ana.bazi || {}) as Record<string, unknown>
+                const ziweiAna = (ana.ziwei || {}) as Record<string, unknown>
+                const baziRaw = (baziAna.raw_data || {}) as Record<string, unknown>
+                const ziweiRaw = (ziweiAna.raw_data || {}) as Record<string, unknown>
+                const fp = (baziRaw.four_pillars || {}) as Record<string, { gan?: string; zhi?: string }>
+
+                // 1. 八字四柱:多源 fallback
+                let pillars: string[] = []
+                const baziStr = String(cd.bazi || '')
+                const baziSplit = baziStr.trim().split(/\s+/).filter(p => p.length === 2)
+                if (baziSplit.length === 4) {
+                  pillars = baziSplit
+                } else if (fp.year && fp.month && fp.day && fp.hour) {
+                  pillars = [
+                    `${fp.year.gan || ''}${fp.year.zhi || ''}`,
+                    `${fp.month.gan || ''}${fp.month.zhi || ''}`,
+                    `${fp.day.gan || ''}${fp.day.zhi || ''}`,
+                    `${fp.hour.gan || ''}${fp.hour.zhi || ''}`,
+                  ].filter(p => p.length === 2)
+                  if (pillars.length !== 4) pillars = []
+                }
+
+                // 2. 紫微命宮:多源 fallback(raw_data → AI 內容 regex)
+                let mingGong = String(ziweiRaw.ming_gong || ziweiRaw.mingGong || cd.ming_gong || '')
+                if (!mingGong) {
+                  const mgMatch = (aiContent || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?/)
+                  mingGong = mgMatch ? mgMatch[1] : ''
+                }
+
+                // 3. 日主(八字主星)
+                const dayMaster = String(baziRaw.day_master || (pillars[2] ? pillars[2][0] : ''))
+
+                // 4. 五行局(紫微)
+                const wuxingJu = String(ziweiRaw.wuxing_ju || ziweiRaw.wuxing_ju_num || '')
+
+                // 5. 出生資訊基線(總是有)
+                const bd = (report.birth_data || {}) as Record<string, unknown>
+                const birthYear = String(bd.year || '')
+                const birthMonth = String(bd.month || '')
+                const birthDay = String(bd.day || '')
+                const birthCity = String(bd.birth_city || bd.city || '')
+
+                if (pillars.length < 4 && !mingGong && !birthYear) return null
+
                 return (
                   <div className="mt-6 lg:mt-0 px-6 py-5 rounded-2xl" style={{
                     background: 'rgba(197,150,58,0.08)',
                     border: '1px solid rgba(197,150,58,0.25)',
+                    minWidth: '280px',
                   }}>
                     <div className="text-gold/70 text-xs tracking-[3px] mb-4 text-center font-semibold">您的命盤速覽</div>
+
                     {pillars.length === 4 && (
-                      <div className="grid grid-cols-4 gap-2.5 mb-4">
-                        {[{label:'年柱',v:pillars[0]},{label:'月柱',v:pillars[1]},{label:'日柱',v:pillars[2]},{label:'時柱',v:pillars[3]}].map((p,i)=>(
-                          <div key={i} className="text-center px-2 py-3.5 rounded-xl" style={{background:'rgba(0,0,0,0.3)', border:'1px solid rgba(197,150,58,0.2)'}}>
-                            <div className="text-gold/45 text-[10px] tracking-[2px] mb-2">{p.label}</div>
-                            <div className="text-cream text-lg font-bold" style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
-                          </div>
-                        ))}
+                      <div className="mb-4">
+                        <div className="text-gold/55 text-[10px] tracking-[2px] mb-2 text-center">八字四柱</div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[{label:'年柱',v:pillars[0]},{label:'月柱',v:pillars[1]},{label:'日柱',v:pillars[2]},{label:'時柱',v:pillars[3]}].map((p,i)=>(
+                            <div key={i} className="text-center px-1.5 py-3 rounded-lg" style={{background:'rgba(0,0,0,0.3)', border:'1px solid rgba(197,150,58,0.2)'}}>
+                              <div className="text-gold/40 text-[9px] tracking-[1px] mb-1.5">{p.label}</div>
+                              <div className="text-cream text-base font-bold" style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
-                    {mingGong && (
-                      <div className="text-center text-sm text-cream/85 pt-3 border-t border-gold/15">
-                        <span className="text-gold/60 mr-2">紫微命宮</span>
-                        <span className="font-bold text-base">{mingGong}</span>
+
+                    {(mingGong || dayMaster || wuxingJu) && (
+                      <div className="grid grid-cols-3 gap-2 mb-3 pt-3 border-t border-gold/15">
+                        {dayMaster && (
+                          <div className="text-center">
+                            <div className="text-gold/45 text-[9px] tracking-[1px] mb-1">日主</div>
+                            <div className="text-cream font-bold text-sm">{dayMaster}</div>
+                          </div>
+                        )}
+                        {mingGong && (
+                          <div className="text-center">
+                            <div className="text-gold/45 text-[9px] tracking-[1px] mb-1">紫微命宮</div>
+                            <div className="text-cream font-bold text-sm">{mingGong}</div>
+                          </div>
+                        )}
+                        {wuxingJu && (
+                          <div className="text-center">
+                            <div className="text-gold/45 text-[9px] tracking-[1px] mb-1">五行局</div>
+                            <div className="text-cream font-bold text-sm">{wuxingJu}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {birthYear && (
+                      <div className="text-center text-[11px] text-cream/55 pt-2 border-t border-gold/10">
+                        {birthYear}/{birthMonth}/{birthDay}{birthCity ? ` · ${birthCity}` : ''}
                       </div>
                     )}
                   </div>
