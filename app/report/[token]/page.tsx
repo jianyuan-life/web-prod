@@ -1595,6 +1595,45 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
 
+        {/* v5.7.78 命格總分大徽章(最頂、最醒目、Apple 範本「Score Card」) */}
+        {!isChumenji && analysesSummary.length >= 3 && (() => {
+          const avg = Math.round(analysesSummary.reduce((a, x: { score: number }) => a + (x.score || 0), 0) / analysesSummary.length)
+          const grade = avg >= 80 ? 'A' : avg >= 70 ? 'B+' : avg >= 60 ? 'B' : 'C'
+          const gradeColor = avg >= 75 ? '#6ab04c' : avg >= 65 ? '#c9a84c' : '#e0963a'
+          return (
+            <div className="rounded-2xl px-6 py-4 mb-4 flex items-center justify-between" style={{
+              background: 'linear-gradient(135deg, rgba(197,150,58,0.15), rgba(26,42,74,0.4))',
+              border: '1px solid rgba(197,150,58,0.4)',
+            }}>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{
+                  background: `radial-gradient(circle, ${gradeColor}33 0%, ${gradeColor}11 70%)`,
+                  border: `2px solid ${gradeColor}`,
+                }}>
+                  <div className="text-2xl font-bold" style={{ color: gradeColor }}>{grade}</div>
+                </div>
+                <div>
+                  <div className="text-gold/60 text-[10px] tracking-[3px] mb-1 font-semibold">命格綜合評分</div>
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-3xl font-bold text-cream">{avg}</div>
+                    <div className="text-text-muted/60 text-sm">/ 100</div>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-text-muted/55 text-[10px] tracking-[2px] mb-1">{analysesSummary.length} 套系統交叉</div>
+                <div className="flex gap-1 items-center justify-end">
+                  {[60, 70, 80, 90, 100].map(t => (
+                    <div key={t} className="w-3 h-3 rounded-full" style={{
+                      background: avg >= t ? gradeColor : 'rgba(255,255,255,0.08)',
+                    }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* v5.7.72 頂部命盤摘要橫幅(LLM 第一眼看到、所有核心數據一覽) */}
         {!isChumenji && !isRelationship && !isFamily && (() => {
           const rr = (report.report_result || {}) as Record<string, unknown>
