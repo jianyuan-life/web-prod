@@ -1645,30 +1645,64 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </div>
               </div>
 
-              {/* Layer 2:為什麼(命理機制) */}
+              {/* v5.9.4 Layer 2 改三欄對照表(Claude 指定):系統 → 訊號 → 優勢 */}
               <div className="px-4 py-3 rounded-xl mb-3" style={{ background: 'rgba(197,150,58,0.08)', border: '1px solid rgba(197,150,58,0.30)' }}>
                 <div className="flex items-start gap-2">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-dark font-bold text-xs" style={{ background: '#c9a84c' }}>2</div>
                   <div className="flex-1">
-                    <div className="text-gold/85 text-[10px] tracking-[2px] mb-1 font-semibold">🔮 為什麼 · 命理機制</div>
-                    <div className="text-cream/90 text-sm leading-relaxed">
-                      14 套系統交叉得出此結論。最強訊號:<span className="text-green-400 font-semibold">{topTalent}</span>(優勢)、最該注意:<span className="text-orange-400 font-semibold">{topChallenge}</span>(課題)。{yearTheme && `2026 年:${yearTheme.slice(0, 35)}`}
+                    <div className="text-gold/85 text-[10px] tracking-[2px] mb-2 font-semibold">🔮 為什麼 · 系統交叉因果鏈</div>
+                    <div className="grid grid-cols-3 gap-2 mb-2 text-[11px]">
+                      <div className="px-2 py-1.5 rounded" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(155,89,182,0.30)' }}>
+                        <div className="text-purple-300/65 text-[9px] tracking-wider mb-0.5">系統</div>
+                        <div className="text-cream font-semibold">14 套</div>
+                      </div>
+                      <div className="px-2 py-1.5 rounded" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(122,159,207,0.30)' }}>
+                        <div className="text-blue-300/65 text-[9px] tracking-wider mb-0.5">訊號</div>
+                        <div className="text-cream font-semibold">{personalityCard.title}</div>
+                      </div>
+                      <div className="px-2 py-1.5 rounded" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(106,176,76,0.30)' }}>
+                        <div className="text-green-400/65 text-[9px] tracking-wider mb-0.5">優勢</div>
+                        <div className="text-cream font-semibold">{topTalent}</div>
+                      </div>
+                    </div>
+                    <div className="text-cream/85 text-[12px] leading-relaxed">
+                      最強訊號 <span className="text-green-400 font-semibold">「{topTalent}」</span> 由 14 套交叉確認;最該避免 <span className="text-orange-400 font-semibold">「{topChallenge}」</span>(陷阱)。{yearTheme && `2026 方向:${yearTheme.slice(0, 30)}`}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Layer 3:你該怎麼做(3 個行動項) */}
+              {/* v5.9.4 加 Layer 2.5「陷阱預警」section(Claude 指定:❌ 反面預警) */}
+              <div className="px-4 py-2.5 rounded-xl mb-3" style={{ background: 'rgba(231,76,60,0.05)', border: '1px solid rgba(231,76,60,0.25)' }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-red-400 font-bold">⚠</span>
+                  <span className="text-red-400/85 text-[10px] tracking-[2px] font-semibold">陷阱預警 · 你最常掉的坑</span>
+                </div>
+                <div className="text-cream/85 text-[12px] leading-relaxed mt-1.5">
+                  「{personalityCard.title}」型最常見:<span className="text-red-400 font-semibold">{topChallenge}</span>(95% 同型客戶都會遇到)。當這出現時 = 命格自動反應、不是你真心要的 — 5 秒覺察可破。
+                </div>
+              </div>
+
+              {/* v5.9.4 Layer 3 加優先序 + 時間框架(Claude 指定) */}
               <div className="px-4 py-3 rounded-xl" style={{ background: 'rgba(106,176,76,0.08)', border: '1px solid rgba(106,176,76,0.30)' }}>
                 <div className="flex items-start gap-2">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold text-xs" style={{ background: '#6ab04c' }}>3</div>
                   <div className="flex-1">
-                    <div className="text-green-400/85 text-[10px] tracking-[2px] mb-2 font-semibold">✅ 你該怎麼做 · 立即行動 3 件事</div>
-                    <ul className="space-y-1 text-cream/90 text-[13px] leading-relaxed">
-                      <li>① 本週用「<span className="text-green-400">{topTalent}</span>」優勢做 1 件具體事(累積 21 天形成新習慣)</li>
-                      <li>② 下次「{topChallenge}」出現時、停 5 秒問自己:這是命格反應還是真實意願?</li>
-                      <li>③ 順流節氣:{seasonAdvice}、本月對應這節奏調整</li>
-                    </ul>
+                    <div className="text-green-400/85 text-[10px] tracking-[2px] mb-2 font-semibold">✅ 你該怎麼做 · 按優先序執行</div>
+                    <div className="space-y-2 text-cream/90 text-[13px] leading-relaxed">
+                      <div className="flex items-start gap-2">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#e74c3c', color: '#fff' }}>本週必做</span>
+                        <span>用「<span className="text-green-400 font-semibold">{topTalent}</span>」優勢做 1 件具體事 — <span className="text-text-muted/70">如果只能挑 1 件、選這個</span></span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#c9a84c', color: '#0a0e1a' }}>月內完成</span>
+                        <span>練習對「{topChallenge}」5 秒覺察、累積 21 次形成新習慣</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#6ab04c', color: '#fff' }}>持續習慣</span>
+                        <span>順流節氣:{seasonAdvice}、每月初定方向</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
