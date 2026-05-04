@@ -1622,6 +1622,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <span>⚡ 命格 5 大核心洞察</span>
                 <span className="text-text-muted/45 text-[9px]">14 套系統交叉提取</span>
               </div>
+              {/* v5.7.96 加 hover effect 強化 polish */}
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {insights.map((item, i) => (
                   <div key={i} className="px-4 py-3 rounded-lg" style={{
