@@ -2117,7 +2117,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             }} />
 
             {/* v5.7.51 桌面 lg+ 雙欄:左 Hero(封號+定義)/ 右 命盤速覽 */}
-            <div className="lg:grid lg:grid-cols-[1.3fr_1fr] lg:gap-8 mb-6">
+            <div className="lg:grid lg:grid-cols-[1.7fr_1fr] lg:gap-8 mb-6">
               {/* Hero 區:封號 + 一句話定義 + Identity Insignia(v5.7.58 細分 #1 P1.1) */}
               <div className="text-center lg:text-left lg:flex lg:flex-col lg:justify-center">
                 {/* Identity Insignia:用 emoji + 圓形金邊代替 SVG illustration(快速版、避免設計師依賴) */}
@@ -2168,20 +2168,20 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 const ziweiRaw = (ziweiAna.raw_data || {}) as Record<string, unknown>
                 const fp = (baziRaw.four_pillars || {}) as Record<string, { gan?: string; zhi?: string }>
 
-                // 1. 八字四柱:多源 fallback
+                // v5.7.68 八字四柱:多源 fallback、容忍 3 柱(時辰未明)、寬鬆顯示(Gemini P0「只顯示 3 柱」修)
                 let pillars: string[] = []
                 const baziStr = String(cd.bazi || '')
                 const baziSplit = baziStr.trim().split(/\s+/).filter(p => p.length === 2)
-                if (baziSplit.length === 4) {
-                  pillars = baziSplit
-                } else if (fp.year && fp.month && fp.day && fp.hour) {
+                if (baziSplit.length >= 3) {
+                  // 接受 3 或 4 柱(時辰未明客戶 = 3 柱、為避免 deal-breaker)
+                  pillars = baziSplit.slice(0, 4)
+                } else if (fp.year && fp.month && fp.day) {
                   pillars = [
                     `${fp.year.gan || ''}${fp.year.zhi || ''}`,
                     `${fp.month.gan || ''}${fp.month.zhi || ''}`,
                     `${fp.day.gan || ''}${fp.day.zhi || ''}`,
-                    `${fp.hour.gan || ''}${fp.hour.zhi || ''}`,
+                    fp.hour ? `${fp.hour.gan || ''}${fp.hour.zhi || ''}` : '',
                   ].filter(p => p.length === 2)
-                  if (pillars.length !== 4) pillars = []
                 }
 
                 // 2. 紫微命宮:多源 fallback(raw_data → AI 內容 regex)
@@ -2214,14 +2214,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   }}>
                     <div className="text-gold/70 text-xs tracking-[3px] mb-4 text-center font-semibold">您的命盤速覽</div>
 
-                    {pillars.length === 4 && (
+                    {/* v5.7.68 容忍 3 柱顯示(時辰未明也有 3 柱完整、Gemini 「只 3 柱 P0」修) */}
+                    {pillars.length >= 3 && (
                       <div className="mb-4">
                         <div className="text-gold/55 text-[10px] tracking-[2px] mb-2 text-center">八字四柱</div>
                         <div className="grid grid-cols-4 gap-2">
-                          {[{label:'年柱',v:pillars[0]},{label:'月柱',v:pillars[1]},{label:'日柱',v:pillars[2]},{label:'時柱',v:pillars[3]}].map((p,i)=>(
+                          {[{label:'年柱',v:pillars[0]},{label:'月柱',v:pillars[1]},{label:'日柱',v:pillars[2]},{label:'時柱',v:pillars[3]||'時辰未明'}].map((p,i)=>(
                             <div key={i} className="text-center px-1.5 py-3 rounded-lg" style={{background:'rgba(0,0,0,0.3)', border:'1px solid rgba(197,150,58,0.2)'}}>
                               <div className="text-gold/40 text-[9px] tracking-[1px] mb-1.5">{p.label}</div>
-                              <div className="text-cream text-base font-bold" style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
+                              <div className={`text-cream font-bold ${p.v === '時辰未明' ? 'text-[10px] text-cream/40' : 'text-base'}`} style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
                             </div>
                           ))}
                         </div>
