@@ -2433,28 +2433,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             )}
 
-            {/* v5.7.63 命格金句 + 分享 CTA(Spotify Wrapped 範本、Gemini 標 +2 社交貨幣) */}
-            {personalityCard.title && personalityCard.definition && (
-              <div className="mb-5 px-5 py-4 rounded-xl relative" style={{
-                background: 'linear-gradient(135deg, rgba(155,89,182,0.10), rgba(52,152,219,0.06))',
-                border: '1px solid rgba(155,89,182,0.25)',
-              }}>
-                <div className="text-purple-300/70 text-[10px] tracking-[3px] mb-2 font-semibold flex items-center justify-between">
-                  <span>✨ 命格金句</span>
-                  <button className="text-[10px] px-2.5 py-1 rounded-full transition" style={{
-                    background: 'rgba(155,89,182,0.15)',
-                    border: '1px solid rgba(155,89,182,0.4)',
-                    color: '#bb8fce',
-                  }}>
-                    📤 分享
-                  </button>
-                </div>
-                <div className="text-cream/95 text-base leading-relaxed font-medium italic">
-                  「{personalityCard.definition.slice(0, 80)}{personalityCard.definition.length > 80 ? '...' : ''}」
-                </div>
-                <div className="text-gold/40 text-[10px] mt-2 text-right">— 鑑源命理 {personalityCard.title}</div>
-              </div>
-            )}
+            {/* v5.7.74 命格金句移除(跟 Definition 文字重複、Gemini P2「重複」) */}
 
             {/* v5.7.62 今日指引動態小卡(Gemini 標 +7 分、Co-Star 範本、Personal Dashboard 概念) */}
             {personalityCard.title && (
