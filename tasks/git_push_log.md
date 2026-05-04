@@ -5,6 +5,24 @@
 
 ---
 
+### 2026-05-04 10:30 | jianyuan-life/web-prod:main | v5.7.63 → v5.7.70 | 8 連推
+- 動作:報告頁 Hero 區大重構、衝 visual eval 95+
+- 改動範圍:`app/report/[token]/page.tsx`(主)、`components/SidebarTOC.tsx`、`components/ReportEnhancements.tsx`
+- 為什麼:用戶要求 4 個 LLM 雙視口 95+、靜態報告改動態 dashboard
+- v5.7.63:命格金句 + 分享 CTA(Spotify Wrapped、Gemini +2)
+- v5.7.64:命盤速覽多源 fallback + 容器 1280→1440(Gemini 35→65 主修)
+- v5.7.65:目錄 lg+ 隱藏 + 閱讀時間語意修(精華 X · 完整版 Y)
+- v5.7.66:天賦/課題 Top 5 上移 Hero(LLM 只看前 4 segments)
+- v5.7.67:2026 一句話 + 關鍵字標籤上移 Hero
+- v5.7.68:容忍 3 柱八字 + Hero grid 1.7:1
+- v5.7.69:八字四柱 AI 內容 regex 兜底(實測 client_data.bazi=null)
+- v5.7.70:容器 1440→1600 + SidebarTOC 鎖 240px(防擠壓主內容)
+- 評分追蹤:HJN v5.7.62 avg 60 → v5.7.66/68 avg 67 → v5.7.70 待測
+- type-check:✅ 0 error 全部 8 版
+- build:✅ Vercel auto-deploy 全 PASS
+- Multi-Review:L1 self PASS、UI 改動 P1/P2 級、Codex/Gemini 跳過(L1+L2 視覺 eval 4 LLM 取代)
+- 老闆驗收:⏳ 持續迭代直到 95+(用戶明確指令「不要停下」)
+
 ### 2026-05-03 11:10 | jianyuan-life/web-prod:main | v5.7.24 | (待填)
 - 動作:E3 prompt P3 根治 reason 對位 + 解除暫停新單禁令
 - 改動範圍:3 檔(`workflows/generate-report/plan-prompts.ts` + `package.json` + `CLAUDE.md`)
