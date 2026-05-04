@@ -3189,6 +3189,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <div className="report-p">
                   <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
                 </div>
+                {/* v5.7.86 章節末「💡 這對你的意義」自動 callout(從 sec.title 推 context、Claude 共識 #2 +12-14) */}
+                <div className="mt-5 px-4 py-3 rounded-lg" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.2)' }}>
+                  <div className="text-green-400/70 text-[10px] tracking-[2px] mb-2 font-semibold">💡 這對你的意義</div>
+                  <div className="text-cream/85 text-sm leading-relaxed">
+                    {(() => {
+                      const t = sec.title
+                      if (/八字|四柱|十神|五行/.test(t)) return '本章節展現你「先天能量結構」— 看完後對照「2026 月份決策日曆」找出順流月份、安排重要決策'
+                      if (/紫微|宮位|命宮|主星/.test(t)) return '本章節揭示你的「人生劇本」— 重點看「事業/財帛/夫妻」三宮、對應這 3 個面向的人生節奏'
+                      if (/奇門|出門|擇吉|吉時/.test(t)) return '本章節提供「精確時辰」工具 — 重大決策(簽約/求職/告白)前對照吉時方位、提升成功率'
+                      if (/大運|流年|歲運|轉折/.test(t)) return '本章節標示你的「人生轉折點」— 提前 1-2 年準備、避免在低能量期做大決策'
+                      if (/姓名|筆畫|數字/.test(t)) return '本章節評估「能量加減項」— 必要時用筆名/英文名/網路名作為調整器'
+                      if (/西洋|占星|星座|星盤/.test(t)) return '本章節呈現「心理動機層」— 對照八字物質層使用、整合現代心理學工具'
+                      if (/吠陀|印度|占星/.test(t)) return '本章節提供「靈性使命」視角 — 跟事業選擇有強相關、對照人類圖類型參考'
+                      if (/易經|卦|六爻/.test(t)) return '本章節是「決策時的問卜參考」— 大事猶豫時可結合奇門擇時操作'
+                      if (/人類圖|HD|類型|策略/.test(t)) return '本章節定義你的「決策策略」— 24 小時內套用一次、累積一週看身體反應'
+                      if (/塔羅|塔羅牌|占卜/.test(t)) return '本章節是「短期能量訊號」— 1 週、1 月有效、跟長期命盤搭配看'
+                      if (/節律|生物節律|波形/.test(t)) return '本章節提供「身體/情緒/智力」3 條曲線 — 對照當下狀態安排重要任務時段'
+                      if (/南洋|生肖|九星/.test(t)) return '本章節是「文化補充視角」— 跟主流系統交叉、共識度 ≥ 3 套才採信'
+                      if (/總結|TOP|建議|行動|練習/.test(t)) return '本章節是「立即可用」的具體行動 — 挑 1-2 條本週執行、累積 21 天形成新習慣'
+                      return '本章節結論可對照「命格綜合評分」與「2026 決策日曆」交叉應用、轉化為具體行動'
+                    })()}
+                  </div>
+                </div>
               </CollapsibleSection>
             )
           }
