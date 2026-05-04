@@ -351,3 +351,32 @@ button:active:not(:disabled),
 a.btn:active {
   transform: scale(0.98);
 }
+
+/* v5.7.99 元素入場動畫(fadeInUp)— modern polish、報告頁載入感 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.report-fade-in {
+  animation: fadeInUp 0.5s ease-out forwards;
+  animation-fill-mode: both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report-fade-in {
+    animation: none;
+    opacity: 1;
+  }
+}
