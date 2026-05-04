@@ -1597,6 +1597,47 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
 
+        {/* v5.7.89 Quick Insights — 5 條核心洞察(Co-Star + Mint 範本、訊號最強) */}
+        {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && (() => {
+          const insights = []
+          // 1. 命格定位
+          if (personalityCard.title) insights.push({ icon: '🎯', label: '命格定位', value: personalityCard.title.slice(0, 8), color: '#c9a84c' })
+          // 2. 第一印象
+          if (personalityCard.firstImpression) insights.push({ icon: '👁', label: '第一印象', value: personalityCard.firstImpression.slice(0, 12), color: '#7a9fcf' })
+          // 3. 真實的你
+          if (personalityCard.trueself) insights.push({ icon: '💎', label: '真實的你', value: personalityCard.trueself.slice(0, 12), color: '#bb8fce' })
+          // 4. 最強天賦
+          if (personalityCard.talents.length > 0) insights.push({ icon: '✨', label: '最強天賦', value: personalityCard.talents[0], color: '#6ab04c' })
+          // 5. 主要課題
+          if (personalityCard.challenges.length > 0) insights.push({ icon: '⚠', label: '主要課題', value: personalityCard.challenges[0], color: '#e0963a' })
+          if (insights.length < 3) return null
+          return (
+            <div className="rounded-2xl px-6 py-4 mb-4" style={{
+              background: 'linear-gradient(135deg, rgba(155,89,182,0.06), rgba(52,152,219,0.04), rgba(106,176,76,0.04))',
+              border: '1px solid rgba(197,150,58,0.30)',
+            }}>
+              <div className="text-gold/65 text-[11px] tracking-[3px] mb-3 font-semibold flex items-center justify-between">
+                <span>⚡ 命格 5 大核心洞察</span>
+                <span className="text-text-muted/45 text-[9px]">14 套系統交叉提取</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                {insights.map((item, i) => (
+                  <div key={i} className="px-3 py-2.5 rounded-lg" style={{
+                    background: 'rgba(0,0,0,0.25)',
+                    border: `1px solid ${item.color}30`,
+                  }}>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span style={{ color: item.color, fontSize: '14px' }}>{item.icon}</span>
+                      <span className="text-[9px] tracking-wider" style={{ color: `${item.color}99` }}>{item.label}</span>
+                    </div>
+                    <div className="text-cream text-xs font-semibold leading-tight line-clamp-2">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* v5.7.78 命格總分大徽章(最頂、最醒目、Apple 範本「Score Card」) */}
         {!isChumenji && analysesSummary.length >= 3 && (() => {
           const avg = Math.round(analysesSummary.reduce((a, x: { score: number }) => a + (x.score || 0), 0) / analysesSummary.length)
