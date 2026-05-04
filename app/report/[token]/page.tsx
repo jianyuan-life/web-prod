@@ -1650,41 +1650,73 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           )
         })()}
 
-        {/* v5.7.78 命格總分大徽章(最頂、最醒目、Apple 範本「Score Card」) */}
+        {/* v5.8.2 命格總分大徽章 — 加 inline talents/challenges + 命格名(packed banner) */}
         {!isChumenji && analysesSummary.length >= 3 && (() => {
           const avg = Math.round(analysesSummary.reduce((a, x: { score: number }) => a + (x.score || 0), 0) / analysesSummary.length)
           const grade = avg >= 80 ? 'A' : avg >= 70 ? 'B+' : avg >= 60 ? 'B' : 'C'
           const gradeColor = avg >= 75 ? '#6ab04c' : avg >= 65 ? '#c9a84c' : '#e0963a'
           return (
-            <div className="rounded-2xl px-6 py-4 mb-4 flex items-center justify-between" style={{
+            <div className="rounded-2xl px-6 py-5 mb-4" style={{
               background: 'linear-gradient(135deg, rgba(197,150,58,0.15), rgba(26,42,74,0.4))',
               border: '1px solid rgba(197,150,58,0.4)',
             }}>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{
-                  background: `radial-gradient(circle, ${gradeColor}33 0%, ${gradeColor}11 70%)`,
-                  border: `2px solid ${gradeColor}`,
-                }}>
-                  <div className="text-2xl font-bold" style={{ color: gradeColor }}>{grade}</div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0" style={{
+                    background: `radial-gradient(circle, ${gradeColor}33 0%, ${gradeColor}11 70%)`,
+                    border: `2px solid ${gradeColor}`,
+                  }}>
+                    <div className="text-2xl font-bold" style={{ color: gradeColor }}>{grade}</div>
+                  </div>
+                  <div>
+                    <div className="text-gold/60 text-[10px] tracking-[3px] mb-1 font-semibold">命格綜合評分</div>
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-3xl font-bold text-cream">{avg}</div>
+                      <div className="text-text-muted/60 text-sm">/ 100</div>
+                      {personalityCard?.title && (
+                        <div className="ml-3 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ background: 'rgba(197,150,58,0.20)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.45)' }}>
+                          {personalityCard.title}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-gold/60 text-[10px] tracking-[3px] mb-1 font-semibold">命格綜合評分</div>
-                  <div className="flex items-baseline gap-2">
-                    <div className="text-3xl font-bold text-cream">{avg}</div>
-                    <div className="text-text-muted/60 text-sm">/ 100</div>
+                <div className="text-right hidden sm:block">
+                  <div className="text-text-muted/55 text-[10px] tracking-[2px] mb-1">{analysesSummary.length} 套系統交叉</div>
+                  <div className="flex gap-1 items-center justify-end">
+                    {[60, 70, 80, 90, 100].map(t => (
+                      <div key={t} className="w-3 h-3 rounded-full" style={{
+                        background: avg >= t ? gradeColor : 'rgba(255,255,255,0.08)',
+                      }} />
+                    ))}
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-text-muted/55 text-[10px] tracking-[2px] mb-1">{analysesSummary.length} 套系統交叉</div>
-                <div className="flex gap-1 items-center justify-end">
-                  {[60, 70, 80, 90, 100].map(t => (
-                    <div key={t} className="w-3 h-3 rounded-full" style={{
-                      background: avg >= t ? gradeColor : 'rgba(255,255,255,0.08)',
-                    }} />
-                  ))}
+              {/* v5.8.2 inline Top 3 talents + Top 3 challenges、訊號最豐富 */}
+              {(personalityCard?.talents.length || 0) + (personalityCard?.challenges.length || 0) > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gold/15">
+                  {personalityCard && personalityCard.talents.length > 0 && (
+                    <div>
+                      <div className="text-[10px] text-green-400/70 tracking-[2px] mb-1.5 font-semibold">✓ 天賦 Top 3</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {personalityCard.talents.slice(0, 3).map((t, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(106,176,76,0.15)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.30)' }}>{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {personalityCard && personalityCard.challenges.length > 0 && (
+                    <div>
+                      <div className="text-[10px] text-orange-400/70 tracking-[2px] mb-1.5 font-semibold">⚠ 課題 Top 3</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {personalityCard.challenges.slice(0, 3).map((c, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(224,150,58,0.15)', color: '#e0963a', border: '1px solid rgba(224,150,58,0.30)' }}>{c}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           )
         })()}
