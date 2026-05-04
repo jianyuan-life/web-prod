@@ -21,6 +21,7 @@ import ScrollSpy from '@/components/ScrollSpy'
 import SidebarTOC from '@/components/SidebarTOC'
 import FiveElementsRadar from '@/components/FiveElementsRadar'
 import ShareReportButton from '@/components/ShareReportButton'
+import ZiweiPalaceWheel from '@/components/ZiweiPalaceWheel'
 import SystemsRadar from '@/components/report/SystemsRadar'
 import WuxingEnergyBars from '@/components/report/WuxingEnergyBars'
 import ChumenjiTop3Bar from '@/components/report/ChumenjiTop3Bar'
@@ -2527,18 +2528,32 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* v5.7.74 命格金句移除(跟 Definition 文字重複、Gemini P2「重複」) */}
 
-            {/* v5.7.77 SystemsRadar 移到 Hero 內(原在外、現直接接 Hero 後讓 LLM 第一屏看到視覺化) */}
-            {!isChumenji && analysesSummary.length >= 3 && (
-              <div className="mb-6 -mx-2">
-                <SystemsRadar
-                  data={analysesSummary as { system: string; score: number }[]}
-                  title={
-                    report.plan_code === 'C' ? '十四套命理系統交叉評分'
-                    : report.plan_code === 'G15' ? '家族成員命格評分'
-                    : report.plan_code === 'R' ? '雙人合盤系統評分'
-                    : '系統評分'
-                  }
-                />
+            {/* v5.7.77 SystemsRadar 移到 Hero 內 + v5.7.94 紫微宮輪 並列(雙視覺化、Gemini #2 +6) */}
+            {!isChumenji && (analysesSummary.length >= 3 || personalityCard?.title) && (
+              <div className="mb-6 -mx-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {analysesSummary.length >= 3 && (
+                  <SystemsRadar
+                    data={analysesSummary as { system: string; score: number }[]}
+                    title={
+                      report.plan_code === 'C' ? '十四套命理系統交叉評分'
+                      : report.plan_code === 'G15' ? '家族成員命格評分'
+                      : report.plan_code === 'R' ? '雙人合盤系統評分'
+                      : '系統評分'
+                    }
+                  />
+                )}
+                {personalityCard?.title && (() => {
+                  const ai = String(report.report_result?.ai_content || '')
+                  const mgM = ai.match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?/)
+                  const mzM = ai.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,4})/)
+                  const rrAny = (report.report_result || {}) as Record<string, unknown>
+                  const ziweiAna = ((rrAny.analyses || {}) as Record<string, unknown>)?.ziwei as Record<string, unknown> | undefined
+                  const ziweiRaw = (ziweiAna?.raw_data || {}) as Record<string, unknown>
+                  const mg = String(ziweiRaw.ming_gong || mgM?.[1] || '')
+                  const mz = String(ziweiRaw.ming_zhu || mzM?.[1] || '')
+                  if (!mg && !mz) return null
+                  return <ZiweiPalaceWheel mingGong={mg} mingZhu={mz} />
+                })()}
               </div>
             )}
 
