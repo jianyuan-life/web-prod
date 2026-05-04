@@ -80,7 +80,8 @@ export default function SystemsRadar({
       </div>
 
       <div className="glass rounded-2xl p-3 md:p-5 border border-gold/15">
-        <div style={{ width: '100%', height: 360 }}>
+        {/* v5.7.76 高度 360→440 + margin 加大 50→80(Gemini「雷達圖標籤被截斷」P2 修) */}
+        <div style={{ width: '100%', height: 440 }}>
           {!mounted ? (
             <div className="w-full h-full flex items-center justify-center text-text-muted/60 text-sm">
               <div className="flex items-center gap-2">
@@ -90,7 +91,7 @@ export default function SystemsRadar({
             </div>
           ) : (
           <ResponsiveContainer>
-            <RadarChart data={chartData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+            <RadarChart data={chartData} margin={{ top: 30, right: 80, bottom: 30, left: 80 }}>
               <PolarGrid stroke={COLORS.grid} strokeDasharray="2 4" />
               <PolarAngleAxis
                 dataKey="system"
