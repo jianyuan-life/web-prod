@@ -1595,7 +1595,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            - lg+ flex 雙欄:左 280px sticky sidebar TOC + 右 flex-1 content
            - mobile/tablet: 單欄 content
            - prose 內文段落仍自限 720px(原 .report-p > p 限寬已生效) */}
-      <div className="mx-auto pt-12 max-w-[1280px]" style={{
+      <div className="mx-auto pt-6 max-w-[1280px]" style={{
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
@@ -1603,8 +1603,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {/* Main content full width */}
         <div className="w-full">
 
-        {/* 品牌標題 */}
-        <div className="text-center mb-3 no-print">
+        {/* 品牌標題 v5.8.5 縮 mb-3 → mb-2 */}
+        <div className="text-center mb-2 no-print">
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
 
