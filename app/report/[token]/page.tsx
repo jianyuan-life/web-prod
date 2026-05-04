@@ -20,6 +20,7 @@ import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/R
 import ScrollSpy from '@/components/ScrollSpy'
 import SidebarTOC from '@/components/SidebarTOC'
 import FiveElementsRadar from '@/components/FiveElementsRadar'
+import ShareReportButton from '@/components/ShareReportButton'
 import SystemsRadar from '@/components/report/SystemsRadar'
 import WuxingEnergyBars from '@/components/report/WuxingEnergyBars'
 import ChumenjiTop3Bar from '@/components/report/ChumenjiTop3Bar'
@@ -3306,6 +3307,24 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             )
           })
         })()}
+
+        {/* v5.7.93 真分享卡(Web Share API + clipboard、Gemini #5 +2、Spotify Wrapped 範本) */}
+        {!isChumenji && !isRelationship && personalityCard?.title && personalityCard?.definition && (
+          <div className="rounded-2xl px-6 py-5 mb-6 text-center" style={{
+            background: 'linear-gradient(135deg, rgba(155,89,182,0.10), rgba(52,152,219,0.06))',
+            border: '1px solid rgba(155,89,182,0.30)',
+          }}>
+            <div className="text-purple-300/65 text-[10px] tracking-[3px] mb-3 font-semibold">📤 分享你的命格洞察</div>
+            <div className="text-cream text-base leading-relaxed mb-4 italic">
+              「{personalityCard.definition.slice(0, 70)}{personalityCard.definition.length > 70 ? '...' : ''}」
+            </div>
+            <div className="text-gold/55 text-xs mb-4">— 鑑源命理 · {personalityCard.title}</div>
+            <ShareReportButton
+              title={`我的命格 — ${personalityCard.title}`}
+              text={`「${personalityCard.definition.slice(0, 80)}」— 我的命格是「${personalityCard.title}」、來自鑑源命理 14 套系統交叉分析`}
+            />
+          </div>
+        )}
 
         {/* v5.7.90 立即可做的 3 件事(報告末、放大 v5.7.86 命中模式、Action 集中) */}
         {!isChumenji && !isRelationship && personalityCard?.title && (() => {
