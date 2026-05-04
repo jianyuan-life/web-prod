@@ -47,7 +47,7 @@ export default function FiveElementsRadar({ data, title = '五行能量分布' }
                 color: '#e8dcb2',
                 fontSize: '13px',
               }}
-              formatter={(value: number) => [`${value.toFixed(1)}`, '能量值']}
+              formatter={(value: unknown) => [`${typeof value === 'number' ? value.toFixed(1) : value}`, '能量值']}
             />
           </RadarChart>
         </ResponsiveContainer>
