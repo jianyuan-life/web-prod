@@ -2435,6 +2435,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* v5.7.74 命格金句移除(跟 Definition 文字重複、Gemini P2「重複」) */}
 
+            {/* v5.7.77 SystemsRadar 移到 Hero 內(原在外、現直接接 Hero 後讓 LLM 第一屏看到視覺化) */}
+            {!isChumenji && analysesSummary.length >= 3 && (
+              <div className="mb-6 -mx-2">
+                <SystemsRadar
+                  data={analysesSummary as { system: string; score: number }[]}
+                  title={
+                    report.plan_code === 'C' ? '十四套命理系統交叉評分'
+                    : report.plan_code === 'G15' ? '家族成員命格評分'
+                    : report.plan_code === 'R' ? '雙人合盤系統評分'
+                    : '系統評分'
+                  }
+                />
+              </div>
+            )}
+
             {/* v5.7.62 今日指引動態小卡(Gemini 標 +7 分、Co-Star 範本、Personal Dashboard 概念) */}
             {personalityCard.title && (
               <div className="mb-5 px-5 py-4 rounded-xl text-center" style={{
@@ -2523,20 +2538,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* v5.7.72 SystemsRadar 移到此位置(緊接 Hero 之後)— LLM 第一屏看到 14 系統視覺化 */}
-        {!isChumenji && analysesSummary.length >= 3 && (
-          <div className="no-print mb-8">
-            <SystemsRadar
-              data={analysesSummary as { system: string; score: number }[]}
-              title={
-                report.plan_code === 'C' ? '十四套命理系統交叉評分'
-                : report.plan_code === 'G15' ? '家族成員命格評分'
-                : report.plan_code === 'R' ? '雙人合盤系統評分'
-                : '系統評分'
-              }
-            />
-          </div>
-        )}
+        {/* v5.7.77 SystemsRadar 移進 Hero card 內(line ~2335)、外面這個移除 */}
 
         {/* v5.6.10 R5-2:五行能量條(從 ai_content 解析、若無則 hide) */}
         {!isChumenji && wuxingData.length === 5 && (
