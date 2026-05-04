@@ -2191,6 +2191,28 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               })()}
             </div>
 
+            {/* v5.7.62 今日指引動態小卡(Gemini 標 +7 分、Co-Star 範本、Personal Dashboard 概念) */}
+            {personalityCard.title && (
+              <div className="mb-5 px-5 py-4 rounded-xl text-center" style={{
+                background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(106,176,76,0.06))',
+                border: '1px solid rgba(197,150,58,0.3)',
+              }}>
+                <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 font-semibold">📅 今日指引(動態)</div>
+                <div className="text-cream/90 text-sm leading-relaxed">
+                  {(() => {
+                    const t = personalityCard.title || ''
+                    const day = new Date().getDay()
+                    const advice = [
+                      `身為「${t}」、今日適合 ${day % 2 === 0 ? '主動行動' : '靜心觀察'}、收回散出去的注意力`,
+                      `「${t}」的本能是 ${day < 3 ? '突破' : '收斂'}、今日記得對自己溫柔`,
+                      `今天「${t}」的能量在 ${day === 0 || day === 6 ? '休養' : '聚焦'}、給自己 10 分鐘獨處`,
+                    ][day % 3]
+                    return advice
+                  })()}
+                </div>
+              </div>
+            )}
+
             {/* v5.7.61 信任 badge(Claude 標 P0、+8-11 分、Trustpilot/G2/Stripe trust signals 範本) */}
             <div className="mb-5 flex flex-wrap justify-center gap-3 text-[11px]">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
