@@ -19,6 +19,7 @@ import SubscribeCTA from '@/components/SubscribeCTA'
 import { ReadingProgressBar, BackToTopButton, ReadingTime } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
 import SidebarTOC from '@/components/SidebarTOC'
+import FiveElementsRadar from '@/components/FiveElementsRadar'
 import SystemsRadar from '@/components/report/SystemsRadar'
 import WuxingEnergyBars from '@/components/report/WuxingEnergyBars'
 import ChumenjiTop3Bar from '@/components/report/ChumenjiTop3Bar'
@@ -2189,6 +2190,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 )
               })()}
             </div>
+
+            {/* v5.7.59 五行能量雷達圖(4/4 LLM 共識最高 ROI、+6-15 分) */}
+            {(() => {
+              const cd = (report.report_result as Record<string, unknown>)?.client_data as Record<string, unknown> | undefined
+              const fe = cd?.five_elements as Record<string, number> | undefined
+              if (!fe) return null
+              return <FiveElementsRadar data={{ wood: fe['木'] || fe.wood, fire: fe['火'] || fe.fire, earth: fe['土'] || fe.earth, metal: fe['金'] || fe.metal, water: fe['水'] || fe.water }} />
+            })()}
 
             {/* sub-section divider */}
             <div className="h-px my-6 bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
