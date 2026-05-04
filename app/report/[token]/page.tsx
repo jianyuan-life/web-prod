@@ -2117,8 +2117,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* v5.7.51 桌面 lg+ 雙欄:左 Hero(封號+定義)/ 右 命盤速覽 */}
             <div className="lg:grid lg:grid-cols-[1.3fr_1fr] lg:gap-8 mb-6">
-              {/* Hero 區:封號 + 一句話定義 */}
+              {/* Hero 區:封號 + 一句話定義 + Identity Insignia(v5.7.58 細分 #1 P1.1) */}
               <div className="text-center lg:text-left lg:flex lg:flex-col lg:justify-center">
+                {/* Identity Insignia:用 emoji + 圓形金邊代替 SVG illustration(快速版、避免設計師依賴) */}
+                <div className="flex justify-center lg:justify-start mb-3">
+                  <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full flex items-center justify-center text-3xl lg:text-4xl" style={{
+                    background: 'radial-gradient(circle, rgba(197,150,58,0.2) 0%, rgba(197,150,58,0.05) 70%)',
+                    border: '2px solid rgba(197,150,58,0.4)',
+                    boxShadow: '0 0 30px rgba(197,150,58,0.25)',
+                  }}>
+                    {/* 從 personalityCard.title 推 emoji(太陽之火→☀ / 雨露甘霖→💧 / 默認☯) */}
+                    {(() => {
+                      const t = personalityCard.title || ''
+                      if (/太陽|火|烈/.test(t)) return '☀'
+                      if (/雨露|水|霖/.test(t)) return '💧'
+                      if (/月|柔|靜/.test(t)) return '☽'
+                      if (/山|穩|定/.test(t)) return '⛰'
+                      if (/風|動|飛/.test(t)) return '💨'
+                      if (/木|樹|林/.test(t)) return '🌳'
+                      if (/金|劍|鋒/.test(t)) return '⚔'
+                      return '☯'
+                    })()}
+                  </div>
+                </div>
                 <div className="text-gold/50 text-[11px] tracking-[5px] mb-3 uppercase">命格名片</div>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-wide mb-4" style={{
                   color: '#c9a84c',
