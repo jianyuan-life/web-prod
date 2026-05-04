@@ -727,6 +727,10 @@ function renderSectionMarkdown(content: string): string {
     // v5.8.1 砍 AI 生成的奇怪轉折句(Claude P2 「是下列因素人」「你有是位置區隔人」等不通順)
     .replace(/是下列因素人[^，。\n]*[，。]/g, '')
     .replace(/你有是位置區隔人[^，。\n]*[，。]/g, '')
+    // v5.8.9 砍冷啟動雞湯開場白(Claude P2「這個人好好啊、應該很好相處」)
+    .replace(/^這個人好好啊[^。\n]*[，。]\s*/gm, '')
+    .replace(/^應該(?:很|蠻)?好相處[^。\n]*[，。]\s*/gm, '')
+    .replace(/^[^\n]{0,15}人應該(?:很|蠻)?[^\n]{0,15}[，。]\s*/gm, '')
     // v5.8.8 【XX】開頭加色強化(段落分層)
     .replace(/^【([^】]{2,12})】/gm, '<span class="report-bold" style="color:var(--color-gold)">【$1】</span>')
     // v5.7.85 砍隨意百分比廢話「砍掉 40%」「提升 50%」等(無命理依據的數字)
@@ -1685,6 +1689,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                         </div>
                       )}
                     </div>
+                    {/* v5.8.9 加 inline 出生資訊(Claude P1「需要身份確認」修) */}
+                    {(() => {
+                      const bd = (report.birth_data || {}) as Record<string, unknown>
+                      const yr = String(bd.year || '')
+                      const mo = String(bd.month || '')
+                      const dy = String(bd.day || '')
+                      if (!yr) return null
+                      return (
+                        <div className="text-text-muted/55 text-[11px] mt-1">
+                          {yr}/{mo}/{dy} 生 · {report.client_name || ''}
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
                 <div className="text-right hidden sm:block">
