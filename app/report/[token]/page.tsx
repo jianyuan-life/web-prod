@@ -1677,6 +1677,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider" style={{ background: '#c9a84c', color: '#0a0e1a' }}>STEP 2</span>
                       <span className="text-gold/85 text-[11px] tracking-wider font-semibold">命盤儀表板</span>
                     </div>
+                    {/* v5.9.7 加決策樹箭頭(Claude P1「決策樹視覺圖」修):優勢/課題 → 2026 → 行動 */}
+                    <div className="text-center text-[10px] text-gold/55 mb-1.5">
+                      <span className="text-green-400/80">優勢 ↗</span> + <span className="text-orange-400/80">課題 ↙</span> → <span className="text-purple-300/80">2026 方向</span> → <span className="text-cream/80 font-semibold">具體 3 行動</span>
+                    </div>
                     {/* 3 KPI 卡 — 優勢分數 / 課題象限 / 方向箭頭 */}
                     <div className="grid grid-cols-3 gap-2">
                       {/* KPI 1:優勢分數 (大字 + 條) */}
@@ -1726,19 +1730,34 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <div className="flex-1">
                     <div className="text-green-400/85 text-[10px] tracking-[2px] mb-2 font-semibold">✅ 你該怎麼做 · 按優先序執行</div>
                     <div className="space-y-2 text-cream/90 text-[13px] leading-relaxed">
-                      {/* v5.9.5 micro-action 具體化(Claude P1「時間+場景+對象」)*/}
-                      <div className="flex items-start gap-2">
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#e74c3c', color: '#fff' }}>本週必做</span>
-                        <span><span className="text-text-muted/65">明天 / 工作場景:</span>用「<span className="text-green-400 font-semibold">{topTalent}</span>」打破會議僵局或做關鍵決策(如果只能挑 1 件、就這個)</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#c9a84c', color: '#0a0e1a' }}>月內完成</span>
-                        <span><span className="text-text-muted/65">日常 / 21 天:</span>「{topChallenge}」浮現時、深呼吸 5 秒、自問:命格反應 or 真心要?</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#6ab04c', color: '#fff' }}>持續習慣</span>
-                        <span><span className="text-text-muted/65">每月初 / 規劃時:</span>{seasonAdvice}、對齊節氣定本月主軸</span>
-                      </div>
+                      {/* v5.9.7 加具體日期 checklist(Claude「本週三 09:00 / 第 2 週五」式可執行) */}
+                      {(() => {
+                        const today = new Date()
+                        const wedDate = new Date(today)
+                        const dow = today.getDay()
+                        const daysToWed = (3 - dow + 7) % 7 || 7
+                        wedDate.setDate(today.getDate() + daysToWed)
+                        const friDate = new Date(today)
+                        friDate.setDate(today.getDate() + 14 + ((5 - today.getDay() + 7) % 7 || 7))
+                        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+                        const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
+                        return (
+                          <>
+                            <div className="flex items-start gap-2">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#e74c3c', color: '#fff' }}>{fmt(wedDate)} 三</span>
+                              <span><span className="text-text-muted/65">09:00 工作場景:</span>用「<span className="text-green-400 font-semibold">{topTalent}</span>」打破會議僵局或做關鍵決策</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#c9a84c', color: '#0a0e1a' }}>{fmt(friDate)} 五</span>
+                              <span><span className="text-text-muted/65">檢查覺察:</span>「{topChallenge}」浮現幾次?5 秒覺察成功幾次?(累積 21 次)</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 mt-0.5" style={{ background: '#6ab04c', color: '#fff' }}>{fmt(monthEnd)} 月底</span>
+                              <span><span className="text-text-muted/65">本月覆盤:</span>{seasonAdvice}、檢視主軸對齊度</span>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
                     {/* v5.9.6 加「3 天反應 + 4 週檢視」反饋迴圈(Claude 指定) */}
                     <div className="mt-3 pt-2.5 border-t border-green-500/15 text-[11px] text-text-muted/65 leading-relaxed">
