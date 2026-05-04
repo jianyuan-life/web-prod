@@ -1793,8 +1793,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(26,42,74,0.30))',
               border: '1px solid rgba(197,150,58,0.35)',
             }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-gold/65 text-[11px] tracking-[3px] font-semibold">📋 命盤一覽</div>
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gold/15">
+                <div className="text-gold/65 text-[11px] tracking-[3px] font-semibold flex items-center gap-2">
+                  <span className="w-1 h-4 rounded-full" style={{background: 'linear-gradient(180deg, #c9a84c, #6ab04c)'}}/>
+                  📋 命盤一覽
+                </div>
                 {sysCount > 0 && (
                   <div className="text-[11px] text-cream/60">
                     <span className="text-gold font-bold">{sysCount}</span> 套系統 · 綜合 <span className="text-gold font-bold">{avgScore}</span> 分
