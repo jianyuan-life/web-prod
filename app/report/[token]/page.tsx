@@ -1584,7 +1584,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            - lg+ flex 雙欄:左 280px sticky sidebar TOC + 右 flex-1 content
            - mobile/tablet: 單欄 content
            - prose 內文段落仍自限 720px(原 .report-p > p 限寬已生效) */}
-      <div className="mx-auto pt-12 max-w-[1700px]" style={{
+      <div className="mx-auto pt-12 max-w-[1280px]" style={{
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
