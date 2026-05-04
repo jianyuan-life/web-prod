@@ -2492,9 +2492,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 目錄導航（起承轉合四篇分組）──── */}
+        {/* ──── 目錄導航（起承轉合四篇分組）──── v5.7.65 lg+ 隱藏(SidebarTOC 已存在、Gemini P2 redundant) */}
         {sections.length > 3 && (
-          <div className="glass rounded-xl p-6 mb-8 no-print">
+          <div className="glass rounded-xl p-6 mb-8 no-print lg:hidden">
             <div className="flex items-center justify-between mb-4">
               <div className="text-gold/70 text-xs tracking-[2px]">{isShowingSummary ? '重點摘要目錄' : '目錄'}</div>
               <div className="text-text-muted/50 text-[10px] tracking-wider">

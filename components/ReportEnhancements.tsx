@@ -65,15 +65,15 @@ export function BackToTopButton() {
 }
 
 // #14 閱讀時間估算
-// v5.3.48 Wave 3：改友善呈現（老闆 docx P1）
-// 舊：「預計閱讀 99 分鐘」→ 給壓迫感嚇退
-// 新：「精華 10 分 · 完整 N 分」雙入口呈現，降低閱讀門檻
+// v5.7.65 修 Gemini P2「339 分鐘語意不明」:reading speed 450→1000 chars/min(中文輕度閱讀)、完整版 cap 120 分鐘
+// 範本:「精華 10 分 · 完整 N 分」雙入口呈現,降低閱讀門檻
 export function ReadingTime({ textLength }: { textLength: number }) {
-  const minutes = Math.max(5, Math.ceil(textLength / 450))
-  const essenceMin = Math.min(15, Math.max(8, Math.round(minutes / 6)))
+  const rawMin = Math.max(5, Math.ceil(textLength / 1000))  // 1000 chars/min realistic 中文輕讀
+  const minutes = Math.min(120, rawMin)  // cap 120 min(避免 339 等不切實際數)
+  const essenceMin = Math.min(15, Math.max(8, Math.round(minutes / 8)))
   return (
     <span className="text-text-muted/60 text-xs">
-      精華閱讀 {essenceMin} 分鐘 · 完整 {minutes} 分鐘
+      精華 {essenceMin} 分 · 完整版 {minutes} 分
     </span>
   )
 }
