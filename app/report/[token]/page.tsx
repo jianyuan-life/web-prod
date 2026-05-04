@@ -1595,6 +1595,90 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
 
+        {/* v5.7.72 頂部命盤摘要橫幅(LLM 第一眼看到、所有核心數據一覽) */}
+        {!isChumenji && !isRelationship && !isFamily && (() => {
+          const rr = (report.report_result || {}) as Record<string, unknown>
+          const cd = (rr.client_data || {}) as Record<string, unknown>
+          const ana = (rr.analyses || {}) as Record<string, unknown>
+          const baziAna = (ana.bazi || {}) as Record<string, unknown>
+          const ziweiAna = (ana.ziwei || {}) as Record<string, unknown>
+          const baziRaw = (baziAna.raw_data || {}) as Record<string, unknown>
+          const ziweiRaw = (ziweiAna.raw_data || {}) as Record<string, unknown>
+          const fp = (baziRaw.four_pillars || {}) as Record<string, { gan?: string; zhi?: string }>
+          const baziStr = String(cd.bazi || '')
+          let pillars = baziStr.trim().split(/\s+/).filter(p => p.length === 2).slice(0, 4)
+          if (pillars.length < 3 && fp.year && fp.month && fp.day) {
+            pillars = [
+              `${fp.year.gan || ''}${fp.year.zhi || ''}`,
+              `${fp.month.gan || ''}${fp.month.zhi || ''}`,
+              `${fp.day.gan || ''}${fp.day.zhi || ''}`,
+              fp.hour ? `${fp.hour.gan || ''}${fp.hour.zhi || ''}` : '',
+            ].filter(p => p.length === 2)
+          }
+          if (pillars.length < 3) {
+            const ai = String(report.report_result?.ai_content || '')
+            const m = ai.match(/八字[：:\s]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])(?:\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]))?/)
+            if (m) pillars = [m[1], m[2], m[3], m[4] || ''].filter(p => p && p.length === 2)
+          }
+          let mingGong = String(ziweiRaw.ming_gong || ziweiRaw.mingGong || cd.ming_gong || '')
+          if (!mingGong) {
+            const mg = (report.report_result?.ai_content || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?/)
+            mingGong = mg ? mg[1] : ''
+          }
+          const dayMaster = String(baziRaw.day_master || (pillars[2] ? pillars[2][0] : ''))
+          const wuxingJu = String(ziweiRaw.wuxing_ju || '')
+          const sysCount = analysesSummary.length
+          const avgScore = sysCount > 0 ? Math.round(analysesSummary.reduce((a, x: { score: number }) => a + (x.score || 0), 0) / sysCount) : 0
+          if (pillars.length < 3 && !mingGong) return null
+          return (
+            <div className="rounded-2xl px-6 py-5 mb-6" style={{
+              background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(26,42,74,0.30))',
+              border: '1px solid rgba(197,150,58,0.35)',
+            }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-gold/65 text-[11px] tracking-[3px] font-semibold">📋 命盤一覽</div>
+                {sysCount > 0 && (
+                  <div className="text-[11px] text-cream/60">
+                    <span className="text-gold font-bold">{sysCount}</span> 套系統 · 綜合 <span className="text-gold font-bold">{avgScore}</span> 分
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center">
+                {pillars.map((p, i) => (
+                  <div key={`tb-${i}`} className="px-2 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(197,150,58,0.18)' }}>
+                    <div className="text-gold/40 text-[9px] tracking-[1px] mb-1">{['年柱','月柱','日柱','時柱'][i]}</div>
+                    <div className="text-cream font-bold text-sm" style={{ fontFamily: 'var(--font-mono, monospace)' }}>{p}</div>
+                  </div>
+                ))}
+                {pillars.length === 3 && (
+                  <div className="px-2 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.15)', border: '1px dashed rgba(197,150,58,0.18)' }}>
+                    <div className="text-gold/40 text-[9px] tracking-[1px] mb-1">時柱</div>
+                    <div className="text-cream/40 text-[10px]">時辰未明</div>
+                  </div>
+                )}
+                {dayMaster && (
+                  <div className="px-2 py-2 rounded-lg" style={{ background: 'rgba(106,176,76,0.10)', border: '1px solid rgba(106,176,76,0.25)' }}>
+                    <div className="text-green-400/60 text-[9px] tracking-[1px] mb-1">日主</div>
+                    <div className="text-cream font-bold text-sm">{dayMaster}</div>
+                  </div>
+                )}
+                {mingGong && (
+                  <div className="px-2 py-2 rounded-lg" style={{ background: 'rgba(155,89,182,0.10)', border: '1px solid rgba(155,89,182,0.25)' }}>
+                    <div className="text-purple-300/60 text-[9px] tracking-[1px] mb-1">紫微命宮</div>
+                    <div className="text-cream font-bold text-sm">{mingGong}</div>
+                  </div>
+                )}
+                {wuxingJu && (
+                  <div className="px-2 py-2 rounded-lg" style={{ background: 'rgba(52,152,219,0.10)', border: '1px solid rgba(52,152,219,0.25)' }}>
+                    <div className="text-blue-300/60 text-[9px] tracking-[1px] mb-1">五行局</div>
+                    <div className="text-cream font-bold text-sm">{wuxingJu}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* ──── 報告頭部 ──── */}
         <div className="glass rounded-2xl p-8 sm:p-10 mb-8 text-center relative overflow-hidden">
           {/* 頂部金色裝飾光帶 */}
@@ -2460,10 +2544,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* v5.6.10 R5 命理視覺化:14 系統評分雷達圖(對應 Gemini「致命傷」共識) */}
-        {/* 顯示條件:有 ≥3 套系統評分(C/D/G15 主要、出門訣 E1-E4 系統較少跳過) */}
+        {/* v5.7.72 SystemsRadar 移到此位置(緊接 Hero 之後)— LLM 第一屏看到 14 系統視覺化 */}
         {!isChumenji && analysesSummary.length >= 3 && (
-          <div className="no-print">
+          <div className="no-print mb-8">
             <SystemsRadar
               data={analysesSummary as { system: string; score: number }[]}
               title={
