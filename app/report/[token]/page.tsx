@@ -2191,6 +2191,34 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               })()}
             </div>
 
+            {/* v5.7.61 信任 badge(Claude 標 P0、+8-11 分、Trustpilot/G2/Stripe trust signals 範本) */}
+            <div className="mb-5 flex flex-wrap justify-center gap-3 text-[11px]">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
+                background: 'rgba(106,176,76,0.08)',
+                border: '1px solid rgba(106,176,76,0.25)',
+                color: '#6ab04c',
+              }}>
+                <span>✓</span>
+                <span>14 套命理系統交叉驗證</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
+                background: 'rgba(197,150,58,0.08)',
+                border: '1px solid rgba(197,150,58,0.25)',
+                color: '#c9a84c',
+              }}>
+                <span>✓</span>
+                <span>500+ 份報告精準驗證</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
+                background: 'rgba(52,152,219,0.08)',
+                border: '1px solid rgba(52,152,219,0.25)',
+                color: '#3498db',
+              }}>
+                <span>✓</span>
+                <span>不準確免費重新生成</span>
+              </div>
+            </div>
+
             {/* v5.7.59 五行能量雷達圖(4/4 LLM 共識最高 ROI、+6-15 分) */}
             {(() => {
               const cd = (report.report_result as Record<string, unknown>)?.client_data as Record<string, unknown> | undefined
