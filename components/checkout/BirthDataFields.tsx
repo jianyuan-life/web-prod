@@ -118,6 +118,21 @@ export default function BirthDataFields({
         </div>
       </div>
 
+      {/* v5.10.5 婚姻狀況(C/D/G15/R 感情段個性化、避免對已婚客戶寫「該找對象」誤導)*/}
+      <div>
+        <label className="block text-xs text-text-muted mb-1">婚姻狀況 <span className="text-red-400">*</span></label>
+        <div className="flex gap-6">
+          {[{ v: 'unmarried' as const, l: '未婚' }, { v: 'married' as const, l: '已婚' }].map(({ v, l }) => (
+            <label key={v} className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="marital_status" value={v} checked={form.marital_status === v}
+                onChange={() => setForm(f => ({ ...f, marital_status: v }))} className="accent-gold" />
+              <span className="text-sm text-text">{l}</span>
+            </label>
+          ))}
+        </div>
+        <p className="text-[10px] text-text-muted/60 mt-1">影響感情/家庭運勢段的詮釋方向(已婚聚焦婚姻品質、未婚聚焦擇偶與桃花)</p>
+      </div>
+
       {/* 出生地區 */}
       <div className="relative">
         <label className="block text-xs text-text-muted mb-1">出生地區 <span className="text-red-400">*</span></label>

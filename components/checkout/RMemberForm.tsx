@@ -228,6 +228,19 @@ export default function RMemberForm({
                   ))}
                 </div>
               </div>
+              {/* v5.10.5 R 各成員獨立婚姻狀況(感情/夫妻互動段個性化)*/}
+              <div>
+                <label className="block text-xs text-text-muted mb-1">婚姻狀況 *</label>
+                <div className="flex gap-6">
+                  {[{ v: 'unmarried' as const, l: '未婚' }, { v: 'married' as const, l: '已婚' }].map(({ v, l }) => (
+                    <label key={v} className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name={`r-marital-${index}`} value={v} checked={(member.marital_status || 'unmarried') === v}
+                        onChange={() => updateRMember(index, { ...member, marital_status: v })} className="accent-gold" />
+                      <span className="text-sm text-text">{l}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
               <BirthTimeField
                 timeMode={member.timeMode}
                 setTimeMode={(m) => updateRMember(index, { ...member, timeMode: m })}

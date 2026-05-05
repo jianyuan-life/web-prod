@@ -9,6 +9,8 @@ export interface FamilyMember {
   timeMode: 'unknown' | 'shichen' | 'exact'
   minute: string
   gender: string
+  // v5.10.5 婚姻狀況(R/G15 各成員獨立、感情/夫妻互動段個性化)
+  marital_status?: 'married' | 'unmarried'
   birthCity?: string
   cityLat?: number
   cityLng?: number
@@ -24,6 +26,7 @@ export function newMember(): FamilyMember {
   return {
     name: '', year: '1990', month: '1', day: '1', hour: '12',
     timeMode: 'shichen', minute: '30', gender: 'M',
+    marital_status: 'unmarried',
     birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,
     timezone: '', countryCode: '',
     calendarType: 'solar', lunarLeap: false,
@@ -103,6 +106,8 @@ export interface CheckoutFormState {
   hour: string
   minute: string
   gender: string
+  // v5.10.5 婚姻狀況(C/D/G15/R 個性化感情段、避免對已婚客戶寫「該找對象」誤導)
+  marital_status: 'married' | 'unmarried'
   address: string
   addressLat: number
   addressLng: number

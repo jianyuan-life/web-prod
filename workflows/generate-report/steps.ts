@@ -1546,7 +1546,7 @@ function buildGenericUserPrompt(
   analyses: AnalysisItem[],
   topic?: string,
   question?: string,
-  additionalPeople?: Array<{ name: string; gender: string; year: number; month: number; day: number; hour: string | number; time_unknown?: boolean }>,
+  additionalPeople?: Array<{ name: string; gender: string; marital_status?: string; year: number; month: number; day: number; hour: string | number; time_unknown?: boolean }>,
   chumenjiTop?: ChumenjiTopResult | null,
   planCode?: string,
 ): string {
@@ -1555,8 +1555,9 @@ function buildGenericUserPrompt(
   // G15 家族方案（舊版 family 模式）安全防護：多人 birthData 不能走單人 prompt
   if (birthData.plan_type === 'family' && Array.isArray(birthData.members)) {
     let memberPrompts = '家庭成員資料：\n'
-    for (const m of birthData.members as Array<{ name?: string; gender?: string; year?: number; month?: number; day?: number; hour?: number }>) {
-      memberPrompts += `\n【${m.name || ''}】${m.gender === 'M' ? '男' : '女'}，${m.year}年${m.month}月${m.day}日${m.hour}時\n`
+    for (const m of birthData.members as Array<{ name?: string; gender?: string; marital_status?: string; year?: number; month?: number; day?: number; hour?: number }>) {
+      const ms = m.marital_status === 'married' ? '已婚' : m.marital_status === 'unmarried' ? '未婚' : '未提供'
+      memberPrompts += `\n【${m.name || ''}】${m.gender === 'M' ? '男' : '女'}，婚姻：${ms}，${m.year}年${m.month}月${m.day}日${m.hour}時\n`
     }
     memberPrompts += `\n八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}\n`
     memberPrompts += `${analyses.length}套系統排盤完整數據：\n`
@@ -1576,7 +1577,13 @@ function buildGenericUserPrompt(
   // v5.7.17:IA round 9 P1 — 用 isChumenjiPlan 統一(原 E1||E2||E3 漏 E4、v5.8 立春前 30 天上線時連帶 bug)
   const isChumenji = isChumenjiPlan(effectivePlanCode)
 
-  let userPrompt = `${birthData.name || ''}，${birthData.gender === 'M' ? '男' : '女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時\n`
+  // v5.10.5 婚姻狀況(D/G15-old/R 用)— E 系列出門訣不需此欄(出門訣 = 純奇門 / 不寫感情段)
+  const maritalStatusZh =
+    birthData.marital_status === 'married' ? '已婚' :
+    birthData.marital_status === 'unmarried' ? '未婚' : '未提供'
+  const maritalLine = !isChumenji ? `，婚姻：${maritalStatusZh}` : ''
+
+  let userPrompt = `${birthData.name || ''}，${birthData.gender === 'M' ? '男' : '女'}${maritalLine}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時\n`
 
   if (isChumenji) {
     userPrompt += `出生年地支（年命宮依據）：${cd.birth_dizhi || ''}\n`
@@ -1849,7 +1856,10 @@ ${analyses.length}套系統排盤完整數據：
   if (additionalPeople?.length) {
     userPrompt += `\n其他人資料：\n`
     for (const p of additionalPeople) {
-      userPrompt += `- ${p.name}，${p.gender === 'M' ? '男' : '女'}，${p.year}年${p.month}月${p.day}日${p.hour === 'unknown' || p.time_unknown ? '（時辰不確定）' : ` ${p.hour}時`}\n`
+      // v5.10.5 R 各成員婚姻狀況注入
+      const pAny = p as Record<string, unknown>
+      const pMs = pAny.marital_status === 'married' ? '已婚' : pAny.marital_status === 'unmarried' ? '未婚' : '未提供'
+      userPrompt += `- ${p.name}，${p.gender === 'M' ? '男' : '女'}，婚姻：${pMs}，${p.year}年${p.month}月${p.day}日${p.hour === 'unknown' || p.time_unknown ? '（時辰不確定）' : ` ${p.hour}時`}\n`
     }
   }
 

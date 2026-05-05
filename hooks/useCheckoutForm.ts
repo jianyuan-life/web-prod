@@ -29,6 +29,8 @@ export function useCheckoutForm() {
     hour: params.get('hour') || '12',
     minute: params.get('minute') || '30',
     gender: params.get('gender') || 'M',
+    // v5.10.5 婚姻狀況(默認未婚、客戶可改;影響 C/D/G15/R 感情段個性化)
+    marital_status: ((params.get('marital_status') as 'married' | 'unmarried') || 'unmarried'),
     address: '', addressLat: 0, addressLng: 0,
     birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,
     // Sprint 3 國際化：IANA 時區 + ISO 國家碼
@@ -451,6 +453,8 @@ export function useCheckoutForm() {
           hour: timeMode === 'unknown' ? 12 : parseInt(form.hour),
           minute: timeMode === 'exact' ? parseInt(form.minute) : 0,
           gender: form.gender,
+          // v5.10.5 婚姻狀況(C/D/G15/R 感情段個性化、不傳給 E1-E4 calculator)
+          marital_status: form.marital_status,
           address: form.address,
           address_lat: form.addressLat || undefined,
           address_lng: form.addressLng || undefined,
@@ -483,6 +487,8 @@ export function useCheckoutForm() {
               hour: m.timeMode === 'unknown' ? 12 : parseInt(m.hour),
               minute: m.timeMode === 'exact' ? parseInt(m.minute) : 0,
               gender: m.gender,
+              // v5.10.5 R 各成員獨立婚姻狀況(感情/夫妻互動段個性化)
+              marital_status: m.marital_status || 'unmarried',
               time_unknown: m.timeMode === 'unknown',
               time_mode: m.timeMode,
               role: i === 0 ? 'self' : 'other',
