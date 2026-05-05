@@ -2085,14 +2085,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </div>
               </div>
 
-              {/* v5.9.4 加 Layer 2.5「陷阱預警」section(Claude 指定:❌ 反面預警) */}
-              <div className="px-4 py-2.5 rounded-xl mb-3" style={{ background: 'rgba(231,76,60,0.05)', border: '1px solid rgba(231,76,60,0.25)' }}>
+              {/* v5.10.19 R+16 Gemini desktop 94 P2「紅色警告 icon 引發焦慮」修:紅→琥珀(amber)、保留警告強度但降焦慮感 */}
+              <div className="px-4 py-2.5 rounded-xl mb-3" style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.25)' }}>
                 <div className="flex items-center gap-2">
-                  <span className="text-red-400 font-bold">⚠</span>
-                  <span className="text-red-400/85 text-[10px] tracking-[2px] font-semibold">陷阱預警 · 你最常掉的坑</span>
+                  <span className="text-amber-400 font-bold">⚠</span>
+                  <span className="text-amber-400/85 text-[10px] tracking-[2px] font-semibold">陷阱預警 · 你最常掉的坑</span>
                 </div>
                 <div className="text-cream/85 text-[12px] leading-relaxed mt-1.5">
-                  「{personalityCard.title}」型最常見:<span className="text-red-400 font-semibold">{topChallenge}</span>(95% 同型客戶都會遇到)。當這出現時 = 命格自動反應、不是你真心要的 — 5 秒覺察可破。
+                  「{personalityCard.title}」型最常見:<span className="text-amber-400 font-semibold">{topChallenge}</span>(95% 同型客戶都會遇到)。當這出現時 = 命格自動反應、不是你真心要的 — 5 秒覺察可破。
                 </div>
               </div>
 
