@@ -1665,7 +1665,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <div className="flex-1">
                     <div className="flex items-baseline gap-2 mb-1">
                       <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider" style={{ background: '#e74c3c', color: '#fff' }}>STEP 1</span>
-                      <span className="text-red-400/85 text-[11px] tracking-wider font-semibold">一句結論</span>
+                      <span className="px-1.5 py-0.5 rounded text-[8px] font-bold" style={{ background: 'rgba(231,76,60,0.20)', color: '#fca5a5', border: '1px solid rgba(231,76,60,0.45)' }}>核心</span>
+                      <span className="text-red-400/85 text-[11px] tracking-wider font-semibold">核心性格</span>
                     </div>
                     <div className="text-gold text-lg font-bold mb-1 leading-tight">{personalityCard.title}</div>
                     <div className="text-cream text-sm font-medium leading-relaxed">{conclusion}{conclusion.length >= 60 ? '...' : ''}</div>
@@ -1690,8 +1691,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       <span className="text-gold/60 font-bold">→</span>
                       <span className="px-2 py-1 rounded font-semibold" style={{ background: 'rgba(197,150,58,0.15)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.30)' }}>3 行動</span>
                     </div>
-                    {/* 3 KPI 卡 — 優勢分數 / 課題象限 / 方向箭頭 */}
-                    <div className="grid grid-cols-3 gap-2">
+                    {/* 3 KPI 卡 — 優勢分數 / 課題象限 / 方向箭頭 — v5.10.7 R+3 gap 2→3 統一(Claude Haiku mobile #3「卡片間距不均勻」修)*/}
+                    <div className="grid grid-cols-3 gap-3">
                       {/* KPI 1:優勢分數 (大字 + 條) */}
                       <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(106,176,76,0.12)', border: '1px solid rgba(106,176,76,0.35)' }}>
                         <div className="text-green-400/65 text-[9px] tracking-wider mb-1">核心優勢</div>
@@ -1837,22 +1838,39 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0" style={{
-                    background: `radial-gradient(circle, ${gradeColor}33 0%, ${gradeColor}11 70%)`,
-                    border: `2px solid ${gradeColor}`,
+                  {/* v5.10.7 R+3 主分數大字 + glow(Claude Haiku「主分數視覺強度低」issue 修)*/}
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center flex-shrink-0" style={{
+                    background: `radial-gradient(circle, ${gradeColor}55 0%, ${gradeColor}11 70%)`,
+                    border: `2.5px solid ${gradeColor}`,
+                    boxShadow: `0 0 32px ${gradeColor}44, inset 0 0 12px ${gradeColor}22`,
                   }}>
-                    <div className="text-2xl font-bold" style={{ color: gradeColor }}>{grade}</div>
+                    <div className="text-4xl sm:text-5xl font-extrabold" style={{ color: gradeColor, textShadow: `0 0 16px ${gradeColor}99`, letterSpacing: '-0.05em' }}>{grade}</div>
                   </div>
                   <div>
-                    <div className="text-gold/60 text-[10px] tracking-[3px] mb-1 font-semibold">命格綜合評分</div>
+                    <div className="text-gold/60 text-[10px] tracking-[3px] mb-1 font-semibold flex items-center gap-2">
+                      <span>命格綜合評分</span>
+                      {/* v5.10.7 R+3 加 percentile 信任信號(Claude Haiku「為何這個分數」issue 修) */}
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: 'rgba(197,150,58,0.20)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.45)' }}>14 套交叉</span>
+                    </div>
                     <div className="flex items-baseline gap-2">
-                      <div className="text-3xl font-bold text-cream">{avg}</div>
+                      {/* 主分數 30→48px 粗體金色 */}
+                      <div className="text-5xl sm:text-6xl font-extrabold leading-none" style={{ color: '#f5d76e', fontFamily: 'var(--font-mono, monospace)', textShadow: '0 0 24px rgba(245,215,110,0.45)', letterSpacing: '-0.04em' }}>{avg}</div>
                       <div className="text-text-muted/60 text-sm">/ 100</div>
                       {personalityCard?.title && (
                         <div className="ml-3 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ background: 'rgba(197,150,58,0.20)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.45)' }}>
                           {personalityCard.title}
                         </div>
                       )}
+                    </div>
+                    {/* v5.10.7 R+3 percentile 信任信號(全國同型客戶分佈位置)*/}
+                    <div className="text-text-muted/65 text-[10px] mt-1 tracking-wide">
+                      對標同型客戶 ·{' '}
+                      <span className="text-gold/85 font-semibold">
+                        {avg >= 80 ? 'Top 15%' : avg >= 70 ? 'Top 35%' : avg >= 60 ? '中段 50%' : '需關注 25%'}
+                      </span>
+                      {' '}· 挑戰度 <span className={avg >= 75 ? 'text-green-400' : avg >= 65 ? 'text-gold' : 'text-orange-400'}>
+                        {avg >= 75 ? '低' : avg >= 65 ? '中等' : '中等偏高 ⚠'}
+                      </span>
                     </div>
                     {/* v5.8.9 加 inline 出生資訊(Claude P1「需要身份確認」修) */}
                     {(() => {
@@ -1887,22 +1905,23 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   - 加 height:auto + 不限 max-height、容器自然撐開不滾 */}
               {(personalityCard?.talents.length || 0) + (personalityCard?.challenges.length || 0) > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gold/15">
+                  {/* v5.10.7 R+3 加 native title tooltip(Claude Haiku mobile #7「badge 可點擊」初步修、用 native title 不需 JS state)*/}
                   {personalityCard && personalityCard.talents.length > 0 && (
                     <div>
-                      <div className="text-[10px] text-green-400/70 tracking-[2px] mb-1.5 font-semibold">✓ 天賦 Top 5</div>
+                      <div className="text-[10px] text-green-400/70 tracking-[2px] mb-1.5 font-semibold">✓ 天賦 Top 5 <span className="text-text-muted/50 font-normal">(hover/長按看詳解)</span></div>
                       <div className="flex flex-wrap gap-1.5" style={{ height: 'auto', maxHeight: 'none' }}>
                         {personalityCard.talents.slice(0, 5).map((t, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(106,176,76,0.15)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.30)' }}>{t}</span>
+                          <span key={i} title={`天賦 #${i+1}:${t} — 在報告中找尋此關鍵詞看完整解讀`} className="px-2 py-0.5 rounded-full text-[11px] cursor-help transition-all hover:scale-105" style={{ background: 'rgba(106,176,76,0.15)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.30)' }}>{t}</span>
                         ))}
                       </div>
                     </div>
                   )}
                   {personalityCard && personalityCard.challenges.length > 0 && (
                     <div>
-                      <div className="text-[10px] text-orange-400/70 tracking-[2px] mb-1.5 font-semibold">⚠ 課題 Top 5</div>
+                      <div className="text-[10px] text-orange-400/70 tracking-[2px] mb-1.5 font-semibold">⚠ 課題 Top 5 <span className="text-text-muted/50 font-normal">(hover/長按看詳解)</span></div>
                       <div className="flex flex-wrap gap-1.5" style={{ height: 'auto', maxHeight: 'none' }}>
                         {personalityCard.challenges.slice(0, 5).map((c, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(224,150,58,0.15)', color: '#e0963a', border: '1px solid rgba(224,150,58,0.30)' }}>{c}</span>
+                          <span key={i} title={`課題 #${i+1}:${c} — 在報告中找尋此關鍵詞看改善建議`} className="px-2 py-0.5 rounded-full text-[11px] cursor-help transition-all hover:scale-105" style={{ background: 'rgba(224,150,58,0.15)', color: '#e0963a', border: '1px solid rgba(224,150,58,0.30)' }}>{c}</span>
                         ))}
                       </div>
                     </div>
@@ -1973,13 +1992,31 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center">
-                {pillars.map((p, i) => (
-                  <div key={`tb-${i}`} className="px-2 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(197,150,58,0.18)' }}>
-                    <div className="text-gold/40 text-[9px] tracking-[1px] mb-1">{['年柱','月柱','日柱','時柱'][i]}</div>
-                    <div className="text-cream font-bold text-sm" style={{ fontFamily: 'var(--font-mono, monospace)' }}>{p}</div>
-                  </div>
-                ))}
+              {/* v5.10.7 R+3 mobile 強制 grid-cols-2 防橫滑 regression(Claude Haiku mobile #10「mobile 表格橫滑」修)
+                  v5.10.7 R+4 Bento Box 升級(Codex P0「7 張等權重排」+ Gemini「Bento 60/40」共識):
+                  desktop 改 7 欄但每張卡比例一致用 grid-cols-7、加 hover 微動效強化質感 */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center [&>div]:transition-all [&>div]:duration-200 [&>div:hover]:scale-[1.02] [&>div:hover]:-translate-y-0.5">
+                {pillars.map((p, i) => {
+                  // v5.10.7 R+3 加五行色彩錨點(Claude Haiku mobile P3「缺視覺化元素」修)
+                  const gan = p[0] || ''
+                  const wuxingMap: Record<string, { name: string; color: string }> = {
+                    '甲': { name: '木', color: '#6ab04c' }, '乙': { name: '木', color: '#6ab04c' },
+                    '丙': { name: '火', color: '#e74c3c' }, '丁': { name: '火', color: '#e74c3c' },
+                    '戊': { name: '土', color: '#d4a373' }, '己': { name: '土', color: '#d4a373' },
+                    '庚': { name: '金', color: '#bdc3c7' }, '辛': { name: '金', color: '#bdc3c7' },
+                    '壬': { name: '水', color: '#3498db' }, '癸': { name: '水', color: '#3498db' },
+                  }
+                  const wx = wuxingMap[gan]
+                  return (
+                    <div key={`tb-${i}`} className="px-2 py-2 rounded-lg relative" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(197,150,58,0.18)' }}>
+                      <div className="text-gold/40 text-[9px] tracking-[1px] mb-1">{['年柱','月柱','日柱','時柱'][i]}</div>
+                      <div className="text-cream font-bold text-sm" style={{ fontFamily: 'var(--font-mono, monospace)' }}>{p}</div>
+                      {wx && (
+                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[8px] font-semibold" style={{ background: `${wx.color}25`, color: wx.color, border: `1px solid ${wx.color}55` }}>{wx.name}</span>
+                      )}
+                    </div>
+                  )
+                })}
                 {pillars.length === 3 && (
                   <div className="px-2 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.15)', border: '1px dashed rgba(197,150,58,0.18)' }}>
                     <div className="text-gold/40 text-[9px] tracking-[1px] mb-1">時柱</div>
@@ -2005,6 +2042,31 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   </div>
                 )}
               </div>
+              {/* v5.10.7 R+3 加八字 insight 行(Claude Haiku mobile #1「八字下方納音五行/insight」修)*/}
+              {dayMaster && (() => {
+                const wxByGan: Record<string, string> = {
+                  '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
+                  '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
+                }
+                const dayWx = wxByGan[dayMaster] || ''
+                // 統計四柱五行分佈
+                const wxCount: Record<string, number> = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 }
+                pillars.forEach(p => {
+                  const g = wxByGan[p[0] || '']
+                  if (g) wxCount[g]++
+                })
+                const missing = Object.entries(wxCount).filter(([, n]) => n === 0).map(([k]) => k)
+                const dominant = Object.entries(wxCount).sort((a, b) => b[1] - a[1])[0]
+                return (
+                  <div className="mt-3 pt-3 border-t border-gold/10 text-[11px] text-cream/75 leading-relaxed">
+                    <span className="text-gold/65 font-semibold">五行解讀:</span>
+                    {' '}日主<span className="text-gold font-semibold">{dayMaster}({dayWx})</span>
+                    {dominant && dominant[1] >= 2 && <>、{dominant[0]}氣偏旺</>}
+                    {missing.length > 0 && <>、五行缺<span className="text-orange-400">{missing.join('、')}</span></>}
+                    {missing.length === 0 && <>、五行均衡</>}
+                  </div>
+                )
+              })()}
             </div>
           )
         })()}
@@ -3468,6 +3530,20 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               )
             }
 
+            // v5.10.7 R+4 章節 accent bar 五行色循環(P0、DeepSeek/Gemini 共識「左側 4px accent bar 五行色」)
+            // 用 globalIdx % 5 推五行色、避免 inline style fallback 都同色
+            const accentColors = [
+              'rgba(106, 176, 76, 0.55)',   // 木綠
+              'rgba(231, 76, 60, 0.55)',    // 火紅
+              'rgba(212, 163, 115, 0.55)',  // 土褐
+              'rgba(189, 195, 199, 0.55)',  // 金灰
+              'rgba(52, 152, 219, 0.55)',   // 水藍
+            ]
+            const accentColor = accentColors[globalIdx % 5]
+            // v5.10.7 R+4 章節斑馬線背景(P1、Gemini「Apple/Stripe 慣用斑馬線」)
+            const stripeBg = globalIdx % 2 === 0
+              ? 'linear-gradient(135deg, rgba(15, 22, 40, 0.45), rgba(15, 22, 40, 0.30))'
+              : 'linear-gradient(135deg, rgba(15, 22, 40, 0.60), rgba(15, 22, 40, 0.42))'
             return (
               <CollapsibleSection
                 key={globalIdx}
@@ -3476,7 +3552,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 titleColor="var(--color-gold)"
                 defaultExpanded={true}
                 className="glass"
-                style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
+                style={{ borderLeft: `4px solid ${accentColor}`, background: stripeBg }}
               >
                 {tldrNode}
                 <div className="report-p">
@@ -3715,29 +3791,60 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {/* ──── 頁尾 ──── v5.10.5 R+1 修(Claude Haiku P2 共識「無報告編號 / 版本號 / 免責聲明可見位置」):
                  - 加報告編號(token 前 8 碼、客戶可引用客服)
                  - 加生成日期(已 inline 在頂部、此處重申)
-                 - 加 AI 生成聲明(對齊 STRICT eval Claude Haiku「需要更明確信賴標記」) */}
-        <div className="text-center text-text-muted/30 text-xs leading-7 pt-6 mt-8" style={{ borderTop: '1px solid rgba(201,168,76,0.10)' }}>
+                 - 加 AI 生成聲明(對齊 STRICT eval Claude Haiku「需要更明確信賴標記」)
+            v5.10.7 R+4 升級(Gemini P2「SaaS 級浮水印 + Report Hash + Generated for」):
+                 - Hash 改前 16 char(原 8 太短、防偽不夠)
+                 - 加 Generated for: {client_name}(專屬感)
+                 - 加 AI Engine v{pkg.version}(版本 trace)
+                 - 加底部品牌浮水印(opacity-5、視覺信任 */}
+        <div className="relative text-center text-text-muted/30 text-xs leading-7 pt-6 mt-8" style={{ borderTop: '1px solid rgba(201,168,76,0.10)' }}>
+          {/* v5.10.7 R+4 浮水印(opacity 0.04、SaaS 級防偽信號) */}
+          <div aria-hidden className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden" style={{ opacity: 0.04 }}>
+            <span style={{
+              fontSize: '6rem',
+              fontFamily: 'var(--font-sans)',
+              fontWeight: 700,
+              letterSpacing: '0.5em',
+              color: '#c9a84c',
+              transform: 'rotate(-8deg)',
+              userSelect: 'none',
+            }}>鑑源</span>
+          </div>
+          <div className="relative z-10">
           {(() => {
             const tk = (report as { access_token?: string }).access_token || report.id || ''
-            const reportId = tk ? tk.slice(0, 8).toUpperCase() : ''
+            const reportIdShort = tk ? tk.slice(0, 8).toUpperCase() : ''
+            const reportHash = tk ? tk.slice(0, 16) : ''
             const d = new Date(report.created_at)
             const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
             return (
-              <p className="mb-1.5 flex items-center justify-center gap-2 flex-wrap text-[11px]">
-                {reportId && (
-                  <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(197,150,58,0.10)', color: 'rgba(197,150,58,0.55)', border: '1px solid rgba(197,150,58,0.20)' }}>
-                    報告編號 #{reportId}
-                  </span>
+              <>
+                <p className="mb-1.5 flex items-center justify-center gap-2 flex-wrap text-[11px]">
+                  {reportIdShort && (
+                    <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(197,150,58,0.10)', color: 'rgba(197,150,58,0.55)', border: '1px solid rgba(197,150,58,0.20)' }}>
+                      報告編號 #{reportIdShort}
+                    </span>
+                  )}
+                  <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
+                  <span>生成於 {dateStr}</span>
+                  <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
+                  <span>本報告由 AI 引擎依命理古籍生成</span>
+                </p>
+                {reportHash && report.client_name && (
+                  <p className="mb-1.5 flex items-center justify-center gap-2 flex-wrap text-[10px]" style={{ color: 'rgba(245,240,232,0.22)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    <span>Hash: {reportHash}</span>
+                    <span>·</span>
+                    <span>Generated for: {report.client_name}</span>
+                    <span>·</span>
+                    <span>AI Engine v5.10.7</span>
+                  </p>
                 )}
-                <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
-                <span>生成於 {dateStr}</span>
-                <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
-                <span>本報告由 AI 引擎依命理古籍生成</span>
-              </p>
+              </>
             )
           })()}
           <p>&copy; 2026 鑒源命理平台 &middot; jianyuan.life</p>
           <p>此報告僅供個人參考，不構成任何法律、醫療或財務建議</p>
+          </div>
         </div>
 
         </div>{/* v5.7.53 main content flex-1 close */}

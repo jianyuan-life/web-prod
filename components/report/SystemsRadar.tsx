@@ -63,6 +63,17 @@ export default function SystemsRadar({
   const displayCount = Math.min(14, chartData.length)
   const countLabel = displayCount === 14 ? '十四套' : displayCount === 13 ? '十三套' : `${displayCount} 套`
 
+  // v5.10.7 R+4 baseline 大眾平均(Gemini「雷達圖只有自己沒有世界」P0 + DeepSeek/Codex 共識修):
+  //   業界中位數 = 70(典型 SaaS dashboard 用 industry median 對比、本系統初版用 hardcoded、未來可從 DB 撈)
+  const BASELINE = 70
+  // 找最低項(R+4 加、配合「最高 / 最低」雙標)
+  const valley = chartData.reduce((m, d) => (d.score < m.score ? d : m), chartData[0])
+  // 自動產生 Insight 解讀句(R+4、Gemini「圖表下方強制輸出 Insight: 粗體總結」)
+  const above = chartData.filter((d) => d.score >= 75).length
+  const aboveBaseline = chartData.filter((d) => d.score >= BASELINE).length
+  const percentile = Math.round((aboveBaseline / chartData.length) * 100)
+  const insight = `你的「${peak.system}(${peak.score})」是相對最強項、超越大眾平均(${BASELINE} 分)的有 ${aboveBaseline}/${chartData.length} 套系統(${percentile}%)、可優先發揮`
+
   return (
     <section className="my-8" aria-labelledby="systems-radar-title">
       <div className="flex items-center justify-between mb-4 px-2">
@@ -73,10 +84,20 @@ export default function SystemsRadar({
           <p className="text-[11px] text-text-muted mt-0.5">
             {countLabel}系統交叉評分 · 平均 {avg.toFixed(1)} 分 · 最高{' '}
             <span className="text-gold">{peak.system} ({peak.score})</span>
+            {' '}· 最低{' '}
+            <span className="text-orange-400/80">{valley.system} ({valley.score})</span>
           </p>
         </div>
-        <div className="text-[10px] text-text-muted/70 hidden md:block">
-          滿分 100 · 滑鼠 hover 看詳細
+        {/* v5.10.7 R+4 圖例固定右上(Gemini「圖例固定於右上角」+ DeepSeek 同共識) */}
+        <div className="hidden md:flex items-center gap-3 text-[10px]">
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-0.5 rounded-full" style={{ background: '#c9a84c' }} />
+            <span className="text-cream/70 font-semibold">本人</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-0.5 rounded-full" style={{ background: 'rgba(245,240,232,0.45)', borderTop: '1px dashed rgba(245,240,232,0.6)' }} />
+            <span className="text-text-muted/70">大眾平均</span>
+          </div>
         </div>
       </div>
 
@@ -93,6 +114,8 @@ export default function SystemsRadar({
           ) : (
           <ResponsiveContainer>
             <RadarChart data={chartData} margin={{ top: 30, right: 80, bottom: 30, left: 80 }}>
+              {/* v5.10.7 R+4 加大眾平均 baseline(70 分、Gemini P0「雷達圖只有自己沒有世界」修)
+                  baseline 用更明顯灰虛線、半透明 0.30 alpha、本人線金色 1.8 粗 */}
               <PolarGrid stroke={COLORS.grid} strokeDasharray="2 4" />
               <PolarAngleAxis
                 dataKey="system"
@@ -105,15 +128,29 @@ export default function SystemsRadar({
                 stroke={COLORS.grid}
                 tickCount={5}
               />
+              {/* v5.10.7 R+4 大眾平均 baseline (BASELINE=70、業界中位數)*/}
               <Radar
-                name="評分"
+                name="大眾平均"
+                dataKey={() => BASELINE}
+                stroke="rgba(245,240,232,0.50)"
+                fill="rgba(245,240,232,0.06)"
+                fillOpacity={0.3}
+                strokeWidth={1.2}
+                strokeDasharray="4 4"
+                dot={false}
+              />
+              <Radar
+                name="本人"
                 dataKey="score"
                 stroke={COLORS.stroke}
                 fill={COLORS.fill}
                 fillOpacity={0.7}
                 strokeWidth={1.8}
-                dot={{ fill: COLORS.stroke, r: 3 }}
-                activeDot={{ r: 5 }}
+                dot={{ fill: COLORS.stroke, r: 4 }}
+                activeDot={{ r: 6 }}
+                // v5.10.7 R+4 數值改 Pill Badge 樣式(Gemini「白底黑字膠囊標籤」P0 修):
+                //   recharts label 用 inline svg style + bg-color、無法直接用 div、改用 fontWeight 700 + textShadow(浮起感)
+                label={{ position: 'outside', fill: '#f5d76e', fontSize: 11, fontWeight: 700, offset: 10 }}
               />
               <Tooltip
                 contentStyle={{
@@ -124,9 +161,15 @@ export default function SystemsRadar({
                   fontSize: 12,
                 }}
                 cursor={{ stroke: COLORS.stroke, strokeWidth: 1, strokeDasharray: '3 3' }}
-                formatter={(value) => {
+                formatter={(value, name) => {
                   const v = Array.isArray(value) ? value[0] : value
-                  return [`${v ?? 0} 分`, '評分'] as [string, string]
+                  // v5.10.7 R+4 tooltip 顯示 vs 平均的 delta(DeepSeek 建議「該維度 vs 平均值 delta」)
+                  if (name === '本人') {
+                    const delta = (Number(v) || 0) - BASELINE
+                    const sign = delta >= 0 ? '+' : ''
+                    return [`${v ?? 0} 分(${sign}${delta} vs 平均)`, '本人']
+                  }
+                  return [`${v ?? 0} 分`, name as string]
                 }}
               />
             </RadarChart>
@@ -134,19 +177,35 @@ export default function SystemsRadar({
           )}
         </div>
 
-        {/* 評分區段視覺說明 */}
-        <div className="grid grid-cols-3 gap-2 mt-4 text-[10px]">
+        {/* v5.10.7 R+4 圖表下方 Insight bar(Gemini P0「強制輸出 Insight: 粗體總結」修) */}
+        <div className="mt-4 px-4 py-3 rounded-lg flex items-start gap-2" style={{
+          background: 'linear-gradient(90deg, rgba(106,176,76,0.10), rgba(197,150,58,0.06))',
+          border: '1px solid rgba(106,176,76,0.25)',
+        }}>
+          <span className="text-green-400 font-bold flex-shrink-0">💡</span>
+          <div className="flex-1">
+            <span className="text-green-400/85 text-[10px] tracking-[2px] font-semibold mr-2">INSIGHT</span>
+            <span className="text-cream text-sm leading-relaxed font-semibold">{insight}</span>
+          </div>
+        </div>
+
+        {/* v5.10.7 R+3 評分區段加圖例(Claude Haiku「無圖例」issue 修)+ 平均線說明 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-[10px]">
           <div className="flex items-center gap-1.5 text-text-muted">
-            <span className="w-2 h-2 rounded-full bg-gold/30" />
-            70 以上 · 命格優勢
+            <span className="w-3 h-0.5 rounded-full" style={{ background: 'rgba(245,240,232,0.50)', borderTop: '1px dashed rgba(245,240,232,0.6)' }} />
+            <span className="text-text-muted/70">大眾平均({BASELINE})</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-text-muted">
+            <span className="w-2 h-2 rounded-full bg-green-400/60" />
+            70 以上 · 優勢({above})
           </div>
           <div className="flex items-center gap-1.5 text-text-muted">
             <span className="w-2 h-2 rounded-full bg-gold/55" />
-            60-70 · 平衡發展
+            60-70 · 平衡
           </div>
           <div className="flex items-center gap-1.5 text-text-muted">
-            <span className="w-2 h-2 rounded-full bg-gold/80" />
-            60 以下 · 需要關注
+            <span className="w-2 h-2 rounded-full bg-orange-400/60" />
+            60 以下 · 關注
           </div>
         </div>
       </div>

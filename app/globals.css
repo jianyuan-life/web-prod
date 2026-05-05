@@ -380,3 +380,105 @@ a.btn:active {
     opacity: 1;
   }
 }
+
+/* v5.10.7 R+3 mobile 可讀性升級(Claude Haiku mobile #3「字級略小 14px」修)
+ * - 報告區字級 mobile 14 → 15px(WCAG AA + Apple HIG)
+ * - 行高 1.6 → 1.7 提升閱讀節奏
+ */
+@media (max-width: 640px) {
+  [data-report-content] {
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  [data-report-content] p,
+  [data-report-content] li {
+    line-height: 1.75;
+  }
+}
+
+/* v5.10.7 R+4 mobile 表格 → 卡片堆疊(P0、3 LLM 共識:Codex/Gemini/DeepSeek 全標)
+ * - <768px 強制把 .table-breakout 內的 table 改 flex column、禁止橫向 scroll
+ * - 每 row 變獨立 card(白底 + border + p-3 + mb-2)
+ * - <th> 變 label(text-muted text-xs)、<td> 變 value(font-semibold)
+ * - 解 Claude Haiku「mobile 表格 < 768px 仍橫滑」P1 issue
+ */
+@media (max-width: 767px) {
+  .table-breakout {
+    overflow-x: visible !important;
+    border: none !important;
+    background: transparent !important;
+  }
+  .table-breakout table {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: separate !important;
+  }
+  .table-breakout thead {
+    display: none !important;
+  }
+  .table-breakout tbody {
+    display: block !important;
+  }
+  .table-breakout tr {
+    display: block !important;
+    margin-bottom: 10px !important;
+    padding: 12px 14px !important;
+    background: rgba(15, 22, 40, 0.55) !important;
+    border: 1px solid rgba(201, 168, 76, 0.18) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+  }
+  .table-breakout td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    padding: 6px 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    position: static !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-align: right !important;
+    color: #e8e4de !important;
+    font-weight: 600 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+  .table-breakout td:last-child {
+    border-bottom: none !important;
+  }
+  .table-breakout td:first-child {
+    font-weight: 700 !important;
+    color: #c9a84c !important;
+    font-size: 13px !important;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.20) !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 4px !important;
+    text-align: left !important;
+    display: block !important;
+  }
+}
+
+/* v5.10.7 R+4 章節 micro polish(Codex/DeepSeek「微動畫加 polish 1-2 分」)
+ * - 章節 hover 輕微上移 + 陰影、SaaS 級互動感
+ * - prefers-reduced-motion 兼容
+ */
+.section-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+@media (hover: hover) {
+  .section-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(201, 168, 76, 0.10);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .section-card {
+    transition: none !important;
+  }
+  .section-card:hover {
+    transform: none !important;
+  }
+}
