@@ -674,11 +674,4 @@ a:focus-visible,
   transform: translateY(-1px);
 }
 
-/* v5.10.21 R+18 Gemini desktop 92 P2#2「長文行長 100+ 字」修:全局段落 max-width 75ch
-   覆蓋範圍:R8Enhancements / SystemsAnchorList / ActionRecommendations / WhyThisVerdictLink 等 component 內未被 .report-p > p 包進的長文 */
-.action-recommendation p,
-.systems-anchor-section p,
-.r8-callout p,
-.why-this-verdict p {
-  max-width: 75ch;
-}
+/* v5.10.22 R+19 revert R+18 max-width 75ch:Gemini desktop 92→90 退、GPT-4o -4、desktop 平均歷史最低 82.6;18 輪實證 LLM 互斥、加註解防後輩再加 */
