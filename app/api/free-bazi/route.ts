@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getFullProfileByDayMaster, type DayMasterProfile } from '@/lib/profiles'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
+import { localBazi, BAZI_SX as SX } from '@/lib/bazi-local'
 
 // ============================================================
 // 免費命理速算 — Python排盤(+TS fallback) + Kimi AI 潤色
 // 核心原則：就算 API 全掛，客戶也能看到豐富的命格分析
+// 2026-05-06 R+12:localBazi 抽到 lib/bazi-local.ts 共用(報告頁 5 件套 fallback 也用)
 // ============================================================
 
 const PYTHON_API = 'https://fortune-reports-api.fly.dev'
@@ -14,183 +16,6 @@ const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 const KIMI_API = 'https://api.moonshot.cn/v1/chat/completions'
 const KIMI_KEY = process.env.KIMI_API_KEY || ''
-
-// ── 天干地支常量 ──
-const TG = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
-const DZ = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']
-const WX_TG: Record<string,string> = {甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水'}
-const DZ_BQ: Record<string,string> = {子:'癸',丑:'己',寅:'甲',卯:'乙',辰:'戊',巳:'丙',午:'丁',未:'己',申:'庚',酉:'辛',戌:'戊',亥:'壬'}
-// 完整藏干表（本氣/中氣/餘氣）
-const DZ_CANGGAN: Record<string,[string,number][]> = {
-  子:[['癸',100]], 丑:[['己',60],['癸',30],['辛',10]], 寅:[['甲',60],['丙',30],['戊',10]],
-  卯:[['乙',100]], 辰:[['戊',60],['乙',30],['癸',10]], 巳:[['丙',60],['庚',30],['戊',10]],
-  午:[['丁',60],['己',30],['丙',10]], 未:[['己',60],['丁',30],['乙',10]], 申:[['庚',60],['壬',30],['戊',10]],
-  酉:[['辛',100]], 戌:[['戊',60],['辛',30],['丁',10]], 亥:[['壬',60],['甲',30]],
-}
-const CANGGAN_WEIGHT = [0.6, 0.3, 0.1]  // 本氣/中氣/餘氣權重
-const NAYIN: Record<string,string> = {
-  '甲子':'海中金','乙丑':'海中金','丙寅':'爐中火','丁卯':'爐中火','戊辰':'大林木','己巳':'大林木',
-  '庚午':'路旁土','辛未':'路旁土','壬申':'劍鋒金','癸酉':'劍鋒金','甲戌':'山頭火','乙亥':'山頭火',
-  '丙子':'澗下水','丁丑':'澗下水','戊寅':'城頭土','己卯':'城頭土','庚辰':'白蠟金','辛巳':'白蠟金',
-  '壬午':'楊柳木','癸未':'楊柳木','甲申':'泉中水','乙酉':'泉中水','丙戌':'屋上土','丁亥':'屋上土',
-  '戊子':'霹靂火','己丑':'霹靂火','庚寅':'松柏木','辛卯':'松柏木','壬辰':'長流水','癸巳':'長流水',
-  '甲午':'砂石金','乙未':'砂石金','丙申':'山下火','丁酉':'山下火','戊戌':'平地木','己亥':'平地木',
-  '庚子':'壁上土','辛丑':'壁上土','壬寅':'金箔金','癸卯':'金箔金','甲辰':'覆燈火','乙巳':'覆燈火',
-  '丙午':'天河水','丁未':'天河水','戊申':'大驛土','己酉':'大驛土','庚戌':'釵釧金','辛亥':'釵釧金',
-  '壬子':'桑柘木','癸丑':'桑柘木','甲寅':'大溪水','乙卯':'大溪水','丙辰':'沙中土','丁巳':'沙中土',
-  '戊午':'天上火','己未':'天上火','庚申':'石榴木','辛酉':'石榴木','壬戌':'大海水','癸亥':'大海水',
-}
-const SX = ['鼠','牛','虎','兔','龍','蛇','馬','羊','猴','雞','狗','豬']
-
-// ── 日主命格概述已移至 lib/profiles.ts 共用模組 ──
-
-// ── TS 本地排盤（Fly.io 休眠時的 fallback） ──
-// 節氣日期表：每個月的「節」（非「氣」），用於確定月柱
-// 格式：[月份, 節氣名, 平均日期] — 節氣前屬上月，節氣當日及之後屬本月
-// 注意：節氣日期每年可能差1天，此表為近似值（1900-2100年範圍內誤差<=1天）
-const JIEQI_BOUNDARIES: [number, number][] = [
-  // [solar_month, boundary_day] — 該月的「節」在幾號
-  // 月柱地支：寅(2月立春)卯(3月驚蟄)辰(4月清明)巳(5月立夏)午(6月芒種)
-  //           未(7月小暑)申(8月立秋)酉(9月白露)戌(10月寒露)亥(11月立冬)子(12月大雪)丑(1月小寒)
-  [2, 4],   // 立春 ~2/4  → 寅月開始
-  [3, 6],   // 驚蟄 ~3/6  → 卯月開始
-  [4, 5],   // 清明 ~4/5  → 辰月開始
-  [5, 6],   // 立夏 ~5/6  → 巳月開始
-  [6, 6],   // 芒種 ~6/6  → 午月開始
-  [7, 7],   // 小暑 ~7/7  → 未月開始
-  [8, 7],   // 立秋 ~8/7  → 申月開始
-  [9, 8],   // 白露 ~9/8  → 酉月開始
-  [10, 8],  // 寒露 ~10/8 → 戌月開始
-  [11, 7],  // 立冬 ~11/7 → 亥月開始
-  [12, 7],  // 大雪 ~12/7 → 子月開始
-  [1, 6],   // 小寒 ~1/6  → 丑月開始
-]
-
-function getMonthIndex(month: number, day: number): number {
-  // 返回月柱序號 0-11（0=寅月, 1=卯月, ..., 10=子月, 11=丑月）
-  // 將日期轉為日序數方便比較（把1月當作13月，2月當作14月，統一到同一年度）
-  // 年度起點是立春(2/4)，所以用 month 直接比較即可，但需要處理跨年
-  function toOrd(m: number, d: number): number {
-    // 把月日轉為年內序數，1月=13, 2月=14（方便跨年比較）
-    return m <= 1 ? (m + 12) * 100 + d : m * 100 + d
-  }
-  const dateOrd = toOrd(month, day)
-  // 節氣序數
-  const jieqiOrds = JIEQI_BOUNDARIES.map(([m, d]) => toOrd(m, d))
-
-  for (let i = 0; i < 12; i++) {
-    const cur = jieqiOrds[i]
-    const next = jieqiOrds[(i + 1) % 12]
-
-    if (next > cur) {
-      // 不跨年：cur <= date < next
-      if (dateOrd >= cur && dateOrd < next) return i
-    } else {
-      // 跨年（子月：大雪12/7 到 小寒1/6）
-      if (dateOrd >= cur || dateOrd < next) return i
-    }
-  }
-  return 0 // fallback
-}
-
-function localBazi(year: number, month: number, day: number, hour: number) {
-  // 年柱（立春前算上一年）
-  let y = year
-  const lichun_month = 2, lichun_day = 4
-  if (month < lichun_month || (month === lichun_month && day < lichun_day)) y -= 1
-  const yp = TG[((y - 4) % 10 + 10) % 10] + DZ[((y - 4) % 12 + 12) % 12]
-
-  // 月柱
-  const mIdx = getMonthIndex(month, day)
-  const mDZ = (mIdx + 2) % 12  // 寅=2, 卯=3, ...
-  const yTGIdx = ((y - 4) % 10 + 10) % 10
-  const mStartTG = [2, 4, 6, 8, 0][yTGIdx % 5]  // 五虎遁法
-  const mp = TG[(mStartTG + mIdx) % 10] + DZ[mDZ]
-
-  // 日柱
-  let jy=year, jm=month
-  if(jm<=2){jy-=1;jm+=12}
-  const A=Math.floor(jy/100), B=2-A+Math.floor(A/4)
-  const JD=Math.floor(365.25*(jy+4716))+Math.floor(30.6001*(jm+1))+day+B-1524.5
-  const dIdx=((Math.floor(JD+0.5)+49)%60+60)%60
-  const dp = TG[dIdx%10]+DZ[dIdx%12]
-
-  // 時柱
-  const dzIdx=Math.floor(((hour+1)%24)/2)
-  const dTGIdx=TG.indexOf(dp[0])
-  const tStartTG=[0,2,4,6,8][dTGIdx%5]
-  const tp = TG[(tStartTG+dzIdx)%10]+DZ[dzIdx]
-
-  // 十神
-  const WX=['木','火','土','金','水']
-  const getShishen = (dm: string, other: string) => {
-    const dmI=WX.indexOf(WX_TG[dm]), otI=WX.indexOf(WX_TG[other])
-    const same=(TG.indexOf(dm)%2)===(TG.indexOf(other)%2)
-    if(WX_TG[dm]===WX_TG[other]) return same?'比肩':'劫財'
-    if(WX[(dmI+1)%5]===WX_TG[other]) return same?'食神':'傷官'
-    if(WX[(dmI+2)%5]===WX_TG[other]) return same?'偏財':'正財'
-    if(WX[(dmI+3)%5]===WX_TG[other]) return same?'七殺':'正官'
-    if(WX[(dmI+4)%5]===WX_TG[other]) return same?'偏印':'正印'
-    return ''
-  }
-
-  // 五行
-  const pillars=[yp,mp,dp,tp]
-  const wxCount: Record<string,number>={木:0,火:0,土:0,金:0,水:0}
-  for(const p of pillars){wxCount[WX_TG[p[0]]]++;wxCount[WX_TG[DZ_BQ[p[1]]]]++}
-
-  // 身強弱
-  const dmWX=WX_TG[dp[0]], dmI=WX.indexOf(dmWX), parentWX=WX[(dmI+4)%5]
-  const support=(wxCount[dmWX]||0)+(wxCount[parentWX]||0)
-  const mBenqi=DZ_BQ[mp[1]], mSupport=WX_TG[mBenqi]===dmWX||WX_TG[mBenqi]===parentWX
-  const score=support*12+(mSupport?15:0)
-  const strength=score>=55?'偏旺':score>=45?'中和':'偏弱'
-
-  // 用神（對齊 Python 引擎的扶抑法邏輯）
-  // WX = ['木','火','土','金','水']
-  // dmI+1 = 食傷（我生者）, dmI+2 = 財星, dmI+3 = 官殺（克我者）, dmI+4 = 印星（生我者）
-  let yongshen:string,xishen:string
-  if(strength==='偏旺'){
-    // 身強：用財星耗身，喜食傷洩秀（Python 身強邏輯：yongshen=財, xishen=食傷）
-    yongshen=WX[(dmI+2)%5];xishen=WX[(dmI+1)%5]
-  } else if(strength==='偏弱'){
-    // 身弱：用印星生身，喜比劫助力（Python 身弱邏輯：yongshen=印, xishen=比劫）
-    yongshen=WX[(dmI+4)%5];xishen=dmWX
-  } else {
-    // 中和偏強：用食傷洩秀，喜財星耗身
-    if(score>=50){yongshen=WX[(dmI+1)%5];xishen=WX[(dmI+2)%5]}
-    // 中和偏弱：用印星生身，喜比劫助力
-    else{yongshen=WX[(dmI+4)%5];xishen=dmWX}
-  }
-
-  // 生肖
-  const sxIdx=(y-4)%12
-
-  // 加權五行（天干1.0 + 地支藏干按本中餘權重 + 月令得令+40%）
-  const wxFull: Record<string,number>={木:0,火:0,土:0,金:0,水:0}
-  for(const p of pillars){ wxFull[WX_TG[p[0]]]+=1.0 }
-  for(const p of pillars){
-    const cg=DZ_CANGGAN[p[1]]||[]
-    for(let i=0;i<cg.length;i++){ wxFull[WX_TG[cg[i][0]]]+=(CANGGAN_WEIGHT[i]||0.1) }
-  }
-  // 月令得令加成 +40%
-  const monthBenqiWX=WX_TG[DZ_BQ[mp[1]]]
-  if(monthBenqiWX) wxFull[monthBenqiWX]*=1.4
-  // 四捨五入到兩位
-  for(const k of Object.keys(wxFull)) wxFull[k]=Math.round(wxFull[k]*100)/100
-
-  return {
-    pillars:{year:yp,month:mp,day:dp,time:tp},
-    day_master:dp[0], day_master_wuxing:WX_TG[dp[0]],
-    strength, geju:getShishen(dp[0],mp[0])+'格',
-    yongshen, xishen,
-    wuxing_count:wxCount,
-    wuxing_count_full:wxFull,
-    nayin:{year:NAYIN[yp]||'',month:NAYIN[mp]||'',day:NAYIN[dp]||'',time:NAYIN[tp]||''},
-    shishen_gan:{year:getShishen(dp[0],yp[0]),month:getShishen(dp[0],mp[0]),time:getShishen(dp[0],tp[0])},
-    shengxiao:SX[sxIdx],
-  }
-}
 
 // ── AI 呼叫（DeepSeek 主力 + Kimi 備用） ──
 async function callAI(bazi: ReturnType<typeof localBazi>, name: string, year: number, month: number, day: number, hour: number, gender: string): Promise<Record<string,string>> {
