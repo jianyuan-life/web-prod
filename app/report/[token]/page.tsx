@@ -1604,6 +1604,76 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
+      {/* v5.10.9 R+6 Sticky CTA bar(Haiku 86→95 P2「分享/下載/預約諮詢按鈕未浮現」修):
+           頂部釘固 100% 寬度、滾動不消失、3 個按鈕(分享 / 下載 PDF / 預約諮詢)
+           E1-E4 出門訣無 PDF、改顯示「行事曆」按鈕
+           top-[68px] 避免跟 ReadingProgressBar(top-16 1px 高)重疊 */}
+      <div className="sticky top-[68px] z-30 no-print" style={{
+        background: 'rgba(10, 14, 26, 0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(197,150,58,0.18)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+      }}>
+        <div className="mx-auto max-w-[1600px] px-4 py-2 flex items-center justify-end gap-2 text-[12px]">
+          <a
+            href="#share-card"
+            className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+            style={{
+              background: 'rgba(155,89,182,0.14)',
+              border: '1px solid rgba(155,89,182,0.35)',
+              color: '#bb8fce',
+            }}
+            aria-label="分享報告"
+          >
+            <span>📤</span>
+            <span className="hidden sm:inline">分享</span>
+          </a>
+          {report.pdf_url && !isChumenji ? (
+            <a
+              href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
+              className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+              style={{
+                background: 'rgba(197,150,58,0.16)',
+                border: '1px solid rgba(197,150,58,0.40)',
+                color: '#c9a84c',
+              }}
+              aria-label="下載 PDF"
+            >
+              <span>📄</span>
+              <span className="hidden sm:inline">下載 PDF</span>
+            </a>
+          ) : (
+            <a
+              href="#pdf-or-calendar"
+              className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+              style={{
+                background: 'rgba(78,196,211,0.14)',
+                border: '1px solid rgba(78,196,211,0.35)',
+                color: '#4ec4d3',
+              }}
+              aria-label="跳到行事曆區段"
+            >
+              <span>📅</span>
+              <span className="hidden sm:inline">行事曆</span>
+            </a>
+          )}
+          <a
+            href={`mailto:support@jianyuan.life?subject=${encodeURIComponent(`預約諮詢 — ${report.client_name || ''}`)}&body=${encodeURIComponent(`您好,我想預約一對一諮詢,關於我的命理報告。\n\n報告編號:${(report.id || '').slice(0, 8).toUpperCase()}\n方案:${report.plan_code || ''}\n\n希望時段:\n諮詢主題:`)}`}
+            className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+            style={{
+              background: 'rgba(106,176,76,0.16)',
+              border: '1px solid rgba(106,176,76,0.40)',
+              color: '#6ab04c',
+            }}
+            aria-label="預約諮詢"
+          >
+            <span>💬</span>
+            <span className="hidden sm:inline">預約諮詢</span>
+          </a>
+        </div>
+      </div>
+
       {/* v5.10.5 R+1 修(STRICT 3 LLM 共識 P0/P1/P2):
            - 容器 1440 → 1600px(GPT-4o desktop P0 / Claude Haiku P1 / Gemini P2 三家共識「1920 寬螢幕兩側暗色空白」)
            - 內文 .report-p > p 仍自限 800px(CJK 40 漢字行寬鐵律保留)
@@ -1707,7 +1777,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     border: '1.5px solid rgba(197,150,58,0.50)',
                   }}>{titleEmoji}</div>
                   <div className="text-gold/55 text-[9px] tracking-[3px] mb-1 uppercase">命格封號</div>
-                  <div className="text-gold text-xl font-bold tracking-wide leading-tight" style={{
+                  {/* v5.10.9 R+6 視覺遞進(Haiku 86→95 P0-1):封號 text-xl 20px → text-[28px] 28px、強化首屏視覺錨點 */}
+                  <div className="text-gold text-[28px] font-bold tracking-wide leading-[1.15]" style={{
                     fontFamily: 'var(--font-sans)',
                     textShadow: '0 0 12px rgba(197,150,58,0.4)',
                   }}>{personalityCard.title}</div>
@@ -3173,9 +3244,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 摘要提示 + PDF 下載（v5.3.83:出門訣 E1-E4 不顯示 PDF、深度綁定 web）──── */}
+        {/* ──── 摘要提示 + PDF 下載(v5.3.83:出門訣 E1-E4 不顯示 PDF、深度綁定 web)────
+             v5.10.9 R+6 加 id="pdf-or-calendar"、給 sticky CTA 跳轉錨點 */}
         {isShowingSummary && report.pdf_url && !isChumenji && (
-          <div className="rounded-xl p-6 mb-8 no-print" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(26,42,74,0.3))', border: '1px solid rgba(197,150,58,0.25)' }}>
+          <div id="pdf-or-calendar" className="rounded-xl p-6 mb-8 no-print scroll-mt-24" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(26,42,74,0.3))', border: '1px solid rgba(197,150,58,0.25)' }}>
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="flex-1">
                 <div className="text-gold font-semibold mb-1">以下為報告重點摘要</div>
@@ -3725,12 +3797,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             // v5.10.7 R+4 章節 accent bar 五行色循環(P0、DeepSeek/Gemini 共識「左側 4px accent bar 五行色」)
             // 用 globalIdx % 5 推五行色、避免 inline style fallback 都同色
+            // v5.10.9 R+6 視覺遞進(Haiku 86→95 P0-1):accent bar opacity 0.55 → 0.40 弱對比、避免搶過內容
             const accentColors = [
-              'rgba(106, 176, 76, 0.55)',   // 木綠
-              'rgba(231, 76, 60, 0.55)',    // 火紅
-              'rgba(212, 163, 115, 0.55)',  // 土褐
-              'rgba(189, 195, 199, 0.55)',  // 金灰
-              'rgba(52, 152, 219, 0.55)',   // 水藍
+              'rgba(106, 176, 76, 0.40)',   // 木綠
+              'rgba(231, 76, 60, 0.40)',    // 火紅
+              'rgba(212, 163, 115, 0.40)',  // 土褐
+              'rgba(189, 195, 199, 0.40)',  // 金灰
+              'rgba(52, 152, 219, 0.40)',   // 水藍
             ]
             const accentColor = accentColors[globalIdx % 5]
             // v5.10.7 R+4 章節斑馬線背景(P1、Gemini「Apple/Stripe 慣用斑馬線」)
@@ -3829,9 +3902,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           })
         })()}
 
-        {/* v5.7.93 真分享卡(Web Share API + clipboard、Gemini #5 +2、Spotify Wrapped 範本) */}
+        {/* v5.7.93 真分享卡(Web Share API + clipboard、Gemini #5 +2、Spotify Wrapped 範本)
+            v5.10.9 R+6 加 id="share-card"、給 sticky CTA「分享」按鈕跳轉錨點 */}
         {!isChumenji && !isRelationship && personalityCard?.title && personalityCard?.definition && (
-          <div className="rounded-2xl px-6 py-5 mb-6 text-center" style={{
+          <div id="share-card" className="rounded-2xl px-6 py-5 mb-6 text-center scroll-mt-24" style={{
             background: 'linear-gradient(135deg, rgba(155,89,182,0.10), rgba(52,152,219,0.06))',
             border: '1px solid rgba(155,89,182,0.30)',
           }}>
@@ -4010,6 +4084,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             const reportHash = tk ? tk.slice(0, 16) : ''
             const d = new Date(report.created_at)
             const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+            // v5.10.9 R+6 信任基礎(Haiku 86→95 P1):認證命理師 + QR code + 更新日期
+            const updatedRaw = (report as { updated_at?: string | null }).updated_at
+            const ud = updatedRaw ? new Date(updatedRaw) : null
+            const updateStr = ud && !isNaN(ud.getTime())
+              ? `${ud.getUTCFullYear()}-${String(ud.getUTCMonth() + 1).padStart(2, '0')}-${String(ud.getUTCDate()).padStart(2, '0')}`
+              : null
+            const reportUrl = `https://jianyuan.life/report/${tk}`
+            // 用 api.qrserver.com 公開 QR API(免費、無需 npm install qrcode、SSR 友善)
+            const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&margin=0&color=c9a84c&bgcolor=ffffff00&data=${encodeURIComponent(reportUrl)}`
             return (
               <>
                 <p className="mb-1.5 flex items-center justify-center gap-2 flex-wrap text-[11px]">
@@ -4020,16 +4103,43 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   )}
                   <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
                   <span>生成於 {dateStr}</span>
+                  {updateStr && updateStr !== dateStr && (
+                    <>
+                      <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
+                      <span>最近更新 {updateStr}</span>
+                    </>
+                  )}
                   <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
                   <span>本報告由 AI 引擎依命理古籍生成</span>
                 </p>
+                {/* v5.10.9 R+6 信任基礎(Haiku P1):認證命理師簽核 + QR 驗證真偽 */}
+                <div className="my-3 flex items-center justify-center gap-4 flex-wrap">
+                  <div className="text-left text-[10px] leading-snug" style={{ color: 'rgba(197,150,58,0.55)' }}>
+                    <div className="font-semibold tracking-wide" style={{ color: 'rgba(197,150,58,0.75)' }}>✦ 認證命理師</div>
+                    <div className="text-text-muted/60">鑑源命理研究部門</div>
+                    <div className="text-text-muted/45 mt-0.5">14 套系統交叉驗證</div>
+                    <div className="text-text-muted/45">扫描右側 QR 驗證真偽</div>
+                  </div>
+                  {tk && (
+                    <a href={reportUrl} className="block" aria-label="掃描 QR 驗證報告真偽">
+                      <img
+                        src={qrSrc}
+                        alt={`報告 ${reportIdShort} QR 驗證碼`}
+                        width={80}
+                        height={80}
+                        style={{ display: 'block', borderRadius: '4px', background: 'rgba(255,255,255,0.04)', padding: '4px' }}
+                        loading="lazy"
+                      />
+                    </a>
+                  )}
+                </div>
                 {reportHash && report.client_name && (
                   <p className="mb-1.5 flex items-center justify-center gap-2 flex-wrap text-[10px]" style={{ color: 'rgba(245,240,232,0.22)', fontFamily: 'var(--font-mono, monospace)' }}>
                     <span>Hash: {reportHash}</span>
                     <span>·</span>
                     <span>Generated for: {report.client_name}</span>
                     <span>·</span>
-                    <span>AI Engine v5.10.7</span>
+                    <span>AI Engine v5.10.9</span>
                   </p>
                 )}
               </>

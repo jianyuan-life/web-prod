@@ -90,8 +90,8 @@ export default function CollapsibleSection({
         {icon && <div className="shrink-0">{icon}</div>}
         {!icon && chapterLabel && <div className="shrink-0">{chapterLabel}</div>}
 
-        {/* 標題文字 */}
-        <h2 className="text-lg font-semibold flex-1" style={{ color: titleColor, fontFamily: 'var(--font-sans)' }}>
+        {/* 標題文字 — v5.10.9 R+6 視覺遞進(Haiku 86→95 P0-1):章節 H2 18px → 22px、加 tracking 強化階層 */}
+        <h2 className="text-[22px] leading-[1.35] font-bold tracking-tight flex-1" style={{ color: titleColor, fontFamily: 'var(--font-sans)' }}>
           {title}
         </h2>
 
