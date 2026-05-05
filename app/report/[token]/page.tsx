@@ -34,6 +34,7 @@ import ActionRecommendations from '@/components/report/ActionRecommendations'
 import SystemsAnchorList from '@/components/report/SystemsAnchorList'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
+import { localBazi } from '@/lib/bazi-local'
 import {
   generatePlainAdvantage,
   generatePlainPurpose,
@@ -1695,9 +1696,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            - 內文 .report-p > p 仍自限 800px(CJK 40 漢字行寬鐵律保留)
            - mobile clamp padding 不動、< 768px 已單欄無 sidebar
            - 主數據卡片(命格名片/命盤一覽/雷達/timeline/表格)可吃滿 1600 視覺更飽滿 */}
-      {/* v5.10.15 R+12 Gemini desktop P1 修(90→95+):max-w 1600→無上限 + 95% width、給 1920px 螢幕完全填滿、不再「擠在中間」感 */}
-      <div className="mx-auto pt-6 w-[95%]" style={{
-        maxWidth: '1920px',
+      {/* v5.10.16 R+13 revert(R+12 1920 width Gemini 90→85 退步、自相矛盾「主內容要寬 vs 段落要窄」、回 1600 平衡)*/}
+      <div className="mx-auto pt-6 max-w-[1600px]" style={{
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
@@ -1749,6 +1749,31 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             const m = ai.match(/八字[：:\s]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])(?:\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]))?/)
             if (m) pillars = [m[1], m[2], m[3], m[4] || ''].filter(p => p && p.length === 2)
           }
+          // v5.10.16 R+12 fallback ④:report_result 無 analyses + ai_content 非結構化時(何宣逸 7a10ce3c case)
+          // 從 birth_data 直算(localBazi、純 TS、立春節氣表近似 ≤ 1 天)、確保「八字四柱 4 格」永遠不顯示「未明」
+          // 同時取出 wuxing_count + yongshen 給件 3 補卡(五行能量替代紫微卡)
+          // R+13:加觀察點(IA P1#3 silent catch、QA P1 隱含)、加無時辰標記(QA P1#2)
+          let calcResult: ReturnType<typeof localBazi> | null = null
+          let hourUnknown = false
+          if (pillars.length < 3 && report.birth_data?.year && report.birth_data?.month && report.birth_data?.day) {
+            try {
+              const bd = report.birth_data
+              // birth_data.hour 可能 undefined(time_unknown=true)、預設子時 0、但卡片標「時辰未明」
+              hourUnknown = typeof bd.hour !== 'number'
+              const h = typeof bd.hour === 'number' ? bd.hour : 0
+              calcResult = localBazi(bd.year, bd.month, bd.day, h)
+              pillars = [calcResult.pillars.year, calcResult.pillars.month, calcResult.pillars.day, calcResult.pillars.time]
+              // R+13 觀察點:server-side log fallback ④ 觸發次數(production 可從 Vercel logs grep)
+              // R+13.1 採樣 1/10 + production-only(避免 dev/preview 噪音、降本)
+              if (process.env.NODE_ENV === 'production' && (Math.random() < 0.1)) {
+                console.warn(`[bazi-local fallback ④] report=${report.id} birth=${bd.year}-${bd.month}-${bd.day} h=${bd.hour ?? 'unknown'} pillars=${pillars.join('/')}`)
+              }
+            } catch (e) {
+              // 計算失敗、保持 pillars 為空、走後續 hasOtherData 判斷
+              // 失敗永遠 log(不採樣)、便於 production 排錯
+              console.warn(`[bazi-local fallback ④ error] report=${report.id} err=${e instanceof Error ? e.message : String(e)}`)
+            }
+          }
           let mingGong = String(ziweiRaw.ming_gong || ziweiRaw.mingGong || cd.ming_gong || '')
           if (!mingGong) {
             const mg = (report.report_result?.ai_content || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?/)
@@ -1758,12 +1783,24 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           let mingZhu = ''
           const mzM = ai81.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,8})/)
           if (mzM) mingZhu = mzM[1].trim().slice(0, 6)
-          const dayMaster = String(baziRaw.day_master || (pillars[2] ? pillars[2][0] : ''))
+          // v5.10.16 R+12 加 markdown multiline fallback:命宮**\n\n- **主星**：天府(何宣逸 ai_content 實格式)
+          if (!mingZhu) {
+            const mzM2 = ai81.match(/命宮[\s\S]{0,30}主星[\s\S]{0,5}[：:][\s\*]*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s\*\n]{0,8})/)
+            if (mzM2) mingZhu = mzM2[1].trim().slice(0, 6)
+          }
+          const dayMaster = String(baziRaw.day_master || calcResult?.day_master || (pillars[2] ? pillars[2][0] : ''))
           const definitionShort = (personalityCard.definition || '').slice(0, 50)
 
-          // 至少要有封號(必)+ 至少 1 件其他資訊
-          const hasOtherData = pillars.length >= 3 || mingGong || personalityCard.talents.length > 0 || personalityCard.challenges.length > 0
+          // 至少要有封號(必)+ 至少 1 件其他資訊(pillars / 紫微 / 五行 / 天賦 / 課題)
+          const hasOtherData = pillars.length >= 3 || mingGong || calcResult || personalityCard.talents.length > 0 || personalityCard.challenges.length > 0
           if (!hasOtherData) return null
+
+          // 五行 Top 3(用 calcResult 或 baziRaw.wuxing_count 取)
+          const wuxingMap = (calcResult?.wuxing_count || (baziRaw.wuxing_count as Record<string, number>) || null)
+          const wuxingTop3 = wuxingMap
+            ? Object.entries(wuxingMap).sort((a, b) => b[1] - a[1]).slice(0, 3).filter(([, v]) => v > 0)
+            : []
+          const yongshenSimple = String(calcResult?.yongshen || baziRaw.yongshen || '')
 
           // emoji 推導(對齊既有邏輯)
           const titleEmoji = (() => {
@@ -1820,17 +1857,27 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
                 {/* 右 2/3 欄:4 件套(八字 / 紫微 / 天賦 / 課題)*/}
                 <div className="md:col-span-2 grid grid-cols-2 gap-2.5">
-                  {/* 件 2:八字四柱 */}
+                  {/* 件 2:八字四柱(R+13:無時辰時、時柱標「時辰未明」徽章避免誤導) */}
                   {pillars.length >= 3 && (
                     <div className="col-span-2 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(197,150,58,0.22)' }}>
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="text-gold/55 text-[9px] tracking-[2px] font-semibold">📜 八字四柱</div>
-                        {dayMaster && <div className="text-green-400/65 text-[9px]">日主 <span className="text-green-400 font-bold">{dayMaster}</span></div>}
+                        <div className="flex items-center gap-2">
+                          {hourUnknown && <div className="text-orange-400/75 text-[9px]">時辰未明</div>}
+                          {dayMaster && <div className="text-green-400/65 text-[9px]">日主 <span className="text-green-400 font-bold">{dayMaster}</span></div>}
+                        </div>
                       </div>
                       <div className="grid grid-cols-4 gap-1.5">
                         {[0,1,2,3].map(i => {
                           const p = pillars[i] || ''
                           const lbl = ['年','月','日','時'][i]
+                          // R+13:時柱 i=3 + hourUnknown → 顯示「未明」、避免子時誤導
+                          if (i === 3 && hourUnknown) return (
+                            <div key={i} className="text-center px-1 py-1.5 rounded" style={{ background: 'rgba(224,150,58,0.08)', border: '1px dashed rgba(224,150,58,0.30)' }}>
+                              <div className="text-orange-400/45 text-[8px] mb-0.5">{lbl}</div>
+                              <div className="text-orange-400/50 text-[10px]">未明</div>
+                            </div>
+                          )
                           if (!p) return (
                             <div key={i} className="text-center px-1 py-1.5 rounded" style={{ background: 'rgba(0,0,0,0.20)', border: '1px dashed rgba(197,150,58,0.15)' }}>
                               <div className="text-gold/30 text-[8px]">{lbl}</div>
@@ -1857,8 +1904,28 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     </div>
                   )}
 
-                  {/* 件 3 補:若無紫微、放命格綜合摘要 */}
-                  {!mingGong && (
+                  {/* v5.10.16 R+12 件 3 補:若無紫微、放「五行能量 + 用神」卡(取代原命格摘要、Haiku finding「缺紫微等核心維度」修)
+                       依據:14 系統核心維度本來就是「八字+紫微+其他」、紫微缺時、五行用神是命理另一個核心(對應 c_plan_v2.ts 命格名片 5 件套規則)
+                       何宣逸 case:report_result.analyses=null、紫微 regex 抓不到、走此卡 */}
+                  {!mingGong && wuxingTop3.length > 0 && (
+                    <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(155,89,182,0.10)', border: '1px solid rgba(155,89,182,0.30)' }}>
+                      <div className="text-purple-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">⚡ 五行 · 用神</div>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {wuxingTop3.map(([wx, cnt], i) => (
+                          <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{
+                            background: wx === '木' ? 'rgba(106,176,76,0.18)' : wx === '火' ? 'rgba(231,76,60,0.18)' : wx === '土' ? 'rgba(197,150,58,0.18)' : wx === '金' ? 'rgba(220,220,220,0.18)' : 'rgba(122,159,207,0.18)',
+                            color: wx === '木' ? '#6ab04c' : wx === '火' ? '#e74c3c' : wx === '土' ? '#c9a84c' : wx === '金' ? '#dcdcdc' : '#7a9fcf',
+                            border: '1px solid rgba(255,255,255,0.10)',
+                          }}>{wx}{cnt}</span>
+                        ))}
+                      </div>
+                      {yongshenSimple && (
+                        <div className="text-purple-300/70 text-[10px] mt-1">用神 <span className="text-cream font-bold">{yongshenSimple}</span></div>
+                      )}
+                    </div>
+                  )}
+                  {/* 兜底:無紫微也無五行(極端 fallback) */}
+                  {!mingGong && wuxingTop3.length === 0 && (
                     <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(122,159,207,0.08)', border: '1px solid rgba(122,159,207,0.25)' }}>
                       <div className="text-blue-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">⚡ 命格摘要</div>
                       <div className="text-cream/85 text-[11px] leading-tight">{(personalityCard.firstImpression || '14 套系統交叉').slice(0, 20)}</div>
