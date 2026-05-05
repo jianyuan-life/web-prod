@@ -28,6 +28,10 @@ import SystemsRadar from '@/components/report/SystemsRadar'
 import WuxingEnergyBars from '@/components/report/WuxingEnergyBars'
 import ChumenjiTop3Bar from '@/components/report/ChumenjiTop3Bar'
 import DayunTimeline from '@/components/report/DayunTimeline'
+// v5.10.10 R+8 — 5 LLM Round 3 全 95+ 衝刺批次
+import { OnboardingModal, R8Toolbar, WhyThisVerdictLink } from '@/components/report/R8Enhancements'
+import ActionRecommendations from '@/components/report/ActionRecommendations'
+import SystemsAnchorList from '@/components/report/SystemsAnchorList'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
 import {
@@ -1604,6 +1608,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
+      {/* v5.10.10 R+8 #11 Onboarding modal(首次進入 3 步引導、ESC 關閉、localStorage 記住) */}
+      {!isChumenji && <OnboardingModal />}
+
       {/* v5.10.9 R+6 Sticky CTA bar(Haiku 86→95 P2「分享/下載/預約諮詢按鈕未浮現」修):
            頂部釘固 100% 寬度、滾動不消失、3 個按鈕(分享 / 下載 PDF / 預約諮詢)
            E1-E4 出門訣無 PDF、改顯示「行事曆」按鈕
@@ -1615,7 +1622,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         borderBottom: '1px solid rgba(197,150,58,0.18)',
         boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
       }}>
-        <div className="mx-auto max-w-[1600px] px-4 py-2 flex items-center justify-end gap-2 text-[12px]">
+        <div className="mx-auto max-w-[1600px] px-4 py-2 flex items-center justify-between gap-2 text-[12px]">
+          {/* v5.10.10 R+8 #12+#13 左邊:視圖切換 / 術語小辭典 / 暗黑模式(Kimi+GPT-4o+Haiku 缺項補) */}
+          {!isChumenji && !isRelationship && !isFamily ? (
+            <R8Toolbar />
+          ) : (
+            <span className="text-text-muted/40 text-[10px]" aria-hidden>·</span>
+          )}
+          <div className="flex items-center gap-2">
           <a
             href="#share-card"
             className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
@@ -1671,6 +1685,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <span>💬</span>
             <span className="hidden sm:inline">預約諮詢</span>
           </a>
+          </div>
         </div>
       </div>
 
@@ -1691,6 +1706,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         <div className="text-center mb-2 no-print">
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
+
+        {/* v5.10.10 R+8 #9 個人化行動摘要 2-3 條(Gemini 缺項補):
+             從既有 personalityCard.talents/challenges/yearTheme 規則式抽取、不動 prompt
+             顯示在 Hero 之前、給客戶第一眼看到具體可執行下一步 */}
+        {!isChumenji && !isRelationship && !isFamily && personalityCard && (
+          <ActionRecommendations
+            talents={personalityCard.talents || []}
+            challenges={personalityCard.challenges || []}
+            yearTheme={personalityCard.yearTheme || ''}
+          />
+        )}
 
         {/* v5.10.8 R+5 首屏命格 5 件套精華卡(Claude Haiku 4 輪 72 分共識「首屏只見評分條 / 缺八字紫微 5 件套」修):
             Bento Box 一張卡裝齊 5 件套(封號 + 八字四柱 + 紫微命宮 + 天賦 Top 3 + 課題 Top 3)
@@ -1765,7 +1791,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </div>
               </div>
 
-              {/* Bento Box 主體:左 1/3 封號 + 定義、右 2/3 4 維度資料 */}
+              {/* v5.10.10 R+8 #4 Desktop 精華卡 3 欄並排(Haiku Desktop -12 主因修):
+                   原 md:grid-cols-3 但 col-span-1 / col-span-2 = 視覺仍 2 欄
+                   改 lg:grid-cols-3 全等寬、減少初屏 scroll 50% */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {/* 件 1:封號(左欄、特大) */}
                 <div className="md:col-span-1 px-4 py-4 rounded-xl flex flex-col items-center text-center justify-center" style={{
@@ -2047,19 +2075,69 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           )
         })()}
 
-        {/* v5.7.89 Quick Insights — 5 條核心洞察(Co-Star + Mint 範本、訊號最強) */}
+        {/* v5.7.89 Quick Insights — 5 條核心洞察(Co-Star + Mint 範本、訊號最強)
+            v5.10.10 R+8 #2 精準預告 + 跳詳解頁(取代「可展開卡片」、Qwen+GPT-4o 反對選擇悖論修):
+              每張卡顯示「結論一句 + 30 字精準預告 + → 跳詳解頁按鈕」 */}
         {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && (() => {
-          const insights = []
-          // 1. 命格定位
-          if (personalityCard.title) insights.push({ icon: '🎯', label: '命格定位', value: personalityCard.title.slice(0, 8), color: '#c9a84c' })
-          // 2. 第一印象
-          if (personalityCard.firstImpression) insights.push({ icon: '👁', label: '第一印象', value: personalityCard.firstImpression.slice(0, 12), color: '#7a9fcf' })
-          // 3. 真實的你
-          if (personalityCard.trueself) insights.push({ icon: '💎', label: '真實的你', value: personalityCard.trueself.slice(0, 12), color: '#bb8fce' })
-          // 4. 最強天賦
-          if (personalityCard.talents.length > 0) insights.push({ icon: '✨', label: '最強天賦', value: personalityCard.talents[0], color: '#6ab04c' })
-          // 5. 主要課題
-          if (personalityCard.challenges.length > 0) insights.push({ icon: '⚠', label: '主要課題', value: personalityCard.challenges[0], color: '#e0963a' })
+          interface InsightItem { icon: string; label: string; value: string; preview: string; anchor: string; color: string }
+          const insights: InsightItem[] = []
+          const fi = (personalityCard.firstImpression || '').trim()
+          const ts = (personalityCard.trueself || '').trim()
+          const talent0 = (personalityCard.talents[0] || '').trim()
+          const ch0 = (personalityCard.challenges[0] || '').trim()
+          // R+8 #2:30 字精準預告(從 talent/challenge 全文抽、不是只 slice 12)
+          if (personalityCard.title) {
+            insights.push({
+              icon: '🎯',
+              label: '命格定位',
+              value: personalityCard.title,
+              preview: personalityCard.definition ? personalityCard.definition.slice(0, 32) : '14 套系統交叉提取的命格 DNA',
+              anchor: '#sec-personality',
+              color: '#c9a84c',
+            })
+          }
+          if (fi) {
+            insights.push({
+              icon: '👁',
+              label: '第一印象',
+              value: fi.slice(0, 14),
+              preview: fi.length > 14 ? fi.slice(14, 50) : '從外人視角看你的第一印象畫像',
+              anchor: '#sec-first-impression',
+              color: '#7a9fcf',
+            })
+          }
+          if (ts) {
+            insights.push({
+              icon: '💎',
+              label: '真實的你',
+              value: ts.slice(0, 14),
+              preview: ts.length > 14 ? ts.slice(14, 50) : '剝開外層、命盤揭示的本質',
+              anchor: '#sec-trueself',
+              color: '#bb8fce',
+            })
+          }
+          if (talent0) {
+            const fullTalent = personalityCard.talents.slice(0, 3).join('、')
+            insights.push({
+              icon: '✨',
+              label: '最強天賦',
+              value: talent0.slice(0, 14),
+              preview: `Top 3 串連:${fullTalent.slice(0, 28)}`,
+              anchor: '#sec-talents',
+              color: '#6ab04c',
+            })
+          }
+          if (ch0) {
+            const fullChall = personalityCard.challenges.slice(0, 3).join('、')
+            insights.push({
+              icon: '⚠',
+              label: '主要課題',
+              value: ch0.slice(0, 14),
+              preview: `Top 3 串連:${fullChall.slice(0, 28)}`,
+              anchor: '#sec-challenges',
+              color: '#e0963a',
+            })
+          }
           if (insights.length < 3) return null
           return (
             <div className="rounded-2xl px-6 py-4 mb-4" style={{
@@ -2068,27 +2146,46 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             }}>
               <div className="text-gold/65 text-[11px] tracking-[3px] mb-3 font-semibold flex items-center justify-between report-fade-in">
                 <span>⚡ 命格 5 大核心洞察</span>
-                <span className="text-text-muted/45 text-[9px]">14 套系統交叉提取</span>
+                <span className="text-text-muted/45 text-[9px]">14 套系統交叉 · 點卡跳詳解</span>
               </div>
-              {/* v5.7.96 加 hover effect 強化 polish */}
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {insights.map((item, i) => (
-                  <div key={i} className="px-4 py-3 rounded-lg transition-all duration-200 hover:scale-[1.03] hover:-translate-y-0.5" style={{
-                    background: 'rgba(0,0,0,0.25)',
-                    border: `1px solid ${item.color}30`,
-                    boxShadow: `0 0 12px ${item.color}10`,
-                  }}>
+                  <a
+                    key={i}
+                    href={item.anchor}
+                    aria-label={`${item.label}:${item.value}、點擊跳到詳解段落`}
+                    className="block px-4 py-3 rounded-lg transition-all duration-200 hover:scale-[1.03] hover:-translate-y-0.5"
+                    style={{
+                      background: 'rgba(0,0,0,0.25)',
+                      border: `1px solid ${item.color}30`,
+                      boxShadow: `0 0 12px ${item.color}10`,
+                      textDecoration: 'none',
+                    }}
+                  >
                     <div className="flex items-center gap-2 mb-2">
-                      <span style={{ color: item.color, fontSize: '16px' }}>{item.icon}</span>
+                      <span style={{ color: item.color, fontSize: '16px' }} aria-hidden>{item.icon}</span>
                       <span className="text-[10px] tracking-wider font-semibold" style={{ color: `${item.color}aa` }}>{item.label}</span>
                     </div>
-                    <div className="text-cream text-sm font-semibold leading-snug">{item.value}</div>
-                  </div>
+                    <div className="text-cream text-sm font-semibold leading-snug mb-1.5">{item.value}</div>
+                    {/* R+8 #2 精準預告(30 字)+ 跳詳解按鈕 */}
+                    <div className="text-text-muted/65 text-[10px] leading-snug mb-2 line-clamp-2">{item.preview}</div>
+                    <div className="text-[10px] font-semibold flex items-center gap-1" style={{ color: `${item.color}cc` }}>
+                      <span>看詳解</span>
+                      <span aria-hidden>→</span>
+                    </div>
+                  </a>
                 ))}
               </div>
             </div>
           )
         })()}
+
+        {/* v5.10.10 R+8 #1 Mobile 14 套錨點(Gemini 反對「14 套全收合」修):
+             首屏顯示 14 套能力評分總覽 + 業界對標、點擊跳轉詳述章節
+             Desktop 由 SystemsRadar 主導、本元件 md:hidden */}
+        {!isChumenji && !isRelationship && !isFamily && analysesSummary.length >= 3 && (
+          <SystemsAnchorList analyses={analysesSummary} />
+        )}
 
         {/* v5.8.2 命格總分大徽章 — 加 inline talents/challenges + 命格名(packed banner) */}
         {!isChumenji && analysesSummary.length >= 3 && (() => {
@@ -2245,10 +2342,23 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(26,42,74,0.30))',
               border: '1px solid rgba(197,150,58,0.35)',
             }}>
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gold/15">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gold/15 flex-wrap gap-2">
                 <div className="text-gold/65 text-[11px] tracking-[3px] font-semibold flex items-center gap-2">
                   <span className="w-1 h-4 rounded-full" style={{background: 'linear-gradient(180deg, #c9a84c, #6ab04c)'}}/>
                   📋 命盤一覽
+                  {/* v5.10.10 R+8 #8 年份資訊浮現命盤上方(Codex/DeepSeek 共識「2026 丙午年浮現」)*/}
+                  <span
+                    className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(155,89,182,0.20), rgba(197,150,58,0.18))',
+                      color: '#f5d76e',
+                      border: '1px solid rgba(245,215,110,0.35)',
+                      letterSpacing: '0.5px',
+                    }}
+                    title="2026 流年丙午年、五行火旺主動之年"
+                  >
+                    2026 · 丙午年
+                  </span>
                 </div>
                 {sysCount > 0 && (
                   <div className="text-[11px] text-cream/60">
@@ -2897,6 +3007,25 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     {personalityCard.definition}
                   </p>
                 )}
+                {/* v5.10.10 R+8 #10 命格脈絡「為什麼」連結(Qwen 缺項補):
+                     點開顯示「八字怎麼來 → 紫微怎麼證 → 跨系統共識」 */}
+                <div className="mt-3">
+                  <WhyThisVerdictLink
+                    title={personalityCard.title}
+                    bazi={(() => {
+                      const rr = (report.report_result || {}) as Record<string, unknown>
+                      const cd = (rr.client_data || {}) as Record<string, unknown>
+                      return String(cd.bazi || '').trim().slice(0, 12)
+                    })()}
+                    ziwei={(() => {
+                      const rr = (report.report_result || {}) as Record<string, unknown>
+                      const ana = (rr.analyses || {}) as Record<string, unknown>
+                      const ziweiAna = (ana.ziwei || {}) as Record<string, unknown>
+                      const ziweiRaw = (ziweiAna.raw_data || {}) as Record<string, unknown>
+                      return String(ziweiRaw.ming_gong || ziweiRaw.mingGong || '').slice(0, 8)
+                    })()}
+                  />
+                </div>
               </div>
 
               {/* v5.7.64 命盤速覽根治(Gemini P0 35 分主因「無命盤資料」) — 多源 fallback */}
@@ -3134,11 +3263,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     })
                     return months.map(({ m, e }) => {
                       const color = e >= 75 ? '#6ab04c' : e >= 55 ? '#c9a84c' : '#e0963a'
-                      const bgColor = e >= 75 ? 'rgba(106,176,76,0.20)' : e >= 55 ? 'rgba(197,150,58,0.18)' : 'rgba(224,150,58,0.18)'
+                      // v5.10.10 R+8 #7 三色背景分化(順流綠 / 平衡黃 / 調整橘)+ 數字放大 12→16px
+                      const bgColor = e >= 75 ? 'rgba(106,176,76,0.30)' : e >= 55 ? 'rgba(197,150,58,0.25)' : 'rgba(224,150,58,0.28)'
+                      const label = e >= 75 ? '順流' : e >= 55 ? '平衡' : '調整'
                       return (
-                        <div key={m} className="text-center px-1 py-2 rounded" style={{ background: bgColor, border: `1px solid ${color}40` }}>
-                          <div className="text-[9px] text-cream/55 tracking-tight">{m}月</div>
-                          <div className="text-xs font-bold mt-0.5" style={{ color }}>{e}</div>
+                        <div
+                          key={m}
+                          className="calendar-heatmap-cell text-center px-1 py-2 rounded"
+                          style={{ background: bgColor, border: `1.5px solid ${color}60` }}
+                          title={`${m} 月 · 能量 ${e} · ${label}`}
+                          aria-label={`${m} 月能量 ${e} 分、${label}`}
+                        >
+                          <div className="heatmap-month text-cream/65">{m}月</div>
+                          <div className="heatmap-value mt-0.5" style={{ color }}>{e}</div>
                         </div>
                       )
                     })
@@ -3253,13 +3390,22 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <div className="text-gold font-semibold mb-1">以下為報告重點摘要</div>
                 <p className="text-text-muted text-sm">完整報告（含 {allSections.length} 個章節、{analysesSummary.length} 套系統逐一分析）請下載 PDF 版本</p>
               </div>
+              {/* v5.10.10 R+8 #5 主 CTA 強化(Haiku P0「CTA 不夠 prominent」修):
+                   高度 → 48px、漸層改紫色 + 金色雙層次、shadow + glow 強調 */}
               <a
                 href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
                 download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
-                style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c87a)', color: '#0a0e1a' }}>
+                aria-label="下載完整 PDF 報告"
+                className="shrink-0 inline-flex items-center gap-2 px-7 rounded-xl text-base font-bold transition-all hover:scale-[1.02] hover:-translate-y-0.5"
+                style={{
+                  height: '48px',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #c9a84c 100%)',
+                  color: '#fff',
+                  boxShadow: '0 6px 24px rgba(139,92,246,0.40), 0 2px 8px rgba(201,168,76,0.25)',
+                  letterSpacing: '0.5px',
+                }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
