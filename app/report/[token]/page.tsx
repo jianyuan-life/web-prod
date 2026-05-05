@@ -1604,12 +1604,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
-      {/* v5.10.3 R2 P0-1 修(STRICT 4 LLM 共識):
-           - 容器 1280 → 1440px(LLM 標「太窄、白邊浪費」、Notion/Linear 對標)
+      {/* v5.10.5 R+1 修(STRICT 3 LLM 共識 P0/P1/P2):
+           - 容器 1440 → 1600px(GPT-4o desktop P0 / Claude Haiku P1 / Gemini P2 三家共識「1920 寬螢幕兩側暗色空白」)
            - 內文 .report-p > p 仍自限 800px(CJK 40 漢字行寬鐵律保留)
            - mobile clamp padding 不動、< 768px 已單欄無 sidebar
-           - 主數據卡片(命格名片/命盤一覽/雷達/timeline/表格)可吃滿 1440 視覺更飽滿 */}
-      <div className="mx-auto pt-6 max-w-[1440px]" style={{
+           - 主數據卡片(命格名片/命盤一覽/雷達/timeline/表格)可吃滿 1600 視覺更飽滿 */}
+      <div className="mx-auto pt-6 max-w-[1600px]" style={{
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
@@ -2647,15 +2647,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   }}>
                     <div className="text-gold/70 text-xs tracking-[3px] mb-4 text-center font-semibold">您的命盤速覽</div>
 
-                    {/* v5.7.68 容忍 3 柱顯示(時辰未明也有 3 柱完整、Gemini 「只 3 柱 P0」修) */}
+                    {/* v5.7.68 容忍 3 柱顯示(時辰未明也有 3 柱完整、Gemini 「只 3 柱 P0」修)
+                        v5.10.5 R+1 修(Claude Haiku mobile P1 共識):八字字號 mobile 升 text-xl(20px)、桌機保留 text-base、加 padding 增加觸感 */}
                     {pillars.length >= 3 && (
                       <div className="mb-4">
                         <div className="text-gold/55 text-[10px] tracking-[2px] mb-2 text-center">八字四柱</div>
                         <div className="grid grid-cols-4 gap-2">
                           {[{label:'年柱',v:pillars[0]},{label:'月柱',v:pillars[1]},{label:'日柱',v:pillars[2]},{label:'時柱',v:pillars[3]||'時辰未明'}].map((p,i)=>(
-                            <div key={i} className="text-center px-1.5 py-3 rounded-lg" style={{background:'rgba(0,0,0,0.3)', border:'1px solid rgba(197,150,58,0.2)'}}>
+                            <div key={i} className="text-center px-1.5 py-4 sm:py-3 rounded-lg" style={{background:'rgba(0,0,0,0.3)', border:'1px solid rgba(197,150,58,0.2)'}}>
                               <div className="text-gold/40 text-[9px] tracking-[1px] mb-1.5">{p.label}</div>
-                              <div className={`text-cream font-bold ${p.v === '時辰未明' ? 'text-[10px] text-cream/40' : 'text-base'}`} style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
+                              <div className={`text-cream font-bold ${p.v === '時辰未明' ? 'text-[10px] text-cream/40' : 'text-xl sm:text-base'}`} style={{fontFamily:'var(--font-mono, monospace)'}}>{p.v}</div>
                             </div>
                           ))}
                         </div>
@@ -3711,8 +3712,30 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           />
         )}
 
-        {/* ──── 頁尾 ──── */}
-        <div className="text-center text-text-muted/30 text-xs leading-7">
+        {/* ──── 頁尾 ──── v5.10.5 R+1 修(Claude Haiku P2 共識「無報告編號 / 版本號 / 免責聲明可見位置」):
+                 - 加報告編號(token 前 8 碼、客戶可引用客服)
+                 - 加生成日期(已 inline 在頂部、此處重申)
+                 - 加 AI 生成聲明(對齊 STRICT eval Claude Haiku「需要更明確信賴標記」) */}
+        <div className="text-center text-text-muted/30 text-xs leading-7 pt-6 mt-8" style={{ borderTop: '1px solid rgba(201,168,76,0.10)' }}>
+          {(() => {
+            const tk = (report as { access_token?: string }).access_token || report.id || ''
+            const reportId = tk ? tk.slice(0, 8).toUpperCase() : ''
+            const d = new Date(report.created_at)
+            const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+            return (
+              <p className="mb-1.5 flex items-center justify-center gap-2 flex-wrap text-[11px]">
+                {reportId && (
+                  <span className="px-2 py-0.5 rounded" style={{ background: 'rgba(197,150,58,0.10)', color: 'rgba(197,150,58,0.55)', border: '1px solid rgba(197,150,58,0.20)' }}>
+                    報告編號 #{reportId}
+                  </span>
+                )}
+                <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
+                <span>生成於 {dateStr}</span>
+                <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
+                <span>本報告由 AI 引擎依命理古籍生成</span>
+              </p>
+            )
+          })()}
           <p>&copy; 2026 鑒源命理平台 &middot; jianyuan.life</p>
           <p>此報告僅供個人參考，不構成任何法律、醫療或財務建議</p>
         </div>

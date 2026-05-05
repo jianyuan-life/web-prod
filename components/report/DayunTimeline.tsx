@@ -57,6 +57,12 @@ export default function DayunTimeline({
 
   const peak = stages.reduce((m, d) => (d.energy > m.energy ? d : m), stages[0])
   const valley = stages.reduce((m, d) => (d.energy < m.energy ? d : m), stages[0])
+  // v5.10.5 R+1 修(Gemini mobile P1「高峰=低谷同十年」邏輯矛盾):
+  //   若 peak.energy === valley.energy(所有大運能量相同、客戶大運平穩)
+  //   → 不顯示「高峰 / 低谷」誤導文字、改顯示「能量平穩 · 整段大運起伏不大」
+  //   依據:Gemini eval「這個錯誤會嚴重打擊我對整份報告數據準確性的信任」
+  const samePeakValley = peak.age_start === valley.age_start && peak.age_end === valley.age_end
+  const energyFlat = peak.energy === valley.energy
 
   return (
     <section className="my-8" aria-labelledby="dayun-timeline-title">
@@ -66,12 +72,19 @@ export default function DayunTimeline({
             {title}
           </h3>
           <p className="text-[11px] text-text-muted mt-0.5">
-            {stages.length} 個大運十年期 · 高峰{' '}
-            <span className="text-gold">{peak.age_start}-{peak.age_end ?? `+10`} 歲 ({peak.pillar})</span>{' '}
-            · 低谷{' '}
-            <span className="text-text-muted/70">
-              {valley.age_start}-{valley.age_end ?? `+10`} 歲 ({valley.pillar})
-            </span>
+            {stages.length} 個大運十年期 ·{' '}
+            {samePeakValley || energyFlat ? (
+              <span className="text-gold/70">能量平穩 · 整段大運起伏不大、屬「穩中求進」型節奏</span>
+            ) : (
+              <>
+                高峰{' '}
+                <span className="text-gold">{peak.age_start}-{peak.age_end ?? `+10`} 歲 ({peak.pillar})</span>{' '}
+                · 低谷{' '}
+                <span className="text-text-muted/70">
+                  {valley.age_start}-{valley.age_end ?? `+10`} 歲 ({valley.pillar})
+                </span>
+              </>
+            )}
           </p>
         </div>
       </div>
