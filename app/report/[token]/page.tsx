@@ -1604,7 +1604,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       <ReadingProgressBar />
       {/* #13 回到頂部浮動按鈕 */}
       <BackToTopButton />
-      <FloatingActionPanel />
+      {/* v5.10.14 R+11 Gemini desktop P2 修(91→95):FloatingActionPanel 右下紫色「儲存 PDF」跟 header 綠色「下載 PDF」+ Sticky CTA bar 紫色「下載 PDF」三重複、移除 FloatingActionPanel 避免認知混淆 */}
+      {/* <FloatingActionPanel /> */}
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
