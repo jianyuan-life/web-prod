@@ -1608,8 +1608,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
-      {/* v5.10.10 R+8 #11 Onboarding modal(首次進入 3 步引導、ESC 關閉、localStorage 記住) */}
-      {!isChumenji && <OnboardingModal />}
+      {/* v5.10.11 R+9 hotfix:OnboardingModal 移除(Playwright strict eval fresh browser localStorage 空 → modal 永遠開遮整屏 → Haiku 62 / Gemini mobile 68 災難);保留 import + component 待改 mini banner 不擋首屏 */}
+      {/* {!isChumenji && <OnboardingModal />} */}
 
       {/* v5.10.9 R+6 Sticky CTA bar(Haiku 86→95 P2「分享/下載/預約諮詢按鈕未浮現」修):
            頂部釘固 100% 寬度、滾動不消失、3 個按鈕(分享 / 下載 PDF / 預約諮詢)
