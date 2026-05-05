@@ -1851,7 +1851,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     textShadow: '0 0 12px rgba(197,150,58,0.4)',
                   }}>{personalityCard.title}</div>
                   {definitionShort && (
-                    <div className="text-cream/75 text-[11px] mt-2 leading-snug">{definitionShort}{(personalityCard.definition || '').length > 50 ? '...' : ''}</div>
+                    /* v5.10.18 R+15 Gemini mobile 94 P2「描述對比度低」修:75→95 opacity + font-medium、達 WCAG AA 對比度 */
+                    <div className="text-cream/95 text-[11px] mt-2 leading-snug font-medium">{definitionShort}{(personalityCard.definition || '').length > 50 ? '...' : ''}</div>
                   )}
                 </div>
 
