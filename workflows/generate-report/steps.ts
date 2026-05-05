@@ -2682,6 +2682,96 @@ export async function qualityGate(
         warnings.push(`[軟性][廢話檢測] ${name}:命中 ${matches.length} 次(細分 #7 報告語氣 P0)`)
       }
     }
+
+    // ── v5.10.x R1 護欄 grep(2026-05-05、c_plan_v2.ts L173-298 軟約束變硬擋)──
+    // 對應 c_plan_v2.ts C_PLAN_CONTENT_GUARDRAILS_R1 6 條護欄、quality gate 把 LLM 軟約束變硬擋
+    // P0 違規 → 直接走 warnings(不加 [軟性] 前綴)、會被 criticalWarnings filter 收成 hardFailures、觸發 fail
+    //   → MAX_QUALITY_RETRIES=0 下 = needs_human_review、不會 retry 燒錢(對應 lesson #058)
+    // P1/P2 違規 → 加 [軟性] 前綴、只 log、不擋
+    // 注意:命格 5 件套(R1 第 1 條)= 結構檢查、不在禁詞範圍、由既有 cRequired「命格名片」+「四柱八字」(L2634-2637)兜底
+    const R1_FORBIDDEN_PATTERNS: { name: string; patterns: RegExp[]; severity: 'P0' | 'P1' | 'P2'; desc: string }[] = [
+      // 規則 2:禁廢話開頭(段落內部開頭、章節間 bridge 例外)
+      // 涵蓋 R1 完整 19 個禁詞中、v5.7.55 已覆蓋之外的 14 個缺口、避免規則重複
+      // 章節間 bridge 例外:不擋「上一章看完」「下一章我們」(對應 L757-775 hard rule、屬 callback/preview 結構)
+      // grep 策略:只擋「行首縮排空白 +(章節標題層級非 ##/###)+ 禁詞 + 鋪墊動詞」、避開純 bridge sentence
+      {
+        name: '禁廢話開頭(R1 第 2 條完整 19 詞缺口補)',
+        patterns: [
+          // 「下面」「下面是」「下面我們」+ 鋪墊動詞
+          /(?:^|\n)(?!#{1,6}\s)\s*下面(?:是|我們|就)?[來去]?(?:看|分析|了解|介紹|談|是)/g,
+          // 「首先」「其次」「再次」「最後」+ 鋪墊動詞或逗號(段落內部開場、非條列項)
+          // 避開 numbered list「1. 首先」「* 首先」這類條列、只擋段落起頭散文式
+          /(?:^|\n)(?![*\-\d]\s|#{1,6}\s)\s*(?:首先|其次|再次|最後)[，,、]?(?:我們)?(?:來|要|會|將)?(?:看|分析|了解|介紹|談)/g,
+          // 「總之」「綜上所述」「綜合來看」「總的來說」「總結一下」段落起頭
+          /(?:^|\n)(?!#{1,6}\s)\s*(?:總之|綜上所述|綜合來看|總的來說|總結一下)[，,、]?/g,
+          // 「上面提到」「前面說過」段落起頭(非 bridge sentence、bridge 用「上一章」)
+          /(?:^|\n)(?!#{1,6}\s)\s*(?:上面提到|前面說過)/g,
+          // 「以下我們來」(R1 第 2 條 enum、v5.7.55「以下是/讓我們」未涵蓋)
+          /(?:^|\n)(?!#{1,6}\s)\s*以下我們來(?:看|分析|了解|介紹|談)/g,
+        ],
+        severity: 'P0',
+        desc: '段落內部廢話開頭(下面/首先/總之/綜上所述/上面提到 等 14 詞、c_plan_v2.ts R1 第 2 條 P0)',
+      },
+      // 規則 3:禁 Meta 標籤殘留(章節標題層級 ## / ### 含 meta 標籤)
+      // 例外:markdown 引言塊「> 📚 命理深析(PDF 專屬深度版)」屬 P0-12 規範允許、行首「> 」開頭不擋
+      {
+        name: '禁 Meta 標籤(R1 第 3 條)',
+        patterns: [
+          // 行首「## 」或「### 」(非「> 」引言塊)+ 標題含 meta 標籤
+          // 用 (?<!>\s) 排除「> 📚 命理深析(PDF 專屬深度版)」這類 blockquote 例外
+          /(?:^|\n)#{1,6}\s+[^\n]*(?:🪞 你看得懂的版本|🪞📚 PDF 專屬深度版|PDF 專屬深度版|PDF 專屬|網頁版|網頁專屬|進階版|精簡版|速覽版|完整版|深度版|擴充版|網頁短版|網頁版本)/g,
+        ],
+        severity: 'P0',
+        desc: 'Meta 標籤出現在 ## / ### 章節標題層級(c_plan_v2.ts R1 第 3 條 P0、引言塊 > 例外)',
+      },
+      // 規則 4:禁相對時間單獨用(無絕對年月配對)
+      // P1 級、不擋只警告(c_plan_v2.ts 標 P1)、避免 retry 燒錢
+      {
+        name: '禁相對時間單獨用(R1 第 4 條)',
+        patterns: [
+          // 「再半年」「再過幾個月」「再過幾年」「不久前」「不久後」「未來幾年」「過去幾年」「前陣子」「最近這段」
+          // 後方 200 字內無絕對年月「2[0-9]{3}年」「[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]年」配對 = 失格
+          // 用 negative lookahead、限制 200 char window 內必有絕對年月
+          /(?:再半年|再過幾個月|再過幾年|不久前|不久後|未來幾年|過去幾年|前陣子|最近這段)(?![^。\n]{0,200}(?:2[0-9]{3}\s*年|[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]\s*年|立春|清明|大運|流年[甲乙丙丁戊己庚辛壬癸]))/g,
+        ],
+        severity: 'P1',
+        desc: '相對時間單獨用、無絕對年月配對(c_plan_v2.ts R1 第 4 條 P1)',
+      },
+      // 規則 6a:雙介詞 / 雙助詞錯用(P2、不擋只警告)
+      {
+        name: '雙介詞錯用(R1 第 6a 條)',
+        patterns: [
+          /在家裡中|在心裡上|在工作中裡|在學校中裡|在家庭中裡/g,
+        ],
+        severity: 'P2',
+        desc: '雙介詞錯用「在家裡中/在心裡上」等(c_plan_v2.ts R1 第 6a 條 P2)',
+      },
+      // 規則 6c:中英混雜口語(技術專名 Stripe/Claude/Excel 例外、不擋只警告 P2)
+      {
+        name: '中英混雜口語(R1 第 6c 條)',
+        patterns: [
+          // 「ok 的」「OK 啦」「double check」「review 一下」「follow up」「meeting」(非接大寫專名)「deadline」
+          // negative lookahead `(?!\s*[A-Z])` 排除「meeting Stripe」「meeting Claude」這類技術專名(雖罕見)
+          // R+1 修(Codex L3 P3):JavaScript `\b` 不認中文 word boundary、「ok 的/啦/嘛」「review 一下」原 `\b` 後綴失效;改用顯式 char enum 避開
+          /\b[oO][kK]\s+(?:的|啦|嘛)|\bdouble\s+check\b|\breview\s+一下|\bfollow\s+up\b|\bmeeting\b(?!\s*[A-Z])|\bdeadline\b/gi,
+        ],
+        severity: 'P2',
+        desc: '中英混雜口語「ok 的/double check/meeting/deadline」等(c_plan_v2.ts R1 第 6c 條 P2、技術專名例外)',
+      },
+    ]
+    for (const rule of R1_FORBIDDEN_PATTERNS) {
+      const allMatches: string[] = []
+      for (const pat of rule.patterns) {
+        const m = reportContent.match(pat)
+        if (m) allMatches.push(...m.slice(0, 5).map(s => s.trim().slice(0, 60)))
+      }
+      if (allMatches.length > 0) {
+        // P0 → 不加 [軟性] 前綴、會被 criticalWarnings filter 收成 hardFailures、觸發 fail
+        // P1/P2 → 加 [軟性] 前綴、只 log、不擋(避免 retry 燒錢)
+        const prefix = rule.severity === 'P0' ? '' : '[軟性]'
+        warnings.push(`${prefix}[R1-${rule.severity}] ${rule.name}:命中 ${allMatches.length} 次(${allMatches.slice(0, 3).join(' / ')})`)
+      }
+    }
   }
 
   if (planCode === 'E1') {

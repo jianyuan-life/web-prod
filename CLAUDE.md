@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.10.3（2026-05-05、第一件 / 階段 ④ Round 2 UI 層完成:app/report/[token]/page.tsx 主容器 max-w 1280→1440px / Top 3→Top 5 渲染(slice 0,5、parsePersonalityCard 已 parse 5 條)/ 移除 Top 5 內部滾動 height:auto + DayunTimeline.tsx h-32→h-40 緩解擁擠;Round 1 v5.10.2 c_plan_v2.ts 6 條 prompt 護欄已上;預估 STRICT 從 67/62 升 92/88、距 100 缺 ~10 點屬 prompt 已修待 regen 驗證）
+**網站版本：** v5.10.4（2026-05-05、第一件 / 階段 ④ C 選項 quality gate 接 R1 禁詞 grep 完成:steps.ts L2685-2774 加 R1_FORBIDDEN_PATTERNS 5 組(廢話開頭 P0 / Meta 標籤 P0 / 相對時間 P1 / 雙介詞 P2 / 中英混雜 P2)+ grep loop;LLM 軟約束 → quality gate 硬擋;P0 違規走 hardFailures 觸發 needs_human_review、P1/P2 標 [軟性] 只 log;MAX_QUALITY_RETRIES=0 不 retry 燒錢(對應 lesson #058);Round 1 v5.10.2 + Round 2 v5.10.3 + C 選項 v5.10.4 三層基建鎖死、距 Round 3 Generate 實測剩 1 步）
 
 ✅ **開放新客戶下單**(2026-05-03):v5.7.21 止血(MAX_QUALITY_RETRIES=0)+ v5.7.22 cleanFinalReport L658 真因修(### 阿拉伯編號誤升 ##)+ v5.7.23 reason 對位 P0 修(前端結構化欄位 render)+ v5.7.24 prompt 根治(從源頭禁止 AI 寫值符/值使/八神/臨宮)= 兩個 P0 bug 全修、quality gate fail 真因 + reason 對位 bug 雙 line 鎖。新單可進。
 
