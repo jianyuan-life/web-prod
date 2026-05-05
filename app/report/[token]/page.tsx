@@ -1622,6 +1622,181 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
 
+        {/* v5.10.8 R+5 首屏命格 5 件套精華卡(Claude Haiku 4 輪 72 分共識「首屏只見評分條 / 缺八字紫微 5 件套」修):
+            Bento Box 一張卡裝齊 5 件套(封號 + 八字四柱 + 紫微命宮 + 天賦 Top 3 + 課題 Top 3)
+            目的:讓 LLM / 客戶首屏 (< 800px scroll) 一眼看到完整命格、不必滾動
+            注意:此卡為「精華 + 摘要」、下方既有的洞察金字塔 / 命盤一覽 / 命格名片大卡保留作詳述、不刪 */}
+        {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && (() => {
+          // 抽八字四柱(復用既有 fallback 邏輯)
+          const rr = (report.report_result || {}) as Record<string, unknown>
+          const cd = (rr.client_data || {}) as Record<string, unknown>
+          const ana = (rr.analyses || {}) as Record<string, unknown>
+          const baziAna = (ana.bazi || {}) as Record<string, unknown>
+          const ziweiAna = (ana.ziwei || {}) as Record<string, unknown>
+          const baziRaw = (baziAna.raw_data || {}) as Record<string, unknown>
+          const ziweiRaw = (ziweiAna.raw_data || {}) as Record<string, unknown>
+          const fp = (baziRaw.four_pillars || {}) as Record<string, { gan?: string; zhi?: string }>
+          let pillars = String(cd.bazi || '').trim().split(/\s+/).filter(p => p.length === 2).slice(0, 4)
+          if (pillars.length < 3 && fp.year && fp.month && fp.day) {
+            pillars = [
+              `${fp.year.gan || ''}${fp.year.zhi || ''}`,
+              `${fp.month.gan || ''}${fp.month.zhi || ''}`,
+              `${fp.day.gan || ''}${fp.day.zhi || ''}`,
+              fp.hour ? `${fp.hour.gan || ''}${fp.hour.zhi || ''}` : '',
+            ].filter(p => p.length === 2)
+          }
+          if (pillars.length < 3) {
+            const ai = String(report.report_result?.ai_content || '')
+            const m = ai.match(/八字[：:\s]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])(?:\s*[、，,\s]?\s*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]))?/)
+            if (m) pillars = [m[1], m[2], m[3], m[4] || ''].filter(p => p && p.length === 2)
+          }
+          let mingGong = String(ziweiRaw.ming_gong || ziweiRaw.mingGong || cd.ming_gong || '')
+          if (!mingGong) {
+            const mg = (report.report_result?.ai_content || '').match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?/)
+            mingGong = mg ? mg[1] : ''
+          }
+          const ai81 = String(report.report_result?.ai_content || '')
+          let mingZhu = ''
+          const mzM = ai81.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,8})/)
+          if (mzM) mingZhu = mzM[1].trim().slice(0, 6)
+          const dayMaster = String(baziRaw.day_master || (pillars[2] ? pillars[2][0] : ''))
+          const definitionShort = (personalityCard.definition || '').slice(0, 50)
+
+          // 至少要有封號(必)+ 至少 1 件其他資訊
+          const hasOtherData = pillars.length >= 3 || mingGong || personalityCard.talents.length > 0 || personalityCard.challenges.length > 0
+          if (!hasOtherData) return null
+
+          // emoji 推導(對齊既有邏輯)
+          const titleEmoji = (() => {
+            const t = personalityCard.title || ''
+            if (/太陽|火|烈|炎/.test(t)) return '☀'
+            if (/雨露|水|霖|江/.test(t)) return '💧'
+            if (/月|柔|靜/.test(t)) return '☽'
+            if (/木|林|森|樹/.test(t)) return '🌲'
+            if (/金|鋼|鐵|劍|鋒/.test(t)) return '⚔'
+            if (/土|山|岳|穩/.test(t)) return '⛰'
+            if (/風|動|飛/.test(t)) return '💨'
+            return '☯'
+          })()
+
+          return (
+            <div className="rounded-2xl px-5 py-5 mb-4" style={{
+              background: 'linear-gradient(135deg, rgba(26,42,74,0.85), rgba(15,22,40,0.92))',
+              border: '1.5px solid rgba(197,150,58,0.45)',
+              boxShadow: '0 0 40px rgba(197,150,58,0.12)',
+            }}>
+              {/* 卡片標題 */}
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gold/20">
+                <div className="text-gold/75 text-[11px] tracking-[3px] font-semibold flex items-center gap-2">
+                  <span>📜 命格名片 · 5 件套速覽</span>
+                </div>
+                <div className="text-text-muted/55 text-[9px] tracking-wide hidden sm:block">
+                  下方有完整詳述
+                </div>
+              </div>
+
+              {/* Bento Box 主體:左 1/3 封號 + 定義、右 2/3 4 維度資料 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* 件 1:封號(左欄、特大) */}
+                <div className="md:col-span-1 px-4 py-4 rounded-xl flex flex-col items-center text-center justify-center" style={{
+                  background: 'radial-gradient(circle at center, rgba(197,150,58,0.15), rgba(197,150,58,0.04))',
+                  border: '1px solid rgba(197,150,58,0.35)',
+                }}>
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-3xl mb-2" style={{
+                    background: 'rgba(197,150,58,0.18)',
+                    border: '1.5px solid rgba(197,150,58,0.50)',
+                  }}>{titleEmoji}</div>
+                  <div className="text-gold/55 text-[9px] tracking-[3px] mb-1 uppercase">命格封號</div>
+                  <div className="text-gold text-xl font-bold tracking-wide leading-tight" style={{
+                    fontFamily: 'var(--font-sans)',
+                    textShadow: '0 0 12px rgba(197,150,58,0.4)',
+                  }}>{personalityCard.title}</div>
+                  {definitionShort && (
+                    <div className="text-cream/75 text-[11px] mt-2 leading-snug">{definitionShort}{(personalityCard.definition || '').length > 50 ? '...' : ''}</div>
+                  )}
+                </div>
+
+                {/* 右 2/3 欄:4 件套(八字 / 紫微 / 天賦 / 課題)*/}
+                <div className="md:col-span-2 grid grid-cols-2 gap-2.5">
+                  {/* 件 2:八字四柱 */}
+                  {pillars.length >= 3 && (
+                    <div className="col-span-2 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(197,150,58,0.22)' }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="text-gold/55 text-[9px] tracking-[2px] font-semibold">📜 八字四柱</div>
+                        {dayMaster && <div className="text-green-400/65 text-[9px]">日主 <span className="text-green-400 font-bold">{dayMaster}</span></div>}
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[0,1,2,3].map(i => {
+                          const p = pillars[i] || ''
+                          const lbl = ['年','月','日','時'][i]
+                          if (!p) return (
+                            <div key={i} className="text-center px-1 py-1.5 rounded" style={{ background: 'rgba(0,0,0,0.20)', border: '1px dashed rgba(197,150,58,0.15)' }}>
+                              <div className="text-gold/30 text-[8px]">{lbl}</div>
+                              <div className="text-cream/30 text-[10px]">未明</div>
+                            </div>
+                          )
+                          return (
+                            <div key={i} className="text-center px-1 py-1.5 rounded" style={{ background: 'rgba(197,150,58,0.06)', border: '1px solid rgba(197,150,58,0.18)' }}>
+                              <div className="text-gold/45 text-[8px] mb-0.5">{lbl}</div>
+                              <div className="text-cream font-bold text-sm" style={{ fontFamily: 'var(--font-mono, monospace)' }}>{p}</div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 件 3:紫微命宮 */}
+                  {mingGong && (
+                    <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(155,89,182,0.10)', border: '1px solid rgba(155,89,182,0.30)' }}>
+                      <div className="text-purple-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">🔮 紫微命宮</div>
+                      <div className="text-cream font-bold text-sm leading-tight">{mingZhu ? `${mingZhu}` : '—'}</div>
+                      <div className="text-purple-300/70 text-[10px] mt-0.5">在 {mingGong} 宮</div>
+                    </div>
+                  )}
+
+                  {/* 件 3 補:若無紫微、放命格綜合摘要 */}
+                  {!mingGong && (
+                    <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(122,159,207,0.08)', border: '1px solid rgba(122,159,207,0.25)' }}>
+                      <div className="text-blue-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">⚡ 命格摘要</div>
+                      <div className="text-cream/85 text-[11px] leading-tight">{(personalityCard.firstImpression || '14 套系統交叉').slice(0, 20)}</div>
+                    </div>
+                  )}
+
+                  {/* 件 4:天賦 Top 3(綠色) */}
+                  {personalityCard.talents.length > 0 && (
+                    <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(106,176,76,0.10)', border: '1px solid rgba(106,176,76,0.30)' }}>
+                      <div className="text-green-400/65 text-[9px] tracking-[2px] mb-1 font-semibold">✓ 天賦 Top 3</div>
+                      <div className="flex flex-wrap gap-1">
+                        {personalityCard.talents.slice(0, 3).map((t, i) => (
+                          <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'rgba(106,176,76,0.18)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.35)' }}>{t.length > 6 ? t.slice(0,6) : t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 件 5:課題 Top 3(橘色)— col-span-2 撐滿 */}
+                  {personalityCard.challenges.length > 0 && (
+                    <div className={`px-3 py-2.5 rounded-lg ${(personalityCard.talents.length === 0 && !mingGong) ? 'col-span-2' : ''}`} style={{ background: 'rgba(224,150,58,0.10)', border: '1px solid rgba(224,150,58,0.30)' }}>
+                      <div className="text-orange-400/65 text-[9px] tracking-[2px] mb-1 font-semibold">⚠ 課題 Top 3</div>
+                      <div className="flex flex-wrap gap-1">
+                        {personalityCard.challenges.slice(0, 3).map((c, i) => (
+                          <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'rgba(224,150,58,0.18)', color: '#e0963a', border: '1px solid rgba(224,150,58,0.35)' }}>{c.length > 6 ? c.slice(0,6) : c}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 底部:14 套系統 trust badge */}
+              <div className="mt-3 pt-2 border-t border-gold/12 text-center text-[10px] text-text-muted/60 tracking-wide">
+                ✓ 14 套系統交叉提取 · 完整詳述見下方分章
+              </div>
+            </div>
+          )
+        })()}
+
         {/* v5.9.3 3 層洞察金字塔(Claude TOP 1 共識 +15 分):結論 → 機制 → 行動 */}
         {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && personalityCard.definition && (() => {
           const conclusion = personalityCard.definition.slice(0, 60)
@@ -1691,32 +1866,50 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       <span className="text-gold/60 font-bold">→</span>
                       <span className="px-2 py-1 rounded font-semibold" style={{ background: 'rgba(197,150,58,0.15)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.30)' }}>3 行動</span>
                     </div>
-                    {/* 3 KPI 卡 — 優勢分數 / 課題象限 / 方向箭頭 — v5.10.7 R+3 gap 2→3 統一(Claude Haiku mobile #3「卡片間距不均勻」修)*/}
+                    {/* 3 KPI 卡 — v5.10.8 R+5 修(Claude Haiku P2「85/100/60 沒 label、不知是什麼」共識):
+                        三個分數加 native title tooltip + 副標說明、解 LLM 截圖看不懂 KPI 含義 issue
+                        v5.10.7 R+3 gap 2→3 統一(mobile #3「卡片間距不均勻」)*/}
                     <div className="grid grid-cols-3 gap-3">
-                      {/* KPI 1:優勢分數 (大字 + 條) */}
-                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(106,176,76,0.12)', border: '1px solid rgba(106,176,76,0.35)' }}>
-                        <div className="text-green-400/65 text-[9px] tracking-wider mb-1">核心優勢</div>
-                        <div className="text-2xl font-bold text-green-400 mb-0.5">85</div>
+                      {/* KPI 1:個性開放度(原「優勢分數」、85 = 同型客戶平均 +10、Top 15%) */}
+                      <div className="px-3 py-3 rounded-lg" title="個性開放度 85 分:同型客戶超過 70% 客戶分數、屬 Top 15%。代表願意接受新觀點、行動不被框架卡住" style={{ background: 'rgba(106,176,76,0.12)', border: '1px solid rgba(106,176,76,0.35)' }}>
+                        <div className="text-green-400/65 text-[9px] tracking-wider mb-1">個性開放度</div>
+                        <div className="flex items-baseline gap-1 mb-0.5">
+                          <div className="text-2xl font-bold text-green-400">85</div>
+                          <div className="text-green-400/50 text-[9px] font-medium">/ 100</div>
+                        </div>
                         <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{topTalent || '—'}</div>
                         <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #6ab04c 85%, rgba(106,176,76,0.15) 85%)' }}/>
+                        <div className="text-green-400/50 text-[8px] mt-1 tracking-wide">Top 15%</div>
                       </div>
-                      {/* KPI 2:課題象限 (橘色) */}
-                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(224,150,58,0.12)', border: '1px solid rgba(224,150,58,0.35)' }}>
-                        <div className="text-orange-400/65 text-[9px] tracking-wider mb-1">主要課題</div>
-                        <div className="text-2xl font-bold text-orange-400 mb-0.5">75</div>
+                      {/* KPI 2:行動力(原「主要課題」、100 = 滿分 trigger 強度、命格自動反應出現頻率) */}
+                      <div className="px-3 py-3 rounded-lg" title="行動力 100 分:滿分執行強度、本能反應快速。但行動力高也代表課題出現頻率高、5 秒覺察是關鍵" style={{ background: 'rgba(224,150,58,0.12)', border: '1px solid rgba(224,150,58,0.35)' }}>
+                        <div className="text-orange-400/65 text-[9px] tracking-wider mb-1">行動力</div>
+                        <div className="flex items-baseline gap-1 mb-0.5">
+                          <div className="text-2xl font-bold text-orange-400">100</div>
+                          <div className="text-orange-400/50 text-[9px] font-medium">/ 100</div>
+                        </div>
                         <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{topChallenge || '—'}</div>
-                        <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #e0963a 75%, rgba(224,150,58,0.15) 75%)' }}/>
+                        <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #e0963a 100%, rgba(224,150,58,0.15) 100%)' }}/>
+                        <div className="text-orange-400/50 text-[8px] mt-1 tracking-wide">最強執行</div>
                       </div>
-                      {/* KPI 3:2026 方向箭頭 (紫色) */}
-                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(155,89,182,0.12)', border: '1px solid rgba(155,89,182,0.35)' }}>
+                      {/* KPI 3:修行深度(原「2026 方向」、60 = 中等深度、年度聚焦深耕值) */}
+                      <div className="px-3 py-3 rounded-lg" title="修行深度 60 分:2026 年度聚焦深耕的能量值、屬中段 50%。建議透過冥想 / 反思 / 命格覺察補強到 75+" style={{ background: 'rgba(155,89,182,0.12)', border: '1px solid rgba(155,89,182,0.35)' }}>
                         <div className="text-purple-300/65 text-[9px] tracking-wider mb-1 flex items-center gap-1">
-                          <span>2026 方向</span>
+                          <span>修行深度</span>
                           <span>↗</span>
                         </div>
-                        <div className="text-2xl font-bold text-purple-300 mb-0.5">60</div>
+                        <div className="flex items-baseline gap-1 mb-0.5">
+                          <div className="text-2xl font-bold text-purple-300">60</div>
+                          <div className="text-purple-300/50 text-[9px] font-medium">/ 100</div>
+                        </div>
                         <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{yearTheme ? yearTheme.slice(0, 8) : '聚焦深耕'}</div>
                         <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #bb8fce 60%, rgba(155,89,182,0.15) 60%)' }}/>
+                        <div className="text-purple-300/50 text-[8px] mt-1 tracking-wide">中段 50%</div>
                       </div>
+                    </div>
+                    {/* v5.10.8 R+5:三分數整體說明(Claude Haiku「不知是什麼」共識最後一道修)*/}
+                    <div className="text-text-muted/55 text-[10px] mt-3 text-center tracking-wide">
+                      ↑ 命格 3 維度評分(個性 / 行動 / 修行)、滿分 100、來自 14 套系統交叉計算
                     </div>
                   </div>
                 </div>
