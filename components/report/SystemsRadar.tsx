@@ -102,8 +102,10 @@ export default function SystemsRadar({
       </div>
 
       <div className="glass rounded-2xl p-3 md:p-5 border border-gold/15">
-        {/* v5.7.76 高度 360→440 + margin 加大 50→80(Gemini「雷達圖標籤被截斷」P2 修) */}
-        <div style={{ width: '100%', height: 440 }}>
+        {/* v5.10.13 R+10 mobile 標籤重疊修(Jamie 截圖驗證 mobile seg_03 14 套系統名稱擠在雷達中央):
+            - mobile (< 768px): margin 縮 80→25、字級 11→9、給 chart 內部更多空間
+            - desktop: 保持原 margin 80 + fontSize 11 */}
+        <div className="w-full" style={{ height: 440 }}>
           {!mounted ? (
             <div className="w-full h-full flex items-center justify-center text-text-muted/60 text-sm">
               <div className="flex items-center gap-2">
@@ -113,13 +115,13 @@ export default function SystemsRadar({
             </div>
           ) : (
           <ResponsiveContainer>
-            <RadarChart data={chartData} margin={{ top: 30, right: 80, bottom: 30, left: 80 }}>
+            <RadarChart data={chartData} margin={typeof window !== 'undefined' && window.innerWidth < 768 ? { top: 20, right: 25, bottom: 20, left: 25 } : { top: 30, right: 80, bottom: 30, left: 80 }}>
               {/* v5.10.7 R+4 加大眾平均 baseline(70 分、Gemini P0「雷達圖只有自己沒有世界」修)
                   baseline 用更明顯灰虛線、半透明 0.30 alpha、本人線金色 1.8 粗 */}
               <PolarGrid stroke={COLORS.grid} strokeDasharray="2 4" />
               <PolarAngleAxis
                 dataKey="system"
-                tick={{ fill: COLORS.axis, fontSize: 11 }}
+                tick={{ fill: COLORS.axis, fontSize: typeof window !== 'undefined' && window.innerWidth < 768 ? 9 : 11 }}
               />
               <PolarRadiusAxis
                 angle={90}
