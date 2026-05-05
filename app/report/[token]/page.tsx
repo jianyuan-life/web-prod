@@ -1695,7 +1695,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            - 內文 .report-p > p 仍自限 800px(CJK 40 漢字行寬鐵律保留)
            - mobile clamp padding 不動、< 768px 已單欄無 sidebar
            - 主數據卡片(命格名片/命盤一覽/雷達/timeline/表格)可吃滿 1600 視覺更飽滿 */}
-      <div className="mx-auto pt-6 max-w-[1600px]" style={{
+      {/* v5.10.15 R+12 Gemini desktop P1 修(90→95+):max-w 1600→無上限 + 95% width、給 1920px 螢幕完全填滿、不再「擠在中間」感 */}
+      <div className="mx-auto pt-6 w-[95%]" style={{
+        maxWidth: '1920px',
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
