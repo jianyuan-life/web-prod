@@ -18,7 +18,8 @@ import PartHighlights from '@/components/PartHighlights'
 import SubscribeCTA from '@/components/SubscribeCTA'
 import { ReadingProgressBar, BackToTopButton, ReadingTime, FloatingActionPanel } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
-import SidebarTOC from '@/components/SidebarTOC'
+// v5.7.80 SidebarTOC 移除(LLM 標「左欄擠右欄」根治、改單欄)、import 同步清掉
+// import SidebarTOC from '@/components/SidebarTOC'
 import FiveElementsRadar from '@/components/FiveElementsRadar'
 import ShareReportButton from '@/components/ShareReportButton'
 import ZiweiPalaceWheel from '@/components/ZiweiPalaceWheel'
@@ -1603,12 +1604,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
-      {/* v5.7.53 Layout 大改造(8 sub-agent 共識):
-           - 容器 1280px max(收窄、CJK 40 漢字鐵律、Wikipedia A/B +53%)
-           - lg+ flex 雙欄:左 280px sticky sidebar TOC + 右 flex-1 content
-           - mobile/tablet: 單欄 content
-           - prose 內文段落仍自限 720px(原 .report-p > p 限寬已生效) */}
-      <div className="mx-auto pt-6 max-w-[1280px]" style={{
+      {/* v5.10.3 R2 P0-1 修(STRICT 4 LLM 共識):
+           - 容器 1280 → 1440px(LLM 標「太窄、白邊浪費」、Notion/Linear 對標)
+           - 內文 .report-p > p 仍自限 800px(CJK 40 漢字行寬鐵律保留)
+           - mobile clamp padding 不動、< 768px 已單欄無 sidebar
+           - 主數據卡片(命格名片/命盤一覽/雷達/timeline/表格)可吃滿 1440 視覺更飽滿 */}
+      <div className="mx-auto pt-6 max-w-[1440px]" style={{
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
@@ -1879,14 +1880,18 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   </div>
                 </div>
               </div>
-              {/* v5.8.2 inline Top 3 talents + Top 3 challenges、訊號最豐富 */}
+              {/* v5.10.3 R2 P0-2/3 修(STRICT 4 LLM 共識):Top 3 → Top 5、移除內部滾動條
+                  - parsePersonalityCard 已 parse 5 條(L388-389 talents/challenges.slice(0,5))
+                  - 之前 1882-1905 只 slice(0,3)、UI 截斷成 Top 3、客戶看不到完整 5 條
+                  - LLM 標「滾動尋寶、缺天賦 Top 5/課題 Top 5」全是這裡引起
+                  - 加 height:auto + 不限 max-height、容器自然撐開不滾 */}
               {(personalityCard?.talents.length || 0) + (personalityCard?.challenges.length || 0) > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gold/15">
                   {personalityCard && personalityCard.talents.length > 0 && (
                     <div>
-                      <div className="text-[10px] text-green-400/70 tracking-[2px] mb-1.5 font-semibold">✓ 天賦 Top 3</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {personalityCard.talents.slice(0, 3).map((t, i) => (
+                      <div className="text-[10px] text-green-400/70 tracking-[2px] mb-1.5 font-semibold">✓ 天賦 Top 5</div>
+                      <div className="flex flex-wrap gap-1.5" style={{ height: 'auto', maxHeight: 'none' }}>
+                        {personalityCard.talents.slice(0, 5).map((t, i) => (
                           <span key={i} className="px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(106,176,76,0.15)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.30)' }}>{t}</span>
                         ))}
                       </div>
@@ -1894,9 +1899,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   )}
                   {personalityCard && personalityCard.challenges.length > 0 && (
                     <div>
-                      <div className="text-[10px] text-orange-400/70 tracking-[2px] mb-1.5 font-semibold">⚠ 課題 Top 3</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {personalityCard.challenges.slice(0, 3).map((c, i) => (
+                      <div className="text-[10px] text-orange-400/70 tracking-[2px] mb-1.5 font-semibold">⚠ 課題 Top 5</div>
+                      <div className="flex flex-wrap gap-1.5" style={{ height: 'auto', maxHeight: 'none' }}>
+                        {personalityCard.challenges.slice(0, 5).map((c, i) => (
                           <span key={i} className="px-2 py-0.5 rounded-full text-[11px]" style={{ background: 'rgba(224,150,58,0.15)', color: '#e0963a', border: '1px solid rgba(224,150,58,0.30)' }}>{c}</span>
                         ))}
                       </div>

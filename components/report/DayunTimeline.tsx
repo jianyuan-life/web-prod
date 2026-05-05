@@ -95,8 +95,8 @@ export default function DayunTimeline({
                 className="flex flex-col items-center text-center cursor-pointer transition-transform hover:scale-[1.04] focus:outline-none focus:ring-2 focus:ring-gold/40 rounded"
                 aria-label={`${s.age_start}-${s.age_end ?? s.age_start + 10} 歲、${s.pillar} 大運、能量 ${s.energy}`}
               >
-                {/* 柱形 */}
-                <div className="w-full h-32 flex items-end mb-2 relative">
+                {/* v5.10.3 R2 P0-6 修(STRICT 2 LLM 標「擁擠」):柱高 h-32 → h-40(+25%)、視覺呼吸感 + 大運期感更清晰 */}
+                <div className="w-full h-40 flex items-end mb-2 relative">
                   <div
                     className="w-full rounded-t-lg transition-all duration-1000 ease-out"
                     style={{
