@@ -1,6 +1,6 @@
 {
   "name": "fortune-reports",
-  "version": "5.10.19",
+  "version": "5.10.20",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
