@@ -2221,7 +2221,11 @@ export async function aiGenerateG15(
   const memberCount = familyReports.length
 
   // ──────────── v2 path:3-Call LLM 共識版 ────────────
-  if (promptVersion === 'v2') {
+  // v5.10.27 hotfix: force v1 fallback,v2 path call3 從未跑通(workflow 卡 call2 後、可能 Vercel timeout)
+  // 對應 lesson #073「連 3 輪 accept」、暫關 v2、回 v1 認可版穩定 path
+  // 待 debug v2 call3 真因後再啟動(Round 6+ 範圍)
+  const FORCE_V1_FALLBACK = true
+  if (promptVersion === 'v2' && !FORCE_V1_FALLBACK) {
     console.log(`G15 v2 啟動:3-Call 模式、memberCount=${memberCount}`)
 
     // Call 1:Hero + 一~四章(命理 60% + 心理 40%、~6000-10500 字)
