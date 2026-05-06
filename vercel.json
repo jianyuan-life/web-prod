@@ -2,6 +2,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
+  "functions": {
+    "workflows/generate-report/**/*.ts": { "maxDuration": 800 },
+    "app/api/admin/recalculate-report/route.ts": { "maxDuration": 800 },
+    "app/api/generate-report/route.ts": { "maxDuration": 800 }
+  },
   "crons": [
     {
       "path": "/api/cron/retry-pending",
