@@ -3992,9 +3992,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               )
             }
 
-            // v5.10.25 G15 R+1 P0-1:G15 章節 4+ mobile 預設收合(3 LLM 共識、避過載)
-            // desktop 全展開不變;只動 mobile <768px、chapter 1-3 預設展開、4+ 預設摺疊
-            const g15MobileCollapsed = isFamily && chapterNum >= 4 ? false : undefined
             if (sStyle) {
               return (
                 <CollapsibleSection
@@ -4006,7 +4003,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: sStyle.iconBg }}>{sStyle.icon}</div>
                   }
                   defaultExpanded={true}
-                  mobileDefaultExpanded={g15MobileCollapsed}
                   style={{ background: sStyle.bg, border: sStyle.border }}
                 >
                   {tldrNode}
@@ -4039,7 +4035,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 title={sec.title}
                 titleColor="var(--color-gold)"
                 defaultExpanded={true}
-                mobileDefaultExpanded={g15MobileCollapsed}
                 className="glass"
                 style={{ borderLeft: `4px solid ${accentColor}`, background: stripeBg }}
               >

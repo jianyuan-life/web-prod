@@ -11,11 +11,8 @@ interface CollapsibleSectionProps {
   icon?: ReactNode
   /** 標題顏色 */
   titleColor?: string
-  /** 是否預設展開（desktop 與 fallback 用） */
+  /** 是否預設展開 */
   defaultExpanded?: boolean
-  /** Mobile (<768px) 是否預設展開；不傳則跟 defaultExpanded 同
-   *  v5.10.25 G15 R+1 P0-1：3 LLM 共識「次要章節 mobile 預設收合、避過載」 */
-  mobileDefaultExpanded?: boolean
   /** 子內容 */
   children: ReactNode
   /** 額外的 className（套用在外層容器上） */
@@ -32,32 +29,12 @@ export default function CollapsibleSection({
   icon,
   titleColor = 'var(--color-gold)',
   defaultExpanded = true,
-  mobileDefaultExpanded,
   children,
   className = '',
   style,
   id,
 }: CollapsibleSectionProps) {
-  // v5.10.25 G15 R+1 P0-1:mobile/desktop 預設展開狀態分離
-  // SSR 期 mounted=false → 一律用 defaultExpanded(避免 hydration mismatch)
-  // mounted 後 useEffect 偵測視口、< 768px 套 mobileDefaultExpanded
-  const [mounted, setMounted] = useState(false)
-  const initialExpanded =
-    mobileDefaultExpanded === undefined ? defaultExpanded : defaultExpanded
-  const [expanded, setExpanded] = useState(initialExpanded)
-  // 客戶端 mount 後檢查視口、若 mobile 且 mobileDefaultExpanded 提供 → 套用
-  useEffect(() => {
-    setMounted(true)
-    if (mobileDefaultExpanded !== undefined && typeof window !== 'undefined') {
-      const isMobile = window.matchMedia('(max-width: 767px)').matches
-      if (isMobile) {
-        setExpanded(mobileDefaultExpanded)
-      }
-    }
-    // 只在 mount 時跑一次、之後尊重用戶手動點擊
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  void mounted // 預留:之後可能用 mounted state 做更多判斷
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState<number | 'auto'>('auto')
   // WCAG 2.1.1：aria-controls 需穩定 id，避免多個 CollapsibleSection 共用
