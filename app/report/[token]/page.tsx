@@ -1412,7 +1412,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const isSimplified = report.birth_data?.locale === 'zh-CN'
 
   return (
-    <div className={`min-h-screen pb-16${isSimplified ? ' locale-cn' : ''}`} style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
+    <div className={`min-h-screen pb-16${isSimplified ? ' locale-cn' : ''}${isFamily ? ' is-family' : ''}`} style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
       <style>{`
         ${isSimplified ? `.locale-cn { font-family: var(--font-body-sc), var(--font-body), "Noto Sans SC", sans-serif; }
         .locale-cn .report-h3, .locale-cn h1, .locale-cn h2, .locale-cn h3 { font-family: var(--font-sans-sc), var(--font-sans), "Noto Serif SC", serif; }` : ''}
@@ -1441,6 +1441,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .report-p strong, .report-p b { color: #d4af37; font-weight: 600; }
         /* v5.7.50 引用塊更高質感 */
         .report-p blockquote { border-left: 3px solid rgba(212,175,55,0.5); background: rgba(212,175,55,0.04); padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; }
+        /* v5.10.26 R+1 G15 字號 + 行高 + 段距微調(共識項:Haiku P1「字號 12-14px 過小」+ Gemini Round 1「字級略小」)
+           desktop +1px(18→19px)、mobile +1px(17→18px)、line-height +0.05、margin +0.25rem
+           僅 G15 / 家族藍圖、不影響 C/D/R/E1-E4 真實付費客戶 */
+        .is-family .report-p { font-size: 1.1875rem; line-height: 2.0; margin-bottom: 2.75rem; }
+        .is-family .report-li, .is-family .report-li-num { font-size: 1.1875rem; line-height: 1.85; }
+        .is-family .report-h2 { font-size: 1.5rem; line-height: 1.35; }
+        .is-family .report-h3 { font-size: 1.1875rem; line-height: 1.55; }
+        @media (max-width: 640px) {
+          .is-family .report-p, .is-family .report-li, .is-family .report-li-num { font-size: 1.125rem; line-height: 1.9; }
+          .is-family .report-h3 { font-size: 1.1rem !important; }
+        }
         /* v5.7.38 表格 break-out:大螢幕 14 欄矩陣表撐到 viewport 95vw、容器外置中
            小螢幕(< 1024px)維持容器內 100% + horizontal scroll */
         @media (min-width: 1024px) {
