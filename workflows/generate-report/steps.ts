@@ -20,6 +20,11 @@ import {
   extractCall1Summary, extractCall1And2Summary,
   SYSTEM_GROUPS,
 } from '@/prompts/c_plan_v2'
+// v5.10.23 (2026-05-06) Round 2:G15 v6.0 prompt 預備接線(Feature Flag、Round 3 啟用)
+// 目前 quality gate 已用 G15_V2_QUALITY_GATE env 嚴格度切換、Round 3 將接線 buildG15Call*Prompt
+// 暫不切換 systemPrompt(避免 1-Call vs 3-Call 架構衝突、Round 3 一併處理)
+import { getG15PromptVersion as _getG15PromptVersion } from '@/prompts/g15_plan_v2'
+void _getG15PromptVersion  // 防 tsc unused import warning、Round 3 啟用時移除 void
 
 // ── 常數 ──
 const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
@@ -3128,8 +3133,18 @@ export async function qualityGate(
   }
 
   // 2f. G15 家族藍圖必要章節檢查
+  // v5.10.23 (2026-05-06) Round 2 升級:加 v6.0 P0 grep(對應 g15_plan_v2.ts 16 條護欄)
+  // - v1 預設(G15_V2_QUALITY_GATE != 'true'):新增 grep 走 [軟性] 警告、不擋 v1 prompt 出來的舊報告
+  // - v2 啟用(G15_V2_QUALITY_GATE = 'true'):新增 grep 走 hardFailures(unprefixed warnings)
+  //   → MAX_QUALITY_RETRIES=0 不 retry 燒錢、fail 即 needs_human_review(對應 lesson #058)
+  // 對應接力檔:tasks/next_session_handoff_2026-05-06_g15_R1_prompt_complete.md「Round 2 立即可動清單」
   if (planCode === 'G15') {
-    // v5.6.3 (2026-04-28) ROI #9 round 2: 加互動比例 ≥ 35% [軟性] 警告（對齊 R 方案 ≥ 40%、家族藍圖比例可略低）
+    const g15V2Strict = process.env.G15_V2_QUALITY_GATE === 'true'
+    const g15Prefix = g15V2Strict ? '' : '[軟性]'  // 空字串 = 走 hardFailures、[軟性] = 只 log
+    const g15LegacyPrefix = '[軟性]'  // 既有 v1 grep 永遠 [軟性](保留向後相容)
+
+    // ── 既有 v1 互動比例(≥ 35% [軟性]、保留向後相容)──
+    // v5.6.3 (2026-04-28) ROI #9 round 2: 加互動比例 ≥ 35% [軟性] 警告(對齊 R 方案 ≥ 40%、家族藍圖比例可略低)
     // 避免 G15 變成「N 個人個人分析的拼貼」、確保有真實「成員互動」段落
     // IA round 1 抓 P2:單字「兒/女」會誤觸發、改多字組合避免 false positive(個人段落被誤算互動)
     // [軟性] 標籤避免擴大 retry 攻擊面、由 G15 cRequired 章節結構 + 5 LLM QA 兜底
@@ -3138,8 +3153,10 @@ export async function qualityGate(
     const g15InteractionParas = g15Paragraphs.filter(p => g15InteractionPattern.test(p))
     const g15InteractionRatio = g15Paragraphs.length > 0 ? g15InteractionParas.length / g15Paragraphs.length : 0
     if (g15InteractionRatio < 0.35) {
-      warnings.push(`[軟性] 家族藍圖成員互動比例過低: ${(g15InteractionRatio * 100).toFixed(0)}% 段落含家族/互動字眼（期望 >= 35%、避免變成個人分析的拼貼）`)
+      warnings.push(`${g15LegacyPrefix} 家族藍圖成員互動比例過低: ${(g15InteractionRatio * 100).toFixed(0)}% 段落含家族/互動字眼(期望 >= 35%、避免變成個人分析的拼貼)`)
     }
+
+    // ── 既有 v1 必要章節 ──
     const g15Required = [
       { pattern: /家族能量|能量圖譜|能量全貌/, name: '家族能量圖譜' },
       { pattern: /互動關係|成員互動|互動.*分析/, name: '成員互動關係深度分析' },
@@ -3157,11 +3174,99 @@ export async function qualityGate(
         warnings.push(`家族藍圖缺少必要章節: ${sec.name}`)
       }
     }
-    // 內容長度檢查（依家庭人數，對齊 Prompt 字數要求）
+
+    // ── 既有 v1 內容長度(依家庭人數)──
     const memberCount = systemsCount || 2
     const minG15Length = memberCount <= 2 ? 8000 : memberCount <= 3 ? 10000 : 12000
     if (reportContent.length < minG15Length) {
-      warnings.push(`家族藍圖內容偏短: ${reportContent.length} 字（期望 > ${minG15Length} 字）`)
+      warnings.push(`家族藍圖內容偏短: ${reportContent.length} 字(期望 > ${minG15Length} 字)`)
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ── v5.10.23 Round 2 v6.0 升級 grep(對應 g15_plan_v2.ts 16 條護欄)──
+    // 對應接力檔 P0-1 ~ P0-6、嚴格度由 G15_V2_QUALITY_GATE env 控制
+    // ════════════════════════════════════════════════════════════
+
+    // P0-1:家族 5 件套必含(對應護欄 G15-1、Hero 章節 strict template)
+    const G15_FAMILY_CARD_5 = [
+      { pattern: /主角.*姓名|為主角|主訴者/, name: '主角標識' },
+      { pattern: /家庭結構|成員列表|本次合盤共/, name: '家庭結構圖' },
+      { pattern: /主要動力|誰主導|主軸動力/, name: '主要動力標識' },
+      { pattern: /主要業力|跨代主軸|跨代慣性|代際傳遞/, name: '主要業力標識' },
+      { pattern: /共同願景|2026.*行動|全家.*目標/, name: '共同願景標識' },
+    ]
+    let g15Card5Missing = 0
+    for (const card of G15_FAMILY_CARD_5) {
+      if (!card.pattern.test(reportContent)) {
+        warnings.push(`${g15Prefix}[G15-v6.0 P0-1] 家族 5 件套缺:${card.name}`)
+        g15Card5Missing++
+      }
+    }
+    // 5 件套若 ≥ 3 缺 = 結構嚴重不全(v2 strict 模式不論前綴都升 hard、避免 LLM 寫到一半就漏)
+    if (g15V2Strict && g15Card5Missing >= 3) {
+      warnings.push(`[G15-v6.0 P0-1 升級] 家族 5 件套缺 ${g15Card5Missing}/5、結構嚴重不全`)
+    }
+
+    // P0-2:18 章節必含(v6.0 strict template、缺 ≥ 3 章節 = P0)
+    const G15_V6_REQUIRED_SECTIONS = [
+      { pattern: /能量全貌|能量地圖|家族能量/, name: '0 你們家的能量全貌' },
+      { pattern: /互動關係|成員互動.*分析|互動.*深度/, name: '一、成員互動關係深度分析' },
+      { pattern: /家族結構|結構與動力|Minuchin|邊界/, name: '二、家族結構與動力' },
+      { pattern: /跨代|業力|祖德|代際傳遞|Hellinger/, name: '三、跨代家族慣性 / 業力' },
+      { pattern: /角色與溝通|Satir|溝通姿態|六親|六宮/, name: '四、家族成員角色與溝通' },
+      { pattern: /時間軸|Erikson|大運疊加|Saturn/, name: '五、家族發展時間軸' },
+      { pattern: /財務命脈|財星|財帛宮|金錢信念|代際財富/, name: '六、家族財務命脈' },
+      { pattern: /身心健康|疾厄宮|遺傳|跨代創傷|ACEs/, name: '七、家族身心健康' },
+      { pattern: /環境.*風水|陽宅|Vastu|家相/, name: '八、家族環境與風水' },
+      { pattern: /教育傳承|親子教養|子女宮|文化身份/, name: '九、家族教育傳承' },
+      { pattern: /好的地方/, name: '十、好的地方' },
+      { pattern: /需要注意/, name: '十一、需要注意的地方' },
+      { pattern: /改善建議/, name: '十二、改善建議' },
+      { pattern: /刻意練習/, name: '十三、刻意練習' },
+      { pattern: /故事重寫|敘事治療|外化問題|家族.*motto/, name: '十四、家族故事重寫' },
+      { pattern: /流年運勢|2026.*2030|家族流年/, name: '十五、家族流年運勢' },
+      { pattern: /行動指南|家族行動/, name: '十六、家族行動指南' },
+      { pattern: /寫給.*家|寫給這個家/, name: '寫給這個家的話' },
+    ]
+    let g15V6MissingCount = 0
+    for (const sec of G15_V6_REQUIRED_SECTIONS) {
+      if (!sec.pattern.test(reportContent)) g15V6MissingCount++
+    }
+    if (g15V6MissingCount >= 3) {
+      warnings.push(`${g15Prefix}[G15-v6.0 P0-2] 18 章節缺 ${g15V6MissingCount} 章(v6.0 strict template 期望 ≥ 16/18)`)
+    } else if (g15V6MissingCount > 0) {
+      warnings.push(`[軟性][G15-v6.0 P0-2] 18 章節缺 ${g15V6MissingCount} 章(可接受、但 v6.0 期望全部 18 章)`)
+    }
+
+    // P0-3:互動比例 ≥ 50%(v6.0 升、原 v1 是 ≥ 35%)
+    if (g15InteractionRatio < 0.50) {
+      warnings.push(`${g15Prefix}[G15-v6.0 P0-3] 互動比例過低: ${(g15InteractionRatio * 100).toFixed(0)}%(v6.0 期望 ≥ 50%)`)
+    }
+
+    // P0-4:健康章節法務免責強制(對應護欄 G15-6、必含「不取代醫療診斷」+ 危機轉介)
+    const g15LegalDisclaimer = /命理建議.*非.*醫療診斷|有疑慮.*請就醫|本內容不能.*取代醫療|建議諮詢.*醫師|不取代醫療診斷|分享.*非.*取代醫療/.test(reportContent)
+    if (!g15LegalDisclaimer) {
+      warnings.push(`${g15Prefix}[G15-v6.0 P0-4] 第七章「家族身心健康」缺法務免責語(必含「命理建議非醫療診斷」字眼)`)
+    }
+
+    // P0-5:跨系統幻想禁區(對應護欄 G15-10、lesson #056)
+    // 任一命中 = P0 永遠擋(不論 v2 strict、跨系統幻想是 0 古籍依據幻想)
+    const G15_FORBIDDEN_CROSS_SYSTEM = [
+      { pattern: /八字.*喜用神.*奇門.*方位|奇門.*依.*八字.*喜用神/, name: '八字喜用神 × 奇門擇方(禁)' },
+      { pattern: /紫微.*命主.*奇門|紫微.*對應.*奇門盤面/, name: '紫微命主 × 奇門對應(禁)' },
+      { pattern: /西占.*八字.*十神.*映射|十神.*對應.*行星/, name: '西占 × 八字十神映射(禁)' },
+      { pattern: /喜用神.*[→指].*門.*星.*神|五行.*[→指].*門.*星.*神/, name: '五行 → 門/星/神 cross-domain mapping(禁)' },
+    ]
+    for (const rule of G15_FORBIDDEN_CROSS_SYSTEM) {
+      if (rule.pattern.test(reportContent)) {
+        warnings.push(`[G15-v6.0 P0-5] 跨系統幻想禁區命中:${rule.name}(lesson #056、永遠 hardFailures、不論 v2 strict)`)
+      }
+    }
+
+    // P0-6:v6.0 字數下限(2 人 22K / 3 人 27.5K / 4-5 人 32.5K / 6 人 38K、僅 v2 模式擋)
+    const minG15LengthV6 = memberCount <= 2 ? 22000 : memberCount <= 3 ? 27500 : memberCount <= 5 ? 32500 : 38000
+    if (reportContent.length < minG15LengthV6) {
+      warnings.push(`${g15Prefix}[G15-v6.0 P0-6] 內容偏短: ${reportContent.length} 字(v6.0 期望 ≥ ${minG15LengthV6} 字、${memberCount} 人合盤)`)
     }
   }
 
