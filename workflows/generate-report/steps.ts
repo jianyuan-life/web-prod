@@ -2190,26 +2190,74 @@ function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
 }
 
 // ── G15 家族藍圖：AI 生成家族互動分析 ──
+// v6.0 (2026-05-05) Round 5 接線:Feature Flag 控制 v1 (1-Call 認可版) / v2 (3-Call LLM 共識版)
+// - v1 path:沿用既有 1-Call 邏輯、向後相容、不影響真實付費 G15 客戶 (yutingo / kone13852476)
+// - v2 path:對齊 c_plan v2 模式、使用 g15_plan_v2.ts 的 buildG15Call1/2/3Prompt
+// - 啟用方式:G15_PROMPT_V2_ENABLED=true 全開、或 G15_V2_TEST_REPORTS=<reportId,...> 白名單
+// - 對應 R5 strict eval 從 79.3 → 90+ 的真因修復(原本 v6.0 prompt 寫好但沒接線、LLM 看的仍是 v1)
 export async function aiGenerateG15(
   familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string, reportId?: string,
 ) {
   "use step";
   await emitProgress({ step: 'AI分析', progress: 30, message: '正在分析家族成員互動關係...' })
 
-  // 從報告中提取關鍵互動數據，不餵原始報告全文（避免 AI 重複個人分析）
-  let userPrompt = `家族藍圖分析 — 共 ${familyReports.length} 位成員\n\n`
+  // ── Feature Flag:判斷走 v1 (認可版) 還是 v2 (LLM 共識版) ──
+  const { getG15PromptVersion, buildG15Call1Prompt, buildG15Call2Prompt, buildG15Call3Prompt, extractG15Call1Summary, extractG15Call1And2Summary } = await import('@/prompts/g15_plan_v2')
+  const promptVersion = getG15PromptVersion(reportId)
+  console.log(`G15 prompt version: ${promptVersion} (reportId=${reportId})`)
 
+  // ── 共用:組 user prompt(成員命理關鍵數據摘要)──
+  let baseUserPrompt = `家族藍圖分析 — 共 ${familyReports.length} 位成員\n\n`
   for (let i = 0; i < familyReports.length; i++) {
     const member = familyReports[i]
     const bd = member.birthData
-    userPrompt += `=== 成員${i + 1}：${member.name} ===\n`
-    userPrompt += `性別：${bd.gender === 'M' ? '男' : '女'}，出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour}時\n`
-
-    // 從報告中提取各系統關鍵數據摘要（每人約 200-300 字）
+    baseUserPrompt += `=== 成員${i + 1}：${member.name} ===\n`
+    baseUserPrompt += `性別：${bd.gender === 'M' ? '男' : '女'}，出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour}時\n`
     const keyData = extractKeyDataForFamily(member.reportContent, bd)
-    userPrompt += `命理關鍵數據：\n${keyData}\n\n`
+    baseUserPrompt += `命理關鍵數據：\n${keyData}\n\n`
   }
 
+  const locale = familyReports[0]?.birthData?.locale
+  const memberCount = familyReports.length
+
+  // ──────────── v2 path:3-Call LLM 共識版 ────────────
+  if (promptVersion === 'v2') {
+    console.log(`G15 v2 啟動:3-Call 模式、memberCount=${memberCount}`)
+
+    // Call 1:Hero + 一~四章(命理 60% + 心理 40%、~6000-10500 字)
+    await emitProgress({ step: 'AI分析', progress: 30, message: 'G15 Call 1:能量全貌 + 互動關係 + 結構動力 + 跨代慣性 + 角色溝通...' })
+    const call1Prompt = buildG15Call1Prompt(memberCount, locale)
+    const call1UserPrompt = baseUserPrompt + `\n請依本 Call 範圍輸出章節 0-4(Hero + 一~四章)、不要寫前言、直接從 "## 0." 開始。`
+    const call1Result = await callClaudeOnly(call1Prompt, call1UserPrompt, 128000, 'G15_v2_call1', reportId)
+    const call1Content = trimToLastCompleteSentence(cleanAIResponse(call1Result.content))
+    console.log(`G15 v2 Call 1 完成:${call1Content.length} 字`)
+
+    // Call 2:五~九章(時間軸 + 財務 + 健康 + 風水 + 教育、~6000-10500 字)
+    await emitProgress({ step: 'AI分析', progress: 50, message: 'G15 Call 2:時間軸 + 財務命脈 + 身心健康 + 環境風水 + 教育傳承...' })
+    const call1Summary = extractG15Call1Summary(call1Content)
+    const call2Prompt = buildG15Call2Prompt(memberCount, call1Summary, locale)
+    const call2UserPrompt = baseUserPrompt + `\n請依本 Call 範圍輸出章節 5-9(五~九章)、不要寫前言、直接從 "## 五、" 開始。`
+    const call2Result = await callClaudeOnly(call2Prompt, call2UserPrompt, 128000, 'G15_v2_call2', reportId)
+    const call2Content = trimToLastCompleteSentence(cleanAIResponse(call2Result.content))
+    console.log(`G15 v2 Call 2 完成:${call2Content.length} 字`)
+
+    // Call 3:十~十七章 + 寫給 + 法務免責(~5500-10000 字)
+    await emitProgress({ step: 'AI分析', progress: 70, message: 'G15 Call 3:好的地方 + 注意 + 改善 + 刻意練習 + 故事 + 流年 + 行動 + 寫給...' })
+    const call1And2Summary = extractG15Call1And2Summary(call1Content, call2Content)
+    const call3Prompt = buildG15Call3Prompt(memberCount, extractG15Call1Summary(call1Content), extractG15Call1Summary(call2Content), locale)
+    const call3UserPrompt = baseUserPrompt + `\n請依本 Call 範圍輸出章節 10-17 + 寫給 + 法務免責、不要寫前言、直接從 "## 十、" 開始。\n\n【Call 1 + 2 完整摘要供延續】\n${call1And2Summary.slice(0, 4000)}`
+    const call3Result = await callClaudeOnly(call3Prompt, call3UserPrompt, 128000, 'G15_v2_call3', reportId)
+    const call3Content = trimToLastCompleteSentence(cleanAIResponse(call3Result.content))
+    console.log(`G15 v2 Call 3 完成:${call3Content.length} 字`)
+
+    // 整合三 Call 為最終報告
+    const finalContent = `${call1Content}\n\n${call2Content}\n\n${call3Content}`
+    console.log(`G15 v2 全 3 Call 完成:總長 ${finalContent.length} 字 (Call1=${call1Content.length} + Call2=${call2Content.length} + Call3=${call3Content.length})`)
+    return { content: finalContent, model: 'claude-opus-4-6' }
+  }
+
+  // ──────────── v1 path:1-Call 認可版(向後相容、預設路徑)────────────
+  let userPrompt = baseUserPrompt
   userPrompt += `\n請根據以上所有成員的命理關鍵數據，撰寫完整的家族互動分析報告。
 重要提醒：
 1. 你收到的是每位成員的關鍵命理數據摘要，不是完整報告。不要試圖重寫個人命格分析。
@@ -2217,11 +2265,11 @@ export async function aiGenerateG15(
 3. 著重分析成員之間的能量互補或衝突、相處模式、溝通建議。
 4. 每個論點都必須引用具體的命理數據來支撐（如日柱、命宮主星、生肖關係等）。`
 
-  const localizedPrompt = localizePrompt(systemPrompt, familyReports[0]?.birthData?.locale)
+  const localizedPrompt = localizePrompt(systemPrompt, locale)
 
   const { content } = await callClaudeOnly(localizedPrompt, userPrompt, 128000, 'G15_main', reportId)
   const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
-  console.log(`G15 家族藍圖 AI 完成: ${cleaned.length} 字`)
+  console.log(`G15 v1 家族藍圖 AI 完成: ${cleaned.length} 字`)
   return { content: cleaned, model: 'claude-opus-4-6' }
 }
 aiGenerateG15.maxRetries = 2
