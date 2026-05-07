@@ -3361,6 +3361,37 @@ export async function qualityGate(
     warnings.push(`人生藍圖內容偏短: ${reportContent.length} 字（期望 > 20,000 字）`)
   }
 
+  // 2f-2. C 方案 quality gate v5.10.56(老闆「逐頁看」抓 C 何宥諄「十五、刻意練習 119 字空殼」、lesson #076 同根再犯)
+  // 對齊 G15 v5.10.42/.47 chapter min len + 練習編號連續性
+  if (planCode === 'C') {
+    const C_CHAPTER_MIN_LEN: Array<{ pattern: RegExp; name: string; minLen: number }> = [
+      // C 方案章節編號是「十五、刻意練習」(C prompt L1404 寫「十六」、實際 render 重編後變十五)
+      { pattern: /(?:##\s*(?:十五|十六)、?\s*刻意練習|###\s*練習\s*[1-5一二三四五])[\s\S]*?(?=\n##\s|$)/, name: '十五、刻意練習', minLen: 1500 },
+      { pattern: /##\s*(?:十四|十五)、?\s*給[你您]的一句話[\s\S]*?(?=##|$)/, name: '十四、給您的一句話', minLen: 600 },
+      { pattern: /##\s*(?:十二|十三)、?\s*三階段行動計畫[\s\S]*?(?=##|$)/, name: '十二、三階段行動計畫', minLen: 1500 },
+    ]
+    for (const ch of C_CHAPTER_MIN_LEN) {
+      const m = reportContent.match(ch.pattern)
+      if (!m) {
+        warnings.push(`[軟性][C-v5.10.56 P0] ${ch.name} 章節缺失(regex 抓不到、結構可能改變)`)
+        continue
+      }
+      const bodyLen = m[0].length
+      if (bodyLen < ch.minLen) {
+        warnings.push(`[軟性][C-v5.10.56 P0 章節空殼] ${ch.name} 字數 ${bodyLen} < ${ch.minLen}(prompt 鐵律未執行、客戶級空殼 bug、對應 lesson #076)`)
+      }
+    }
+    // 練習編號連續性(C 方案同 G15、5 練習 1-5)
+    const cExerciseNums = Array.from(reportContent.matchAll(/###\s*練習\s*([1-9])/g)).map(m => parseInt(m[1], 10))
+    if (cExerciseNums.length > 0) {
+      const expected = [1, 2, 3, 4, 5]
+      const missing = expected.filter(n => !cExerciseNums.includes(n))
+      if (missing.length > 0) {
+        warnings.push(`[軟性][C-v5.10.56 P0 練習跳號] 缺練習 ${missing.join('/')} (實際出現:${cExerciseNums.join(',')})`)
+      }
+    }
+  }
+
   // 3. 禁止字眼檢查（命理報告禁用語）
   const forbiddenPatterns = [
     { pattern: /命中注定/, replacement: '命盤顯示傾向' },
