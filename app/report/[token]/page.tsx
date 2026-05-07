@@ -1666,19 +1666,25 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <span className="text-text-muted/40 text-[10px]" aria-hidden>·</span>
           )}
           <div className="flex items-center gap-2">
-          <a
-            href="#share-card"
-            className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
-            style={{
-              background: 'rgba(155,89,182,0.14)',
-              border: '1px solid rgba(155,89,182,0.35)',
-              color: '#bb8fce',
-            }}
-            aria-label="分享報告"
-          >
-            <span>📤</span>
-            <span className="hidden sm:inline">分享</span>
-          </a>
+          {/* v5.10.50 P0 修 share-card dead anchor:sticky CTA 加同樣條件
+              真因:share-card div(L4194)只在 !isChumenji && !isRelationship && personalityCard 渲染
+                    但 sticky CTA 分享按鈕(L1668)無條件、D 方案 personalityCard=null = dead anchor
+              修補:同步加條件、D / E / R 不顯示分享按鈕 */}
+          {!isChumenji && !isRelationship && personalityCard?.title && personalityCard?.definition && (
+            <a
+              href="#share-card"
+              className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+              style={{
+                background: 'rgba(155,89,182,0.14)',
+                border: '1px solid rgba(155,89,182,0.35)',
+                color: '#bb8fce',
+              }}
+              aria-label="分享報告"
+            >
+              <span>📤</span>
+              <span className="hidden sm:inline">分享</span>
+            </a>
+          )}
           {report.pdf_url && !isChumenji ? (
             <a
               href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
