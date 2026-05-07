@@ -175,20 +175,43 @@ function classifyD(title: string): ChapterPart {
 function classifyG15(title: string): ChapterPart {
   const t = normalizeTitle(title)
 
+  // v5.10.34 R+8 P0 修(7-LLM 共識「第三+四篇空殼」、L4 + L7 抓):
+  //   原 classifyG15 漏抓「20XX年」「五年總覽」「時運曲線」「行動指引」「寫給」等子章節
+  //   → 第三/四篇折疊區無內容、客戶感覺報告只有一半、付 $59 拿到 < 50% 內容
+  //   修補:加 regex 涵蓋實際 G15 17 章生成、確保所有章節都歸到對應 part
+
+  // 起(qi):認識家族本我、能量結構、互動關係
   if (/能量全貌|家.*全貌|全家.*能量/.test(t)) return 'qi'
   if (/成員互動|互動關係/.test(t)) return 'qi'
+  if (/家族.*結構|家族.*動力|跨代.*業力|跨代.*慣性/.test(t)) return 'qi'
+  if (/角色.*溝通|成員.*角色/.test(t)) return 'qi'
 
-  if (/好的地方|家庭.*優勢/.test(t)) return 'cheng'
+  // 承(cheng):家族各領域現況(財務/健康/風水/教育)+ 好壞分析
+  if (/好的地方|家庭.*優勢|家族.*優勢/.test(t)) return 'cheng'
   if (/需要注意|需注意|挑戰/.test(t)) return 'cheng'
   if (/溝通模式|家庭溝通/.test(t)) return 'cheng'
-  if (/親子教養|教養/.test(t)) return 'cheng'
+  if (/親子教養|^教養$|教養方向|教養角色/.test(t)) return 'cheng'
+  if (/家族.*財務|財務命脈|金錢心理/.test(t)) return 'cheng'
+  if (/家族.*健康|身心健康/.test(t)) return 'cheng'
+  if (/家族.*風水|環境.*風水/.test(t)) return 'cheng'
+  if (/家族.*教育|教育.*傳承/.test(t)) return 'cheng'
+  // 父母 / 親子 子章節
+  if (/父母.*角色|父母.*教養|親子.*衝突/.test(t)) return 'cheng'
+  if (/天賦特質|天賦.*一句話/.test(t)) return 'cheng'
 
+  // 轉(zhuan):時間軸 / 流年 / 五年總覽
   if (/家族流年|流年運勢|家族.*\d{4}/.test(t)) return 'zhuan'
+  if (/^20\d{2}年|^20\d{2}\s*[(（]/.test(t)) return 'zhuan' // 「2026年」「2026 (丙午年)」
+  if (/五年總覽|五年.*總覽|流年總覽|家族.*時間軸|時運.*流轉|時運曲線|未來展望/.test(t)) return 'zhuan'
+  if (/家族.*發展.*階段|Erikson|發展時間軸/.test(t)) return 'zhuan'
 
-  if (/改善建議|改善方案/.test(t)) return 'he'
+  // 合(he):行動 / 改善 / 寫給你
+  if (/改善建議|改善方案|改善.*計畫/.test(t)) return 'he'
   if (/刻意練習/.test(t)) return 'he'
-  if (/家族行動|行動指南|家庭行動/.test(t)) return 'he'
-  if (/寫給這個家|寫給.*家|給這個家/.test(t)) return 'he'
+  if (/家族行動|行動指南|行動指引|家庭行動|行動.*計畫/.test(t)) return 'he'
+  if (/寫給這個家|寫給.*家|給這個家|寫給你們/.test(t)) return 'he'
+  if (/家族.*故事|故事重寫|敘事治療|外化問題|替代故事/.test(t)) return 'he'
+  if (/總結|總.*行動|集大成/.test(t)) return 'he'
 
   return 'cheng'
 }
