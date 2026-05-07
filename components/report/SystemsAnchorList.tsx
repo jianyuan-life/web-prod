@@ -61,9 +61,14 @@ export default function SystemsAnchorList({ analyses = [] }: Props) {
           const bm = getBenchmark(a.score)
           const insight = getInsight(a.system, a.score)
           return (
+            // v5.10.49 P0 修(老闆抓 14 dead anchor、v5.10.46 sys-XXX id 修補沒生效真因):
+            //   C 方案章節 title 是「二、你是什麼樣的人」整合多系統、沒「八字四柱」獨立章節
+            //   原 href={`#sys-${slugify(系統名)}`} 在 production 0 對應 target = 14 連結全 dead
+            //   修補:nav 全部跳 #systems-radar-title(SystemsRadar 14 系統評分區、已存在 id)
+            //   客戶點任一系統 nav → 跳評分 radar 看完整 14 系統表
             <a
               key={a.system}
-              href={`#sys-${slugify(a.system)}`}
+              href="#systems-radar-title"
               className="systems-anchor-link px-3 py-2.5 rounded-lg block"
               style={{
                 background: 'rgba(0,0,0,0.20)',
