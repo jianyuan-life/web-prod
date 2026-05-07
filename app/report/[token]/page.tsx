@@ -3987,6 +3987,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             const sStyle = sectionStyles[sec.type]
             const tldr = extractTLDR(sec.content, 70)
 
+            // v5.10.46 P0 修(QA Agent 抓 14 個 sys-XXX dead anchor、SystemsAnchorList 跳轉全失效):
+            //   nav `href="#sys-八字四柱"` / "#sys-紫微斗數" 等 14 系統章節錨點、production 0 個 id 對應
+            //   修補:章節 title 含系統名 → 自動加 id="sys-{系統名}"(slugify 對齊 SystemsAnchorList:66)
+            const SYS_NAMES = ['八字四柱', '八字', '紫微斗數', '紫微', '奇門遁甲', '奇門', '風水', '西洋占星', '占星', '吠陀占星', '吠陀', '姓名學', '姓名', '易經', '人類圖', '塔羅牌', '塔羅', '數字能量學', '數字', '古典占星', '古典', '生肖運勢', '生肖', '生物節律', '節律', '南洋術數', '南洋']
+            const sysSlugify = (s: string) => s.replace(/[\s/]+/g, '-').toLowerCase()
+            let sysId: string | undefined
+            for (const name of SYS_NAMES) {
+              if (sec.title.includes(name)) {
+                sysId = `sys-${sysSlugify(name)}`
+                break
+              }
+            }
+
             // v5.7.54 章首 pullQuote 摘要 box(8 sub-agent 共識 P0 — F-pattern anchor)
             // 取代原 TL;DR 灰字 italic、改成有底色 + 左金邊 + 大字、視覺 anchor 強
             const tldrNode = tldr ? (
@@ -4071,19 +4084,22 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               ? 'linear-gradient(135deg, rgba(15, 22, 40, 0.45), rgba(15, 22, 40, 0.30))'
               : 'linear-gradient(135deg, rgba(15, 22, 40, 0.60), rgba(15, 22, 40, 0.42))'
             return (
-              <CollapsibleSection
-                key={globalIdx}
-                id={`sec-${globalIdx}`}
-                title={sec.title}
-                titleColor="var(--color-gold)"
-                defaultExpanded={true}
-                className="glass"
-                style={{ borderLeft: `4px solid ${accentColor}`, background: stripeBg }}
-              >
-                {tldrNode}
-                <div className="report-p">
-                  <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
-                </div>
+              <>
+                {/* v5.10.46 P0 修(QA Agent 抓 14 sys-XXX dead anchor):章節 title 含系統名 → sentinel span 加 sys-id */}
+                {sysId && <span id={sysId} className="scroll-mt-24 block" />}
+                <CollapsibleSection
+                  key={globalIdx}
+                  id={`sec-${globalIdx}`}
+                  title={sec.title}
+                  titleColor="var(--color-gold)"
+                  defaultExpanded={true}
+                  className="glass"
+                  style={{ borderLeft: `4px solid ${accentColor}`, background: stripeBg }}
+                >
+                  {tldrNode}
+                  <div className="report-p">
+                    <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
+                  </div>
                 {/* v5.8.6 撤回 v5.8.3 章節 mini bar(過度視覺、GPT-4o 因 clutter 降分) */}
                 {/* v5.7.86 章節末「💡 這對你的意義」自動 callout(從 sec.title 推 context、Claude 共識 #2 +12-14) */}
                 <div className="mt-5 px-4 py-3 rounded-lg" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.2)' }}>
@@ -4118,7 +4134,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     })()}
                   </div>
                 </div>
-              </CollapsibleSection>
+                </CollapsibleSection>
+              </>
             )
           }
 
