@@ -660,10 +660,11 @@ function renderInlineMarkdown(text: string): string {
     .replace(/\n*\[\s*\n*\s*\{\s*"(?:rank|week|title|date|time_start|time_end|direction|reason)"[\s\S]+$/g, '')
     // 額外保險:單一 timing object 在段落內外洩(規避上面 array 截斷的邊界)
     .replace(/\{\s*"rank"\s*:\s*\d+[\s\S]*?"plain_purpose"\s*:\s*\[[\s\S]*?\]\s*\}\s*,?\s*/g, '')
-    // v5.10.37 R+8 P0 修(V Gemini Vision 98 PASS、但留 finding「整段 ** 過密失聚焦」):
-    //   若 ** 內容 > 50 字 = AI 把整段包 strong、render 後變大面積 highlight 失重點
-    //   修補:長 ** 改 plain text(去掉 ** 但不變 strong)、短 ** 才保留強調
-    .replace(/\*\*(.+?)\*\*/g, (_m, inner) => inner.length > 50 ? inner : `<strong class="report-bold">${inner}</strong>`)
+    // v5.10.38 R+8 revert v5.10.37(對應 lesson #073「退步立即 revert」):
+    //   v5.10.37 把 > 50 字 ** 降 plain text、結果 V Kimi 92→89(-3)、V Gemini 98→97(-1)、平均退步 1.33
+    //   Vision LLM 主觀偏好衝突:Gemini 覺得 highlight 過密 / Kimi 覺得重點不夠突出
+    //   依 lesson #073 鐵律 revert、回 v5.10.36 平均 93.33 baseline、accept 為里程碑
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
     // 斜體（排除已被粗體處理的 **）
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
     // 行內程式碼
