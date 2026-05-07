@@ -3642,7 +3642,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
         {/* ──── 吉時卡片（出門訣 E1=Top3 / E2=每週Top1）──── */}
         {isChumenji && top5Timings.length > 0 && (
-          <div className="mb-8">
+          <div id="pdf-or-calendar" className="mb-8 scroll-mt-24">
+            {/* v5.10.51 P0 修 dead anchor:出門訣方案的「最佳出行時機」section 加 id="pdf-or-calendar"
+                真因:sticky CTA「行事曆」按鈕(page.tsx:1704)指向 #pdf-or-calendar、但原 div 條件 isShowingSummary && pdf_url && !isChumenji 與按鈕條件相反
+                修補:出門訣方案這個 section 也帶同 id、客戶點「行事曆」按鈕跳到本區看 8 吉時 / Top3 / 12 月盤 */}
             <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-lg flex items-center justify-center text-xl" style={{ background: 'rgba(197,150,58,0.15)' }}>🧭</div>
               <div>
