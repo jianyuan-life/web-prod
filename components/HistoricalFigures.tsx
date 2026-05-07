@@ -23,14 +23,22 @@ export default function HistoricalFigures({ onSelect }: HistoricalFiguresProps) 
   const [loaded, setLoaded] = useState(false)
 
   // 載入用戶過去輸入過的資料（從歷史報告提取，去重）
+  // v5.10.30 R+8 P0 修(7-LLM 共識「/api/reports 401」、L7 DeepSeek 抓 console error):
+  //   原邏輯 fetch /api/reports?email=... 沒帶 Authorization header → API 401 拒絕
+  //   修補:用 supabase.auth.getSession 取 access_token、加 Bearer header
   useEffect(() => {
     if (loaded) return
     setLoaded(true)
-    // 先取得用戶 email，再查詢歷史報告
-    supabase.auth.getUser().then(({ data }) => {
-      const email = data.user?.email
-      if (!email) return
-      return fetch(`/api/reports?email=${encodeURIComponent(email)}`)
+    // 先取得用戶 session(含 email + access_token)、再查詢歷史報告
+    supabase.auth.getSession().then(({ data }) => {
+      const session = data.session
+      const email = session?.user?.email
+      const token = session?.access_token
+      if (!email || !token) return
+      return fetch(`/api/reports?email=${encodeURIComponent(email)}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
+      })
     })
       .then(r => r?.ok ? r.json() : null)
       .then(data => {
