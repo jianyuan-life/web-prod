@@ -24,6 +24,9 @@ export interface PartMeta {
   icon: string         // Unicode 符號（不使用 emoji）
 }
 
+// v5.10.35 R+8 P0 修(V3 GPT-4o Vision「icon 統一性不夠」共識):
+//   原 ◆ ◇ ◐ ◈ 4 個不同字符視覺不一、L3 detail=high 扣分
+//   修補:統一為「實心圓 ●」+ 數字、保留起承轉合語意但視覺一致
 export const PART_META: Record<ChapterPart, PartMeta> = {
   qi: {
     key: 'qi',
@@ -31,7 +34,7 @@ export const PART_META: Record<ChapterPart, PartMeta> = {
     name: '生命藍圖 — 認識本我',
     stage: '起',
     tldr: '建立「我是誰」的全面認知——本質特徵、與時間無關',
-    icon: '◆',
+    icon: '❶',
   },
   cheng: {
     key: 'cheng',
@@ -39,7 +42,7 @@ export const PART_META: Record<ChapterPart, PartMeta> = {
     name: '人生軌跡 — 發展與現況',
     stage: '承',
     tldr: '將「本我」延伸至各領域現況——事業/財富/感情/健康',
-    icon: '◇',
+    icon: '❷',
   },
   zhuan: {
     key: 'zhuan',
@@ -47,7 +50,7 @@ export const PART_META: Record<ChapterPart, PartMeta> = {
     name: '時運流轉 — 未來展望',
     stage: '轉',
     tldr: '聚焦時間性分析——大運、流年、關鍵時機',
-    icon: '◐',
+    icon: '❸',
   },
   he: {
     key: 'he',
@@ -55,7 +58,7 @@ export const PART_META: Record<ChapterPart, PartMeta> = {
     name: '行動指引 — 總結與實踐',
     stage: '合',
     tldr: '融會貫通前三篇——具體行動、風險規避、心態調整、溫暖收尾',
-    icon: '◈',
+    icon: '❹',
   },
 }
 

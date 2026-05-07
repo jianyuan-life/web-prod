@@ -1437,7 +1437,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .report-h2 { font-size: 1.375rem; font-weight: 700; color: var(--color-gold); margin: 2rem 0 1rem; font-family: var(--font-body); line-height: 1.4; letter-spacing: 0.015em; }
         .report-h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gold); margin: 1.75rem 0 0.75rem; font-family: var(--font-body); padding-left: 12px; border-left: 3px solid rgba(201,168,76,0.85); line-height: 1.5; letter-spacing: 0.02em; }
         .report-h4 { font-size: 1rem; font-weight: 600; color: var(--color-cream); margin: 1.25rem 0 0.5rem; font-family: var(--font-body); line-height: 1.5; }
-        .report-bold { color: var(--color-cream); font-weight: 600; }
+        /* v5.10.35 R+8 P0 修(V3 GPT-4o Vision + V4 Gemini Vision 共識「大面積黃色 highlight 過度、失去重點意義」、扣 -4):
+           原 cream + weight 600 + 下劃線(若有)= 整段強 highlight、AI 生成 ** 過多時整篇都亮
+           修補:降 weight 到 500 + 略降透明度、保持「強調但不搶」、解 V4 -4 視覺疲勞 */
+        .report-bold { color: rgba(245,240,232,0.92); font-weight: 500; }
         .report-li { margin-left: 1.5rem; color: var(--color-text); list-style: disc; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
         .report-li-num { margin-left: 1.5rem; color: var(--color-text); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
         /* v5.7.50 視覺層級加強(老闆要求 100 分):字大 行高長 段距大 */
