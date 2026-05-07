@@ -367,6 +367,18 @@ export interface GroupedChapters<T> {
   chapters: T[]
 }
 
+// v5.10.41 R+8 P0 修(老闆抓「五跳九 / 編號亂跳」、本 session 7 LLM 全漏):
+//   AI 生成 17 章用流水中文編號(一~十七)、前端 part 分組後跨篇順序「一二三六七八四五九」混亂
+//   修補:groupChaptersByParts 對每章 title 重編「一二三...」按 part 內順序、跨 part 連續
+const CHINESE_NUMS = ['一','二','三','四','五','六','七','八','九','十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十']
+
+function renumberTitle(title: string, newNum: string): string {
+  // 替換開頭的「N、」中文編號 → 新編號
+  const m = title.match(/^([一二三四五六七八九十]+)([、\.])\s*(.+)$/)
+  if (m) return `${newNum}、${m[3]}`
+  return title
+}
+
 export function groupChaptersByParts<T extends { title: string }>(
   planCode: string,
   chapters: T[],
@@ -384,7 +396,20 @@ export function groupChaptersByParts<T extends { title: string }>(
   }
 
   const order: ChapterPart[] = ['qi', 'cheng', 'zhuan', 'he']
+  // v5.10.41 跨 part 連續重編章節編號(一二三...)、避免「五跳九」客戶投訴
+  let counter = 0
   return order
     .filter(k => buckets[k].length > 0)
-    .map(k => ({ part: PART_META[k], chapters: buckets[k] }))
+    .map(k => ({
+      part: PART_META[k],
+      chapters: buckets[k].map(ch => {
+        // 只重編「N、章節名」格式、非編號標題保留(如「家族動力全貌圖」)
+        if (/^[一二三四五六七八九十]+[、\.]/.test(ch.title)) {
+          counter++
+          const newTitle = renumberTitle(ch.title, CHINESE_NUMS[counter - 1] || String(counter))
+          return { ...ch, title: newTitle } as T
+        }
+        return ch
+      }),
+    }))
 }
