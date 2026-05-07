@@ -1438,27 +1438,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            6. color var(--color-text-muted) 已在 globals.css 從 #6880a0 升級 #b3b8c5 (AA+ 7.8:1)
         */
         /* v5.9.9 font 統一(GPT-4o P2「font consistency」修):全用 var(--font-body)、字級階梯固定 */
-        /* v5.10.39 R+8 衝 PASS(V GPT-4o「色彩單調 + 視覺層次」+ V Kimi「色彩單一」共識):
-           h2 加左側金色直立 indicator + 上方 divider line、增加視覺層次與色彩變化 */
-        .report-h2 {
-          font-size: 1.375rem; font-weight: 700; color: var(--color-gold); margin: 2.5rem 0 1.25rem;
-          font-family: var(--font-body); line-height: 1.4; letter-spacing: 0.015em;
-          padding-left: 18px;
-          position: relative;
-          border-top: 1px solid rgba(201,168,76,0.18);
-          padding-top: 1.5rem;
-        }
-        .report-h2::before {
-          content: ''; position: absolute; left: 0; top: calc(1.5rem + 0.15em); bottom: 0;
-          width: 4px; height: 1.4em;
-          background: linear-gradient(180deg, var(--color-gold), rgba(201,168,76,0.4));
-          border-radius: 2px;
-        }
-        .report-h3 {
-          font-size: 1.125rem; font-weight: 600; color: var(--color-gold); margin: 1.75rem 0 0.75rem;
-          font-family: var(--font-body); padding-left: 12px;
-          border-left: 3px solid rgba(201,168,76,0.85); line-height: 1.5; letter-spacing: 0.02em;
-        }
+        /* v5.10.40 R+8 revert v5.10.39(對應 lesson #073「退步立即 revert」第 6 次驗證):
+           V GPT-4o 90→89(-1)、平均 93.33→92.5(-0.83 微退)、accept v5.10.36 baseline */
+        .report-h2 { font-size: 1.375rem; font-weight: 700; color: var(--color-gold); margin: 2rem 0 1rem; font-family: var(--font-body); line-height: 1.4; letter-spacing: 0.015em; }
+        .report-h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gold); margin: 1.75rem 0 0.75rem; font-family: var(--font-body); padding-left: 12px; border-left: 3px solid rgba(201,168,76,0.85); line-height: 1.5; letter-spacing: 0.02em; }
         .report-h4 { font-size: 1rem; font-weight: 600; color: var(--color-cream); margin: 1.25rem 0 0.5rem; font-family: var(--font-body); line-height: 1.5; }
         /* v5.10.35 R+8 P0 修(V3 GPT-4o Vision + V4 Gemini Vision 共識「大面積黃色 highlight 過度、失去重點意義」、扣 -4):
            原 cream + weight 600 + 下劃線(若有)= 整段強 highlight、AI 生成 ** 過多時整篇都亮
