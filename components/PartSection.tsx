@@ -162,17 +162,26 @@ export default function PartSection({
         </div>
       </button>
 
-      {/* 章節內容（摺疊式） */}
-      {expanded && (
-        <div
-          className="pl-0 sm:pl-4"
-          style={{
-            animation: 'fadeIn 0.3s ease',
-          }}
-        >
-          {children}
-        </div>
-      )}
+      {/* 章節內容(摺疊式)
+          v5.10.54 P0 修 R sec-3..8 + G15 sec-4..10 dead anchor 真因:
+            原 `{expanded && (<>{children}</>)}` conditional render、折疊時 children 完全不在 DOM
+            zhuan/he part 預設折疊、其 chapter id={`sec-${globalIdx}`} 在初始 render 不在 DOM
+            nav 9 hrefs vs chapter id 只 3 個(qi+cheng)、6 個 dead = zhuan/he 折疊
+          修補:children 永遠 render、用 CSS height/overflow 折疊(對齊 CollapsibleSection L113-130 設計) */}
+      <div
+        className="pl-0 sm:pl-4"
+        style={{
+          animation: expanded ? 'fadeIn 0.3s ease' : undefined,
+          height: expanded ? 'auto' : 0,
+          overflow: 'hidden',
+          opacity: expanded ? 1 : 0,
+          transition: 'opacity 0.3s ease',
+          pointerEvents: expanded ? 'auto' : 'none',
+        }}
+        aria-hidden={!expanded}
+      >
+        {children}
+      </div>
 
       <style jsx>{`
         @keyframes fadeIn {
