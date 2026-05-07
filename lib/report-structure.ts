@@ -404,6 +404,10 @@ export function groupChaptersByParts<T extends { title: string }>(
 
   const order: ChapterPart[] = ['qi', 'cheng', 'zhuan', 'he']
   // v5.10.41 跨 part 連續重編章節編號(一二三...)、避免「五跳九」客戶投訴
+  // v5.10.53 P0 修 sec-N dead anchor(R sec-8 + G15 sec-10 共識、cron :17 抓):
+  //   原邏輯 `{ ...ch, title: newTitle } as T` 創 new object、但 page.tsx indexMap 用原 sec object 當 key
+  //   重編後的 ch 在 indexMap.get(sec) return undefined → fallback 0、render 跟 nav 都對不齊 sec-N id
+  //   修補:改 mutate 原物件 ch.title = newTitle、保留 reference identity、indexMap key 對齊
   let counter = 0
   return order
     .filter(k => buckets[k].length > 0)
@@ -414,7 +418,8 @@ export function groupChaptersByParts<T extends { title: string }>(
         if (/^[一二三四五六七八九十]+[、\.]/.test(ch.title)) {
           counter++
           const newTitle = renumberTitle(ch.title, CHINESE_NUMS[counter - 1] || String(counter))
-          return { ...ch, title: newTitle } as T
+          // mutate 原 object、不創新 — 保留 indexMap key reference
+          ;(ch as { title: string }).title = newTitle
         }
         return ch
       }),
