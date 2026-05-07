@@ -1850,11 +1850,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           })()
 
           return (
-            <div className="rounded-2xl px-5 py-5 mb-4" style={{
+            // v5.10.45 P0 修(QA Agent 抓 19/19 dead anchor、跨 5 份 C 報告共識):
+            //   nav 連結 #sec-personality / sec-talents / sec-challenges / sec-first-impression / sec-trueself 都 SSR 0 個 id 對應
+            //   修補:命格名片精華卡 root 容器加 5 個 id(用 multiple id 不可、改用 5 個 sentinel <span> 兄弟)、解 19 dead anchor
+            <div id="sec-personality" className="rounded-2xl px-5 py-5 mb-4 scroll-mt-24" style={{
               background: 'linear-gradient(135deg, rgba(26,42,74,0.85), rgba(15,22,40,0.92))',
               border: '1.5px solid rgba(197,150,58,0.45)',
               boxShadow: '0 0 40px rgba(197,150,58,0.12)',
             }}>
+              {/* v5.10.45 sentinel anchors:命格名片精華卡內、4 個 nav 連結都跳本卡 */}
+              <span id="sec-first-impression" />
+              <span id="sec-trueself" />
+              <span id="sec-talents" />
+              <span id="sec-challenges" />
               {/* 卡片標題 */}
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-gold/20">
                 <div className="text-gold/75 text-[11px] tracking-[3px] font-semibold flex items-center gap-2">
