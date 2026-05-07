@@ -97,14 +97,15 @@ export function BackToTopButton() {
 
 // #14 閱讀時間估算
 // v5.7.65 修 Gemini P2「339 分鐘語意不明」:reading speed 450→1000 chars/min(中文輕度閱讀)、完整版 cap 120 分鐘
-// 範本:「精華 10 分 · 完整 N 分」雙入口呈現,降低閱讀門檻
+// v5.10.29 R+8 P0 修(7 LLM 共識「8 分 / 25 分單位不清」):加「分鐘」單位、避免被誤讀為「8/100 滿意度」
+// 範本:「精華 10 分鐘 · 完整 N 分鐘」雙入口呈現,降低閱讀門檻
 export function ReadingTime({ textLength }: { textLength: number }) {
   const rawMin = Math.max(5, Math.ceil(textLength / 1000))  // 1000 chars/min realistic 中文輕讀
   const minutes = Math.min(120, rawMin)  // cap 120 min(避免 339 等不切實際數)
   const essenceMin = Math.min(15, Math.max(8, Math.round(minutes / 8)))
   return (
     <span className="text-text-muted/60 text-xs">
-      精華 {essenceMin} 分 · 完整版 {minutes} 分
+      精華 {essenceMin} 分鐘 · 完整版 {minutes} 分鐘
     </span>
   )
 }

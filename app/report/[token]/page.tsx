@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import pkg from '../../../package.json'
 // v5.3.43 移除 isomorphic-dompurify static import：
 //   該套件 dist/index.mjs 在 module load 時執行 `new JSDOM(...)` 初始化 window，
 //   Vercel Fluid Compute 下 jsdom native deps 常 bundle 失敗 → page.tsx 整個模組
@@ -4073,7 +4074,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       if (/節律|生物節律|波形/.test(t)) return '本章節提供「身體/情緒/智力」3 條曲線 — 對照當下狀態安排重要任務時段'
                       if (/南洋|生肖|九星/.test(t)) return '本章節是「文化補充視角」— 跟主流系統交叉、共識度 ≥ 3 套才採信'
                       if (/總結|TOP|建議|行動|練習/.test(t)) return '本章節是「立即可用」的具體行動 — 挑 1-2 條本週執行、累積 21 天形成新習慣'
-                      return '本章節結論可對照「命格綜合評分」與「2026 決策日曆」交叉應用、轉化為具體行動'
+                      // v5.10.29 G15 家族藍圖專屬分支(R+8 修「💡 這對你的意義」17 處 dead link 指向不存在章節 P0、跨家 4 LLM 共識)
+                      if (/能量全貌|家族|三人動力|生剋鏈/.test(t)) return '本章節揭示家族能量的「先天結構」— 看完後對照後續具體章節找互動模式、不要在火氣旺月份做重大決策'
+                      if (/夫妻|配偶|婚姻|相處/.test(t)) return '本章節聚焦「兩人互動關鍵」— 重點放在每週「不談孩子的 15 分鐘對話」、修補溝通盲點'
+                      if (/父子|父女|爸爸.*兒子|爸爸.*女兒/.test(t)) return '本章節揭示「父子(女)能量結構」— 重點建立「被信任的權威」而非「被恐懼的權威」、減少青春期衝突'
+                      if (/母子|母女|媽媽.*兒子|媽媽.*女兒/.test(t)) return '本章節揭示「母子(女)情感連結」— 善用天然親密期(0-6 歲依附期)、避免變成過度保護'
+                      if (/教養|管教|親子衝突|親子界線/.test(t)) return '本章節提供「分齡教養 SOP」— 對應孩子當前年齡、選具體可執行的兩條建議落地'
+                      if (/溝通|家庭溝通|對話/.test(t)) return '本章節給「夫妻/親子溝通模板」— 套用「我需要 / 你做對的地方 / 一起討論」三段式、避免暗示溝通'
+                      if (/流年|2026|2027|2028|2029|2030|衝刺年|黃金年|調整年|回歸年/.test(t)) return '本章節標示家族「年度能量起伏」— 黃金年放手做大事、調整年穩住節奏、衝突高峰月提前準備暫停機制'
+                      if (/總覽|關鍵詞|決策窗口|挑戰/.test(t)) return '本章節是「家族未來 5 年的策略地圖」— 標出最佳決策時機 + 風險點、提前 1-2 年準備'
+                      // 通用 fallback(R+8 修:不再指向不存在章節、改為動態章節標題)
+                      return `本章節結論建議跟其他章節交叉對照、轉化為本週可執行的 1-2 條具體行動`
                     })()}
                   </div>
                 </div>
@@ -4368,7 +4379,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     <span>·</span>
                     <span>Generated for: {report.client_name}</span>
                     <span>·</span>
-                    <span>AI Engine v5.10.9</span>
+                    {/* v5.10.29 R+8 P0 修:AI Engine 版本動態取自 package.json、不再寫死 v5.10.9(對應 4 家 LLM 共識「同頁兩版本不一致」) */}
+                    <span>AI Engine v{pkg.version}</span>
                   </p>
                 )}
               </>
