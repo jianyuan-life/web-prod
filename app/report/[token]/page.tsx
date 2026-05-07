@@ -660,7 +660,10 @@ function renderInlineMarkdown(text: string): string {
     .replace(/\n*\[\s*\n*\s*\{\s*"(?:rank|week|title|date|time_start|time_end|direction|reason)"[\s\S]+$/g, '')
     // 額外保險:單一 timing object 在段落內外洩(規避上面 array 截斷的邊界)
     .replace(/\{\s*"rank"\s*:\s*\d+[\s\S]*?"plain_purpose"\s*:\s*\[[\s\S]*?\]\s*\}\s*,?\s*/g, '')
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="report-bold">$1</strong>')
+    // v5.10.37 R+8 P0 修(V Gemini Vision 98 PASS、但留 finding「整段 ** 過密失聚焦」):
+    //   若 ** 內容 > 50 字 = AI 把整段包 strong、render 後變大面積 highlight 失重點
+    //   修補:長 ** 改 plain text(去掉 ** 但不變 strong)、短 ** 才保留強調
+    .replace(/\*\*(.+?)\*\*/g, (_m, inner) => inner.length > 50 ? inner : `<strong class="report-bold">${inner}</strong>`)
     // 斜體（排除已被粗體處理的 **）
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
     // 行內程式碼
