@@ -1448,8 +1448,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         /* 內文段落自限 800px 維持 32-38 漢字/行 */
         .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 800px; margin-bottom: 1.5rem; }
         .report-p > p + p { margin-top: 1.25rem; }
-        /* v5.7.50 強化粗體視覺 */
-        .report-p strong, .report-p b { color: #d4af37; font-weight: 600; }
+        /* v5.7.50 強化粗體視覺(v5.10.36 R+8 P0 修:Vision LLM 共識「整段金色 highlight 過度、變區塊背景色失去引導」)
+           原 #d4af37 金色 + 600 = AI ** 過多時整段金色失重點
+           修補:cream 略亮 + 500、提供「強調」但不再是金色背景感 */
+        .report-p strong, .report-p b { color: rgba(245,240,232,0.95); font-weight: 500; }
         /* v5.7.50 引用塊更高質感 */
         .report-p blockquote { border-left: 3px solid rgba(212,175,55,0.5); background: rgba(212,175,55,0.04); padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; }
         /* v5.10.26 R+1 G15 字號 + 行高 + 段距微調(共識項:Haiku P1「字號 12-14px 過小」+ Gemini Round 1「字級略小」)
@@ -1462,6 +1464,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         @media (max-width: 640px) {
           .is-family .report-p, .is-family .report-li, .is-family .report-li-num { font-size: 1.125rem; line-height: 1.9; }
           .is-family .report-h3 { font-size: 1.1rem !important; }
+          /* v5.10.36 R+8 P0 修(Vision LLM 共識「mobile padding 不足、數值貼邊」、V Gemini -1):
+             加 mobile container horizontal padding、讓內容跟邊緣保持 14px 呼吸感 */
+          .report-p, .report-li, .report-li-num { padding-left: 4px; padding-right: 4px; }
+          .glass { padding-left: 18px !important; padding-right: 18px !important; }
         }
         /* v5.7.38 表格 break-out:大螢幕 14 欄矩陣表撐到 viewport 95vw、容器外置中
            小螢幕(< 1024px)維持容器內 100% + horizontal scroll */
