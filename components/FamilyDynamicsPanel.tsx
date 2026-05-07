@@ -87,14 +87,20 @@ function detectPairRelation(memberA: string, memberB: string, aiContent: string)
   return 'neutral'
 }
 
-// 從 AI 報告推導成員角色（決策者/協調者/執行者/情緒穩定器）
+// 從 AI 報告推導成員角色（決策者/協調者/執行者/情緒穩定器/能量源/新生力）
+// v5.10.32 R+8 P0 修(7-LLM 共識「何宥諄角色矩陣空白」、L4 Gemini Vision 抓):
+//   原 4 種角色 keyword 對 3 歲幼兒不適用、容易留空白
+//   修補:加「能量源 / 新生力」涵蓋孩子角色 + 空陣列 fallback「家庭成員」中性 placeholder
 function detectRoles(members: Member[], aiContent: string): Record<string, string[]> {
   const result: Record<string, string[]> = {}
   const roleSections = [
     { role: '決策者', keywords: ['決策者', '拍板人', '主導決策', '做決定'] },
-    { role: '協調者', keywords: ['協調者', '和事佬', '橋樑', '翻譯員', '化解衝突'] },
+    { role: '協調者', keywords: ['協調者', '和事佬', '橋樑', '翻譯員', '化解衝突', '翻譯官'] },
     { role: '執行者', keywords: ['執行者', '落地執行', '扛起', '實際做'] },
     { role: '情緒穩定器', keywords: ['穩定器', '情緒中心', '情感地基', '安定劑', '後盾'] },
+    // v5.10.32 新增:涵蓋孩子 / 新生兒角色(對應 G15 三人合報常見定位)
+    { role: '能量源', keywords: ['太陽', '火源', '能量爆發', '動力源', '小太陽', '活火山'] },
+    { role: '新生力', keywords: ['新生力', '成長中', '萌芽', '希望', '未來'] },
   ]
   for (const m of members) {
     if (!m.name) continue
@@ -111,6 +117,10 @@ function detectRoles(members: Member[], aiContent: string): Record<string, strin
           break
         }
       }
+    }
+    // v5.10.32 fallback:若沒命中任何角色、給中性 placeholder「家庭成員」(避免空白角色矩陣)
+    if (result[m.name].length === 0) {
+      result[m.name].push('家庭成員')
     }
   }
   return result
