@@ -608,10 +608,17 @@ function renderInlineMarkdown(text: string): string {
       const firstRow = trList[0] || ''
       const headerRow = firstRow.replace(/<td/g, '<th').replace(/<\/td>/g, '</th>').replace(/style="[^"]*"/g, 'style="padding:10px 14px;border-bottom:2px solid rgba(201,168,76,0.3);font-size:12px;font-weight:600;color:rgba(201,168,76,0.8);text-align:left;white-space:nowrap"')
       const bodyRows = trList.slice(1).join('')
-      // v5.7.52 Sticky Column(Gemini 建議、Notion 範本):第一欄黏住左邊、解 12 月表第一欄截斷
-      // 表頭 + body 第一欄 position:sticky left:0、加陰影標識
-      const headerStickyRow = headerRow.replace(/<th\s+style="([^"]*)"/i, '<th style="$1;position:sticky;left:0;z-index:11;background:rgba(15,22,40,0.95);box-shadow:2px 0 4px rgba(0,0,0,0.3)"')
-      const bodyStickyRows = bodyRows.replace(/<tr([^>]*)><td/g, '<tr$1><td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7;position:sticky;left:0;z-index:10;background:rgba(15,22,40,0.92);box-shadow:2px 0 4px rgba(0,0,0,0.2)"')
+      // v5.10.30 R+8 P0 修(7-LLM 共識「五年總覽年份欄整欄空白」、L4 Gemini Vision 抓):
+      //   原 v5.7.52 sticky column 邏輯產生雙 style attribute bug(舊 .replace 不吃 style="...原"、直接 prepend 第二個 style)
+      //   瀏覽器拿第一個 style 忽略 sticky → 第一欄背景透明 + 文字 invisible
+      //   修補:把 sticky CSS 合併進原有 style attribute(用 capture group + 完整替換)
+      const headerStickyRow = headerRow.replace(/<th\s+style="([^"]*)"/i, (_m, s) =>
+        `<th style="${s};position:sticky;left:0;z-index:11;background:rgba(15,22,40,0.95);box-shadow:2px 0 4px rgba(0,0,0,0.3)"`
+      )
+      // 用 capture style 完整替換、不再產生雙 style attribute
+      const bodyStickyRows = bodyRows.replace(/<tr([^>]*)><td\s+style="([^"]*)"/g, (_m, tr, s) =>
+        `<tr${tr}><td style="${s};position:sticky;left:0;z-index:10;background:rgba(15,22,40,0.92);box-shadow:2px 0 4px rgba(0,0,0,0.2)"`
+      )
       return `<div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:320px;font-size:13px">${headerStickyRow}${bodyStickyRows}</table></div>`
     })
     .replace(/___TABLE_SEP___/g, '')
@@ -4321,7 +4328,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           {(() => {
             const tk = (report as { access_token?: string }).access_token || report.id || ''
             const reportIdShort = tk ? tk.slice(0, 8).toUpperCase() : ''
-            const reportHash = tk ? tk.slice(0, 16) : ''
+            // v5.10.30 R+8 P0 修(7-LLM 共識「Hash 三處不一致」、L7 DeepSeek 抓):
+            //   原 reportHash = tk.slice(0, 16) 看起來像截斷(`9b6edb0a-f1db-44`)、客戶誤以為 bug
+            //   修補:改用「前 8 + ... + 後 4」明顯縮寫格式(`9b6edb0a...e8c8`)、跟 QR URL 完整 token 對應、不再像截斷
+            const reportHash = tk && tk.length >= 12 ? `${tk.slice(0, 8)}...${tk.slice(-4)}` : tk
             const d = new Date(report.created_at)
             const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
             // v5.10.9 R+6 信任基礎(Haiku 86→95 P1):認證命理師 + QR code + 更新日期

@@ -319,6 +319,10 @@ function stripMd(s: string): string {
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
+    // v5.10.30 R+8 P0 修(7-LLM 共識「markdown ** render 失敗」、L4 Gemini Vision 抓):
+    //   原邏輯只清成對 ** / *、若 truncate 切掉閉合 ** 則不成對 ** 殘留為字面顯示
+    //   修補:最後加清所有殘留 * 字符(不成對 / 連續 / 開頭結尾)、徹底消除 ** 字面殘留
+    .replace(/\*+/g, '')
     .replace(/^[「"」"']+|[「"」"']+$/g, '')
     .replace(/[「」]/g, '')
     .trim()
