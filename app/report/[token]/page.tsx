@@ -2302,7 +2302,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {/* v5.10.10 R+8 #1 Mobile 14 套錨點(Gemini 反對「14 套全收合」修):
              首屏顯示 14 套能力評分總覽 + 業界對標、點擊跳轉詳述章節
              Desktop 由 SystemsRadar 主導、本元件 md:hidden */}
-        {!isChumenji && !isRelationship && !isFamily && analysesSummary.length >= 3 && (
+        {/* v5.10.52 P0 修 systems-radar-title dead anchor:D 方案不渲染 SystemsAnchorList
+            真因:D 方案沒有 SystemsRadar 元件(問題解答型、不顯 14 系統評分)、
+                  但 analysesSummary 仍可 ≥ 3、SystemsAnchorList 渲染 → 14 nav 全跳 #systems-radar-title = dead
+            修補:加 report.plan_code !== 'D' 條件、D 不渲染 SystemsAnchorList */}
+        {!isChumenji && !isRelationship && !isFamily && report.plan_code !== 'D' && analysesSummary.length >= 3 && (
           <SystemsAnchorList analyses={analysesSummary} />
         )}
 
