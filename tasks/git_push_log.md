@@ -173,3 +173,41 @@
 - promptfoo eval(初版 yaml):63.6%(7/11)— 因 yaml 沒同步 7 修
 - Vercel deploy:⏳ 等中
 - 老闆驗收:⏳
+
+### 2026-05-08 00:33 | web-prod:main | v5.10.50 | 3adbd9c6+(version bump)
+- 動作:share-card dead anchor P0 修 + version 對齊
+- 改動範圍:2 檔(page.tsx + package.json)
+- 為什麼:Stop hook v2 第一次攔截後 Playwright 抓 D 方案 dead anchor=share-card、sticky CTA 分享按鈕無條件渲染但 share-card div 只 C/G15 渲染
+- type-check:✅
+- Vercel deploy:⏳ 等中
+- 老闆驗收:⏳
+- 工程意義:本 commit 是 stop hook v2 攔截強制續轉後第一個自動化 P0 修補 — 證明工程化解法真生效
+
+### 2026-05-08 00:36 | web-prod:main | v5.10.51 | df2b8a3b
+- 動作:出門訣方案 pdf-or-calendar dead anchor P0 修
+- 改動範圍:2 檔(page.tsx + package.json)
+- 為什麼:Stop hook v2 第二次攔截強制續做、grep 抓出 sticky CTA「行事曆」按鈕(L1704)href=#pdf-or-calendar 在 PDF 按鈕 else 分支、但 div(L3506)條件 isShowingSummary && pdf_url && !isChumenji 與按鈕完全相反 = 出門訣 E1-E4 全 dead anchor。修:出門訣最佳出行時機 section root div 加 id
+- type-check:✅
+- Vercel deploy:⏳ 等中
+- 老闆驗收:⏳
+- 工程意義:Stop hook v2 連續第二次強制續做後抓出第二個 condition mismatch P0 — 證明工程化解法持續產出修補
+
+### 2026-05-08 00:38 | web-prod:main | v5.10.52 | 27afabae
+- 動作:D 方案 systems-radar-title dead anchor P0 修
+- 改動範圍:2 檔(page.tsx + package.json)
+- 為什麼:Stop hook v2 第 3 次攔截後、Playwright 實測 v5.10.50 hard reload 抓出剩 systems-radar-title dead anchor。真因 = SystemsAnchorList(L2305)條件 !isChumenji && !isRelationship && !isFamily 對 D 全 false、D 也會渲染、但 D 沒 SystemsRadar = 14 nav 全 dead。修:條件加 plan_code !== 'D'
+- type-check:✅
+- Vercel deploy:⏳ 等中
+- 累計 stop hook v2 強制續做產出:v5.10.50 + v5.10.51 + v5.10.52 共 3 條 P0(全 condition mismatch 類、沒攔截就停手不做)
+
+---
+
+## stop hook v2 工程化攔截累計成果(2026-05-08)
+
+| # | commit | P0 |
+|:---:|:---:|:---|
+| 1 | 3adbd9c6 | v5.10.50 share-card sticky CTA 條件不齊 |
+| 2 | df2b8a3b | v5.10.51 pdf-or-calendar 出門訣方案缺 id |
+| 3 | 27afabae | v5.10.52 systems-radar-title D 方案誤渲染 SystemsAnchorList |
+
+**工程價值**:同根「為什麼停下來」糾正 7+ 次後、Stop hook v2 用 Anthropic 官方 `{decision:block}` 真攔截、強制 Claude 連續 3 次續做、各抓一條 condition mismatch P0、production 真進步。
