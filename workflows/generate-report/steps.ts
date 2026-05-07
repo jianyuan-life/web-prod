@@ -3290,21 +3290,37 @@ export async function qualityGate(
       warnings.push(`[軟性][G15-v6.0 P0-2] 18 章節缺 ${g15V6MissingCount} 章(可接受、但 v6.0 期望全部 18 章)`)
     }
 
-    // v5.10.44 P0-7 加(Codex Agent 抓「prompt 軟約束、AI 不會自我重跑、客戶 84 字空殼仍 PASS quality gate」根因):
-    // 核心章節必達字數硬擋(老闆抓「五、刻意練習 84 字」就是這個漏洞)
+    // v5.10.47 P0-7 升級(老闆抓「練習編號 1→2→5 跳號 + 章節空殼」第 N 次再犯):
+    //   v5.10.44 regex `## 十三、?\s*刻意練習` 抓不到 AI 改用「### 練習1:」拆章結構
+    //   修補:用 alternative regex 抓 H2「## 十三、刻意練習」OR 整段「### 練習 1-5」累計字數
+    //   + 加練習編號連續性檢查(練習1/2/3/4/5 必須出現、跳號 = P0)
     const G15_CHAPTER_MIN_LEN: Array<{ pattern: RegExp; name: string; minLen: number }> = [
-      { pattern: /##\s*十三、?\s*刻意練習[\s\S]*?(?=##|$)/, name: '十三、刻意練習', minLen: 1000 },
-      { pattern: /##\s*十二、?\s*改善建議[\s\S]*?(?=##|$)/, name: '十二、改善建議', minLen: 1200 },
-      { pattern: /##\s*十、?\s*好的地方[\s\S]*?(?=##|$)/, name: '十、好的地方', minLen: 1000 },
-      { pattern: /##\s*十一、?\s*需要注意[\s\S]*?(?=##|$)/, name: '十一、需要注意的地方', minLen: 1000 },
-      { pattern: /##\s*十四、?\s*家族故事重寫[\s\S]*?(?=##|$)/, name: '十四、家族故事重寫', minLen: 600 },
+      // 「五、刻意練習」/「十三、刻意練習」/「### 練習 1-5」三種格式都抓
+      { pattern: /(?:##\s*(?:十三|五)、?\s*刻意練習|###\s*練習\s*[1-5一二三四五])[\s\S]*?(?=\n##\s|$)/, name: '刻意練習章節', minLen: 1500 },
+      { pattern: /##\s*(?:十二|四)、?\s*改善建議[\s\S]*?(?=##|$)/, name: '改善建議', minLen: 1200 },
+      { pattern: /##\s*(?:十|二)、?\s*好的地方[\s\S]*?(?=##|$)/, name: '好的地方', minLen: 1000 },
+      { pattern: /##\s*(?:十一|三)、?\s*需要注意[\s\S]*?(?=##|$)/, name: '需要注意的地方', minLen: 1000 },
+      { pattern: /##\s*(?:十四|六)、?\s*家族故事重寫[\s\S]*?(?=##|$)/, name: '家族故事重寫', minLen: 600 },
+      { pattern: /##\s*(?:一|一、)、?\s*成員互動[\s\S]*?(?=##|$)/, name: '一、成員互動關係深度分析', minLen: 2500 },
     ]
     for (const ch of G15_CHAPTER_MIN_LEN) {
       const m = reportContent.match(ch.pattern)
-      if (!m) continue // 章節不存在已由 G15_V6_REQUIRED_SECTIONS 處理
+      if (!m) {
+        warnings.push(`${g15Prefix}[G15-v6.0 P0-7] ${ch.name} 章節缺失(regex 抓不到、結構可能改變)`)
+        continue
+      }
       const bodyLen = m[0].length
       if (bodyLen < ch.minLen) {
-        warnings.push(`${g15Prefix}[G15-v6.0 P0-7 章節空殼] ${ch.name} 字數 ${bodyLen} < ${ch.minLen}(prompt 鐵律未執行、Call 3 token 可能吃光)`)
+        warnings.push(`${g15Prefix}[G15-v6.0 P0-7 章節空殼] ${ch.name} 字數 ${bodyLen} < ${ch.minLen}(prompt 鐵律未執行)`)
+      }
+    }
+    // 練習編號連續性檢查(老闆抓 1→2→5 跳號)
+    const exerciseNums = Array.from(reportContent.matchAll(/###\s*練習\s*([1-9])/g)).map(m => parseInt(m[1], 10))
+    if (exerciseNums.length > 0) {
+      const expected = [1, 2, 3, 4, 5]
+      const missing = expected.filter(n => !exerciseNums.includes(n))
+      if (missing.length > 0) {
+        warnings.push(`${g15Prefix}[G15-v6.0 P0-7 練習跳號] 缺練習 ${missing.join('/')} (實際出現:${exerciseNums.join(',')})`)
       }
     }
 
