@@ -159,14 +159,17 @@ function classifyC(title: string): ChapterPart {
 function classifyD(title: string): ChapterPart {
   const t = normalizeTitle(title)
 
-  if (/你的問題|你的答案|10\s*秒內結論|快速結論/.test(t)) return 'qi'
+  // v5.10.44 P0 修(Codex Agent 抓「您 vs 你」字差跨 D / G15 / R 仍存):
+  //   AI 對父母版/中年版/長者版用「您」尊敬詞、原 regex 只抓「你」漏匹配
+  //   修補:全部 regex 加 [你您] character class 兩字都抓
+  if (/[你您]的問題|[你您]的答案|10\s*秒內結論|快速結論/.test(t)) return 'qi'
   if (/深入解析|命格怎麼看/.test(t)) return 'cheng'
   if (/根源剖析|為什麼|根源|卡在|卡住/.test(t)) return 'zhuan'
   if (/需要注意|需注意|該注意|注意的地方/.test(t)) return 'zhuan'
-  if (/你的路|怎麼走出來|出路/.test(t)) return 'he'
+  if (/[你您]的路|怎麼走出來|出路/.test(t)) return 'he'
   if (/好的地方|優勢/.test(t)) return 'he'
   if (/改善建議|改善方案|建議詳解/.test(t)) return 'he'
-  if (/寫給|給你的一句話|收尾/.test(t)) return 'he'
+  if (/寫給|給[你您]的一句話|收尾/.test(t)) return 'he'
 
   return 'cheng'
 }
@@ -211,13 +214,13 @@ function classifyG15(title: string): ChapterPart {
   if (/五年總覽|五年.*總覽|流年總覽|家族.*時間軸|時運.*流轉|時運曲線|未來展望/.test(t)) return 'zhuan'
   if (/家族.*發展.*階段|Erikson|發展時間軸/.test(t)) return 'zhuan'
 
-  // 合(he):行動 / 改善 / 寫給你
+  // 合(he):行動 / 改善 / 寫給你 — v5.10.44 加「您」字
   if (/改善建議|改善方案|改善.*計畫/.test(t)) return 'he'
   if (/刻意練習/.test(t)) return 'he'
   if (/家族行動|行動指南|行動指引|家庭行動|行動.*計畫/.test(t)) return 'he'
-  if (/寫給這個家|寫給.*家|給這個家|寫給你們/.test(t)) return 'he'
+  if (/寫給這個家|寫給.*家|給這個家|寫給[你您]們|寫給[你您]/.test(t)) return 'he'
   if (/家族.*故事|故事重寫|敘事治療|外化問題|替代故事/.test(t)) return 'he'
-  if (/總結|總.*行動|集大成/.test(t)) return 'he'
+  if (/總結|總.*行動|集大成|法務免責/.test(t)) return 'he'
 
   return 'cheng'
 }
@@ -232,15 +235,16 @@ function classifyG15(title: string): ChapterPart {
 function classifyR(title: string): ChapterPart {
   const t = normalizeTitle(title)
 
-  if (/你們的問題|你們的答案|10\s*秒/.test(t)) return 'qi'
-  if (/化學反應|你們的化學/.test(t)) return 'cheng'
+  // v5.10.44 P0 修(Codex Agent 抓「您 vs 你」字差):AI 用「您們」尊敬詞、原 regex 只抓「你們」漏匹配
+  if (/[你您]們的問題|[你您]們的答案|10\s*秒/.test(t)) return 'qi'
+  if (/化學反應|[你您]們的化學/.test(t)) return 'cheng'
   if (/最好的地方|好的地方|優勢/.test(t)) return 'zhuan'
   if (/最該注意|需要注意|注意/.test(t)) return 'zhuan'
-  if (/關係流年|你們的.*\d{4}|流年/.test(t)) return 'zhuan'
+  if (/關係流年|[你您]們的.*\d{4}|流年/.test(t)) return 'zhuan'
 
   if (/改善建議|關係處方|改善方案/.test(t)) return 'he'
   if (/刻意練習/.test(t)) return 'he'
-  if (/寫給你們|寫給.*你們|給你們的話/.test(t)) return 'he'
+  if (/寫給[你您]們|寫給.*[你您]們|給[你您]們的話/.test(t)) return 'he'
 
   return 'cheng'
 }

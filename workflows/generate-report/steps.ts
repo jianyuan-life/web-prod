@@ -3290,6 +3290,24 @@ export async function qualityGate(
       warnings.push(`[軟性][G15-v6.0 P0-2] 18 章節缺 ${g15V6MissingCount} 章(可接受、但 v6.0 期望全部 18 章)`)
     }
 
+    // v5.10.44 P0-7 加(Codex Agent 抓「prompt 軟約束、AI 不會自我重跑、客戶 84 字空殼仍 PASS quality gate」根因):
+    // 核心章節必達字數硬擋(老闆抓「五、刻意練習 84 字」就是這個漏洞)
+    const G15_CHAPTER_MIN_LEN: Array<{ pattern: RegExp; name: string; minLen: number }> = [
+      { pattern: /##\s*十三、?\s*刻意練習[\s\S]*?(?=##|$)/, name: '十三、刻意練習', minLen: 1000 },
+      { pattern: /##\s*十二、?\s*改善建議[\s\S]*?(?=##|$)/, name: '十二、改善建議', minLen: 1200 },
+      { pattern: /##\s*十、?\s*好的地方[\s\S]*?(?=##|$)/, name: '十、好的地方', minLen: 1000 },
+      { pattern: /##\s*十一、?\s*需要注意[\s\S]*?(?=##|$)/, name: '十一、需要注意的地方', minLen: 1000 },
+      { pattern: /##\s*十四、?\s*家族故事重寫[\s\S]*?(?=##|$)/, name: '十四、家族故事重寫', minLen: 600 },
+    ]
+    for (const ch of G15_CHAPTER_MIN_LEN) {
+      const m = reportContent.match(ch.pattern)
+      if (!m) continue // 章節不存在已由 G15_V6_REQUIRED_SECTIONS 處理
+      const bodyLen = m[0].length
+      if (bodyLen < ch.minLen) {
+        warnings.push(`${g15Prefix}[G15-v6.0 P0-7 章節空殼] ${ch.name} 字數 ${bodyLen} < ${ch.minLen}(prompt 鐵律未執行、Call 3 token 可能吃光)`)
+      }
+    }
+
     // P0-3:互動比例 ≥ 50%(v6.0 升、原 v1 是 ≥ 35%)
     if (g15InteractionRatio < 0.50) {
       warnings.push(`${g15Prefix}[G15-v6.0 P0-3] 互動比例過低: ${(g15InteractionRatio * 100).toFixed(0)}%(v6.0 期望 ≥ 50%)`)
