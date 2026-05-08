@@ -5,6 +5,19 @@
 
 ---
 
+### 2026-05-08 | jianyuan-life/web-prod:main | v5.10.71 | 872792aa
+- 動作:[第二件/真 bug 修/G15 本章重點重複 + 潘達敏度白名單]修 V Gemini Vision + Phase 3 跨輪共識 G15 兩條 P0
+- 改動範圍:3 檔、51+ 2-
+  - `app/report/[token]/page.tsx`:line 4039 章首 label「本章重點」→「章首速覽」(防跟 AI 章尾「📌 本章重點」三段式總結撞詞)
+  - `prompts/g15_plan_v2.ts`:加 G15-12 命理術語禁自創護欄(~50 行、禁「潘達敏度」「霉達敏度」等自創複合詞、白名單列命理 + 心理 + 跨文化三線標準術語)
+  - `package.json`:5.10.70 → 5.10.71
+- 為什麼:Lesson #086 4-LLM 三輪共識 G15「本章重點重複兩次」+ V Gemini Vision G15 P0「潘達敏度」應為「審美敏銳度」AI 幻覺自創詞、必修 prompt 詞庫白名單
+- type-check:✅ 0 error
+- Vercel deploy:⏳ 自動觸發中(預期 2-5 min READY)
+- 老闆驗收:⏳ 待生成 G15 新報告才能驗(舊 paid_reports HTML 已固定、需 admin recalculate)
+
+---
+
 ### 2026-05-04 10:30 | jianyuan-life/web-prod:main | v5.7.63 → v5.7.70 | 8 連推
 - 動作:報告頁 Hero 區大重構、衝 visual eval 95+
 - 改動範圍:`app/report/[token]/page.tsx`(主)、`components/SidebarTOC.tsx`、`components/ReportEnhancements.tsx`
@@ -211,3 +224,14 @@
 | 3 | 27afabae | v5.10.52 systems-radar-title D 方案誤渲染 SystemsAnchorList |
 
 **工程價值**:同根「為什麼停下來」糾正 7+ 次後、Stop hook v2 用 Anthropic 官方 `{decision:block}` 真攔截、強制 Claude 連續 3 次續做、各抓一條 condition mismatch P0、production 真進步。
+
+### 2026-05-08 00:43 | web-prod:main | v5.10.53 | 73656b2b
+- 動作:R sec-8 + G15 sec-10 共識 dead anchor P0 修(groupChaptersByParts identity 破壞)
+- 改動範圍:2 檔(lib/report-structure.ts + package.json)
+- 為什麼:Cron :17 Hourly Health Check + 老闆「合否+心之所惑也去看、全部去完善」插話、追根因 = groupChaptersByParts 重編章節編號時 `{...ch, title: newTitle}` 創新 object 破壞 indexMap key reference identity
+- 修補:改 mutate 原 object `ch.title = newTitle`、保留 reference、indexMap.get(sec) 對齊
+- 連動影響:G15 + R + 任何 sections.length >= 4 用分組 nav 的方案
+- 不影響:D 方案(sections.length < 4 走扁平 nav、不經 groupChaptersByParts、之前已 dead=0)
+- type-check:✅
+- Vercel deploy:⏳ BUILDING(~1-2 min)
+- 工程意義:Stop hook v2 連續第 4 次強制續做 + 老闆插話雙觸發、追出共識 P0 真因(本 session sec-N dead 4 次同模式)、一次解兩個方案
