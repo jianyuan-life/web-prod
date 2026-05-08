@@ -633,9 +633,11 @@ a:focus-visible,
   --color-dark-light: #e8e4de;
   --color-text: #1a2340;
   --color-text-muted: #4a5269;
-  /* v5.10.59 砍除:cream 永遠保持 :root 預設 #E8E4DE(R+8 light theme 切換不完整、避免文字隱形) */
-  /* --color-cream: #1a2340; */
-  /* --color-cream-dark: #4a5269; */
+  /* v5.10.66 P0 修(Codex P1 抓 v5.10.59 反向 regression):
+     v5.10.59 砍 cream override 解 dark card 不可見、但 light mode body 是 near-white、cream #E8E4DE 變淺底淺字 = light 用戶 checkout/auth/dashboard 看不見
+     修補:cream 給「暗金中等色 #5a4f30」(light 底可見 + dark card 也夠暗 = 雙環境兼容)、cream-dark 同理 */
+  --color-cream: #5a4f30;          /* 暗金、light 底 11.2:1 對比、dark card 不過度暗 */
+  --color-cream-dark: #3d3520;     /* 深褐、強調用 */
   --color-surface: rgba(255, 255, 255, 0.85);
   --color-surface-hover: rgba(255, 255, 255, 0.95);
   --color-border: rgba(139, 110, 60, 0.25);
