@@ -138,7 +138,14 @@ export default function ActionRecommendations({ talents = [], challenges = [], y
                 </span>
                 <span className="text-text-muted/55 text-[10px]">時段:{a.timing}</span>
               </div>
-              <p className="text-cream text-[13px] sm:text-sm leading-relaxed">{a.text}</p>
+              {/* v5.10.58 P0 修(老闆「逐頁看」截圖抓):text-cream 在 [data-theme=light] 被 globals.css L629 覆蓋成 #1a2340 深藍、文字 + 深底 = 完全不可見、客戶看不到 3 條行動建議 */}
+              <p
+                className="text-[13px] sm:text-sm leading-relaxed"
+                style={{
+                  color: 'rgba(245, 240, 232, 0.95)',  // 不依賴 var(--color-cream)、避免 light theme 覆蓋
+                  fontWeight: 500,
+                }}
+              >{a.text}</p>
             </div>
           </div>
         ))}
