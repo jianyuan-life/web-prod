@@ -3363,7 +3363,12 @@ export async function qualityGate(
 
   // 2f-2. C 方案 quality gate v5.10.56(老闆「逐頁看」抓 C 何宥諄「十五、刻意練習 119 字空殼」、lesson #076 同根再犯)
   // 對齊 G15 v5.10.42/.47 chapter min len + 練習編號連續性
+  // v5.10.57 修(Codex P0):全部 [軟性] 會被 L3429 排除、passed 仍 true、沒真擋。對齊 G15 v2 strict 模式
+  // 用 C_V2_QUALITY_GATE env(v2 啟用)= '' 走 hardFailures、(v1 預設)= '[軟性]' 只 log
   if (planCode === 'C') {
+    const cV2Strict = process.env.C_V2_QUALITY_GATE === 'true'
+    const cPrefix = cV2Strict ? '' : '[軟性]'  // 對齊 G15 v5.10.47 pattern
+
     const C_CHAPTER_MIN_LEN: Array<{ pattern: RegExp; name: string; minLen: number }> = [
       // C 方案章節編號是「十五、刻意練習」(C prompt L1404 寫「十六」、實際 render 重編後變十五)
       { pattern: /(?:##\s*(?:十五|十六)、?\s*刻意練習|###\s*練習\s*[1-5一二三四五])[\s\S]*?(?=\n##\s|$)/, name: '十五、刻意練習', minLen: 1500 },
@@ -3373,12 +3378,12 @@ export async function qualityGate(
     for (const ch of C_CHAPTER_MIN_LEN) {
       const m = reportContent.match(ch.pattern)
       if (!m) {
-        warnings.push(`[軟性][C-v5.10.56 P0] ${ch.name} 章節缺失(regex 抓不到、結構可能改變)`)
+        warnings.push(`${cPrefix}[C-v5.10.56 P0] ${ch.name} 章節缺失(regex 抓不到、結構可能改變)`)
         continue
       }
       const bodyLen = m[0].length
       if (bodyLen < ch.minLen) {
-        warnings.push(`[軟性][C-v5.10.56 P0 章節空殼] ${ch.name} 字數 ${bodyLen} < ${ch.minLen}(prompt 鐵律未執行、客戶級空殼 bug、對應 lesson #076)`)
+        warnings.push(`${cPrefix}[C-v5.10.56 P0 章節空殼] ${ch.name} 字數 ${bodyLen} < ${ch.minLen}(prompt 鐵律未執行、客戶級空殼 bug、對應 lesson #076)`)
       }
     }
     // 練習編號連續性(C 方案同 G15、5 練習 1-5)
@@ -3387,7 +3392,7 @@ export async function qualityGate(
       const expected = [1, 2, 3, 4, 5]
       const missing = expected.filter(n => !cExerciseNums.includes(n))
       if (missing.length > 0) {
-        warnings.push(`[軟性][C-v5.10.56 P0 練習跳號] 缺練習 ${missing.join('/')} (實際出現:${cExerciseNums.join(',')})`)
+        warnings.push(`${cPrefix}[C-v5.10.56 P0 練習跳號] 缺練習 ${missing.join('/')} (實際出現:${cExerciseNums.join(',')})`)
       }
     }
   }
