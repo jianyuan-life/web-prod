@@ -1999,28 +1999,47 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   )}
 
                   {/* 件 4:天賦 Top 3(綠色) */}
-                  {personalityCard.talents.length > 0 && (
-                    <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(106,176,76,0.10)', border: '1px solid rgba(106,176,76,0.30)' }}>
-                      <div className="text-green-400/65 text-[9px] tracking-[2px] mb-1 font-semibold">✓ 天賦 Top 3</div>
-                      <div className="flex flex-wrap gap-1">
-                        {personalityCard.talents.slice(0, 3).map((t, i) => (
-                          <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'rgba(106,176,76,0.18)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.35)' }}>{t.length > 6 ? t.slice(0,6) : t}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* v5.10.75 P0 修(4-LLM Vision 共識:精華卡 talent badge 顯示 raw `| ★★★★`):
+                      AI 把 markdown table cell 寫進 personalityCard.talents、render 直接吐 raw pipe + star
+                      修:render 時 sanitize — 剝 leading/trailing pipe、剝 raw star block(★★★★/★★★★★)、純星級 fallback 用首詞 */}
+                  {(() => {
+                    const sanitizeBadge = (raw: string): string => {
+                      if (!raw) return ''
+                      let s = String(raw).trim()
+                      s = s.replace(/^[|｜\s]+/, '').replace(/[|｜\s]+$/, '')  // 剝前後 pipe
+                      s = s.replace(/[★☆✦✓●◯△♦︎○✿❀✯✰⭐]+/g, '').trim()  // 剝星級符號
+                      s = s.replace(/^\*+\s*/, '').replace(/\s*\*+$/, '')  // 剝 markdown bold
+                      return s.length > 6 ? s.slice(0, 6) : s
+                    }
+                    const cleanTalents = personalityCard.talents.map(sanitizeBadge).filter(t => t.length > 0)
+                    const cleanChallenges = personalityCard.challenges.map(sanitizeBadge).filter(c => c.length > 0)
+                    return (
+                      <>
+                        {cleanTalents.length > 0 && (
+                          <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(106,176,76,0.10)', border: '1px solid rgba(106,176,76,0.30)' }}>
+                            <div className="text-green-400/65 text-[9px] tracking-[2px] mb-1 font-semibold">✓ 天賦 Top 3</div>
+                            <div className="flex flex-wrap gap-1">
+                              {cleanTalents.slice(0, 3).map((t, i) => (
+                                <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'rgba(106,176,76,0.18)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.35)' }}>{t}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                  {/* 件 5:課題 Top 3(橘色)— col-span-2 撐滿 */}
-                  {personalityCard.challenges.length > 0 && (
-                    <div className={`px-3 py-2.5 rounded-lg ${(personalityCard.talents.length === 0 && !mingGong) ? 'col-span-2' : ''}`} style={{ background: 'rgba(224,150,58,0.10)', border: '1px solid rgba(224,150,58,0.30)' }}>
-                      <div className="text-orange-400/65 text-[9px] tracking-[2px] mb-1 font-semibold">⚠ 課題 Top 3</div>
-                      <div className="flex flex-wrap gap-1">
-                        {personalityCard.challenges.slice(0, 3).map((c, i) => (
-                          <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'rgba(224,150,58,0.18)', color: '#e0963a', border: '1px solid rgba(224,150,58,0.35)' }}>{c.length > 6 ? c.slice(0,6) : c}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                        {/* 件 5:課題 Top 3(橘色)— col-span-2 撐滿 */}
+                        {cleanChallenges.length > 0 && (
+                          <div className={`px-3 py-2.5 rounded-lg ${(cleanTalents.length === 0 && !mingGong) ? 'col-span-2' : ''}`} style={{ background: 'rgba(224,150,58,0.10)', border: '1px solid rgba(224,150,58,0.30)' }}>
+                            <div className="text-orange-400/65 text-[9px] tracking-[2px] mb-1 font-semibold">⚠ 課題 Top 3</div>
+                            <div className="flex flex-wrap gap-1">
+                              {cleanChallenges.slice(0, 3).map((c, i) => (
+                                <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'rgba(224,150,58,0.18)', color: '#e0963a', border: '1px solid rgba(224,150,58,0.35)' }}>{c}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
 
