@@ -3361,6 +3361,32 @@ export async function qualityGate(
     warnings.push(`人生藍圖內容偏短: ${reportContent.length} 字（期望 > 20,000 字）`)
   }
 
+  // 2f-3. v5.10.62 14 系統最少引用次數 quality gate(sub-agent strict eval finding)
+  // 真因:G15 何家報告易經/奇門/風水/姓名/吠陀 0-1 次、$59 對外宣稱「14 套交叉」貨不對板
+  //       D 何宣九星 2 次 / 易經 4 次幾乎缺席
+  //       C 何宥諄九星 4 次偏弱
+  // 修補:14 系統各自最少引用次數鐵律、不足 = warnings(prefix [軟性] 不擋舊報告、新報告生效)
+  if (planCode === 'C' || planCode === 'G15' || planCode === 'D') {
+    const SYSTEM_NAMES = [
+      { name: '八字', min: 30 },     // 主力系統、應 ≥ 30 次
+      { name: '紫微', min: 30 },     // 主力系統
+      { name: '吠陀', min: 5 },      // 至少有意義出現
+      { name: '占星', min: 5 },
+      { name: '人類圖', min: 5 },
+      { name: '易經', min: 3 },      // 較少用、寬鬆
+      { name: '奇門', min: 5 },
+      { name: '風水', min: 5 },
+      { name: '姓名', min: 3 },
+      { name: '九星', min: 3 },      // 對應 sub-agent finding C/G15/D 都偏弱
+    ]
+    for (const sys of SYSTEM_NAMES) {
+      const count = (reportContent.match(new RegExp(sys.name, 'g')) || []).length
+      if (count < sys.min) {
+        warnings.push(`[軟性][14 系統不均 P1] ${planCode} 報告「${sys.name}」僅 ${count} 次(期望 ≥ ${sys.min}、貨不對板風險、對應 sub-agent strict eval finding)`)
+      }
+    }
+  }
+
   // 2f-2. C 方案 quality gate v5.10.56(老闆「逐頁看」抓 C 何宥諄「十五、刻意練習 119 字空殼」、lesson #076 同根再犯)
   // 對齊 G15 v5.10.42/.47 chapter min len + 練習編號連續性
   // v5.10.57 修(Codex P0):全部 [軟性] 會被 L3429 排除、passed 仍 true、沒真擋。對齊 G15 v2 strict 模式
