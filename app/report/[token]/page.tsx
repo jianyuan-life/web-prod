@@ -2053,9 +2053,27 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
         {/* v5.9.3 3 層洞察金字塔(Claude TOP 1 共識 +15 分):結論 → 機制 → 行動 */}
         {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && personalityCard.definition && (() => {
+          // v5.10.76 P0(4-LLM Vision 共識:洞察金字塔 + 2026 行動建議區 raw `| ★★★★★ | name | desc |` 殘留):
+          //   AI 把整個 markdown table row 寫進 personalityCard.talents[0]、render 直接吐
+          //   修:sanitizeRow() 拆 row、取「最具語義」cell(優先 name 而非 star)、限長
+          const sanitizeRow = (raw: string): string => {
+            if (!raw) return ''
+            let s = String(raw).trim()
+            // 含 pipe → 拆 cells、取首個非星級 cell(name 通常在第 2 格)
+            if (s.includes('|')) {
+              const cells = s.split('|').map(c => c.trim()).filter(c => c.length > 0)
+              const isStarOnly = (x: string) => /^[★☆✦●◯△♦︎○✿❀✯✰⭐\s]+$/.test(x)
+              // 找首個非純星級 cell
+              const nameCell = cells.find(c => !isStarOnly(c) && c.length > 0)
+              s = nameCell || cells[0] || ''
+            }
+            // 剝 markdown bold / 殘星
+            s = s.replace(/^\*+\s*|\s*\*+$/g, '').replace(/[★☆✦●◯△♦︎○✿❀✯✰⭐]+/g, '').trim()
+            return s
+          }
           const conclusion = personalityCard.definition.slice(0, 60)
-          const topTalent = personalityCard.talents[0] || ''
-          const topChallenge = personalityCard.challenges[0] || ''
+          const topTalent = sanitizeRow(personalityCard.talents[0] || '')
+          const topChallenge = sanitizeRow(personalityCard.challenges[0] || '')
           const yearTheme = personalityCard.yearTheme || ''
           const today = new Date()
           const m = today.getMonth() + 1
