@@ -620,14 +620,22 @@ a:focus-visible,
 }
 
 /* R+8 #13 Light mode 變數 (預設 dark、light 為可選切換)
- * 用 [data-theme="light"] 蓋掉 :root 變數、不破壞既有 dark 設計 */
+ * 用 [data-theme="light"] 蓋掉 :root 變數、不破壞既有 dark 設計
+ *
+ * v5.10.59 P0 修(老闆「逐頁看」截圖抓 5+ 條 text-cream 文字不可見、同根):
+ *   原 --color-cream / --color-cream-dark 在 light theme 被覆蓋成深藍 #1a2340
+ *   但 light theme 切換不完整、body 仍 dark mode 樣式 → 深藍 cream + 深底 = 全部 text-cream 元件文字隱形
+ *   影響:ActionRecommendations、STEP 1 太陽之火描述、命盤儀表板、陷阱預警等 5+ 元件
+ *   修補:刪除 cream 覆蓋(永遠保持淺色)+ 加 inline 註解警告
+ *   保留:dark/light → text 主色用 --color-text 系列(已切換)、cream 永遠淺色不切換 */
 [data-theme="light"] {
   --color-dark: #f5f3ee;
   --color-dark-light: #e8e4de;
   --color-text: #1a2340;
   --color-text-muted: #4a5269;
-  --color-cream: #1a2340;
-  --color-cream-dark: #4a5269;
+  /* v5.10.59 砍除:cream 永遠保持 :root 預設 #E8E4DE(R+8 light theme 切換不完整、避免文字隱形) */
+  /* --color-cream: #1a2340; */
+  /* --color-cream-dark: #4a5269; */
   --color-surface: rgba(255, 255, 255, 0.85);
   --color-surface-hover: rgba(255, 255, 255, 0.95);
   --color-border: rgba(139, 110, 60, 0.25);
