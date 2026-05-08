@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import type { PartMeta } from '@/lib/report-structure'
 
 interface PartSectionProps {
@@ -33,10 +33,39 @@ export default function PartSection({
   totalParts,
 }: PartSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const sectionRef = useRef<HTMLElement>(null)
   const showProgress = typeof currentOrder === 'number' && typeof totalParts === 'number' && totalParts > 1
 
+  // v5.10.60 P0 修(老闆「逐頁看」抓 zhuan/he scroll 32028 全黑、children 永遠 render 但 fold height=0):
+  // hash change / scroll 偵測:當 anchor (#sec-N) 命中本 part 內的 chapter id 時自動展開
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const checkAndExpand = () => {
+      const hash = window.location.hash.slice(1)
+      if (!hash) return
+      // 抓本 PartSection 內的所有 chapter id="sec-N"
+      const sec = sectionRef.current
+      if (!sec) return
+      const match = sec.querySelector(`[id="${hash}"]`)
+      if (match && !expanded) {
+        setExpanded(true)
+        // 等 expand transition 後再 scroll(避免 height 0 時 scroll 不準)
+        setTimeout(() => {
+          match.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 320)
+      }
+    }
+
+    // 初次載入 + hash change + 程式化 scroll 都偵測
+    checkAndExpand()
+    window.addEventListener('hashchange', checkAndExpand)
+
+    return () => window.removeEventListener('hashchange', checkAndExpand)
+  }, [expanded])
+
   return (
-    <section className="mb-8">
+    <section ref={sectionRef} className="mb-8">
       {/* 篇章分隔帶 */}
       <button
         type="button"
