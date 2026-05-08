@@ -324,13 +324,18 @@ export function diagnoseClassification(
 export function extractTLDR(content: string, maxLen = 70): string {
   if (!content) return ''
 
-  // 優先：第一個引言框
-  const quoteMatch = content.match(/^>\s*\**(.+?)\**\s*$/m)
+  // v5.10.82 P0 修(底層 audit P0-3、sub-agent 全面審 frontend parse 抓):
+  //   原邏輯 bug:整個 content match 第一個 `^>` 引言框、章節中段古籍 blockquote(如《紫微斗數全書》卷二:「紫微者...」)會被當 TLDR
+  //   證據:章首速覽顯示古籍引文、不是章節重點、客戶讀體驗破壞
+  //   修補:限定章節開頭 5 行內找引言框、避免章節中段引文污染
+  // 優先:章節開頭 5 行內找引言框(限定 head、不是 fullContent)
+  const headLines = content.split('\n').slice(0, 5).join('\n')
+  const quoteMatch = headLines.match(/^>\s*\**(.+?)\**\s*$/m)
   if (quoteMatch) {
     return truncate(stripMd(quoteMatch[1]), maxLen)
   }
 
-  // 其次：第一段純文字（跳過表格、清單、空行）
+  // 其次:第一段純文字(跳過表格、清單、空行)
   const lines = content.split('\n')
   for (const raw of lines) {
     const line = raw.trim()
