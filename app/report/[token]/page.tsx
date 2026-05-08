@@ -968,8 +968,22 @@ function extractDSteps(markdown: string): PathStep[] {
  */
 function extractDAnswer(markdown: string): string {
   if (!markdown) return ''
-  // 1. 10 秒內結論 > 引言框
-  const quickSection = markdown.match(/##?\s*(?:[一二三四五六七八九十]+、\s*)?(?:10\s*秒內?結論|你的答案|快速結論)[\s\S]*?(?=\n##?\s|$)/m)
+  // v5.10.86 P0 修(audit P0-4):章節別名 alternation `(10 秒內結論|你的答案|快速結論)` short-circuit、若兩個章節同時存在、永遠抽前者
+  // 修補:用 indexOf 取最早出現章節(by position、不是 by alternation 順序)
+  const SECTION_ALIASES = ['10 秒內結論', '10秒內結論', '10 秒結論', '你的答案', '快速結論']
+  let earliestPos = Infinity
+  let earliestAlias = ''
+  for (const alias of SECTION_ALIASES) {
+    const pos = markdown.indexOf(alias)
+    if (pos >= 0 && pos < earliestPos) {
+      earliestPos = pos
+      earliestAlias = alias
+    }
+  }
+  // 用最早章節 alias 跑 regex(不依賴 alternation 順序)
+  const quickSection = earliestAlias
+    ? markdown.slice(earliestPos).match(new RegExp(`(?:[一二三四五六七八九十]+、\\s*)?${earliestAlias.replace(/[\s]/g, '\\s*')}[\\s\\S]*?(?=\\n##?\\s|$)`, 'm'))
+    : markdown.match(/##?\s*(?:[一二三四五六七八九十]+、\s*)?(?:10\s*秒內?結論|你的答案|快速結論)[\s\S]*?(?=\n##?\s|$)/m)
   if (quickSection) {
     const body = quickSection[0]
     // 找引言框
