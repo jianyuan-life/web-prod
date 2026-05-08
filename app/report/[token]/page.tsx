@@ -195,14 +195,22 @@ function parsePersonalityCard(markdown: string): PersonalityCardData | null {
   // 🚨 硬規則：封號必須是 10 個合法 4 字封號之一，其他一律視為 AI 自創錯誤
   let title = ''
 
-  // 第 0 層（最可靠）：直接掃描全文找合法封號（白名單匹配）
-  // 因為 Prompt 已強制 AI 用 10 個固定封號，全文第一個出現的合法封號就是正確答案
+  // v5.10.81 P0 真修(老闆抓「何紀萳癸水日主、被誤標太陽之火(丙日主)」核心命理錯誤):
+  // 原邏輯 bug:① 用 fullText.includes 不限定「命格名片」section、② 按白名單順序迭代「太陽之火」(白名單第 3)早於「雨露甘霖」(白名單第 10)迭代到、ai_content 後段流年/運勢章節提及「太陽之火」就會誤抽
+  // 證據:何紀萳 ai_content L577「命格封號:雨露甘霖」(正確、癸水日主)+ L23067「太陽之火」(後段非命格封號)、舊邏輯抽到「太陽之火」
+  // 影響:所有 C / G15 主題式報告、只要 ai_content 後段提及任何白名單詞(流年/比喻/其他章節)就會抽錯
+  // 修補:① 限定「命格名片」section(content)、不用 fullText ② 用 indexOf 取最早位置、不是白名單順序
+  // 第 0 層:在命格名片 section 內找最早出現的合法封號(by position、不是 by 白名單順序)
+  let earliestPos = Infinity
+  let earliestTitle = ''
   for (const legal of LEGAL_PERSONA_TITLES) {
-    if (fullText.includes(legal)) {
-      title = legal
-      break
+    const pos = content.indexOf(legal)  // 限定 content (命格名片 section)、不是 fullText
+    if (pos >= 0 && pos < earliestPos) {
+      earliestPos = pos
+      earliestTitle = legal
     }
   }
+  if (earliestTitle) title = earliestTitle
 
   // 第 1 層：在命格名片章節找「命格封號：XXX」同行格式，必須驗證白名單
   if (!title) {
