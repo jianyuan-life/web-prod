@@ -1358,11 +1358,23 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   } : null
 
   // R 方案：從報告內容提取合/不合結論（不使用分數，命不該有分數）
+  // v5.10.83 P0 修(底層 audit P0-2、sub-agent 全面審 frontend parse 抓):
+  //   原邏輯 bug:① fullText 沒限定「結論」section ② 「合」substring 會被 「不合」吃(AI 寫「雖然你們不合,但有些雷區」誤命中「合.*但有.*雷區」)③ if/else if 順序短路、第一個 match 立刻 break
+  //   修補:①「不合」優先檢查(避免 「合」substring 污染)② 用 negative lookbehind 排除 「不合」③ 加 word boundary
   let compatibilityVerdict = ''
   if (isRelationship && aiContent) {
-    if (/你們合，但|合.*但有.*雷區/.test(aiContent)) compatibilityVerdict = '合，但有雷區'
-    else if (/結論\s*[:：]\s*.*不合|你們不合/.test(aiContent)) compatibilityVerdict = '需要經營'
-    else if (/結論\s*[:：]\s*.*合|你們合/.test(aiContent)) compatibilityVerdict = '互補互助'
+    // 1. 先檢查「不合」(優先、避免「合」substring 被「不合」誤命中)
+    if (/結論\s*[:：][^。\n]{0,80}不合|你們不合|你們(?<!不)的關係不合/.test(aiContent)) {
+      compatibilityVerdict = '需要經營'
+    }
+    // 2. 「合，但有雷區」(中性)— 用 negative lookbehind 排除「不合」前綴
+    else if (/(?<!不)你們合，但|(?<!不)合.{0,20}但.{0,20}雷區/.test(aiContent)) {
+      compatibilityVerdict = '合，但有雷區'
+    }
+    // 3. 「互補互助」(正面)— 同樣排除「不合」前綴
+    else if (/結論\s*[:：][^。\n]{0,80}(?<!不)合|(?<!不)你們合(?![，。、]但)/.test(aiContent)) {
+      compatibilityVerdict = '互補互助'
+    }
   }
 
   // 報告內容完整性檢查 — 數據零容忍
