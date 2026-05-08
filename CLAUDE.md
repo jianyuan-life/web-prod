@@ -4,7 +4,10 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.10.4（2026-05-05、第一件 / 階段 ④ C 選項 quality gate 接 R1 禁詞 grep 完成:steps.ts L2685-2774 加 R1_FORBIDDEN_PATTERNS 5 組(廢話開頭 P0 / Meta 標籤 P0 / 相對時間 P1 / 雙介詞 P2 / 中英混雜 P2)+ grep loop;LLM 軟約束 → quality gate 硬擋;P0 違規走 hardFailures 觸發 needs_human_review、P1/P2 標 [軟性] 只 log;MAX_QUALITY_RETRIES=0 不 retry 燒錢(對應 lesson #058);Round 1 v5.10.2 + Round 2 v5.10.3 + C 選項 v5.10.4 三層基建鎖死、距 Round 3 Generate 實測剩 1 步）
+**網站版本：** v5.10.72（2026-05-08、第三件/真 bug 修/D 偽古籍 + 重複吐:d_plan_v2 加 D-4 古籍引用白/黑名單鐵律(黑名單禁《煙波釣叟歌》《奇門遁甲統宗》《奇門遁甲秘笈大全》等 10 本奇門/擇日/風水古籍 + 白名單限 D 強項 7 系統)+ D-5 結尾單段鐵律(嚴禁「寫給你的話」之後追加 ## 結論/總結/Conclusion/Summary/結語 章節 + 寫給你的話 ≤ 800 字)、對應 V Gemini Vision + Phase 3 抓 D 何宣 4e636025 偽古籍「煙波釣叟歌」+ 重複吐 P0、對應 lesson #086 + lesson #068 + lesson #056、production safe 不影響既有報告、新生成 D 報告即時生效）
+
+歷史:
+- v5.10.4（2026-05-05、第一件 / 階段 ④ C 選項 quality gate 接 R1 禁詞 grep 完成）
 
 ✅ **開放新客戶下單**(2026-05-03):v5.7.21 止血(MAX_QUALITY_RETRIES=0)+ v5.7.22 cleanFinalReport L658 真因修(### 阿拉伯編號誤升 ##)+ v5.7.23 reason 對位 P0 修(前端結構化欄位 render)+ v5.7.24 prompt 根治(從源頭禁止 AI 寫值符/值使/八神/臨宮)= 兩個 P0 bug 全修、quality gate fail 真因 + reason 對位 bug 雙 line 鎖。新單可進。
 
