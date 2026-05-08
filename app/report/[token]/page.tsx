@@ -1324,7 +1324,27 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const isThematic = isThematicReport(aiContent, report.report_result)
 
   // 解析命格名片（主題式報告才有）
-  const personalityCard = isThematic ? parsePersonalityCard(aiContent) : null
+  // v5.10.77 P0 根本修(Playwright leaf node 共識:5 個 React component 散布 raw markdown row):
+  //   AI 把整個 markdown table row(`| ★★★★★ | name | desc |`)寫進 talents/challenges 陣列
+  //   修:解析後**全域 sanitize**、所有下游 component(精華卡/洞察/2026 行動/Top 5 badge/insights)自動受益
+  const sanitizeTalentRow = (raw: string): string => {
+    if (!raw) return ''
+    let s = String(raw).trim()
+    if (s.includes('|')) {
+      const cells = s.split('|').map(c => c.trim()).filter(c => c.length > 0)
+      const isStarOnly = (x: string) => /^[★☆✦●◯△♦︎○✿❀✯✰⭐\s]+$/.test(x)
+      const nameCell = cells.find(c => !isStarOnly(c) && c.length > 0)
+      s = nameCell || cells[0] || ''
+    }
+    s = s.replace(/^\*+\s*|\s*\*+$/g, '').replace(/[★☆✦●◯△♦︎○✿❀✯✰⭐]+/g, '').trim()
+    return s
+  }
+  const personalityCardRaw = isThematic ? parsePersonalityCard(aiContent) : null
+  const personalityCard = personalityCardRaw ? {
+    ...personalityCardRaw,
+    talents: (personalityCardRaw.talents || []).map(sanitizeTalentRow).filter(t => t.length > 0),
+    challenges: (personalityCardRaw.challenges || []).map(sanitizeTalentRow).filter(c => c.length > 0),
+  } : null
 
   // R 方案：從報告內容提取合/不合結論（不使用分數，命不該有分數）
   let compatibilityVerdict = ''
