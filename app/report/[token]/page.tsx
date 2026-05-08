@@ -524,6 +524,13 @@ function parseStructuredContent(markdown: string): ContentSection[] {
     let cleanTitle = title.replace(/[（(]\s*[~～]?\s*[\d,]+\s*[-－~～]?\s*[\d,]*\s*字\s*[）)]/g, '').trim()
     // P0-3（2026-04-17）：清掉標題內的 # 前綴（AI 有時在 ## 章節標題裡再塞「# XXX」造成「# 何宣逸 人生藍圖」顯示）
     cleanTitle = cleanTitle.replace(/^#+\s*/, '').trim()
+    // v5.10.61 P0 修(老闆「逐頁看」抓 R 李馮 H2「丙午026-2028）」historical AI bug):
+    //   AI 生成端某些 R 報告 H2 含「丙午026-2028」(缺「年(2」)、表示原 markdown 有「丙午年（2026-2028）」但 markdown 解析時 ** 不對稱吞字
+    //   frontend defensive regex 自動補回「丙午年(2026-2028)」、不需 admin 重生即修 historical 客戶報告
+    //   pattern:「丙午」緊接 3 位數字-4 位數字、補「年(2」+「)」
+    cleanTitle = cleanTitle.replace(/丙午(\d{3})-(\d{4})[）)]/g, '丙午年(2$1-$2)')
+    cleanTitle = cleanTitle.replace(/丁未(\d{3})-(\d{4})[）)]/g, '丁未年(2$1-$2)')
+    cleanTitle = cleanTitle.replace(/戊申(\d{3})-(\d{4})[）)]/g, '戊申年(2$1-$2)')
 
     // v5.3.44 Bug #47 修復 + IA 稽核補全：類別標籤（好的/不好的/需注意/改善/集體/行動等）不該當主章節分組
     // 當 Claude 誤用 `### 好的地方` 或 `### ✅ 好的地方` 寫子節，parser 把它切成主章節，造成 TOC 出現 5-6 次重複
