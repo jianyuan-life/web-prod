@@ -4024,6 +4024,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             // v5.7.54 章首 pullQuote 摘要 box(8 sub-agent 共識 P0 — F-pattern anchor)
             // 取代原 TL;DR 灰字 italic、改成有底色 + 左金邊 + 大字、視覺 anchor 強
+            // v5.10.71 P0(lesson #086 4-LLM 三輪共識「本章重點重複兩次」)修:
+            //   章首 TLDR 摘要 label 從「本章重點」改「章首速覽」、跟 prompt 章尾「📌 本章重點」
+            //   三段式總結明確語意區隔(章首掃讀 vs 章尾總結)、視覺仍維持 8px 金條 + 灰金底色強 anchor
             const tldrNode = tldr ? (
               <blockquote
                 className="my-4 px-5 py-3 text-base leading-relaxed"
@@ -4036,7 +4039,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   fontWeight: 500,
                 }}
               >
-                <span className="text-gold/50 text-[10px] tracking-[2px] uppercase mr-2">本章重點</span>
+                <span className="text-gold/50 text-[10px] tracking-[2px] uppercase mr-2">章首速覽</span>
                 {tldr}
               </blockquote>
             ) : null
