@@ -4,7 +4,23 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.10.72（2026-05-08、第三件/真 bug 修/D 偽古籍 + 重複吐:d_plan_v2 加 D-4 古籍引用白/黑名單鐵律(黑名單禁《煙波釣叟歌》《奇門遁甲統宗》《奇門遁甲秘笈大全》等 10 本奇門/擇日/風水古籍 + 白名單限 D 強項 7 系統)+ D-5 結尾單段鐵律(嚴禁「寫給你的話」之後追加 ## 結論/總結/Conclusion/Summary/結語 章節 + 寫給你的話 ≤ 800 字)、對應 V Gemini Vision + Phase 3 抓 D 何宣 4e636025 偽古籍「煙波釣叟歌」+ 重複吐 P0、對應 lesson #086 + lesson #068 + lesson #056、production safe 不影響既有報告、新生成 D 報告即時生效）
+**網站版本：** v5.10.86（2026-05-08 marathon、9 commits push、frontend 修補 100% 全綠、5 個底層 parse bug 修補完成、L1 Claude QA +1.6 分、Codex review --base v5.10.77 PASS 無 regression、callout fallback 15→0)
+
+**v5.10.86 marathon 摘要(老闆抓「何紀萳癸水誤標太陽之火」起、徹底底層查清楚)**:
+- v5.10.78 callout 重構 + raw ** sanitize(共識 P0 #2/#7)
+- v5.10.79 G15 family 交叉章節補修
+- v5.10.80 G15 year 裸年份污染修(引入 G15 7LLM regression)
+- **v5.10.81 🚨 parsePersonalityCard L200 底層 bug**(fullText + 白名單順序 short-circuit、何紀萳「太陽之火」→「雨露甘霖」)
+- **v5.10.82 🚨 extractTLDR 引言框污染修**(章節中段古籍 blockquote 被當 TLDR)
+- **v5.10.83 🚨 R compatibilityVerdict「合」substring 污染修**(「不合」substring 被「合」regex 誤命中)
+- v5.10.84 修 v5.10.80 引發的 G15 7LLM regression
+- v5.10.85 G15 7LLM 完整(成員互動 + 五年總覽)
+- **v5.10.86 🚨 D extractDAnswer 章節 alternation short-circuit 修**
+
+對應 lesson #090(5-LLM strict eval 全 FAIL 95+)+ #091(L200 底層 bug)+ #092(final summary)、見 `Claude-鑑源/tasks/lessons.md`、frontend audit 見 `_ab_test/strict_eval_v5_10_78/frontend_parse_audit.md`(15 個底層 bug、修 5 個 P0)。
+
+歷史:
+- v5.10.72（2026-05-08、第三件/真 bug 修/D 偽古籍 + 重複吐:d_plan_v2 加 D-4 古籍引用白/黑名單鐵律 + D-5 結尾單段鐵律、對應 lesson #086 + lesson #068 + lesson #056、production safe）
 
 歷史:
 - v5.10.4（2026-05-05、第一件 / 階段 ④ C 選項 quality gate 接 R1 禁詞 grep 完成）
