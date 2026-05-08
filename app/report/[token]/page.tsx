@@ -597,8 +597,18 @@ function renderInlineMarkdown(text: string): string {
       // 去除末尾多餘的 |（如果 inner 末尾有殘留的 |）
       const cleanInner = inner.replace(/\|$/, '')
       const cells = cleanInner.split('|').map(c => c.trim()).filter(c => c.length > 0)
-      // 如果只有一個 cell 且看起來不像表格，跳過
-      if (cells.length < 2) return _m
+      // v5.10.74 P0 修(4-LLM 共識:C 何宥諄「天賦 Top 3」全是 `| ★★★★` 直接當 label):
+      //   原邏輯 cells.length<2 直接 return _m、導致行內單格殘留 pipe(如 `| ★★★★`)以原文渲染、看起來像 raw markdown
+      //   修:單格內容若是純 emoji/星級/符號、直接顯示內容(剝掉 pipe);其他單格 fallback 用空格替代 pipe
+      if (cells.length < 2) {
+        if (cells.length === 1) {
+          // 純星級 / 純符號 / 短標 → 直接顯示
+          if (/^[★☆✦✓●◯△♦︎○✿❀✯✰⭐\s\d.+%-]+$/.test(cells[0])) return cells[0]
+          // 其他單格殘留 → 至少剝掉 pipe、不顯示原始 `|`
+          return cells[0]
+        }
+        return _m
+      }
       const cellsHtml = cells.map(c => {
         const bold = c.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         return `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7">${bold}</td>`
