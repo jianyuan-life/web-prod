@@ -426,7 +426,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
 
       {/* 安心保證 — 直接告訴客戶「你的付款和資料絕對安全」*/}
       <div className="flex items-start gap-2 text-xs text-emerald-200/95 bg-emerald-500/8 border border-emerald-500/20 rounded-lg px-3.5 py-2.5 leading-relaxed">
-        <span className="text-emerald-400 flex-shrink-0 mt-0.5">✓</span>
+        <span className="text-emerald-300 flex-shrink-0 mt-0.5">✓</span>
         <div className="space-y-0.5">
           <div className="text-emerald-300 font-medium">我們在為您精心製作報告，請放心等候</div>
           <div className="text-emerald-200/80">

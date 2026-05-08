@@ -98,7 +98,7 @@ export default function AIAnalysisCard({
   const accentMap = {
     purple: { bar: 'bg-purple-500', dot: 'text-purple-400', border: 'border-purple-500/20', bg: 'bg-purple-500/5' },
     amber: { bar: 'bg-amber-500', dot: 'text-amber-400', border: 'border-amber-500/20', bg: 'bg-amber-500/5' },
-    emerald: { bar: 'bg-emerald-500', dot: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
+    emerald: { bar: 'bg-emerald-500', dot: 'text-emerald-300', border: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
     blue: { bar: 'bg-blue-500', dot: 'text-blue-400', border: 'border-blue-500/20', bg: 'bg-blue-500/5' },
     rose: { bar: 'bg-rose-500', dot: 'text-rose-400', border: 'border-rose-500/20', bg: 'bg-rose-500/5' },
   }
