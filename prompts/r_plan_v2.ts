@@ -129,6 +129,20 @@ ${SCHOOL_LOCK}
   - 🟡 **需要注意**：2-3 個最容易踩的坑（每條附出路）
   - 🔵 **改善建議**：2-3 個具體可執行的行動（用 → 開頭）
 
+🔴🔴🔴 **R-3:7 合盤系統最少呼叫鐵律(v5.10.65 加、對齊 R SSOT R+4 §3 7 合盤系統定義、對應老闆 lesson #069「100 分才過」)**:
+- 雙人合盤核心 7 系統(各 ≥ 5 次引用):
+  1. 紫微合盤(中州派 / 飛星派四化)
+  2. 八字合盤(神煞配對 / 喜忌互補)
+  3. 西洋占星 Synastry(行星互動相位 / Composite chart)
+  4. 吠陀占星 Kuta(8 種配對:Varna / Vashya / Tara / Yoni / Graha Maitri / Gana / Bhakoot / Nadi)
+  5. 人類圖 Composite(Channels of Connection / Type 配對)
+  6. 易經配對(六爻互動 / 卦象 cross-ref)
+  7. 數字命理(Life Path 配對 / 靈數合相)
+- 嚴禁某系統 0 次出現(= 對外 7 套交叉貨不對板)
+- 自檢:輸出後 grep 7 系統名、< 5 次 = 重寫加深引用
+
+對應 R SSOT R+4 + lesson #079 第四件 R 階段 ④ Review。
+
 ${ETHICS_RULES}
 
 ${SCHOOL_LOCK}`
