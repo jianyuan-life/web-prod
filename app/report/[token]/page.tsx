@@ -4118,13 +4118,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             //   修補:章節 title 含系統名 → 自動加 id="sys-{系統名}"(slugify 對齊 SystemsAnchorList:66)
             const SYS_NAMES = ['八字四柱', '八字', '紫微斗數', '紫微', '奇門遁甲', '奇門', '風水', '西洋占星', '占星', '吠陀占星', '吠陀', '姓名學', '姓名', '易經', '人類圖', '塔羅牌', '塔羅', '數字能量學', '數字', '古典占星', '古典', '生肖運勢', '生肖', '生物節律', '節律', '南洋術數', '南洋']
             const sysSlugify = (s: string) => s.replace(/[\s/]+/g, '-').toLowerCase()
-            let sysId: string | undefined
+            // v5.10.87 P0 防呆改造(audit P0-1):
+            //   原邏輯依賴白名單「長→短」排序(八字四柱在八字前)、若有人改順序立刻爆炸
+            //   改用 indexOf 取最早位置 + 同位置取最長 name(longest-match-wins)、不依賴順序
+            let earliestPos = Infinity
+            let earliestName = ''
             for (const name of SYS_NAMES) {
-              if (sec.title.includes(name)) {
-                sysId = `sys-${sysSlugify(name)}`
-                break
+              const pos = sec.title.indexOf(name)
+              if (pos < 0) continue
+              // 同位置取較長 name(避免「南洋」吃「南洋術數」、「八字」吃「八字四柱」)
+              if (pos < earliestPos || (pos === earliestPos && name.length > earliestName.length)) {
+                earliestPos = pos
+                earliestName = name
               }
             }
+            const sysId: string | undefined = earliestName ? `sys-${sysSlugify(earliestName)}` : undefined
 
             // v5.7.54 章首 pullQuote 摘要 box(8 sub-agent 共識 P0 — F-pattern anchor)
             // 取代原 TL;DR 灰字 italic、改成有底色 + 左金邊 + 大字、視覺 anchor 強
