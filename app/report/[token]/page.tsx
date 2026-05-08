@@ -3729,7 +3729,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       老闆明確要求：必須對齊客戶 TOP3 主題、針對這盤能輔助什麼寫、不准用罐頭文 */}
                   {timing.plain_advantage && (
                     <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', borderLeft: '3px solid #22c55e' }}>
-                      <div className="text-emerald-400/80 text-xs mb-1.5 font-medium">✨ 坐這個盤對你的輔助</div>
+                      {/* v5.10.68 P0 修(V Gemini Vision sub-agent 抓 WCAG 對比度 < 4.5:1):
+                          text-emerald-400/80 在深底色 < 4.5:1、改 text-emerald-300 全不透明、AAA 11+:1 */}
+                      <div className="text-emerald-300 text-xs mb-1.5 font-medium">✨ 坐這個盤對你的輔助</div>
                       <p className="text-text-muted text-sm leading-7">{timing.plain_advantage}</p>
                     </div>
                   )}
