@@ -780,6 +780,10 @@ function stripRawMarkdown(html: string): string {
     .replace(/十五個系統/g, '十四個系統')
     .replace(/十五張底片/g, '十四張底片')
     .replace(/15\s*個\s*系統/g, '14 個系統')
+    // v5.10.134 P0 修(L1 R2-1、達 95+ 最後 0.7 分):
+    .replace(/東西方十五套/g, '東西方十四套')
+    .replace(/東西方15套/g, '東西方14套')
+    .replace(/十五系統/g, '十四系統')  // 補通用 case
 }
 
 // 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
@@ -1567,7 +1571,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         /* v5.10.40 R+8 revert v5.10.39(對應 lesson #073「退步立即 revert」第 6 次驗證):
            V GPT-4o 90→89(-1)、平均 93.33→92.5(-0.83 微退)、accept v5.10.36 baseline */
         .report-h2 { font-size: 1.375rem; font-weight: 700; color: var(--color-gold); margin: 2rem 0 1rem; font-family: var(--font-body); line-height: 1.4; letter-spacing: 0.015em; }
-        .report-h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gold); margin: 1.75rem 0 0.75rem; font-family: var(--font-body); padding-left: 12px; border-left: 3px solid rgba(201,168,76,0.85); line-height: 1.5; letter-spacing: 0.02em; }
+        .report-h3 { font-size: 1.25rem; font-weight: 600; color: var(--color-gold); margin: 2rem 0 1rem; font-family: var(--font-body); padding-left: 12px; border-left: 3px solid rgba(201,168,76,0.85); line-height: 1.5; letter-spacing: 0.02em; }
         .report-h4 { font-size: 1rem; font-weight: 600; color: var(--color-cream); margin: 1.25rem 0 0.5rem; font-family: var(--font-body); line-height: 1.5; }
         /* v5.10.35 R+8 P0 修(V3 GPT-4o Vision + V4 Gemini Vision 共識「大面積黃色 highlight 過度、失去重點意義」、扣 -4):
            原 cream + weight 600 + 下劃線(若有)= 整段強 highlight、AI 生成 ** 過多時整篇都亮
@@ -1576,7 +1580,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .report-li { margin-left: 1.5rem; color: var(--color-text); list-style: disc; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
         .report-li-num { margin-left: 1.5rem; color: var(--color-text); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
         /* v5.7.50 視覺層級加強(老闆要求 100 分):字大 行高長 段距大 */
-        .report-p { color: var(--color-text); line-height: 1.95; margin-bottom: 2.5rem; font-size: 1.125rem; font-family: var(--font-body); letter-spacing: 0.012em; }
+        .report-p { color: var(--color-text); line-height: 1.8; margin-bottom: 2.5rem; font-size: 1.125rem; font-family: var(--font-body); letter-spacing: 0.012em; }
         /* 內文段落自限 800px 維持 32-38 漢字/行 */
         .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 800px; margin-bottom: 1.5rem; }
         .report-p > p + p { margin-top: 1.25rem; }
