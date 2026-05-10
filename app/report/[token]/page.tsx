@@ -1727,7 +1727,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(201,168,76,0.15); }
         .hover-lift:active { transform: translateY(0) scale(0.99); }
         /* D 方案 3 步驟圓徽章 */
-        .step-badge { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: linear-gradient(135deg, #c9a84c, #e8c87a); color: #0a0e1a; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(201,168,76,0.3); }
+        /* v5.10.159 DS1 R2 P1 — step-badge 28→32px(8pt grid 嚴格、Apple HIG +1)*/
+        .step-badge { display: inline-flex; width: 32px; height: 32px; border-radius: 50%; align-items: center; justify-content: center; background: linear-gradient(135deg, #c9a84c, #e8c87a); color: #0a0e1a; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(201,168,76,0.3); }
         /* v5.10.153 P0 sticky col-1 補 selector — eval 50 to 100 終局修(老闆 N+5 次怒、評分 50/100 FAIL):
            v5.10.149 selector "thead th:first-child" 全 miss、因 renderInlineMarkdown() 把 th 直接塞 tbody(無 thead 包)
            實測 d143f949: th_position=null × 180 表(eval 證據)
