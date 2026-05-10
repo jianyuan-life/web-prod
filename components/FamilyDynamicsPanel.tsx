@@ -22,42 +22,61 @@ interface FamilyDynamicsPanelProps {
   aiContent: string
 }
 
+// v5.10.91 P0 修(老闆鐵律「命盤 100% 絕對不能錯」、2026-05-10):
+//   原 regex `${memberName}[^。]{0,60}日主([甲...])` greedy 跨人名 bug:
+//   何宣逸 + 60 字 = 「庚金日主帶雙丙七殺、何紀萳八字時柱丙辰火土、何宥諄丙火日主坐...」
+//   greedy backtrack 抓到後段「丙火日主坐」、但「坐」非天干、再 backtrack 找 valid 位置可能跨到何紀萳
+//   實測 G15 7LLM 何宣逸顯水(實庚金)、何宥諄顯水(實丙火) — sub-agent MASTER_BUG_REPORT P0-1/P0-2 共識
+// 修法:char-by-char 掃描、找「{name}{天干}{五行 char}」連續(如「何宣逸庚金」)、用天干推五行(不用五行 char 直譯、避「庚金」被解成「金水」)
 // 從 AI 報告中抽取某成員的五行主屬性（若報告有明確標註）
-// 規則：找「{姓名} 日主 {天干}」或「{姓名} 的日主是 {天干}」
 function detectWuxing(memberName: string, aiContent: string): string {
   if (!memberName || !aiContent) return ''
   // 天干對應五行
   const GAN_TO_WUXING: Record<string, string> = {
-    甲: '木', 乙: '木',
-    丙: '火', 丁: '火',
-    戊: '土', 己: '土',
-    庚: '金', 辛: '金',
+    甲: '木', 乙: '木', 丙: '火', 丁: '火',
+    戊: '土', 己: '土', 庚: '金', 辛: '金',
     壬: '水', 癸: '水',
   }
-  // 優先匹配「{姓名}...日主{天干}」的模式（60字範圍內）
-  const patterns = [
-    new RegExp(`${memberName}[^。]{0,60}日主[為是]?\\s*([甲乙丙丁戊己庚辛壬癸])`),
-    new RegExp(`${memberName}[^。]{0,30}?([甲乙丙丁戊己庚辛壬癸])金|${memberName}[^。]{0,30}?([甲乙丙丁戊己庚辛壬癸])木|${memberName}[^。]{0,30}?([甲乙丙丁戊己庚辛壬癸])水|${memberName}[^。]{0,30}?([甲乙丙丁戊己庚辛壬癸])火|${memberName}[^。]{0,30}?([甲乙丙丁戊己庚辛壬癸])土`),
-    new RegExp(`${memberName}的日主[為是]?\\s*([甲乙丙丁戊己庚辛壬癸])`),
-  ]
-  for (const re of patterns) {
-    const m = aiContent.match(re)
-    if (m) {
-      const gan = m[1] || m[2] || m[3] || m[4] || m[5] || m[6]
-      if (gan && GAN_TO_WUXING[gan]) return GAN_TO_WUXING[gan]
+  const TIANGAN = '甲乙丙丁戊己庚辛壬癸'
+  const WUXING_CHAR = '金木水火土'
+
+  // 找所有 {memberName} 出現位置、依序試
+  let idx = 0
+  while ((idx = aiContent.indexOf(memberName, idx)) !== -1) {
+    const startAfter = idx + memberName.length
+    // 後 30 字內(限定不跨「。」「、」「\n」等斷句、避免跨人名)
+    let endAfter = Math.min(startAfter + 30, aiContent.length)
+    for (let i = startAfter; i < endAfter; i++) {
+      const c = aiContent[i]
+      // 斷句符號 → 停止本次掃描
+      if (c === '。' || c === '\n' || c === '、' || c === ',') {
+        endAfter = i
+        break
+      }
     }
-  }
-  // 次選：檢查成員周圍的五行詞
-  const wuxingPattern = new RegExp(`${memberName}[^。]{0,40}?(金水|木火|金|木|水|火|土)`, 'g')
-  const match = aiContent.match(wuxingPattern)
-  if (match && match.length > 0) {
-    const first = match[0]
-    if (first.includes('金水')) return '金水'
-    if (first.includes('木火')) return '木火'
-    for (const w of ['金', '木', '水', '火', '土']) {
-      if (first.includes(w)) return w
+    const after = aiContent.substring(startAfter, endAfter)
+
+    // Pattern 1(高信心、最優先):「{天干}{五行 char}」連續(如「庚金」「丙火」「癸水」)
+    // 用天干推五行(避免「庚金」被解成「金水」、確保 100% 對)
+    for (let i = 0; i < after.length - 1; i++) {
+      const gan = after[i]
+      const wux = after[i + 1]
+      if (TIANGAN.includes(gan) && WUXING_CHAR.includes(wux)) {
+        return GAN_TO_WUXING[gan]
+      }
     }
+
+    // Pattern 2(中信心):「日主 {天干}」(無中間五行 char、強制 anchor「日主」)
+    const matchRz = after.match(/日主[為是]?\s*([甲乙丙丁戊己庚辛壬癸])/)
+    if (matchRz) {
+      const gan = matchRz[1]
+      if (GAN_TO_WUXING[gan]) return GAN_TO_WUXING[gan]
+    }
+
+    // 本次掃描 fail、找下個 {memberName} 位置 retry
+    idx += memberName.length
   }
+
   return ''
 }
 
@@ -241,11 +260,13 @@ export default function FamilyDynamicsPanel({ members, aiContent }: FamilyDynami
                     <text
                       x={pos.x} y={pos.y - 2}
                       textAnchor="middle"
-                      fontSize="16"
+                      fontSize={m.name.length >= 3 ? "13" : "16"}
                       fontWeight="600"
                       fill="#f2e8d5"
                     >
-                      {m.name.slice(0, 1)}
+                      {/* v5.10.91 修(同姓家庭崩 P0):原 slice(0,1) 對「何家」3 人 → 全顯「何」失語意
+                          改:3+ 字名取末 2 字(取名、不取姓)、2 字名取末 1 字、1 字名原樣 */}
+                      {m.name.length >= 3 ? m.name.slice(-2) : m.name.length === 2 ? m.name.slice(-1) : m.name}
                     </text>
                     <text
                       x={pos.x} y={pos.y + 12}
