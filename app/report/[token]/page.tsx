@@ -23,6 +23,7 @@ import ScrollSpy from '@/components/ScrollSpy'
 // v5.7.80 移除原因(主內容擠到 600px)已根治:SidebarTOC 鎖固定寬 240px / flex 0 0 240px、不會撐爆
 // 改 lg:flex 兩欄、main 加 flex-1 min-w-0(避免 grid item 預設不收縮)
 import SidebarTOC from '@/components/SidebarTOC'
+import ReportBreadcrumb from '@/components/ReportBreadcrumb'
 import FiveElementsRadar from '@/components/FiveElementsRadar'
 import ShareReportButton from '@/components/ShareReportButton'
 import ZiweiPalaceWheel from '@/components/ZiweiPalaceWheel'
@@ -1902,6 +1903,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <SidebarTOC sections={sections.map((s, i) => ({ idx: i, title: (s.title || `第 ${i+1} 章`).replace(/^[一二三四五六七八九十百]+[、\.]\s*/, '').slice(0, 24) }))} />
         )}
         <div className="w-full lg:flex-1 lg:min-w-0">
+        {/* v5.10.145 DS4 #2 breadcrumb sticky 麵包屑(連貫性 +10、客戶位置感) */}
+        {!isChumenji && sections.length > 3 && (
+          <ReportBreadcrumb planName={PLAN_NAMES[report.plan_code] || '命理分析'} />
+        )}
 
         {/* 品牌標題 v5.8.5 縮 mb-3 → mb-2 */}
         <div className="text-center mb-2 no-print">
