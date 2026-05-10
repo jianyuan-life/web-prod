@@ -4420,7 +4420,32 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           const indexMap = new Map<ContentSection, number>()
           sections.forEach((s, i) => indexMap.set(s, i))
 
-          return grouped.map((group, gIdx) => {
+          // v5.10.136 DS2 #1 30 秒懶人包(連貫性 +4 分、Stripe Substack 範本):
+          // 全篇章節索引、首屏一張卡讓客戶 30 秒掌握報告全貌、減少跳讀無頭蒼蠅感
+          const lazyOverview = grouped.length > 1 && grouped.length <= 6 ? (
+            <div className="rounded-2xl px-5 py-4 mb-8 mt-4 no-print" style={{
+              background: 'linear-gradient(135deg, rgba(212,175,55,0.07), rgba(15,22,40,0.5))',
+              border: '1px solid rgba(212,175,55,0.20)',
+            }}>
+              <div className="text-gold/65 text-[10px] tracking-[3px] mb-3 font-semibold">⏱️ 30 秒懶人包</div>
+              <div className="text-cream/85 text-sm leading-relaxed mb-3">
+                這份報告分 <span className="text-gold font-semibold">{grouped.length}</span> 篇、共 <span className="text-gold font-semibold">{sections.length}</span> 章。沒時間細讀?先看「起 / 承」打底、其他章節按章節錨點跳讀即可。
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                {grouped.map((g, i) => (
+                  <a key={g.part.key} href={`#part-${g.part.key}`} className="rounded-lg px-3 py-2 hover:bg-gold/10 transition-colors" style={{ background: 'rgba(15,22,40,0.4)', border: '1px solid rgba(212,175,55,0.10)' }}>
+                    <div className="text-gold/75 text-[10px] mb-1 font-semibold">{['起','承','轉','合'][i] || `${i+1}`}篇 · {g.chapters.length} 章</div>
+                    <div className="text-cream/80 text-[12px] leading-tight">{g.part.name}</div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null
+
+          return (
+            <>
+              {lazyOverview}
+              {grouped.map((group, gIdx) => {
             // v5.10.97 P0 修(MASTER_BUG_REPORT R3、D hero「生命藍圖 — 認識本我」cross-pollution):
             //   D 方案是「問題解答型」、不該套 C 方案的 4 part 起承轉合結構
             //   原 PartSection 會 render PartHero「生命藍圖 — 認識本我」/「人生軌跡 — 發展與現況」等 4 個 C 方案 part 標題
@@ -4456,7 +4481,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 )}
               </PartSection>
             )
-          })
+              })}
+            </>
+          )
         })()}
 
         {/* v5.7.93 真分享卡(Web Share API + clipboard、Gemini #5 +2、Spotify Wrapped 範本)
