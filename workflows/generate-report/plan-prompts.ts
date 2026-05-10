@@ -18,7 +18,16 @@ const { getRPlanSystemPrompt, getRPlanStructurePrompt } = _USE_V3
   : _rV2
 
 // ── 論述倫理硬性規則（全方案共用，絕對不可違反）──
+// v5.10.110 加第 0 條:markdown bold 必平衡(全 plan c/d/r/g15 共用、long-standing AI imbalance root fix)
 export const ETHICS_RULES = `【🚨 論述倫理硬性規則（絕對不可違反，違反視為不合格報告）】
+
+0. **markdown bold marker 必平衡**(v5.10.110 P0、避免 raw markdown 殘留給客戶看到):
+   - 寫 \`**重要詞**\` 必有 closing 雙星(平衡)
+   - ❌ 不寫 \`**X\` 單獨 leading 無 closing(frontend 渲染會殘留 raw \`**\` 視覺破)
+   - ❌ 不在跨行 paragraph 寫 \`**X 換行 Y**\`(markdown 不支援跨行 bold、會 leak)
+   - ✅ 強調 label 用 \`**Label**:內容\` 格式(closing \`**\` 在 \`:\` 前)
+   - ✅ 引用古籍 / 詞用 \`**《古籍名》**\` 平衡 wrap
+   原因:lesson #099 抓到 production 1.9-8.8% raw \`**\` 漏率、客戶看到原始 markdown 像 bug
 
 1. **禁止絕對預測語氣**：
    ❌ 不准用「會、必定、鐵定、保證、絕對、一定、注定」等絕對語氣談未來事件
