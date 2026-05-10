@@ -38,6 +38,7 @@ export default function CollapsibleSection({
   id,
 }: CollapsibleSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const [isAnimating, setIsAnimating] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState<number | 'auto'>('auto')
   // WCAG 2.1.1：aria-controls 需穩定 id，避免多個 CollapsibleSection 共用
@@ -45,36 +46,48 @@ export default function CollapsibleSection({
 
   // 測量內容高度以實現平滑動畫
   // Bug #14：確認 node 仍 connected 再訪問，避免 parentNode null 錯誤
+  // v5.10.124 P0 修(F5 sub-agent 抓「mobile 全頁 5.7× 膨脹、殭屍空白」根因):
+  //   原 ResizeObserver 在 expanded=true 時持續觸發、把 contentHeight 從 'auto' 鎖回 scrollHeight 數字
+  //   L68 settle 後切 'auto'、但 ResizeObserver 又改回 scrollHeight、永遠鎖死數字
+  //   mobile lazy-hydrate 內容變大時、容器維持舊 scrollHeight = 殭屍空白
+  //   修:加 isAnimating flag、ResizeObserver 只在動畫中 fire、settle 後不覆蓋 'auto'
   useEffect(() => {
     const node = contentRef.current
     if (!node || !node.isConnected) return
     const resizeObserver = new ResizeObserver(() => {
       const n = contentRef.current
-      if (n && n.isConnected && expanded) {
+      if (n && n.isConnected && expanded && isAnimating) {
         setContentHeight(n.scrollHeight)
       }
     })
     resizeObserver.observe(node)
     return () => resizeObserver.disconnect()
-  }, [expanded])
+  }, [expanded, isAnimating])
 
   // 展開/收起時更新高度
   useEffect(() => {
     const node = contentRef.current
     if (!node || !node.isConnected) return
     if (expanded) {
+      setIsAnimating(true)
       setContentHeight(node.scrollHeight)
-      // 動畫結束後切換為 auto（讓內部內容自由伸縮）
-      const timer = setTimeout(() => setContentHeight('auto'), 350)
+      // 動畫結束後切換為 auto（讓內部內容自由伸縮）+ 結束 animating(ResizeObserver 不再 fire)
+      const timer = setTimeout(() => {
+        setContentHeight('auto')
+        setIsAnimating(false)
+      }, 350)
       return () => clearTimeout(timer)
     } else {
       // 先設定確切高度，再在下一幀設為 0（觸發 CSS transition）
+      setIsAnimating(true)
       setContentHeight(node.scrollHeight)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setContentHeight(0)
         })
       })
+      const timer = setTimeout(() => setIsAnimating(false), 350)
+      return () => clearTimeout(timer)
     }
   }, [expanded])
 
