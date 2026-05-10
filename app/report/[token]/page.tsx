@@ -1443,6 +1443,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     if (/第一幕|第二幕|第三幕|壓軸|收尾|完整分析請繼續閱讀/.test(t)) return false
     // 過濾附錄（術語表在 PDF 看就好）
     if (/附錄|術語對照/.test(t)) return false
+    // v5.10.116 P0 修(L1 Claude QA F1、C_hejinian「二、卷三」異物章節注入):
+    // AI 偶爾生「N、卷X」格式假章節(prompt 漏過濾、grep C_hejinian 抓到「二、卷三」)
+    // 過濾「N、卷X」/「N、章X」格式
+    if (/^[一二三四五六七八九十]+、\s*[卷章篇]\s*[一二三四五六七八九十]/.test(t.trim())) return false
     // 主題式報告：命格名片已用專屬卡片渲染，從章節列表中移除
     if (personalityCard && /命格名片/.test(t)) return false
     // v5.10.96 P0 修(visual_audit_2026-05-10 D「你的問題」H2 ×2 結構不對稱):
