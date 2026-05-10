@@ -101,7 +101,7 @@ export default function CookieConsent() {
       role="dialog"
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-consent-desc"
-      className="fixed bottom-0 inset-x-0 sm:bottom-4 sm:left-auto sm:right-4 sm:inset-x-auto sm:max-w-sm z-[1000] p-3 sm:p-4 bg-dark/95 backdrop-blur-xl border-t sm:border border-gold/30 sm:rounded-xl shadow-2xl"
+      className="fixed bottom-0 inset-x-0 sm:bottom-4 sm:left-auto sm:right-4 sm:inset-x-auto sm:max-w-sm z-[1000] p-3 sm:p-4 bg-dark/95 backdrop-blur-xl border-t sm:border border-gold/30 sm:rounded-xl shadow-2xl max-h-[120px] sm:max-h-none overflow-y-auto sm:overflow-visible"
       style={{ animation: 'slideUp 0.3s ease-out' }}
     >
       <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
