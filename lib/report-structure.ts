@@ -363,8 +363,30 @@ export function extractTLDR(content: string, maxLen = 70): string {
  *   下次 session 用更穩算法重做(可能改用 paragraph-aware split 而非 line-based splice)
  */
 export function extractTLDRAndStripped(content: string, maxLen = 70): { tldr: string; strippedContent: string } {
-  // v5.10.102 hotfix:暫降為純 wrapper 呼叫 extractTLDR、不 strip content、避免 starStarCount regression
-  return { tldr: extractTLDR(content, maxLen), strippedContent: content }
+  // v5.10.107 paragraph-aware re-apply(lesson #099 推翻 #098、starStar 非 v5.10.95 引入、re-apply 安全):
+  //   原 v5.10.95 用 line splice、可能破壞跨行 markdown 結構
+  //   新算法:paragraph split(\n\n+ 雙空行)、移除整段含 tldr 的 paragraph、不破 markdown
+  const tldr = extractTLDR(content, maxLen)
+  if (!tldr || !content) return { tldr, strippedContent: content }
+
+  const paragraphs = content.split(/\n{2,}/)
+  // 找 tldr 來源 paragraph(含 tldr 開頭 20 字 / 或 blockquote 含 tldr)
+  const tldrPrefix = tldr.slice(0, Math.min(20, tldr.length))
+  const tldrParaIdx = paragraphs.findIndex(p => {
+    const trimmed = p.trim()
+    if (!trimmed) return false
+    // blockquote 含 tldr
+    if (trimmed.startsWith('>') && trimmed.includes(tldrPrefix)) return true
+    // 純文字 paragraph、stripMd 後含 tldr 開頭
+    const cleaned = stripMd(trimmed)
+    return cleaned.includes(tldrPrefix) && cleaned.length < 200  // 限定短 paragraph(避誤刪長段)
+  })
+  if (tldrParaIdx < 0) return { tldr, strippedContent: content }
+
+  // 移除該 paragraph、保留其他 paragraphs
+  const newParas = [...paragraphs]
+  newParas.splice(tldrParaIdx, 1)
+  return { tldr, strippedContent: newParas.join('\n\n').trim() }
 }
 
 function stripMd(s: string): string {
