@@ -755,8 +755,13 @@ function classifySubSection(title: string): 'positive' | 'caution' | 'improvemen
 
 // v5.3.43 sanitize passthrough（見檔頭說明）：AI 內容來自我方 prompt（非使用者輸入）
 // XSS 風險來源只剩 birth_data 的 name/gender 等已在結帳時驗證的欄位，實際攻擊面接近 0
+// v5.10.112 P0 修(final-final verify v5.10.108 抓 5/6 件 starStar 1-63 仍 leak):
+//   v5.10.105 暴力清只在 renderSectionMarkdown end、但 chip / hero / role / personalityCard.talents 等
+//   多處 component 走 sanitizeReportHtml 注入 raw markdown(非 AI bold 平衡保證)、仍 leak raw `**`
+//   修:sanitizeReportHtml 全頁暴力清 raw `**`、所有 dangerouslySetInnerHTML 路徑統一過
+//   trade-off:可能誤刪 AI 內容引用的 `**`(production AI 不該保留 raw markdown source、安全)
 function sanitizeReportHtml(html: string): string {
-  return html || ''
+  return (html || '').replace(/\*\*/g, '')
 }
 
 // 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
