@@ -4359,11 +4359,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           sections.forEach((s, i) => indexMap.set(s, i))
 
           return grouped.map((group, gIdx) => {
+            // v5.10.97 P0 修(MASTER_BUG_REPORT R3、D hero「生命藍圖 — 認識本我」cross-pollution):
+            //   D 方案是「問題解答型」、不該套 C 方案的 4 part 起承轉合結構
+            //   原 PartSection 會 render PartHero「生命藍圖 — 認識本我」/「人生軌跡 — 發展與現況」等 4 個 C 方案 part 標題
+            //   實測 D 何宣逸 _text.txt L75/108/213/356 4 個 cross-pollution H2 全在
+            //   修:D plan 跳過 PartSection / PartHighlights wrap、直接 render 章節
+            if (report.plan_code === 'D') {
+              return group.chapters.map((sec) => {
+                const globalIdx = indexMap.get(sec) ?? 0
+                return renderChapter(sec, globalIdx, globalIdx + 1)
+              })
+            }
             // 起/承預設展開（核心認知、首屏即讀），轉/合預設摺疊（深入探索、點擊展開）
-            // D 方案短報告則全展開（只有 7 章）
-            const defaultExpanded = report.plan_code === 'D'
-              ? true
-              : (group.part.key === 'qi' || group.part.key === 'cheng')
+            const defaultExpanded = (group.part.key === 'qi' || group.part.key === 'cheng')
             const isLastPart = gIdx === grouped.length - 1
             return (
               <PartSection
