@@ -677,27 +677,43 @@ function renderInlineMarkdown(text: string): string {
         finalBodyRows = `<tr style="transition:background 0.2s">${cellsHtml}</tr>`
       }
 
-      // v5.10.158 方案 A:寬表(≥ 5 col)改 Card Stack — 永絕 col-1 截斷(老闆 8+ 次糾正、sticky col-1 4 次失敗、根本繞開)
-      // 短表(≤ 4 col)維持原表格 + sticky col-1(已穩定)
+      // v5.10.158/161 方案 A:寬表(≥ 5 col)改 Card Stack — 永絕 col-1 截斷
+      // v5.10.161 IA Agent P0+P1 修(HOLD 90→預期 96):
+      // - P1-2 對外清零 14↔15 cascade 套用到 title + label + value
+      // - P1-1 a11y role=list/listitem(<dl>/<dt>/<dd> 不適用因 markdown render)、screen reader 讀對
+      // - P2-1 title <div> 升 <h4>(SEO + a11y heading hierarchy)
+      // - P2-2 placeholder "—" cell filter
       const colCountForLayout = (firstRow.match(/<td|<th/g) || []).length || 1
       if (colCountForLayout >= 5) {
-        // 抽 header labels(<th>內容)
+        // 對外清零 helper(同 stripRawMarkdown 14↔15 cascade)
+        const sanitize14 = (s: string) => s
+          .replace(/十五系統/g, '十四系統')
+          .replace(/十五套(?:系統|命理)?/g, '十四套')
+          .replace(/15\s*套/g, '14 套')
+          .replace(/東西方十五套/g, '東西方十四套')
+          .replace(/十五個系統/g, '十四個系統')
+          .replace(/十五張底片/g, '十四張底片')
+          .replace(/15\s*個\s*系統/g, '14 個系統')
+        // 抽 header labels(<th>內容)+ sanitize
         const headerCells = (firstRow.match(/<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/g) || [])
-          .map(c => c.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim())
+          .map(c => sanitize14(c.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim()))
         // 抽 body rows
         const bodyTrList = (finalBodyRows.match(/<tr[^]*?<\/tr>/g) || [])
         const cardsHtml = bodyTrList.map(tr => {
           const cells = (tr.match(/<td[^>]*>([\s\S]*?)<\/td>/g) || [])
-            .map(c => c.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim())
+            .map(c => sanitize14(c.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim()))
           if (cells.length === 0) return ''
+          // P2-2 全 cell 都是 — 跳過(空白 placeholder row 不渲染)
+          if (cells.every(c => !c || c === '—')) return ''
           const title = cells[0] || '—'
           const items = headerCells.slice(1).map((label, i) => {
             const value = cells[i + 1] || '—'
-            return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 0;border-top:1px solid rgba(255,255,255,0.04)"><span style="color:rgba(201,168,76,0.75);font-size:12px;font-weight:600;flex-shrink:0;min-width:70px">${label}</span><span style="color:var(--color-cream);font-size:13px;line-height:1.6;text-align:right">${value}</span></div>`
+            return `<div role="listitem" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 0;border-top:1px solid rgba(255,255,255,0.04)"><span style="color:rgba(201,168,76,0.75);font-size:12px;font-weight:600;flex-shrink:0;min-width:70px">${label}</span><span style="color:var(--color-cream);font-size:13px;line-height:1.6;text-align:right">${value}</span></div>`
           }).join('')
-          return `<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(201,168,76,0.15);border-radius:12px;padding:14px 18px;margin-bottom:10px"><div style="color:var(--color-gold);font-size:15px;font-weight:600;padding-bottom:8px;border-bottom:2px solid rgba(201,168,76,0.20);margin-bottom:6px">${title}</div>${items}</div>`
+          // P2-1 title <div> 升 <h4>(SEO + a11y)、role="listitem" 包整個 card
+          return `<div role="group" aria-label="${title}" class="report-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(201,168,76,0.15);border-radius:12px;padding:14px 18px;margin-bottom:10px"><h4 style="color:var(--color-gold);font-size:15px;font-weight:600;padding-bottom:8px;border-bottom:2px solid rgba(201,168,76,0.20);margin:0 0 6px;line-height:1.4">${title}</h4><div role="list">${items}</div></div>`
         }).join('')
-        return `<div class="report-card-stack" style="margin:16px 0">${cardsHtml}</div>`
+        return `<div class="report-card-stack" role="region" aria-label="表格內容" style="margin:16px 0">${cardsHtml}</div>`
       }
 
       return `<div class="table-breakout-outer" style="margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);overflow:hidden"><div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:480px;font-size:13px;table-layout:auto">${headerStickyRow}${finalBodyRows}</table></div></div>`
@@ -1886,7 +1902,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           a { color: #333 !important; text-decoration: none !important; }
           table { font-size: 11px !important; }
           blockquote { border-left-color: #c9a84c !important; background: #f5f0e8 !important; color: #333 !important; }
+          /* v5.10.161 IA P0 修:Card Stack 也要白底深字、PDF 印出可讀 */
+          .report-card-stack { margin: 12px 0 !important; }
+          .report-card { background: white !important; border: 1px solid #ddd !important; page-break-inside: avoid; padding: 12px !important; margin-bottom: 10px !important; }
+          .report-card h4 { color: #1a2a4a !important; font-size: 1rem !important; border-bottom-color: #c9a84c !important; }
+          .report-card div[role="list"] span { color: #444 !important; }
+          .report-card div[role="list"] span:first-child { color: #888 !important; }
           @page { margin: 1.5cm; }
+        }
+        /* v5.10.161 IA P1-3:Card Stack iPhone SE <375px 縮 padding + label/value 改垂直 stack(避免 flex 擠) */
+        @media (max-width: 374px) {
+          .report-card { padding: 10px 12px !important; }
+          .report-card div[role="listitem"] { flex-direction: column !important; gap: 2px !important; align-items: flex-start !important; }
+          .report-card div[role="listitem"] span:last-child { text-align: left !important; }
         }
       `}</style>
 
