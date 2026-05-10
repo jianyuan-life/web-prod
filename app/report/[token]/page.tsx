@@ -1671,19 +1671,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .hover-lift:active { transform: translateY(0) scale(0.99); }
         /* D 方案 3 步驟圓徽章 */
         .step-badge { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: linear-gradient(135deg, #c9a84c, #e8c87a); color: #0a0e1a; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(201,168,76,0.3); }
-        /* v5.10.148 🚨 P0 sticky col-1 永久鎖第 1 欄(老闆 N+1 次糾正、終局根治、調動全 LLM 教):
-           表格內 .table-breakout overflow-x:auto 起始 scrollLeft 可能 ≠ 0、第 1 欄被裁出 viewport
-           sticky position:left:0 + solid background 即使水平滾、第 1 欄永遠固定可見
-           背景必 solid(rgba 1.0)蓋住底層、避免穿透
-           z-index 大過 hover bg、box-shadow 右側陰影視覺分隔
-           tbody 跟 thead 都套、避免 header 跟 body 不同步 */
-        .table-breakout table thead th:first-child,
+        /* v5.10.149 🚨 sticky col-1 — Codex review P1 修補(z-index 分層 + max-width 防撐爆):
+           thead z:4 / tbody z:2、避免 thead 被 row hover 覆蓋
+           max-width:180px + overflow:hidden + text-overflow:ellipsis、防中文長標題撐爆 col-1 蓋掉其他內容
+           th 一致 nowrap + ellipsis、保持表頭簡短 */
+        .table-breakout table thead th:first-child {
+          position: sticky;
+          left: 0;
+          z-index: 4;
+          background: rgb(15, 22, 40);
+          box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.6);
+          max-width: 180px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
         .table-breakout table tbody td:first-child {
           position: sticky;
           left: 0;
-          z-index: 5;
+          z-index: 2;
           background: rgb(15, 22, 40);
           box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.6);
+          max-width: 180px;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         /* hover row 不能蓋過 sticky col-1 background、確保 sticky 蓋過 hover */
         .table-breakout table tbody tr:hover td:first-child {
