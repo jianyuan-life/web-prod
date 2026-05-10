@@ -1676,6 +1676,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            max-width:180px + overflow:hidden + text-overflow:ellipsis、防中文長標題撐爆 col-1 蓋掉其他內容
            th 一致 nowrap + ellipsis、保持表頭簡短 */
         .table-breakout table thead th:first-child {
+          position: -webkit-sticky;
           position: sticky;
           left: 0;
           z-index: 4;
@@ -1686,6 +1687,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           text-overflow: ellipsis;
         }
         .table-breakout table tbody td:first-child {
+          position: -webkit-sticky;
           position: sticky;
           left: 0;
           z-index: 2;
