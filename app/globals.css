@@ -98,6 +98,16 @@ html.locale-cn {
   animation: spin linear infinite;
 }
 
+/* v5.10.141 全域 motion token(M3 標準、DS3 P0 #1 對齊 page.tsx 已 token 化的 var):
+   page.tsx 已定義 :root 同名 token、此處 fallback 確保 globals.css 套 var 不掛 */
+:root {
+  --motion-fast: 150ms;
+  --motion-medium: 200ms;
+  --motion-slow: 300ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --easing-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+}
+
 /* 星盤反轉 */
 @keyframes spin-reverse {
   from { transform: rotate(360deg); }
@@ -156,7 +166,7 @@ h1, h2, h3 {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.03) inset,
     0 4px 24px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--motion-slow) var(--easing-emphasized);
 }
 
 .glass:hover {
@@ -179,7 +189,7 @@ h1, h2, h3 {
 /* 按鈕光暈——帶有科技感的擴散效果 */
 .btn-glow {
   box-shadow: 0 4px 20px rgba(201, 168, 76, 0.25);
-  transition: all 0.3s ease;
+  transition: all var(--motion-slow) var(--easing-standard);
 }
 .btn-glow:hover {
   box-shadow:
@@ -306,7 +316,7 @@ textarea {
 
 /* 卡片金色光暈（首頁 14 系統卡片等）*/
 .card-gold-glow {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--motion-slow) var(--easing-emphasized);
 }
 .card-gold-glow:hover {
   transform: translateY(-3px);
@@ -466,7 +476,7 @@ a.btn:active {
  * - prefers-reduced-motion 兼容
  */
 .section-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+  transition: transform var(--motion-medium) var(--easing-standard), box-shadow var(--motion-medium) var(--easing-standard), border-color var(--motion-medium) var(--easing-standard) !important;
 }
 @media (hover: hover) {
   .section-card:hover {
@@ -523,7 +533,7 @@ a.btn:active {
  * Haiku 提及「熱力圖數字太小、看不清順流/平衡/調整」 */
 .calendar-heatmap-cell {
   position: relative;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform var(--motion-fast) var(--easing-standard), box-shadow var(--motion-fast) var(--easing-standard);
 }
 .calendar-heatmap-cell:hover {
   transform: scale(1.05);
@@ -623,7 +633,7 @@ a:focus-visible,
   color: #fff;
   border: none;
   box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform var(--motion-medium) var(--easing-standard), box-shadow var(--motion-medium) var(--easing-standard);
 }
 .cta-primary-large:hover {
   transform: translateY(-1px);
@@ -690,7 +700,7 @@ a:focus-visible,
 
 /* R+8 #1 14 套錨點區的 highlight effect */
 .systems-anchor-link {
-  transition: all 0.2s ease;
+  transition: all var(--motion-medium) var(--easing-standard);
 }
 .systems-anchor-link:hover {
   background: rgba(201, 168, 76, 0.12);

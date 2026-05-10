@@ -1549,7 +1549,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
   // G15 家族藍圖 / R 合否：顯示全部章節，不做摘要篩選
   // 如果篩選出的摘要太少（< 3），退回顯示全部（可能是非 C 方案）
-  const sections = isChumenji ? [] : (isFamily || isRelationship) ? cleanedSections : (summarySections.length >= 3 ? summarySections : cleanedSections)
+  // v5.10.141 P0 修(L1 R3 P0 #1):sec.title 全域過 stripRawMarkdown、確保「十五系統」等 H2 leak 0
+  const sections = (isChumenji ? [] : (isFamily || isRelationship) ? cleanedSections : (summarySections.length >= 3 ? summarySections : cleanedSections))
+    .map(s => ({ ...s, title: stripRawMarkdown(s.title || '') }))
   const isShowingSummary = !isChumenji && !isFamily && !isRelationship && summarySections.length >= 3 && cleanedSections.length > summarySections.length
 
   // 簡體中文報告使用 SC 字體
