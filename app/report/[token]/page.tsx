@@ -604,22 +604,33 @@ function renderInlineMarkdown(text: string): string {
     .replace(/^\|(.+?)(?:\|)?\s*$/gm, (_m: string, inner: string) => {
       // 去除末尾多餘的 |（如果 inner 末尾有殘留的 |）
       const cleanInner = inner.replace(/\|$/, '')
-      const cells = cleanInner.split('|').map(c => c.trim()).filter(c => c.length > 0)
+      // v5.10.90 P0 修(2026-05-10 老闆抓 4 件報告「表格第 1 欄被截」根因 + visual_audit sub-agent #1 K1 共識):
+      //   原 .filter(c => c.length > 0) 把空 cell(如 markdown header `| | A | B | C |` 第 1 欄)過濾掉
+      //   → header 3 欄、body 4 欄(`| 2026 | A | B | C |`)= column count mismatch
+      //   → 第 1 欄 sticky 但 header 對應 cell 不存在 → fit-content 0 寬 → 整欄被截只剩細條
+      //   修 1:不 filter 空 cell、保留全 column 對齊
+      //   修 2:trim 後仍空的 cell 顯示 &nbsp;(non-breaking space)撐最小寬度
+      //   修 3:trim 連續 trailing 空 cell(markdown trailing pipe artifact、避免末欄空白)
+      const cells = cleanInner.split('|').map(c => c.trim())
+      // 移除尾部連續空 cell(markdown 慣常結尾 `| ... |` 多餘 pipe)
+      while (cells.length > 0 && cells[cells.length - 1] === '') cells.pop()
       // v5.10.74 P0 修(4-LLM 共識:C 何宥諄「天賦 Top 3」全是 `| ★★★★` 直接當 label):
-      //   原邏輯 cells.length<2 直接 return _m、導致行內單格殘留 pipe(如 `| ★★★★`)以原文渲染、看起來像 raw markdown
+      //   原邏輯 cells.length<2 直接 return _m、導致行內單格殘留 pipe(如 `| ★★★★`)以原文渲染
       //   修:單格內容若是純 emoji/星級/符號、直接顯示內容(剝掉 pipe);其他單格 fallback 用空格替代 pipe
-      if (cells.length < 2) {
-        if (cells.length === 1) {
+      const nonEmptyCells = cells.filter(c => c.length > 0)
+      if (nonEmptyCells.length < 2) {
+        if (nonEmptyCells.length === 1) {
           // 純星級 / 純符號 / 短標 → 直接顯示
-          if (/^[★☆✦✓●◯△♦︎○✿❀✯✰⭐\s\d.+%-]+$/.test(cells[0])) return cells[0]
+          if (/^[★☆✦✓●◯△♦︎○✿❀✯✰⭐\s\d.+%-]+$/.test(nonEmptyCells[0])) return nonEmptyCells[0]
           // 其他單格殘留 → 至少剝掉 pipe、不顯示原始 `|`
-          return cells[0]
+          return nonEmptyCells[0]
         }
         return _m
       }
       const cellsHtml = cells.map(c => {
-        const bold = c.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        return `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7">${bold}</td>`
+        // v5.10.90:空 cell 用 &nbsp; 撐最小寬度、避免 grid 0 寬
+        const display = c === '' ? '&nbsp;' : c.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        return `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7;min-width:60px">${display}</td>`
       }).join('')
       return `<tr style="transition:background 0.2s" onmouseover="this.style.background='rgba(201,168,76,0.05)'" onmouseout="this.style.background='transparent'">${cellsHtml}</tr>`
     })
