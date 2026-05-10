@@ -1685,7 +1685,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           z-index: 4;
           background: rgb(15, 22, 40);
           box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.6);
-          max-width: 180px;
+          max-width: clamp(140px, 25vw, 240px);
           overflow: hidden;
           text-overflow: ellipsis;
         }
@@ -1696,7 +1696,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           z-index: 2;
           background: rgb(15, 22, 40);
           box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.6);
-          max-width: 180px;
+          max-width: clamp(140px, 25vw, 240px);
           overflow: hidden;
           text-overflow: ellipsis;
         }
