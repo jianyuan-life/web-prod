@@ -4265,6 +4265,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   defaultExpanded={true}
                   className="glass"
                   style={{ borderLeft: `4px solid ${accentColor}`, background: stripeBg }}
+                  // v5.10.104 P1(verify h2Count G15 7LLM=28 過多、5 個年份 H2 應降 H3):
+                  // 年份小節「20XX 年」「20XX-20XX」用 H3 降層、不跟主章節 H2 同級、outline 對齊 SEO/a11y
+                  headingLevel={/^20\d{2}\s*年$|^20\d{2}\s*[-–]\s*20\d{2}/.test(sec.title.trim()) ? 'h3' : 'h2'}
                 >
                   {tldrNode}
                   <div className="report-p">

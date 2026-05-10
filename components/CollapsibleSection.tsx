@@ -21,6 +21,8 @@ interface CollapsibleSectionProps {
   style?: React.CSSProperties
   /** HTML id（用於錨點跳轉） */
   id?: string
+  /** v5.10.104:標題層級(H2 / H3)、預設 H2、年份小節傳 H3 對齊 outline 語意 */
+  headingLevel?: 'h2' | 'h3'
 }
 
 export default function CollapsibleSection({
@@ -29,6 +31,7 @@ export default function CollapsibleSection({
   icon,
   titleColor = 'var(--color-gold)',
   defaultExpanded = true,
+  headingLevel = 'h2',
   children,
   className = '',
   style,
@@ -90,10 +93,17 @@ export default function CollapsibleSection({
         {icon && <div className="shrink-0">{icon}</div>}
         {!icon && chapterLabel && <div className="shrink-0">{chapterLabel}</div>}
 
-        {/* 標題文字 — v5.10.9 R+6 視覺遞進(Haiku 86→95 P0-1):章節 H2 18px → 22px、加 tracking 強化階層 */}
-        <h2 className="text-[22px] leading-[1.35] font-bold tracking-tight flex-1" style={{ color: titleColor, fontFamily: 'var(--font-sans)' }}>
-          {title}
-        </h2>
+        {/* 標題文字 — v5.10.9 R+6 視覺遞進(Haiku 86→95 P0-1):章節 H2 18px → 22px、加 tracking 強化階層
+            v5.10.104:headingLevel='h3' 用 18px、避免年份小節跟主章節同層級(verify P1) */}
+        {headingLevel === 'h3' ? (
+          <h3 className="text-[18px] leading-[1.4] font-semibold tracking-tight flex-1" style={{ color: titleColor, fontFamily: 'var(--font-sans)' }}>
+            {title}
+          </h3>
+        ) : (
+          <h2 className="text-[22px] leading-[1.35] font-bold tracking-tight flex-1" style={{ color: titleColor, fontFamily: 'var(--font-sans)' }}>
+            {title}
+          </h2>
+        )}
 
         {/* 展開/收起箭頭 */}
         <span
