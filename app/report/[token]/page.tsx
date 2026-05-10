@@ -1703,7 +1703,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            Body 18px → H3 22.5px → H2 28.125px → H1 35.16px
            段距比例 1.5em / 章節 3em(macro/micro 雙層) */
         h1.report-h1, .report-main h1 { font-size: 2.197rem; line-height: 1.25; font-family: var(--font-body); font-weight: 700; margin: 3em 0 1.5em; color: var(--color-cream); letter-spacing: 0.01em; }
-        h2.report-h2, .report-main h2 { font-size: 1.758rem; line-height: 1.3; font-family: var(--font-body); font-weight: 700; margin: 3.5em 0 1.5em; color: var(--color-cream); letter-spacing: 0.015em; border-bottom: 2px solid rgba(201,168,76,0.25); padding-bottom: 0.85rem; }
+        /* v5.10.164 P0 revert v5.10.154 呼吸頁過大、改回 2em/1em(老闆截圖中段全黑、累積留白超 viewport) */
+        h2.report-h2, .report-main h2 { font-size: 1.758rem; line-height: 1.3; font-family: var(--font-body); font-weight: 700; margin: 2em 0 1em; color: var(--color-cream); letter-spacing: 0.015em; border-bottom: 2px solid rgba(201,168,76,0.25); padding-bottom: 0.85rem; }
         /* v5.10.138 DS3 #1 motion token 化(M3 標準、+8 分動畫一致): */
         :root {
           --motion-fast: 150ms;
