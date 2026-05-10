@@ -72,6 +72,11 @@ function normalizeTitle(title: string): string {
     .replace(/^\d+[\.、]\s*/, '')
     .replace(/^[一二三四五六七八九十百]+[、\.]\s*/, '')
     .replace(/\*{1,2}/g, '')
+    // v5.10.137 對外清零 cascade(L3 R3 P1 finding、H2 title 也需 14↔15 cascade、stripRawMarkdown 在 frontend 只 cover content):
+    .replace(/十五系統/g, '十四系統')
+    .replace(/十五套(?:系統|命理)?/g, '十四套')
+    .replace(/15\s*套/g, '14 套')
+    .replace(/東西方十五套/g, '東西方十四套')
     .trim()
 }
 
