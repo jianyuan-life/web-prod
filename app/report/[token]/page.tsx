@@ -648,12 +648,15 @@ function renderInlineMarkdown(text: string): string {
       //   原 v5.7.52 sticky column 邏輯產生雙 style attribute bug(舊 .replace 不吃 style="...原"、直接 prepend 第二個 style)
       //   瀏覽器拿第一個 style 忽略 sticky → 第一欄背景透明 + 文字 invisible
       //   修補:把 sticky CSS 合併進原有 style attribute(用 capture group + 完整替換)
+      // v5.10.125 P0 修(老闆截圖第 2 次抓 R 三年總覽 / 判定表第 1 欄被截、v5.10.90+92 修不夠):
+      //   sticky col-1 fit-content 從 header 計算、若 header 空 / 短(如「判定」「年份」)寬度 0-30px、被截
+      //   修:強制 min-width:100px + width:100px on sticky th + td、確保 col-1 永遠 ≥ 100px 寬
       const headerStickyRow = headerRow.replace(/<th\s+style="([^"]*)"/i, (_m, s) =>
-        `<th style="${s};position:sticky;left:0;z-index:11;background:rgba(15,22,40,0.95);box-shadow:2px 0 4px rgba(0,0,0,0.3)"`
+        `<th style="${s};position:sticky;left:0;z-index:11;background:rgba(15,22,40,0.95);box-shadow:2px 0 4px rgba(0,0,0,0.3);min-width:100px;width:100px"`
       )
       // 用 capture style 完整替換、不再產生雙 style attribute
       const bodyStickyRows = bodyRows.replace(/<tr([^>]*)><td\s+style="([^"]*)"/g, (_m, tr, s) =>
-        `<tr${tr}><td style="${s};position:sticky;left:0;z-index:10;background:rgba(15,22,40,0.92);box-shadow:2px 0 4px rgba(0,0,0,0.2)"`
+        `<tr${tr}><td style="${s};position:sticky;left:0;z-index:10;background:rgba(15,22,40,0.92);box-shadow:2px 0 4px rgba(0,0,0,0.2);min-width:100px;width:100px"`
       )
       return `<div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:320px;font-size:13px">${headerStickyRow}${bodyStickyRows}</table></div>`
     })
