@@ -378,8 +378,11 @@ export function extractTLDRAndStripped(content: string, maxLen = 70): { tldr: st
     // blockquote 含 tldr
     if (trimmed.startsWith('>') && trimmed.includes(tldrPrefix)) return true
     // 純文字 paragraph、stripMd 後含 tldr 開頭
+    // v5.10.120 修(L4 Gemini Vision F4 ChapterHero 雙 echo 仍 leak):
+    //   原 < 200 字限定漏接長 paragraph(章節 hero 段常 > 200 字)
+    //   放寬 < 500 字、cover 中長 paragraph(避誤刪極長 narrative > 500)
     const cleaned = stripMd(trimmed)
-    return cleaned.includes(tldrPrefix) && cleaned.length < 200  // 限定短 paragraph(避誤刪長段)
+    return cleaned.includes(tldrPrefix) && cleaned.length < 500
   })
   if (tldrParaIdx < 0) return { tldr, strippedContent: content }
 
