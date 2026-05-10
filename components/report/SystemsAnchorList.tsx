@@ -37,7 +37,13 @@ function slugify(s: string): string {
 }
 
 export default function SystemsAnchorList({ analyses = [] }: Props) {
-  const filtered = analyses.filter(a => !['南洋術數', '南洋数术', '南洋'].includes(a.system))
+  // v5.10.128 P0 修(L4 Gemini Vision F1 C 何紀萳 mobile ch00「西洋占星 0 分 / 需加強 25%」visual broken):
+  //   score=0 通常是 missing data(缺生時 / raw_data 欄位空)、不該 render 成「需加強 25%」尷尬 label
+  //   修:filter 掉 score=0 / score<30 的系統(視為 missing、不顯示)
+  const filtered = analyses.filter(a =>
+    !['南洋術數', '南洋数术', '南洋'].includes(a.system) &&
+    a.score > 30  // 排除 0 / 低於 30 的 missing-data 系統
+  )
   if (filtered.length < 3) return null
 
   return (
