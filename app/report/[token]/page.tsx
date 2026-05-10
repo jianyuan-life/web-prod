@@ -1436,6 +1436,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     if (/附錄|術語對照/.test(t)) return false
     // 主題式報告：命格名片已用專屬卡片渲染，從章節列表中移除
     if (personalityCard && /命格名片/.test(t)) return false
+    // v5.10.96 P0 修(visual_audit_2026-05-10 D「你的問題」H2 ×2 結構不對稱):
+    // D 方案 hero L3006-3034「你的問題引言卡」已 render birth_data.customer_note(客戶原始問題)
+    // d_plan_v2.ts L179 prompt 寫「## 你的問題」+ 引言框 = 章節內容 echo hero
+    // 過濾 D 方案專屬「你的問題」H2、避免章節列表重複(grep D 何宣逸 text:line 60+84 兩處)
+    if (report.plan_code === 'D' && /^你的問題$/.test(t.trim())) return false
     // v5.7.42:人生速覽已被 personalityCard 卡片消化(callout 三 quote 都在 personalityCard.talents/challenges/yearTheme)
     // 證據:Gemini visual eval 標 P0「『你最大的天賦』描述重複 2 次」 — 命格名片卡片 + 章節「人生速覽」都顯示同一 callout
     if (personalityCard && /人生速覽|生速覽|人生.{0,3}速覽|你的人生速覽|命格速覽|天賦.{0,5}Top|核心特質速覽/.test(t)) return false
