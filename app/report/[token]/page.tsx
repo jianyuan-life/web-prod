@@ -3742,7 +3742,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
         {/* ──── 目錄導航（起承轉合四篇分組）──── v5.7.65 lg+ 隱藏(SidebarTOC 已存在、Gemini P2 redundant) */}
         {sections.length > 3 && (
-          <div className="glass rounded-xl p-6 mb-8 no-print lg:hidden">
+          <div id="mobile-toc" className="glass rounded-xl p-6 mb-8 no-print lg:hidden scroll-mt-24">
             <div className="flex items-center justify-between mb-4">
               <div className="text-gold/70 text-xs tracking-[2px]">{isShowingSummary ? '重點摘要目錄' : '目錄'}</div>
               <div className="text-text-muted/50 text-[10px] tracking-wider">
@@ -4766,6 +4766,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         </div>{/* v5.7.53 main content flex-1 close */}
         </div>{/* v5.10.140 lg:flex two-column close */}
       </div>
+      {/* v5.10.144 DS4 mobile floating「📑 目錄」FAB(連貫性 +3-5、解 mobile 沒 sidebar 滾很久回不去): */}
+      {!isChumenji && sections.length > 3 && (
+        <a
+          href="#mobile-toc"
+          className="fixed bottom-6 right-6 lg:hidden z-50 no-print rounded-full px-4 py-3 text-sm font-semibold flex items-center gap-2 shadow-lg"
+          style={{
+            background: 'linear-gradient(135deg, rgba(212,175,55,0.95), rgba(197,150,58,0.85))',
+            color: '#0f1628',
+            boxShadow: '0 6px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(212,175,55,0.3)',
+          }}
+          aria-label="跳到目錄"
+        >
+          <span>📑</span><span>目錄</span>
+        </a>
+      )}
     </div>
   )
 }

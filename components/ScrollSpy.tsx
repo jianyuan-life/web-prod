@@ -46,8 +46,10 @@ export default function ScrollSpy() {
         }
       },
       {
-        // 中央 40% 視口觀察
-        rootMargin: '-30% 0px -50% 0px',
+        // v5.10.144 DS4 R2 速贏 bonus(+2 分):rootMargin -30%/-50% → -20%/-60%
+        // 真因:instant scroll edge case 章節剛好穿過邊界、IntersectionObserver 不 fire
+        // 改寬「視口頂下移 20%」「底上移 60%」= 20% 中央窗口、邊界寬鬆、reliable fire
+        rootMargin: '-20% 0px -60% 0px',
         threshold: 0.01,
       }
     )
