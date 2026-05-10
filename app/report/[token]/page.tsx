@@ -715,8 +715,8 @@ function renderInlineMarkdown(text: string): string {
           // P2-1 title <div> 升 <h4>(SEO + a11y)、role="listitem" 包整個 card
           return `<div role="group" aria-label="${title}" class="report-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(201,168,76,0.15);border-radius:14px;padding:16px 20px;margin-bottom:12px"><h4 style="color:var(--color-gold);font-size:18px;font-weight:600;padding-bottom:10px;border-bottom:2px solid rgba(201,168,76,0.22);margin:0 0 8px;line-height:1.35">${title}</h4><div role="list">${items}</div></div>`
         }).join('')
-        // v5.10.162 QA P1-2 修:Card Stack 加 max-width:800px(對齊 .report-p 內文標準、防 desktop 1299px 寬撐爆)
-        return `<div class="report-card-stack" role="region" aria-label="表格內容" style="margin:18px 0;max-width:800px">${cardsHtml}</div>`
+        // v5.10.163 P0 修:max-width:800px 配 margin:0 auto 居中(原 margin:18px 0 = 左對齊、右側大空白看起來像黑屏)
+        return `<div class="report-card-stack" role="region" aria-label="表格內容" style="margin:18px auto;max-width:800px">${cardsHtml}</div>`
       }
 
       return `<div class="table-breakout-outer" style="margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);overflow:hidden"><div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:480px;font-size:13px;table-layout:auto">${headerStickyRow}${finalBodyRows}</table></div></div>`
