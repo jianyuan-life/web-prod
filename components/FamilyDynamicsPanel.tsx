@@ -107,37 +107,45 @@ function detectPairRelation(memberA: string, memberB: string, aiContent: string)
 }
 
 // 從 AI 報告推導成員角色（決策者/協調者/執行者/情緒穩定器/能量源/新生力）
-// v5.10.32 R+8 P0 修(7-LLM 共識「何宥諄角色矩陣空白」、L4 Gemini Vision 抓):
-//   原 4 種角色 keyword 對 3 歲幼兒不適用、容易留空白
-//   修補:加「能量源 / 新生力」涵蓋孩子角色 + 空陣列 fallback「家庭成員」中性 placeholder
+// v5.10.91 P0 修(老闆鐵律「100% 不能錯」、2026-05-10):
+//   原 v5.10.32 模糊 keyword regex `${kw}[^\n]{0,20}${name}` + `${name}[^\n]{0,40}${kw}`:
+//   AI 寫「何紀萳常常當和事佬、何宥諄則是執行者」→ keyword「和事佬」+ 20 字內含「何宥諄」→ 何宥諄被誤掛「協調者」
+//   實測 G15 7LLM 何宥諄(3 歲)被亂掛 5 個角色(MASTER_BUG_REPORT P0-5)
+//
+// 新算法:strict pattern only(必須明確寫「{role}：{name}」/「{name}：{role}」/「{name}是{role}」)
+//   AI G15 prompt 慣例就是寫「決策者：何宣逸」「協調者：何紀萳」「執行者：也是何紀萳」strict mapping
+//   實測 G15 7LLM L443/449/455 確認 strict pattern 存在
+//   無 strict mapping → fallback「家庭成員」(寧少勿錯)
 function detectRoles(members: Member[], aiContent: string): Record<string, string[]> {
   const result: Record<string, string[]> = {}
-  const roleSections = [
-    { role: '決策者', keywords: ['決策者', '拍板人', '主導決策', '做決定'] },
-    { role: '協調者', keywords: ['協調者', '和事佬', '橋樑', '翻譯員', '化解衝突', '翻譯官'] },
-    { role: '執行者', keywords: ['執行者', '落地執行', '扛起', '實際做'] },
-    { role: '情緒穩定器', keywords: ['穩定器', '情緒中心', '情感地基', '安定劑', '後盾'] },
-    // v5.10.32 新增:涵蓋孩子 / 新生兒角色(對應 G15 三人合報常見定位)
-    { role: '能量源', keywords: ['太陽', '火源', '能量爆發', '動力源', '小太陽', '活火山'] },
-    { role: '新生力', keywords: ['新生力', '成長中', '萌芽', '希望', '未來'] },
-  ]
+  const ALL_ROLES = ['決策者', '協調者', '執行者', '情緒穩定器', '能量源', '新生力']
+
   for (const m of members) {
     if (!m.name) continue
     result[m.name] = []
-    for (const rs of roleSections) {
-      for (const kw of rs.keywords) {
-        // 找「{角色關鍵詞}: {姓名}」或「{姓名} ... {角色關鍵詞}」
-        const re1 = new RegExp(`${kw}[^\\n]{0,20}${m.name}`)
-        const re2 = new RegExp(`${m.name}[^\\n]{0,40}${kw}`)
-        if (re1.test(aiContent) || re2.test(aiContent)) {
-          if (!result[m.name].includes(rs.role)) {
-            result[m.name].push(rs.role)
+
+    for (const role of ALL_ROLES) {
+      // strict patterns:必須明確 mapping(不再模糊「同句出現即掛」)
+      const strictPatterns = [
+        // 「決策者：何宣逸」「決策者:也是何紀萳」(role:[修飾詞]name、最多 30 字內)
+        new RegExp(`${role}\\s*[:：]\\s*[^。！？\\n]{0,30}?${m.name}`),
+        // 「何宣逸：決策者」(name:role 顛倒)
+        new RegExp(`${m.name}\\s*[:：]\\s*${role}`),
+        // 「何宣逸是決策者」「何宣逸為決策者」
+        new RegExp(`${m.name}[是為]${role}`),
+        // 「何紀萳扛了協調者」「何紀萳擔任執行者」「何紀萳定位是穩定器」
+        new RegExp(`${m.name}.{0,8}?(?:扛了?|擔任|定位[為是]?|角色[為是]?|擔當)${role}`),
+      ]
+      for (const re of strictPatterns) {
+        if (re.test(aiContent)) {
+          if (!result[m.name].includes(role)) {
+            result[m.name].push(role)
           }
           break
         }
       }
     }
-    // v5.10.32 fallback:若沒命中任何角色、給中性 placeholder「家庭成員」(避免空白角色矩陣)
+    // fallback:無 strict mapping → 中性 placeholder(寧少勿錯、不模糊抓亂掛)
     if (result[m.name].length === 0) {
       result[m.name].push('家庭成員')
     }
