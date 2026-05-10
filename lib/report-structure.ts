@@ -352,6 +352,57 @@ export function extractTLDR(content: string, maxLen = 70): string {
   return ''
 }
 
+/**
+ * v5.10.95 P0 修(visual_audit_2026-05-10 N1 共識:章首速覽 echo 50+ 次跨 6/6 件):
+ *   原 extractTLDR 抽出來但 content 沒被移除 → render 時 tldr blockquote + content 完整貼 = 視覺重複
+ *   新 helper:同 extractTLDR 邏輯、同時 return tldr 來源已移除的 content
+ *   page.tsx renderChapter 改用 strippedContent 給 SectionExpander、避免 echo
+ */
+export function extractTLDRAndStripped(content: string, maxLen = 70): { tldr: string; strippedContent: string } {
+  if (!content) return { tldr: '', strippedContent: content }
+
+  const lines = content.split('\n')
+  const headLines = lines.slice(0, 5).join('\n')
+
+  // 優先:章節開頭 5 行內找引言框
+  const quoteMatch = headLines.match(/^>\s*\**(.+?)\**\s*$/m)
+  if (quoteMatch) {
+    const tldr = truncate(stripMd(quoteMatch[1]), maxLen)
+    // 從 content 移除這個 blockquote line
+    const matchedLine = quoteMatch[0]
+    const idx = content.indexOf(matchedLine)
+    if (idx >= 0) {
+      const before = content.slice(0, idx)
+      const after = content.slice(idx + matchedLine.length).replace(/^\n+/, '')  // 移除接續空行
+      return { tldr, strippedContent: (before + after).trimStart() }
+    }
+    return { tldr, strippedContent: content }
+  }
+
+  // 其次:第一段純文字
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+    if (line.startsWith('#')) continue
+    if (line.startsWith('|')) continue
+    if (line.startsWith('-') || line.startsWith('*') || line.startsWith('•')) continue
+    if (line.startsWith('→')) continue
+    if (/^\d+[\.、]/.test(line)) continue
+    const clean = stripMd(line)
+    if (clean.length >= 10) {
+      const tldr = truncate(clean, maxLen)
+      // 移除該 line(連同空行)
+      const newLines = [...lines]
+      newLines.splice(i, 1)
+      // 移除前後多餘空行
+      while (newLines.length > 0 && newLines[0].trim() === '') newLines.shift()
+      return { tldr, strippedContent: newLines.join('\n').trimStart() }
+    }
+  }
+
+  return { tldr: '', strippedContent: content }
+}
+
 function stripMd(s: string): string {
   return s
     .replace(/\*\*(.+?)\*\*/g, '$1')

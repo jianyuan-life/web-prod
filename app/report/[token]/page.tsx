@@ -34,7 +34,7 @@ import { OnboardingModal, R8Toolbar, WhyThisVerdictLink } from '@/components/rep
 import ActionRecommendations from '@/components/report/ActionRecommendations'
 import SystemsAnchorList from '@/components/report/SystemsAnchorList'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
-import { groupChaptersByParts, extractTLDR } from '@/lib/report-structure'
+import { groupChaptersByParts, extractTLDRAndStripped } from '@/lib/report-structure'
 import { localBazi } from '@/lib/bazi-local'
 import {
   generatePlainAdvantage,
@@ -4130,7 +4130,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           // 單章節渲染（抽出來讓分篇/不分篇都能用）
           const renderChapter = (sec: ContentSection, globalIdx: number, chapterNum: number) => {
             const sStyle = sectionStyles[sec.type]
-            const tldr = extractTLDR(sec.content, 70)
+            // v5.10.95 P0 修(visual_audit_2026-05-10 N1 共識:章首速覽 echo 50+ 次跨 6/6 件):
+            //   原 extractTLDR 抽 tldr 但 sec.content 沒被移除 → render 時 tldr blockquote + 完整 sec.content 視覺重複貼
+            //   改用 extractTLDRAndStripped 同時取 tldr + 移除來源後 content、render 用 cleanedContent 避免 echo
+            //   若無 tldr、cleanedContent = sec.content 不變
+            const { tldr, strippedContent: cleanedContent } = extractTLDRAndStripped(sec.content, 70)
 
             // v5.10.46 P0 修(QA Agent 抓 14 個 sys-XXX dead anchor、SystemsAnchorList 跳轉全失效):
             //   nav `href="#sys-八字四柱"` / "#sys-紫微斗數" 等 14 系統章節錨點、production 0 個 id 對應
@@ -4197,7 +4201,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   </h2>
                   {tldrNode}
                   <div className="report-p mt-2">
-                    <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
+                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} />
                   </div>
                 </div>
               )
@@ -4218,7 +4222,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 >
                   {tldrNode}
                   <div className="report-p">
-                    <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
+                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} />
                   </div>
                 </CollapsibleSection>
               )
@@ -4254,7 +4258,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 >
                   {tldrNode}
                   <div className="report-p">
-                    <SectionExpander fullHtml={renderSectionMarkdown(sec.content)} sectionTitle={sec.title} />
+                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} />
                   </div>
                 {/* v5.8.6 撤回 v5.8.3 章節 mini bar / v5.7.86 章節末「💡 這對你的意義」自動 callout */}
                 {/* v5.10.78 P0 真修(5-LLM strict eval 共識:Claude QA + IA + GPT-4o + Gemini + Codex 全 FAIL 95+、共識 P0 #2 callout fallback ×9 重複)
