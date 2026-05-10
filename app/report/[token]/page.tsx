@@ -676,6 +676,30 @@ function renderInlineMarkdown(text: string): string {
         const cellsHtml = Array(colCount).fill(0).map(() => `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7;min-width:60px;white-space:nowrap;color:rgba(232,228,222,0.5)">—</td>`).join('')
         finalBodyRows = `<tr style="transition:background 0.2s">${cellsHtml}</tr>`
       }
+
+      // v5.10.158 方案 A:寬表(≥ 5 col)改 Card Stack — 永絕 col-1 截斷(老闆 8+ 次糾正、sticky col-1 4 次失敗、根本繞開)
+      // 短表(≤ 4 col)維持原表格 + sticky col-1(已穩定)
+      const colCountForLayout = (firstRow.match(/<td|<th/g) || []).length || 1
+      if (colCountForLayout >= 5) {
+        // 抽 header labels(<th>內容)
+        const headerCells = (firstRow.match(/<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/g) || [])
+          .map(c => c.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim())
+        // 抽 body rows
+        const bodyTrList = (finalBodyRows.match(/<tr[^]*?<\/tr>/g) || [])
+        const cardsHtml = bodyTrList.map(tr => {
+          const cells = (tr.match(/<td[^>]*>([\s\S]*?)<\/td>/g) || [])
+            .map(c => c.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim())
+          if (cells.length === 0) return ''
+          const title = cells[0] || '—'
+          const items = headerCells.slice(1).map((label, i) => {
+            const value = cells[i + 1] || '—'
+            return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 0;border-top:1px solid rgba(255,255,255,0.04)"><span style="color:rgba(201,168,76,0.75);font-size:12px;font-weight:600;flex-shrink:0;min-width:70px">${label}</span><span style="color:var(--color-cream);font-size:13px;line-height:1.6;text-align:right">${value}</span></div>`
+          }).join('')
+          return `<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(201,168,76,0.15);border-radius:12px;padding:14px 18px;margin-bottom:10px"><div style="color:var(--color-gold);font-size:15px;font-weight:600;padding-bottom:8px;border-bottom:2px solid rgba(201,168,76,0.20);margin-bottom:6px">${title}</div>${items}</div>`
+        }).join('')
+        return `<div class="report-card-stack" style="margin:16px 0">${cardsHtml}</div>`
+      }
+
       return `<div class="table-breakout-outer" style="margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);overflow:hidden"><div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:480px;font-size:13px;table-layout:auto">${headerStickyRow}${finalBodyRows}</table></div></div>`
     })
     .replace(/___TABLE_SEP___/g, '')
