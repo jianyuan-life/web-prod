@@ -761,7 +761,16 @@ function classifySubSection(title: string): 'positive' | 'caution' | 'improvemen
 //   修:stripRawMarkdown 全頁暴力清 raw `**`、所有 dangerouslySetInnerHTML 路徑統一過
 //   trade-off:可能誤刪 AI 內容引用的 `**`(production AI 不該保留 raw markdown source、安全)
 function stripRawMarkdown(html: string): string {
-  return (html || '').replace(/\*\*/g, '')
+  return (html || '')
+    .replace(/\*\*/g, '')
+    // v5.10.121 P0 修(L2 IA #2、對外清零 15→14 系統、c_plan 7 處 hardcode 跟鐵律矛盾):
+    //   c_plan_v2 內部仍 15 系統(含南洋 raw_data 喂 AI)、對外 14 系統(南洋訓練不足)
+    //   frontend 後處理 replace「15 系統 / 15 套 / 十五系統 / 十五套」→「14」
+    //   negative:章節編號「十五、」不換(後接「、」非「系統/套」)
+    .replace(/十五系統/g, '十四系統')
+    .replace(/十五套/g, '十四套')
+    .replace(/15\s*系統/g, '14 系統')
+    .replace(/15\s*套/g, '14 套')
 }
 
 // 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
