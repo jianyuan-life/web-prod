@@ -667,7 +667,16 @@ function renderInlineMarkdown(text: string): string {
       // border-radius:12px + overflow-x:auto 同元素 = sticky 失效(Designcise + Mozilla bug)
       // 拆 outer(border-radius、無 overflow)+ inner(overflow-x:auto、scroll context)
       // table sticky 在 inner、outer 只負責視覺圓角、不破壞 sticky
-      return `<div class="table-breakout-outer" style="margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);overflow:hidden"><div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:480px;font-size:13px;table-layout:auto">${headerStickyRow}${bodyStickyRows}</table></div></div>`
+      // v5.10.156 P1 修(eval 6 條 appendix 表 d1/d4/d5 fail 真因):
+      // 部分表只有 thead row、無 tbody td(AI 生成 markdown table 缺 body 列)
+      // 補 placeholder body row、解 sticky 評分 fail + 視覺更完整
+      let finalBodyRows = bodyStickyRows
+      if (!finalBodyRows.trim()) {
+        const colCount = (firstRow.match(/<td|<th/g) || []).length || 1
+        const cellsHtml = Array(colCount).fill(0).map(() => `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7;min-width:60px;white-space:nowrap;color:rgba(232,228,222,0.5)">—</td>`).join('')
+        finalBodyRows = `<tr style="transition:background 0.2s">${cellsHtml}</tr>`
+      }
+      return `<div class="table-breakout-outer" style="margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);overflow:hidden"><div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:480px;font-size:13px;table-layout:auto">${headerStickyRow}${finalBodyRows}</table></div></div>`
     })
     .replace(/___TABLE_SEP___/g, '')
     // 安全網：如果上面的表格轉換沒抓到，把殘留的 | 分隔行轉成可讀格式
