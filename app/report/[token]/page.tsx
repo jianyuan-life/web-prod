@@ -19,8 +19,10 @@ import PartHighlights from '@/components/PartHighlights'
 import SubscribeCTA from '@/components/SubscribeCTA'
 import { ReadingProgressBar, BackToTopButton, ReadingTime, FloatingActionPanel } from '@/components/ReportEnhancements'
 import ScrollSpy from '@/components/ScrollSpy'
-// v5.7.80 SidebarTOC 移除(LLM 標「左欄擠右欄」根治、改單欄)、import 同步清掉
-// import SidebarTOC from '@/components/SidebarTOC'
+// v5.10.140 SidebarTOC 重新加回(DS4 #1 P0 +20 連貫性、Notion/Linear/Stripe 業界共識):
+// v5.7.80 移除原因(主內容擠到 600px)已根治:SidebarTOC 鎖固定寬 240px / flex 0 0 240px、不會撐爆
+// 改 lg:flex 兩欄、main 加 flex-1 min-w-0(避免 grid item 預設不收縮)
+import SidebarTOC from '@/components/SidebarTOC'
 import FiveElementsRadar from '@/components/FiveElementsRadar'
 import ShareReportButton from '@/components/ShareReportButton'
 import ZiweiPalaceWheel from '@/components/ZiweiPalaceWheel'
@@ -1885,9 +1887,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
-        {/* v5.7.80 SidebarTOC 移除 — 改單欄 max-w 1280(LLM 多次標「主內容區擠到 600px」、原因可能 sidebar 撐爆寬度) */}
-        {/* Main content full width */}
-        <div className="w-full">
+        {/* v5.10.140 DS4 #1 桌面 sidebar TOC 補回 + lg:flex 兩欄(連貫性 +20):
+            桌面 lg+ 顯示 sidebar(240px 鎖死)、main flex-1 min-w-0 不被擠
+            mobile/tablet sidebar hidden、main 仍 full width(原行為) */}
+        <div className="lg:flex lg:gap-6 lg:items-start">
+        {!isChumenji && sections.length > 0 && (
+          <SidebarTOC sections={sections.map((s, i) => ({ idx: i, title: (s.title || `第 ${i+1} 章`).replace(/^[一二三四五六七八九十百]+[、\.]\s*/, '').slice(0, 24) }))} />
+        )}
+        <div className="w-full lg:flex-1 lg:min-w-0">
 
         {/* 品牌標題 v5.8.5 縮 mb-3 → mb-2 */}
         <div className="text-center mb-2 no-print">
@@ -4750,6 +4757,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         </div>
 
         </div>{/* v5.7.53 main content flex-1 close */}
+        </div>{/* v5.10.140 lg:flex two-column close */}
       </div>
     </div>
   )
