@@ -65,7 +65,7 @@ export default function PartSection({
   }, [expanded])
 
   return (
-    <section ref={sectionRef} className="mb-8">
+    <section ref={sectionRef} className="mb-12 sm:mb-16" id={`part-${part.key}`}>
       {/* 篇章分隔帶 */}
       <button
         type="button"
