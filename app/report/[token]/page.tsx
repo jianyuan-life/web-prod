@@ -677,14 +677,10 @@ function renderInlineMarkdown(text: string): string {
         finalBodyRows = `<tr style="transition:background 0.2s">${cellsHtml}</tr>`
       }
 
-      // v5.10.158/161 方案 A:寬表(≥ 5 col)改 Card Stack — 永絕 col-1 截斷
-      // v5.10.161 IA Agent P0+P1 修(HOLD 90→預期 96):
-      // - P1-2 對外清零 14↔15 cascade 套用到 title + label + value
-      // - P1-1 a11y role=list/listitem(<dl>/<dt>/<dd> 不適用因 markdown render)、screen reader 讀對
-      // - P2-1 title <div> 升 <h4>(SEO + a11y heading hierarchy)
-      // - P2-2 placeholder "—" cell filter
+      // v5.10.165 P0 — Card Stack 觸發條件 ≥ 5 → ≥ 3(老闆截圖 ≤ 4 col sticky 仍視覺截字「段/級/員」、降低門檻讓多數表走 Card Stack 永絕 sticky bug)
+      // v5.10.158/161 方案 A:寬表 → Card Stack
       const colCountForLayout = (firstRow.match(/<td|<th/g) || []).length || 1
-      if (colCountForLayout >= 5) {
+      if (colCountForLayout >= 3) {
         // 對外清零 helper(同 stripRawMarkdown 14↔15 cascade)
         const sanitize14 = (s: string) => s
           .replace(/十五系統/g, '十四系統')
