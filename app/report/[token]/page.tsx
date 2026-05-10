@@ -663,8 +663,11 @@ function renderInlineMarkdown(text: string): string {
       const bodyStickyRows = bodyRows.replace(/<td\s+style="([^"]*)"/g, (_m, s) =>
         `<td style="${s};min-width:80px"`
       )
-      // table-layout: auto(預設)讓每欄 content-driven、不被 sticky 強制 fit-content
-      return `<div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><table style="width:100%;border-collapse:collapse;min-width:480px;font-size:13px;table-layout:auto">${headerStickyRow}${bodyStickyRows}</table></div>`
+      // v5.10.151 P0 修(cross-source review、4 次 sticky 失敗真因):
+      // border-radius:12px + overflow-x:auto 同元素 = sticky 失效(Designcise + Mozilla bug)
+      // 拆 outer(border-radius、無 overflow)+ inner(overflow-x:auto、scroll context)
+      // table sticky 在 inner、outer 只負責視覺圓角、不破壞 sticky
+      return `<div class="table-breakout-outer" style="margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);overflow:hidden"><div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:480px;font-size:13px;table-layout:auto">${headerStickyRow}${bodyStickyRows}</table></div></div>`
     })
     .replace(/___TABLE_SEP___/g, '')
     // 安全網：如果上面的表格轉換沒抓到，把殘留的 | 分隔行轉成可讀格式
