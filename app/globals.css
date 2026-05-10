@@ -391,6 +391,19 @@ a.btn:active {
   }
 }
 
+/* v5.10.166 R+9 desktop 可讀性升級(2026-05-11、Gemini Vision + GPT-4o Vision 雙審 P0:行高過緊)
+ * - desktop 預設 1.7 / p+li 1.75(對標 Stripe 1.7 / 16Personalities 中文長文 1.7-1.8 / Apple HIG 1.6+)
+ * - mobile 已 1.8/1.85(下方 media query 不變)、未動
+ * - 對應 _audit_2026-05-11/findings/4_LLM_INTEGRATED_C_AUDIT.md Vision finding 2 + 3
+ */
+[data-report-content] {
+  line-height: 1.7;
+}
+[data-report-content] p,
+[data-report-content] li {
+  line-height: 1.75;
+}
+
 /* v5.10.7 R+3 mobile 可讀性升級(Claude Haiku mobile #3「字級略小 14px」修)
  * - 報告區字級 mobile 14 → 15px(WCAG AA + Apple HIG)
  * - 行高 1.6 → 1.7 提升閱讀節奏
