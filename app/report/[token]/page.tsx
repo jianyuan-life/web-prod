@@ -3683,7 +3683,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* 如果沒有結構化數據，顯示原始內容 */}
             {personalityCard.talents.length === 0 && personalityCard.challenges.length === 0 && !personalityCard.firstImpression && !personalityCard.definition && (
-              <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(personalityCard.rawContent) }} />
+              <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: stripRawMarkdown(renderSectionMarkdown(personalityCard.rawContent)) }} />
             )}
           </div>
         )}
