@@ -116,8 +116,18 @@ function extractKeywords(sections: ContentSectionLite[]): string[] {
       }
     }
   }
-  // 去重 + 過濾太長的
-  return Array.from(new Set(keywords)).filter(k => k.length >= 2 && k.length <= 12)
+  // v5.10.98 P0 修(visual_audit_2026-05-10 N6 共識「chip 整句外洩」、4 件 C/G15):
+  //   實測何紀萳 chip「然後一次崩潰」。」含「」」+「。」結尾標點 = 句子非 keyword
+  //   修補 1:strip 開頭/結尾的全形/半形標點與引號
+  //   修補 2:過濾含句末標點(。！？)的、必為句子片段非 keyword
+  //   修補 3:過濾含分句符號(/、，)的、避免「A / B / C」整段
+  return Array.from(new Set(
+    keywords
+      .map(t => t.replace(/^[「」『』。、！？，：；\-—\s]+|[「」『』。、！？，：；\-—\s]+$/g, '').trim())
+      .filter(t => t.length >= 2 && t.length <= 12)
+      .filter(t => !/[。！？]/.test(t))  // 含句末標點 = 句子片段、非 keyword
+      .filter(t => !/\s\/\s|\s—\s/.test(t))  // 含「 / 」「 — 」分句符 = 多句串接
+  ))
 }
 
 function extractHighlights(sections: ContentSectionLite[]): string[] {
