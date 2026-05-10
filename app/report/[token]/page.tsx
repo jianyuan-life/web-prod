@@ -1630,9 +1630,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         /* v5.10.147 DS5 #2 段距加大 — Bringhurst 段距 ≥ 行距×1.5(原 2.5rem/1.8 = 1.23、改 3rem/1.8 = 1.48 達標)
            v5.7.50 視覺層級加強(老闆要求 100 分):字大 行高長 段距大 */
         .report-p { color: var(--color-text); line-height: 1.8; margin-bottom: 3rem; font-size: 1.125rem; font-family: var(--font-body); letter-spacing: 0.012em; }
+        /* v5.10.159 DS1 R2 P0 修(getComputedStyle 抓 maxWidth=none、段落 1299px 撐爆 800px):
+           原 > 直接子選擇器、但 dangerouslySetInnerHTML 包多一層 div、p 不在 direct child
+           改 descendant selector(空格)cover 任意層級的 p / ul / ol / blockquote */
         /* 內文段落自限 800px 維持 32-38 漢字/行 + 段距加大(Bringhurst 標準) */
-        .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 800px; margin-bottom: 1.75rem; }
-        .report-p > p + p { margin-top: 1.5rem; }
+        .report-p p, .report-p ul, .report-p ol, .report-p blockquote { max-width: 800px; margin-bottom: 1.75rem; }
+        .report-p p + p { margin-top: 1.5rem; }
         /* v5.7.50 強化粗體視覺(v5.10.36 R+8 P0 修:Vision LLM 共識「整段金色 highlight 過度、變區塊背景色失去引導」)
            原 #d4af37 金色 + 600 = AI ** 過多時整段金色失重點
            修補:cream 略亮 + 500、提供「強調」但不再是金色背景感 */
