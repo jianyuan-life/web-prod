@@ -4271,7 +4271,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   style={{ borderLeft: `4px solid ${accentColor}`, background: stripeBg }}
                   // v5.10.104 P1(verify h2Count G15 7LLM=28 過多、5 個年份 H2 應降 H3):
                   // 年份小節「20XX 年」「20XX-20XX」用 H3 降層、不跟主章節 H2 同級、outline 對齊 SEO/a11y
-                  headingLevel={/^20\d{2}\s*年$|^20\d{2}\s*[-–]\s*20\d{2}/.test(sec.title.trim()) ? 'h3' : 'h2'}
+                  // v5.10.106 修 regex(final verify 抓 v5.10.104 regex 失效):
+                  //   原 /^20\d{2}\s*年$/ 對「2026年(丙午年——天干丙火、地支午火)」永遠 mismatch
+                  //   改:年後可接 (...) / 干支 / dash 等補充說明、寬鬆匹配
+                  headingLevel={/^20\d{2}\s*年(?:[（(\s—-]|$)|^20\d{2}\s*[-–]\s*20\d{2}/.test(sec.title.trim()) ? 'h3' : 'h2'}
                 >
                   {tldrNode}
                   <div className="report-p">
