@@ -776,6 +776,10 @@ function stripRawMarkdown(html: string): string {
     .replace(/十五套/g, '十四套')
     .replace(/15\s*系統/g, '14 系統')
     .replace(/15\s*套/g, '14 套')
+    // v5.10.129 P0 修(L2 IA round 2 P0-1、漏 cover 子串):
+    .replace(/十五個系統/g, '十四個系統')
+    .replace(/十五張底片/g, '十四張底片')
+    .replace(/15\s*個\s*系統/g, '14 個系統')
 }
 
 // 渲染單個區塊內的 markdown 為 HTML（支援 ### 子章節彩色框）
