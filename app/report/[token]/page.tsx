@@ -1627,11 +1627,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
              第 1 欄 sticky 不生效、fit-content 寬度繼承表頭可能空、0 寬被截
              改用 negative margin 等效水平置中、不創 transform context、保 sticky 生效
              跨 6+ 表(R 三年總覽 / D 健康時段 / G15 養生 / 月份注意 等)修 */
+        /* v5.10.155 P0 修(v5.10.151 拆 outer/inner 後 95vw rule 套錯層):
+           原 .table-breakout 95vw + negative margin 是 wrapper 級設定、現在 .table-breakout 是 inner scroll context
+           改套 .table-breakout-outer(視覺 wrapper、border-radius 在這)、確保 negative margin 把整 wrapper 拉成 95vw 置中 */
         @media (min-width: 1024px) {
-          .table-breakout {
+          .table-breakout-outer {
             width: min(95vw, 1600px) !important;
             margin-left: calc(-1 * (min(95vw, 1600px) - 100%) / 2) !important;
             max-width: none !important;
+          }
+          .table-breakout {
+            width: 100%;
           }
         }
         /* v5.3.44 IA 稽核補：h1/h2 Major Third 比例（1.25 倍），配 17px 正文維持垂直節奏
