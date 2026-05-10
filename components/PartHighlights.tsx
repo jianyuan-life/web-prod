@@ -127,6 +127,10 @@ function extractKeywords(sections: ContentSectionLite[]): string[] {
       .filter(t => t.length >= 2 && t.length <= 12)
       .filter(t => !/[。！？]/.test(t))  // 含句末標點 = 句子片段、非 keyword
       .filter(t => !/\s\/\s|\s—\s/.test(t))  // 含「 / 」「 — 」分句符 = 多句串接
+      // v5.10.99 P0 修(visual_audit_2026-05-10「也特別容易跟您起衝突」躲過 v5.10.98 filter):
+      //   chip 應為抽象 keyword(冷靜/直覺/樂高)、不該含人稱代詞(您/你/他/她/我)
+      //   含人稱代詞 = 句子片段、非 keyword
+      .filter(t => !/[您你他她我們它]/.test(t))
   ))
 }
 
