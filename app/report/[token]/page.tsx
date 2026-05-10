@@ -1566,13 +1566,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           .glass { padding-left: 18px !important; padding-right: 18px !important; }
         }
         /* v5.7.38 表格 break-out:大螢幕 14 欄矩陣表撐到 viewport 95vw、容器外置中
-           小螢幕(< 1024px)維持容器內 100% + horizontal scroll */
+           小螢幕(< 1024px)維持容器內 100% + horizontal scroll
+           v5.10.92 修(MASTER_BUG_REPORT R2 + 老闆截圖 4 表 P0):
+             原 transform translateX(-50%) 創建 containing block、讓內部 td position sticky left 0 失效
+             第 1 欄 sticky 不生效、fit-content 寬度繼承表頭可能空、0 寬被截
+             改用 negative margin 等效水平置中、不創 transform context、保 sticky 生效
+             跨 6+ 表(R 三年總覽 / D 健康時段 / G15 養生 / 月份注意 等)修 */
         @media (min-width: 1024px) {
           .table-breakout {
             width: min(95vw, 1600px) !important;
-            position: relative;
-            left: 50%;
-            transform: translateX(-50%);
+            margin-left: calc(-1 * (min(95vw, 1600px) - 100%) / 2) !important;
             max-width: none !important;
           }
         }
