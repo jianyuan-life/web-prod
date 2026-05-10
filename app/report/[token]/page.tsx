@@ -791,6 +791,11 @@ function renderSectionMarkdown(content: string): string {
     // v5.10.78 P0 修(L4 Gemini Vision 共識 P0 #7:raw `**` markdown 殘留、AI 偶生不平衡 bold marker、C 何宥諄 line 1885「**對應流年丙午:2028 戊申年食神...」開頭 `**` 無對應 closing)
     // 修:行首 `**` 後接純文字、同行無第二個 `**` → 視為 unmatched、行尾補 closing(轉成完整 `**...**` markdown bold)
     .replace(/^\*\*([^\n*]{2,200})$/gm, '**$1**')
+    // v5.10.89 P0 修(2026-05-10 visual_audit_2026-05-10 抓 4 件、bullet leading pattern、v5.10.78 regex 行尾 $ 限定漏接「行首 ** + 短 label + 冒號 + 長文」case):
+    //   證據 C 何紀萳 line 1297/1303/1306「**紫微流年丙午*：...」「**吠陀流年丙午:...」「**生肖流年丙午:...」+ C 何宥諄 line 1883「**對應流年丙午:2028...」
+    //   pattern:行首 ** + 2-40 字 label + 可選殘留 0-2 個 * + 冒號(中文 or 英文) → AI 想寫 `**X**:` 但 closing 漏
+    //   修:吞掉中間殘留 *、補 closing ** 在 : 前
+    .replace(/^\*\*([^\n*]{2,40})\*{0,2}([:：])/gm, '**$1**$2')
     .replace(/\n{3,}/g, '\n\n')
   // 按 ### 分割子章節
   const subParts = content.split(/^### /m)
