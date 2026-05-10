@@ -81,19 +81,28 @@ function detectWuxing(memberName: string, aiContent: string): string {
 }
 
 // 判斷每對成員之間的關係類型
+// v5.10.101 P0 修(同 detectWuxing/Roles cascade 跨人名 root cause):
+//   原 500 字 section 容易跨「## 下個章節」+ 跨第三人段落、harmony/tension keyword 誤計入
+//   實測 G15 7LLM 三人合報「何宣逸 × 何紀萳」段落 500 字內含「何宥諄」內容、誤算 pair score
+//   修:section 限定到下個 H2/H3 邊界(\n## 或 \n### 或 \n\n 段落空行)、避免跨章節
 function detectPairRelation(memberA: string, memberB: string, aiContent: string): 'harmony' | 'tension' | 'neutral' {
   if (!memberA || !memberB || !aiContent) return 'neutral'
-  // 找「A × B」或「A 與 B」的段落（500字範圍）
+  // 找「A × B」或「A 與 B」段、limit 到下個章節邊界(\n## / \n### / \n\n 雙空行)、避免跨段
   const patterns = [
-    new RegExp(`${memberA}\\s*[×x]\\s*${memberB}[\\s\\S]{0,500}`),
-    new RegExp(`${memberB}\\s*[×x]\\s*${memberA}[\\s\\S]{0,500}`),
-    new RegExp(`${memberA}與${memberB}[\\s\\S]{0,500}`),
-    new RegExp(`${memberB}與${memberA}[\\s\\S]{0,500}`),
+    new RegExp(`${memberA}\\s*[×x]\\s*${memberB}([\\s\\S]*?)(?=\\n##\\s|\\n###\\s|\\n\\n\\n|$)`),
+    new RegExp(`${memberB}\\s*[×x]\\s*${memberA}([\\s\\S]*?)(?=\\n##\\s|\\n###\\s|\\n\\n\\n|$)`),
+    new RegExp(`${memberA}與${memberB}([\\s\\S]*?)(?=\\n##\\s|\\n###\\s|\\n\\n\\n|$)`),
+    new RegExp(`${memberB}與${memberA}([\\s\\S]*?)(?=\\n##\\s|\\n###\\s|\\n\\n\\n|$)`),
   ]
   let section = ''
   for (const re of patterns) {
     const m = aiContent.match(re)
-    if (m) { section = m[0]; break }
+    if (m) {
+      section = m[0]
+      // 額外保險:cap 800 字、避免無 H2/H3 邊界時無限延伸
+      if (section.length > 800) section = section.slice(0, 800)
+      break
+    }
   }
   if (!section) return 'neutral'
   // 關鍵詞判斷
