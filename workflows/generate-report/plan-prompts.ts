@@ -3,8 +3,19 @@
 // 供 Workflow steps 和舊版 fallback route 共用
 // ============================================================
 
-import { getDPlanSystemPrompt, getDPlanStructurePrompt } from '@/prompts/d_plan_v2'
-import { getRPlanSystemPrompt, getRPlanStructurePrompt } from '@/prompts/r_plan_v2'
+// v5.10.88 Stage 1 USE_PLAN_V3 feature flag(SOP `tasks/prompt_v3_switch_sop_2026-05-08.md`):
+//   d_plan v2/v3 export 同名 → namespace 直切;r_plan v3 export 加 V3 後綴 → 在 caller 層 alias
+//   預設 false → production 仍走 v2、零風險;Vercel env `USE_PLAN_V3=true` → v3 生效
+//   g15_plan v3 架構不同(1-Call vs 3-Call、見 steps.ts L24-27 註)、本 commit 不動 g15、待 round 3
+import * as _dV2 from '@/prompts/d_plan_v2'
+import * as _dV3 from '@/prompts/d_plan_v3'
+import * as _rV2 from '@/prompts/r_plan_v2'
+import * as _rV3 from '@/prompts/r_plan_v3'
+const _USE_V3 = process.env.USE_PLAN_V3 === 'true'
+const { getDPlanSystemPrompt, getDPlanStructurePrompt } = _USE_V3 ? _dV3 : _dV2
+const { getRPlanSystemPrompt, getRPlanStructurePrompt } = _USE_V3
+  ? { getRPlanSystemPrompt: _rV3.getRPlanSystemPromptV3, getRPlanStructurePrompt: _rV3.getRPlanStructurePromptV3 }
+  : _rV2
 
 // ── 論述倫理硬性規則（全方案共用，絕對不可違反）──
 export const ETHICS_RULES = `【🚨 論述倫理硬性規則（絕對不可違反，違反視為不合格報告）】

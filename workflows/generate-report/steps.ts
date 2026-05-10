@@ -12,14 +12,21 @@ import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { recordEmailSend } from '@/lib/email-send-log'
 import { notifyEmailFailed } from '@/lib/ai/observability/telegram'
 import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
-import {
+// v5.10.88 Stage 1 USE_PLAN_V3 feature flag(SOP `tasks/prompt_v3_switch_sop_2026-05-08.md`):
+//   c_plan v2 vs v3 export 同 11 個 symbol 同 signature(已 grep 驗證)、namespace import 後 flag 切
+//   預設 false → production 仍走 v2、零風險;Vercel env `USE_PLAN_V3=true` → trigger redeploy 即生效 v3
+//   d_plan / r_plan / g15_plan 後續 commit 接(本 commit 只動 c、stage 1 最小驗證)
+import * as _cV2 from '@/prompts/c_plan_v2'
+import * as _cV3 from '@/prompts/c_plan_v3'
+const _C_PROMPTS = process.env.USE_PLAN_V3 === 'true' ? _cV3 : _cV2
+const {
   getAgeGroup,
   FORBIDDEN_WORDS_BY_STAGE,
   buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
   buildUserPrompt, buildAppendix,
   extractCall1Summary, extractCall1And2Summary,
   SYSTEM_GROUPS,
-} from '@/prompts/c_plan_v2'
+} = _C_PROMPTS
 // v5.10.23 (2026-05-06) Round 2:G15 v6.0 prompt 預備接線(Feature Flag、Round 3 啟用)
 // 目前 quality gate 已用 G15_V2_QUALITY_GATE env 嚴格度切換、Round 3 將接線 buildG15Call*Prompt
 // 暫不切換 systemPrompt(避免 1-Call vs 3-Call 架構衝突、Round 3 一併處理)
