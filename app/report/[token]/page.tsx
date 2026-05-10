@@ -24,6 +24,7 @@ import ScrollSpy from '@/components/ScrollSpy'
 // 改 lg:flex 兩欄、main 加 flex-1 min-w-0(避免 grid item 預設不收縮)
 import SidebarTOC from '@/components/SidebarTOC'
 import ReportBreadcrumb from '@/components/ReportBreadcrumb'
+import ChapterNav from '@/components/ChapterNav'
 import FiveElementsRadar from '@/components/FiveElementsRadar'
 import ShareReportButton from '@/components/ShareReportButton'
 import ZiweiPalaceWheel from '@/components/ZiweiPalaceWheel'
@@ -4771,20 +4772,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         </div>{/* v5.7.53 main content flex-1 close */}
         </div>{/* v5.10.140 lg:flex two-column close */}
       </div>
-      {/* v5.10.144 DS4 mobile floating「📑 目錄」FAB(連貫性 +3-5、解 mobile 沒 sidebar 滾很久回不去): */}
+      {/* v5.10.146 DS4 #3 ChapterNav prev/next 浮動 + mobile bottom bar 整合(連貫性 +8、取代 v5.10.144 FAB) */}
       {!isChumenji && sections.length > 3 && (
-        <a
-          href="#mobile-toc"
-          className="fixed bottom-6 right-6 lg:hidden z-50 no-print rounded-full px-4 py-3 text-sm font-semibold flex items-center gap-2 shadow-lg"
-          style={{
-            background: 'linear-gradient(135deg, rgba(212,175,55,0.95), rgba(197,150,58,0.85))',
-            color: '#0f1628',
-            boxShadow: '0 6px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(212,175,55,0.3)',
-          }}
-          aria-label="跳到目錄"
-        >
-          <span>📑</span><span>目錄</span>
-        </a>
+        <ChapterNav totalSections={sections.length} hasMobileTOC={true} />
       )}
     </div>
   )
