@@ -1995,10 +1995,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     border: '1.5px solid rgba(197,150,58,0.50)',
                   }}>{titleEmoji}</div>
                   <div className="text-gold/55 text-[9px] tracking-[3px] mb-1 uppercase">命格封號</div>
-                  {/* v5.10.9 R+6 視覺遞進(Haiku 86→95 P0-1):封號 text-xl 20px → text-[28px] 28px、強化首屏視覺錨點 */}
-                  <div className="text-gold text-[28px] font-bold tracking-wide leading-[1.15]" style={{
+                  {/* v5.10.9 R+6 視覺遞進(Haiku 86→95 P0-1):封號 text-xl 20px → text-[28px] 28px、強化首屏視覺錨點
+                      v5.10.108 P1(N3 sub-agent 抓「太陽之火」5 次重複 visual):
+                        Bento Box 封號 28px 跟下方命格名片大卡 hero 同層級重複
+                        改 22px、跟「洞察金字塔小卡 text-lg(18px)」+「命盤一覽 text-base(16px)」階層分明
+                        留視覺錨點、降重複壓迫感 */}
+                  <div className="text-gold text-[22px] font-bold tracking-wide leading-[1.2]" style={{
                     fontFamily: 'var(--font-sans)',
-                    textShadow: '0 0 12px rgba(197,150,58,0.4)',
+                    textShadow: '0 0 10px rgba(197,150,58,0.35)',
                   }}>{personalityCard.title}</div>
                   {definitionShort && (
                     /* v5.10.18 R+15 Gemini mobile 94 P2「描述對比度低」修:75→95 opacity + font-medium、達 WCAG AA 對比度 */
