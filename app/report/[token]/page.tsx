@@ -1595,7 +1595,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            V GPT-4o 90→89(-1)、平均 93.33→92.5(-0.83 微退)、accept v5.10.36 baseline */
         .report-h2 { font-size: 1.375rem; font-weight: 700; color: var(--color-gold); margin: 2rem 0 1rem; font-family: var(--font-body); line-height: 1.4; letter-spacing: 0.015em; }
         .report-h3 { font-size: 1.25rem; font-weight: 600; color: var(--color-gold); margin: 2rem 0 1rem; font-family: var(--font-body); padding-left: 12px; border-left: 3px solid rgba(201,168,76,0.85); line-height: 1.5; letter-spacing: 0.02em; }
-        .report-h4 { font-size: 1rem; font-weight: 600; color: var(--color-cream); margin: 1.25rem 0 0.5rem; font-family: var(--font-body); line-height: 1.5; }
+        /* v5.10.157 DS5 字級階層細修 — h4 1rem→1.0625rem(17px、跟 body 1.125rem 微差、Major Third 嚴格)*/
+        .report-h4 { font-size: 1.0625rem; font-weight: 600; color: var(--color-cream); margin: 1.5rem 0 0.625rem; font-family: var(--font-body); line-height: 1.5; }
         /* v5.10.35 R+8 P0 修(V3 GPT-4o Vision + V4 Gemini Vision 共識「大面積黃色 highlight 過度、失去重點意義」、扣 -4):
            原 cream + weight 600 + 下劃線(若有)= 整段強 highlight、AI 生成 ** 過多時整篇都亮
            修補:降 weight 到 500 + 略降透明度、保持「強調但不搶」、解 V4 -4 視覺疲勞 */
@@ -1683,6 +1684,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         }
         .toc-link[data-active="true"] span:last-child { color: var(--color-gold) !important; }
         .toc-link:focus-visible { outline: 2px solid rgba(201,168,76,0.5); outline-offset: 2px; }
+        /* v5.10.157 DS3 #6 章節進場 fade-in 動畫(motion 一致性 +3、prefers-reduced-motion 自動 disable)*/
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .section-card {
+          animation: fadeInUp 380ms var(--easing-emphasized) backwards;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .section-card { animation: none; }
+        }
         /* 金色小徽章 hover 放大（Top1 卡片等） */
         .hover-lift { transition: transform var(--motion-medium) var(--easing-standard), box-shadow var(--motion-medium) var(--easing-standard); }
         .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(201,168,76,0.15); }
@@ -1704,7 +1716,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           z-index: 4;
           background: rgb(15, 22, 40);
           box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.6);
-          max-width: clamp(140px, 25vw, 240px);
+          width: 180px !important;
+          min-width: 180px !important;
+          max-width: 180px !important;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -1716,7 +1730,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           z-index: 2;
           background: rgb(15, 22, 40);
           box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.6);
-          max-width: clamp(140px, 25vw, 240px);
+          width: 180px !important;
+          min-width: 180px !important;
+          max-width: 180px !important;
           overflow: hidden;
           text-overflow: ellipsis;
         }
@@ -1743,20 +1759,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         /* v5.3.48 Wave 3.3 抽言金句塊：截圖分享素材 + 情感錨點
            報告正文中若有 blockquote 或特定模式的金句，套用此樣式放大震撼
            用法：在章節內容中寫 > 金句 或 <blockquote>金句</blockquote> */
+        /* v5.10.157 DS5 #8 抽言強化 — 字加大 1.375→1.5 + italic + 行高 1.6→1.65、震撼力 +3 分 */
         .report-pullquote, blockquote.pullquote, .report-p blockquote {
-          margin: 2.5rem 0;
-          padding: 2rem 2.5rem;
+          margin: 3rem 0;
+          padding: 2.25rem 2.75rem;
           border: none;
-          border-left: 3px solid rgba(201,168,76,0.85);
-          background: linear-gradient(135deg, rgba(201,168,76,0.06) 0%, rgba(201,168,76,0.02) 100%);
-          border-radius: 0 12px 12px 0;
-          font-size: 1.375rem;
-          line-height: 1.6;
-          letter-spacing: 0.015em;
+          border-left: 4px solid rgba(201,168,76,0.85);
+          background: linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.025) 100%);
+          border-radius: 0 14px 14px 0;
+          font-size: 1.5rem;
+          line-height: 1.65;
+          letter-spacing: 0.02em;
           font-weight: 500;
           color: var(--color-cream);
           font-family: var(--font-sans);
-          font-style: normal;
+          font-style: italic;
           text-wrap: balance;
           position: relative;
         }
