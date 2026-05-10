@@ -847,7 +847,11 @@ function renderSectionMarkdown(content: string): string {
       if (subBody) html += `<p class="report-p">${renderInlineMarkdown(subBody)}</p>`
     }
   }
-  return sanitizeReportHtml(html)
+  // v5.10.105 P0 修(visual_audit_v5_10_104 starStarCount C 何宥諄=37 / G15 霖=63、ai_content `**` 漏率 1.9-8.8%):
+  //   render 後若 raw `**` 仍殘留(AI 生成不平衡 markdown bold + renderInlineMarkdown regex 漏網)
+  //   暴力清:rendered HTML 中所有 raw `**` 全刪、客戶看不到 markdown source
+  //   trade-off:可能誤刪某 case 引用文中的 `**`、但 production AI 不應在引用文中保留 markdown source
+  return sanitizeReportHtml(html.replace(/\*\*/g, ''))
 }
 
 // Google Calendar URL 生成（純前端，不需要 API key）
