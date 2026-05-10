@@ -101,28 +101,32 @@ export default function CookieConsent() {
       role="dialog"
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-consent-desc"
-      className="fixed bottom-0 inset-x-0 z-[1000] p-4 sm:p-6 bg-dark/95 backdrop-blur-xl border-t border-gold/30 shadow-2xl"
+      className="fixed bottom-0 inset-x-0 sm:bottom-4 sm:left-auto sm:right-4 sm:inset-x-auto sm:max-w-sm z-[1000] p-3 sm:p-4 bg-dark/95 backdrop-blur-xl border-t sm:border border-gold/30 sm:rounded-xl shadow-2xl"
       style={{ animation: 'slideUp 0.3s ease-out' }}
     >
       <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
 
-      <div className="max-w-6xl mx-auto">
+      {/* v5.10.94 P0 修(MASTER_BUG_REPORT 全 6/6 件 + Jamie 截圖 N1):
+          原 fixed bottom-0 inset-x-0 + p-4 sm:p-6 全寬橫條 → desktop 30% / mobile 40% viewport 永久遮閱讀
+          修 desktop:右下 max-w-sm(384px)toast、不擋主閱讀區
+          修 mobile:仍全寬(避太小)但 padding 縮 + 文案精簡(原 desc 2 行→1 行)
+          保留 GDPR 3 選項(自訂/必要/全接受) */}
+      <div>
         {!showCustom ? (
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex-1">
-              <h3 id="cookie-consent-title" className="text-cream font-bold text-base mb-1">
+          <div className="flex flex-col gap-3">
+            <div>
+              <h3 id="cookie-consent-title" className="text-cream font-bold text-sm mb-1">
                 🍪 Cookie 與隱私偏好
               </h3>
-              <p id="cookie-consent-desc" className="text-text-muted text-sm leading-relaxed">
-                鑑源使用必要 Cookie 維持網站運作、分析 Cookie 改善服務體驗、行銷 Cookie 衡量廣告成效。
-                您可以選擇全部接受、僅必要、或自訂偏好。詳見{' '}
+              <p id="cookie-desc-short" className="text-text-muted text-xs leading-relaxed">
+                使用 Cookie 改善體驗、可自訂偏好。詳見{' '}
                 <a href="/privacy" className="text-gold underline hover:text-gold/80">
                   隱私政策
                 </a>
                 。
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <div className="flex flex-row gap-2 shrink-0">
               <button
                 onClick={() => setShowCustom(true)}
                 className="px-4 py-2 text-sm rounded-lg border border-gold/40 text-gold hover:bg-gold/10 transition-colors"
