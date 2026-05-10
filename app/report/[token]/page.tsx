@@ -3709,16 +3709,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <div className="space-y-4">
                   {grouped.map(group => (
                     <div key={group.part.key}>
-                      <div
-                        className="text-[11px] mb-2 flex items-center gap-2"
-                        style={{ color: 'rgba(197,150,58,0.75)', letterSpacing: '2px' }}
-                      >
-                        <span style={{ fontSize: '14px' }}>{group.part.icon}</span>
-                        <span>{group.part.label} · {group.part.stage}</span>
-                        <span style={{ color: '#e6d89a', fontSize: '12px', letterSpacing: 'normal' }}>
-                          {group.part.name}
-                        </span>
-                      </div>
+                      {/* v5.10.100 P0 修(verify v5.10.99 後 grep D 何宣逸 raw HTML 仍 2 次「生命藍圖」):
+                          TOC 也 render group.part.name、v5.10.97 只修 PartSection 沒涵蓋 TOC
+                          D plan 跳過 part hero label、保留章節 list */}
+                      {report.plan_code !== 'D' && (
+                        <div
+                          className="text-[11px] mb-2 flex items-center gap-2"
+                          style={{ color: 'rgba(197,150,58,0.75)', letterSpacing: '2px' }}
+                        >
+                          <span style={{ fontSize: '14px' }}>{group.part.icon}</span>
+                          <span>{group.part.label} · {group.part.stage}</span>
+                          <span style={{ color: '#e6d89a', fontSize: '12px', letterSpacing: 'normal' }}>
+                            {group.part.name}
+                          </span>
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
                         {group.chapters.map(sec => {
                           const i = indexMap.get(sec) ?? 0
