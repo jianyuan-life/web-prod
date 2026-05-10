@@ -634,7 +634,7 @@ function renderInlineMarkdown(text: string): string {
       const cellsHtml = cells.map(c => {
         // v5.10.90:空 cell 用 &nbsp; 撐最小寬度、避免 grid 0 寬
         const display = c === '' ? '&nbsp;' : c.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        return `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7;min-width:60px">${display}</td>`
+        return `<td style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;line-height:1.7;min-width:60px;white-space:nowrap">${display}</td>`
       }).join('')
       return `<tr style="transition:background 0.2s" onmouseover="this.style.background='rgba(201,168,76,0.05)'" onmouseout="this.style.background='transparent'">${cellsHtml}</tr>`
     })
@@ -1590,11 +1590,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .report-bold { color: rgba(245,240,232,0.92); font-weight: 500; }
         .report-li { margin-left: 1.5rem; color: var(--color-text); list-style: disc; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
         .report-li-num { margin-left: 1.5rem; color: var(--color-text); list-style: decimal; margin-bottom: 0.5rem; line-height: 1.8; font-size: 1.0625rem; font-family: var(--font-body); letter-spacing: 0.01em; }
-        /* v5.7.50 視覺層級加強(老闆要求 100 分):字大 行高長 段距大 */
-        .report-p { color: var(--color-text); line-height: 1.8; margin-bottom: 2.5rem; font-size: 1.125rem; font-family: var(--font-body); letter-spacing: 0.012em; }
-        /* 內文段落自限 800px 維持 32-38 漢字/行 */
-        .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 800px; margin-bottom: 1.5rem; }
-        .report-p > p + p { margin-top: 1.25rem; }
+        /* v5.10.147 DS5 #2 段距加大 — Bringhurst 段距 ≥ 行距×1.5(原 2.5rem/1.8 = 1.23、改 3rem/1.8 = 1.48 達標)
+           v5.7.50 視覺層級加強(老闆要求 100 分):字大 行高長 段距大 */
+        .report-p { color: var(--color-text); line-height: 1.8; margin-bottom: 3rem; font-size: 1.125rem; font-family: var(--font-body); letter-spacing: 0.012em; }
+        /* 內文段落自限 800px 維持 32-38 漢字/行 + 段距加大(Bringhurst 標準) */
+        .report-p > p, .report-p > ul, .report-p > ol, .report-p > blockquote { max-width: 800px; margin-bottom: 1.75rem; }
+        .report-p > p + p { margin-top: 1.5rem; }
         /* v5.7.50 強化粗體視覺(v5.10.36 R+8 P0 修:Vision LLM 共識「整段金色 highlight 過度、變區塊背景色失去引導」)
            原 #d4af37 金色 + 600 = AI ** 過多時整段金色失重點
            修補:cream 略亮 + 500、提供「強調」但不再是金色背景感 */
@@ -1896,15 +1897,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         paddingLeft: 'clamp(1rem, 3vw, 2rem)',
         paddingRight: 'clamp(1rem, 3vw, 2rem)',
       }}>
-        {/* v5.10.140 DS4 #1 桌面 sidebar TOC 補回 + lg:flex 兩欄(連貫性 +20):
-            桌面 lg+ 顯示 sidebar(240px 鎖死)、main flex-1 min-w-0 不被擠
-            mobile/tablet sidebar hidden、main 仍 full width(原行為) */}
-        <div className="lg:flex lg:gap-6 lg:items-start">
-        {!isChumenji && sections.length > 0 && (
-          <SidebarTOC sections={sections.map((s, i) => ({ idx: i, title: (s.title || `第 ${i+1} 章`).replace(/^[一二三四五六七八九十百]+[、\.]\s*/, '').slice(0, 24) }))} />
-        )}
-        <div className="w-full lg:flex-1 lg:min-w-0">
-        {/* v5.10.145 DS4 #2 breadcrumb sticky 麵包屑(連貫性 +10、客戶位置感) */}
+        {/* v5.10.147 P0 緊急修(老闆糾正第 N 次、表格第 1 欄被截斷、最終根治):
+            完全移除 SidebarTOC(無論兩欄或 fixed 都會擠/遮表格、復發風險高)
+            連貫性改靠 v5.10.145 breadcrumb + v5.10.146 ChapterNav + v5.10.144 mobile FAB(都不碰 main 寬度)
+            main 100% 全寬、表格 td 加 white-space:nowrap、第 1 欄絕不再截斷 */}
+        <div className="w-full">
         {!isChumenji && sections.length > 3 && (
           <ReportBreadcrumb planName={PLAN_NAMES[report.plan_code] || '命理分析'} />
         )}
@@ -4769,8 +4766,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         </div>
 
-        </div>{/* v5.7.53 main content flex-1 close */}
-        </div>{/* v5.10.140 lg:flex two-column close */}
+        </div>{/* v5.10.147 main content w-full close(已 revert v5.10.140 兩欄) */}
       </div>
       {/* v5.10.146 DS4 #3 ChapterNav prev/next 浮動 + mobile bottom bar 整合(連貫性 +8、取代 v5.10.144 FAB) */}
       {!isChumenji && sections.length > 3 && (
