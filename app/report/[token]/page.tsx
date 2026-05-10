@@ -1671,6 +1671,24 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .hover-lift:active { transform: translateY(0) scale(0.99); }
         /* D 方案 3 步驟圓徽章 */
         .step-badge { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: linear-gradient(135deg, #c9a84c, #e8c87a); color: #0a0e1a; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; box-shadow: 0 2px 6px rgba(201,168,76,0.3); }
+        /* v5.10.148 🚨 P0 sticky col-1 永久鎖第 1 欄(老闆 N+1 次糾正、終局根治、調動全 LLM 教):
+           表格內 .table-breakout overflow-x:auto 起始 scrollLeft 可能 ≠ 0、第 1 欄被裁出 viewport
+           sticky position:left:0 + solid background 即使水平滾、第 1 欄永遠固定可見
+           背景必 solid(rgba 1.0)蓋住底層、避免穿透
+           z-index 大過 hover bg、box-shadow 右側陰影視覺分隔
+           tbody 跟 thead 都套、避免 header 跟 body 不同步 */
+        .table-breakout table thead th:first-child,
+        .table-breakout table tbody td:first-child {
+          position: sticky;
+          left: 0;
+          z-index: 5;
+          background: rgb(15, 22, 40);
+          box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.6);
+        }
+        /* hover row 不能蓋過 sticky col-1 background、確保 sticky 蓋過 hover */
+        .table-breakout table tbody tr:hover td:first-child {
+          background: rgb(20, 30, 55);
+        }
         /* v5.3.44 手機版適配（保持 17px 甜蜜點，不縮字，僅微調 padding）*/
         @media (max-width: 640px) {
           .section-card { padding: 18px; margin-bottom: 16px; }
