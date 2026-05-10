@@ -1414,10 +1414,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     return s
   }
   const personalityCardRaw = isThematic ? parsePersonalityCard(aiContent) : null
+  // v5.10.142 L1 R3 P0 #2 修:personalityCard 全欄過 stripRawMarkdown(對外清零 14 vs 15 leak、L1 R3 標 P0)
   const personalityCard = personalityCardRaw ? {
     ...personalityCardRaw,
-    talents: (personalityCardRaw.talents || []).map(sanitizeTalentRow).filter(t => t.length > 0),
-    challenges: (personalityCardRaw.challenges || []).map(sanitizeTalentRow).filter(c => c.length > 0),
+    title: stripRawMarkdown(personalityCardRaw.title || ''),
+    definition: stripRawMarkdown(personalityCardRaw.definition || ''),
+    firstImpression: stripRawMarkdown(personalityCardRaw.firstImpression || ''),
+    yearTheme: stripRawMarkdown(personalityCardRaw.yearTheme || ''),
+    talents: (personalityCardRaw.talents || []).map(sanitizeTalentRow).map(stripRawMarkdown).filter(t => t.length > 0),
+    challenges: (personalityCardRaw.challenges || []).map(sanitizeTalentRow).map(stripRawMarkdown).filter(c => c.length > 0),
   } : null
 
   // R 方案：從報告內容提取合/不合結論（不使用分數，命不該有分數）
