@@ -503,6 +503,20 @@ a.btn:active {
   [data-report-content] p {
     color: #E8E4DE; /* AAA 14.2:1 */
   }
+  /* v5.10.123 P0 修(L4 Gemini Vision F3 WCAG AA 對比度 fail):
+     mobile 小字(10-12px / opacity-50)對比度低、升 brightness 達 AA 4.5:1 + */
+  [data-report-content] .text-\[10px\],
+  [data-report-content] .text-\[11px\],
+  [data-report-content] .text-xs {
+    color: #d8dde6 !important;
+    font-weight: 500;
+  }
+  /* opacity-50 系列升 80%(對比度 4.5:1+)*/
+  [data-report-content] [class*="text-text-muted\/50"],
+  [data-report-content] [class*="text-gold\/50"],
+  [data-report-content] [class*="text-cream\/50"] {
+    opacity: 0.8 !important;
+  }
 }
 
 /* R+8 #7 日曆熱力圖數字放大 12→16px + 三色背景分化
