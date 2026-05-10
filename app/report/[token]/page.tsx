@@ -708,12 +708,15 @@ function renderInlineMarkdown(text: string): string {
           const title = cells[0] || '—'
           const items = headerCells.slice(1).map((label, i) => {
             const value = cells[i + 1] || '—'
-            return `<div role="listitem" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 0;border-top:1px solid rgba(255,255,255,0.04)"><span style="color:rgba(201,168,76,0.75);font-size:12px;font-weight:600;flex-shrink:0;min-width:70px">${label}</span><span style="color:var(--color-cream);font-size:13px;line-height:1.6;text-align:right">${value}</span></div>`
+            // v5.10.162 QA P1-3 修:label 從金色改 cream/55 弱化、layer 區隔(title 金色獨大)
+            return `<div role="listitem" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:7px 0;border-top:1px solid rgba(255,255,255,0.04)"><span style="color:rgba(232,228,222,0.55);font-size:12px;font-weight:500;flex-shrink:0;min-width:78px;letter-spacing:0.02em">${label}</span><span style="color:var(--color-cream);font-size:13.5px;line-height:1.65;text-align:right">${value}</span></div>`
           }).join('')
+          // v5.10.162 QA P1-1 修:title font-size 15px → 18px(視覺權重達標)
           // P2-1 title <div> 升 <h4>(SEO + a11y)、role="listitem" 包整個 card
-          return `<div role="group" aria-label="${title}" class="report-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(201,168,76,0.15);border-radius:12px;padding:14px 18px;margin-bottom:10px"><h4 style="color:var(--color-gold);font-size:15px;font-weight:600;padding-bottom:8px;border-bottom:2px solid rgba(201,168,76,0.20);margin:0 0 6px;line-height:1.4">${title}</h4><div role="list">${items}</div></div>`
+          return `<div role="group" aria-label="${title}" class="report-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(201,168,76,0.15);border-radius:14px;padding:16px 20px;margin-bottom:12px"><h4 style="color:var(--color-gold);font-size:18px;font-weight:600;padding-bottom:10px;border-bottom:2px solid rgba(201,168,76,0.22);margin:0 0 8px;line-height:1.35">${title}</h4><div role="list">${items}</div></div>`
         }).join('')
-        return `<div class="report-card-stack" role="region" aria-label="表格內容" style="margin:16px 0">${cardsHtml}</div>`
+        // v5.10.162 QA P1-2 修:Card Stack 加 max-width:800px(對齊 .report-p 內文標準、防 desktop 1299px 寬撐爆)
+        return `<div class="report-card-stack" role="region" aria-label="表格內容" style="margin:18px 0;max-width:800px">${cardsHtml}</div>`
       }
 
       return `<div class="table-breakout-outer" style="margin:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);overflow:hidden"><div class="table-breakout" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;border-collapse:collapse;min-width:480px;font-size:13px;table-layout:auto">${headerStickyRow}${finalBodyRows}</table></div></div>`
