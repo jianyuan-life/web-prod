@@ -870,7 +870,7 @@ function renderSectionMarkdown(content: string): string {
         </div>`
     } else {
       // 普通子章節標題
-      html += `<h3 class="report-h3" style="color:var(--color-gold);margin-top:14px;">${subTitle}</h3>`
+      html += `<h3 class="report-h3" style="color:var(--color-gold);margin-top:16px;">${subTitle}</h3>`
       if (subBody) html += `<p class="report-p">${renderInlineMarkdown(subBody)}</p>`
     }
   }
@@ -1627,9 +1627,20 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            段距比例 1.5em / 章節 3em(macro/micro 雙層) */
         h1.report-h1, .report-main h1 { font-size: 2.197rem; line-height: 1.25; font-family: var(--font-body); font-weight: 700; margin: 3em 0 1.5em; color: var(--color-cream); letter-spacing: 0.01em; }
         h2.report-h2, .report-main h2 { font-size: 1.758rem; line-height: 1.3; font-family: var(--font-body); font-weight: 700; margin: 3em 0 1.25em; color: var(--color-cream); letter-spacing: 0.015em; border-bottom: 2px solid rgba(201,168,76,0.25); padding-bottom: 0.85rem; }
-        .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        /* v5.10.138 DS3 #1 motion token 化(M3 標準、+8 分動畫一致): */
+        :root {
+          --motion-fast: 150ms;
+          --motion-medium: 200ms;
+          --motion-slow: 300ms;
+          --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+          --easing-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :root { --motion-fast: 0ms; --motion-medium: 0ms; --motion-slow: 0ms; }
+        }
+        .section-card { border-radius: 12px; padding: 28px; margin-bottom: 24px; transition: transform var(--motion-medium) var(--easing-standard), box-shadow var(--motion-medium) var(--easing-standard); }
         /* 目錄連結 hover/active/scrollspy 態 */
-        .toc-link { position: relative; transition: all 0.18s ease; border-left: 2px solid transparent; }
+        .toc-link { position: relative; transition: all var(--motion-fast) var(--easing-standard); border-left: 2px solid transparent; }
         .toc-link:hover { transform: translateX(3px); }
         .toc-link:active { transform: translateX(3px) scale(0.98); background: rgba(201,168,76,0.10) !important; }
         /* 當前章節高亮 (ScrollSpy) */
@@ -1643,7 +1654,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         .toc-link[data-active="true"] span:last-child { color: var(--color-gold) !important; }
         .toc-link:focus-visible { outline: 2px solid rgba(201,168,76,0.5); outline-offset: 2px; }
         /* 金色小徽章 hover 放大（Top1 卡片等） */
-        .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .hover-lift { transition: transform var(--motion-medium) var(--easing-standard), box-shadow var(--motion-medium) var(--easing-standard); }
         .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(201,168,76,0.15); }
         .hover-lift:active { transform: translateY(0) scale(0.99); }
         /* D 方案 3 步驟圓徽章 */
