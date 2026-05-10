@@ -757,10 +757,10 @@ function classifySubSection(title: string): 'positive' | 'caution' | 'improvemen
 // XSS 風險來源只剩 birth_data 的 name/gender 等已在結帳時驗證的欄位，實際攻擊面接近 0
 // v5.10.112 P0 修(final-final verify v5.10.108 抓 5/6 件 starStar 1-63 仍 leak):
 //   v5.10.105 暴力清只在 renderSectionMarkdown end、但 chip / hero / role / personalityCard.talents 等
-//   多處 component 走 sanitizeReportHtml 注入 raw markdown(非 AI bold 平衡保證)、仍 leak raw `**`
-//   修:sanitizeReportHtml 全頁暴力清 raw `**`、所有 dangerouslySetInnerHTML 路徑統一過
+//   多處 component 走 stripRawMarkdown 注入 raw markdown(非 AI bold 平衡保證)、仍 leak raw `**`
+//   修:stripRawMarkdown 全頁暴力清 raw `**`、所有 dangerouslySetInnerHTML 路徑統一過
 //   trade-off:可能誤刪 AI 內容引用的 `**`(production AI 不該保留 raw markdown source、安全)
-function sanitizeReportHtml(html: string): string {
+function stripRawMarkdown(html: string): string {
   return (html || '').replace(/\*\*/g, '')
 }
 
@@ -817,7 +817,7 @@ function renderSectionMarkdown(content: string): string {
   const subParts = content.split(/^### /m)
   if (subParts.length <= 1) {
     // 無子章節，直接渲染
-    return sanitizeReportHtml(
+    return stripRawMarkdown(
       renderInlineMarkdown(content)
         .replace(/^# (.+)$/gm, '<h3 class="report-h3">$1</h3>')
     )
@@ -856,7 +856,7 @@ function renderSectionMarkdown(content: string): string {
   //   render 後若 raw `**` 仍殘留(AI 生成不平衡 markdown bold + renderInlineMarkdown regex 漏網)
   //   暴力清:rendered HTML 中所有 raw `**` 全刪、客戶看不到 markdown source
   //   trade-off:可能誤刪某 case 引用文中的 `**`、但 production AI 不應在引用文中保留 markdown source
-  return sanitizeReportHtml(html.replace(/\*\*/g, ''))
+  return stripRawMarkdown(html.replace(/\*\*/g, ''))
 }
 
 // Google Calendar URL 生成（純前端，不需要 API key）
