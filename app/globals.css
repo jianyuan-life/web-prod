@@ -161,13 +161,14 @@ h1, h2, h3 {
 /* v5.10.184 P0 修(Gemini Vision audit 4 plans 16 tiles 共通發現):
    text-text-muted/{45,50,55,60,65} alpha 太低、effective contrast 3.5-4.0:1 < WCAG AA 4.5:1
    修補:對深色報告閱讀區、把 alpha 0.45-0.70 統一提升到 0.72-0.80(達 AA 5.0-5.6:1)
-   不影響 hover state(/80 /90 /100)、不影響淺色 light theme */
-:where(html:not([data-theme="light"])) .text-text-muted\/45 { color: rgb(179 184 197 / 0.72) !important; }
-:where(html:not([data-theme="light"])) .text-text-muted\/50 { color: rgb(179 184 197 / 0.74) !important; }
-:where(html:not([data-theme="light"])) .text-text-muted\/55 { color: rgb(179 184 197 / 0.76) !important; }
-:where(html:not([data-theme="light"])) .text-text-muted\/60 { color: rgb(179 184 197 / 0.78) !important; }
-:where(html:not([data-theme="light"])) .text-text-muted\/65 { color: rgb(179 184 197 / 0.80) !important; }
-:where(html:not([data-theme="light"])) .text-text-muted\/70 { color: rgb(179 184 197 / 0.82) !important; }
+   不影響 hover state(/80 /90 /100)、不影響淺色 light theme
+   v5.10.186 修(Codex review P0):移除 :where() + !important、用 html:not() specificity 足以覆蓋 utility */
+html:not([data-theme="light"]) .text-text-muted\/45 { color: rgb(179 184 197 / 0.72); }
+html:not([data-theme="light"]) .text-text-muted\/50 { color: rgb(179 184 197 / 0.74); }
+html:not([data-theme="light"]) .text-text-muted\/55 { color: rgb(179 184 197 / 0.76); }
+html:not([data-theme="light"]) .text-text-muted\/60 { color: rgb(179 184 197 / 0.78); }
+html:not([data-theme="light"]) .text-text-muted\/65 { color: rgb(179 184 197 / 0.80); }
+html:not([data-theme="light"]) .text-text-muted\/70 { color: rgb(179 184 197 / 0.82); }
 
 /* 毛玻璃卡片——深色科技感 */
 .glass {

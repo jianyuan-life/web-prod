@@ -56,7 +56,8 @@ export default function CookieConsent() {
 
   // v5.10.183 P0 修(4 plans desktop UI Vision audit 共通發現):
   // Cookie 彈窗在 report 閱讀頁右下角擋住 CTA「分享報告」+ 章節 cue + 五行進度條
-  // 修補:report / dashboard 頁完全 hide(已付費客戶看自己報告、不需 cookie consent banner、純閱讀體驗)
+  // v5.10.186 修(Codex GDPR finding):不能在 /report hide(GA4+Meta Pixel 仍 set cookie、違 GDPR)
+  // 改:report 頁仍顯示、但 toast 移到頂部 max-w-sm、不擋下方 reading area
   const isReportOrDashboard = pathname?.startsWith('/report/') || pathname?.startsWith('/dashboard')
   // v5.6.10 (Codex L3 review fix):自訂偏好預設關閉(對齊 GDPR「明確同意」原則)
   const [analytics, setAnalytics] = useState(false)
@@ -102,14 +103,18 @@ export default function CookieConsent() {
   }
 
   if (!show) return null
-  if (isReportOrDashboard) return null  // v5.10.183 P0:report / dashboard 不顯示
+
+  // v5.10.186:report/dashboard 頁仍顯示但 toast 移到右上(GDPR 合規)、其他頁右下
+  const positionClass = isReportOrDashboard
+    ? 'fixed top-20 right-3 max-w-[calc(100vw-24px)] sm:max-w-sm z-[1000]'
+    : 'fixed bottom-3 right-3 left-3 sm:left-auto max-w-[calc(100vw-24px)] sm:max-w-sm z-[1000]'
 
   return (
     <div
       role="dialog"
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-consent-desc"
-      className="fixed bottom-3 right-3 left-3 sm:left-auto max-w-[calc(100vw-24px)] sm:max-w-sm z-[1000] p-3 sm:p-4 bg-dark/95 backdrop-blur-xl border border-gold/30 rounded-xl shadow-2xl"
+      className={`${positionClass} p-3 sm:p-4 bg-dark/95 backdrop-blur-xl border border-gold/30 rounded-xl shadow-2xl`}
       style={{ animation: 'slideUp 0.3s ease-out' }}
     >
       <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
