@@ -2878,12 +2878,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
                 }
                 const dayWx = wxByGan[dayMaster] || ''
-                // 統計四柱五行分佈
-                const wxCount: Record<string, number> = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 }
-                pillars.forEach(p => {
-                  const g = wxByGan[p[0] || '']
-                  if (g) wxCount[g]++
-                })
+                // v5.10.169 / 2026-05-11 修:用 calculator 的 wuxing_count(含天干+地支主氣)、不再只統計天干
+                // 對應 4 LLM audit P0(L52 顯示「缺木、土、水」錯、何宣逸地支三戌實算土 3、Gemini 抓)
+                // 後端 calculator 計算公式:天干本氣 1.0 + 地支本氣 0.6 + 中氣 0.3 + 餘氣 0.1
+                const wuxingFromBackend = (calcResult?.wuxing_count || (baziRaw?.wuxing_count as Record<string, number> | undefined))
+                const wxCount: Record<string, number> = wuxingFromBackend
+                  ? { '木': wuxingFromBackend['木'] || 0, '火': wuxingFromBackend['火'] || 0, '土': wuxingFromBackend['土'] || 0, '金': wuxingFromBackend['金'] || 0, '水': wuxingFromBackend['水'] || 0 }
+                  : (() => {
+                      // fallback:只看天干(舊邏輯、calculator 沒返回 wuxing_count 時用)
+                      const wc: Record<string, number> = { '木': 0, '火': 0, '土': 0, '金': 0, '水': 0 }
+                      pillars.forEach(p => {
+                        const g = wxByGan[p[0] || '']
+                        if (g) wc[g]++
+                      })
+                      return wc
+                    })()
                 const missing = Object.entries(wxCount).filter(([, n]) => n === 0).map(([k]) => k)
                 const dominant = Object.entries(wxCount).sort((a, b) => b[1] - a[1])[0]
                 return (
