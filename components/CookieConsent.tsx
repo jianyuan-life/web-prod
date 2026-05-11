@@ -104,9 +104,10 @@ export default function CookieConsent() {
 
   if (!show) return null
 
-  // v5.10.186:report/dashboard 頁仍顯示但 toast 移到右上(GDPR 合規)、其他頁右下
+  // v5.10.186:report/dashboard 頁 desktop 右上 toast、mobile 改 bottom 全寬
+  // v5.10.187 修(Gemini Vision mobile audit P0):mobile 右上 toast 擋 B+ 79/100 hero、改 bottom + 縮小
   const positionClass = isReportOrDashboard
-    ? 'fixed top-20 right-3 max-w-[calc(100vw-24px)] sm:max-w-sm z-[1000]'
+    ? 'fixed bottom-3 right-3 left-3 sm:top-20 sm:bottom-auto sm:left-auto sm:max-w-sm max-w-[calc(100vw-24px)] z-[1000]'
     : 'fixed bottom-3 right-3 left-3 sm:left-auto max-w-[calc(100vw-24px)] sm:max-w-sm z-[1000]'
 
   return (
