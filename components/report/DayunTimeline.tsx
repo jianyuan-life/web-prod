@@ -25,10 +25,12 @@ const STAGE_BG = (energy: number) => {
 export default function DayunTimeline({
   data,
   currentAge,
+  birthYear,
   title = '大運起伏時間軸',
 }: {
   data: DayunStage[]
   currentAge?: number
+  birthYear?: number  // v5.10.178 加、frontend 大運年份計算用 birthYear + age_start、不用 fallback 30 算錯
   title?: string
 }) {
   const [mounted, setMounted] = useState(false)
@@ -147,12 +149,21 @@ export default function DayunTimeline({
                   {s.age_start}-{s.age_end ?? s.age_start + 10} 歲
                 </div>
 
-                {/* 西元年份(從當前年齡推算) */}
+                {/* 西元年份(v5.10.178 修:用 birthYear + age_start、不用 fallback 30 算錯)
+                    對應 Gemini audit C v5.10.177 抓 frontend「1996-2007」P0 真因:
+                    - 舊邏輯:currentYear - (currentAge || 30) + age_start
+                    - 若 currentAge prop 沒傳、fallback 30、2023 年生客戶顯示「1996-2007」錯
+                    - 新邏輯:birthYear + age_start(更穩固、不依賴 currentAge fallback)
+                 */}
                 {(() => {
                   const currentYear = new Date().getFullYear()
-                  const currentAgeApprox = currentAge || 30  // fallback 30
-                  const yearStart = currentYear - currentAgeApprox + s.age_start
-                  const yearEnd = currentYear - currentAgeApprox + (s.age_end ?? s.age_start + 10)
+                  // 優先用 birthYear、fallback currentAge、最後 fallback 30
+                  const yearStart = birthYear
+                    ? birthYear + s.age_start
+                    : currentYear - (currentAge || 30) + s.age_start
+                  const yearEnd = birthYear
+                    ? birthYear + (s.age_end ?? s.age_start + 10)
+                    : currentYear - (currentAge || 30) + (s.age_end ?? s.age_start + 10)
                   return (
                     <div className="text-[9px] text-gold/45 mb-1">
                       {yearStart}-{yearEnd}
