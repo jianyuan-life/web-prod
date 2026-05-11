@@ -3843,7 +3843,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             v5.10.178 修:傳 birthYear 給 DayunTimeline、避免 fallback 30 算錯年份(1996-2007 P0) */}
         {!isChumenji && dayunData.length >= 3 && (
           <div className="no-print">
-            <DayunTimeline data={dayunData} birthYear={Number(birthData?.year) || undefined} title="大運起伏時間軸" />
+            <DayunTimeline data={dayunData} birthYear={Number(report.birth_data?.year) || undefined} title="大運起伏時間軸" />
           </div>
         )}
 
