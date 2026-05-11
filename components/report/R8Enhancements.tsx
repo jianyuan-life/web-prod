@@ -416,7 +416,7 @@ export function WhyThisVerdictLink({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[11px] text-gold/65 hover:text-gold underline underline-offset-2 transition-colors ml-2"
+        className="text-[12px] text-gold/85 hover:text-gold underline underline-offset-2 font-medium transition-colors ml-2"
         aria-label="顯示這個命格封號的命理依據"
       >
         為什麼是「{title.slice(0, 6)}」?
