@@ -149,27 +149,12 @@ export default function DayunTimeline({
                   {s.age_start}-{s.age_end ?? s.age_start + 10} 歲
                 </div>
 
-                {/* 西元年份(v5.10.178 修:用 birthYear + age_start、不用 fallback 30 算錯)
-                    對應 Gemini audit C v5.10.177 抓 frontend「1996-2007」P0 真因:
-                    - 舊邏輯:currentYear - (currentAge || 30) + age_start
-                    - 若 currentAge prop 沒傳、fallback 30、2023 年生客戶顯示「1996-2007」錯
-                    - 新邏輯:birthYear + age_start(更穩固、不依賴 currentAge fallback)
-                 */}
-                {(() => {
-                  const currentYear = new Date().getFullYear()
-                  // 優先用 birthYear、fallback currentAge、最後 fallback 30
-                  const yearStart = birthYear
-                    ? birthYear + s.age_start
-                    : currentYear - (currentAge || 30) + s.age_start
-                  const yearEnd = birthYear
-                    ? birthYear + (s.age_end ?? s.age_start + 10)
-                    : currentYear - (currentAge || 30) + (s.age_end ?? s.age_start + 10)
-                  return (
-                    <div className="text-[9px] text-gold/45 mb-1">
-                      {yearStart}-{yearEnd}
-                    </div>
-                  )
-                })()}
+                {/* v5.10.180 修:hide 西元年份顯示、避免起運偏移錯算
+                    對應 Gemini+Qwen audit C v5.10.179 共識 P0:「2023-2034」應為「2024-2033」
+                    真因:birthYear + age_start 沒考慮起運 9m10d 偏移、嬰兒不到 1 歲起運實際是 2024
+                    最務實修法:不顯示西元年份、只留歲數 + 干支(歲數對應 AI 內文「丙辰大運 0-11 歲」已對)
+                    AI 內文已正確寫「丙辰 2024-2033」、frontend 不重複算、避免錯
+                */}
 
                 {/* 干支 */}
                 {s.pillar && (
