@@ -38,15 +38,16 @@ export function DarkModeToggle() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
   useEffect(() => {
-    // 載入時優先讀 localStorage、否則 follow 系統偏好
+    // v5.10.183 P0 修(4 plans Playwright Vision audit 抓):
+    // 原邏輯自動 follow OS prefers-color-scheme: light、客戶 OS 是 light 就套 light theme
+    // 但鑑源報告是品牌深色設計(深紫 + 金色 hero / 命盤卡 / 太陽之火 等)、強行套 light 會視覺撕裂
+    // 修補:預設永遠 dark、只在客戶主動點 toggle 才切 light、不再 follow OS 偏好
     const stored = readStorage(STORAGE_KEYS.THEME)
     if (stored === 'light' || stored === 'dark') {
       setTheme(stored)
       applyTheme(stored)
-    } else if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      setTheme('light')
-      applyTheme('light')
     }
+    // 不再 auto-follow window.matchMedia('(prefers-color-scheme: light)')
   }, [])
 
   const applyTheme = (t: 'dark' | 'light') => {

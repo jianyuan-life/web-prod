@@ -5,6 +5,7 @@
 // 實作:預設 GA4 consent denied、用戶選「全部接受」或「自訂」後升級
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 const STORAGE_KEY = 'jy_cookie_consent_v1'
 
@@ -49,8 +50,14 @@ function applyConsent(prefs: ConsentPrefs) {
 }
 
 export default function CookieConsent() {
+  const pathname = usePathname()
   const [show, setShow] = useState(false)
   const [showCustom, setShowCustom] = useState(false)
+
+  // v5.10.183 P0 修(4 plans desktop UI Vision audit 共通發現):
+  // Cookie 彈窗在 report 閱讀頁右下角擋住 CTA「分享報告」+ 章節 cue + 五行進度條
+  // 修補:report / dashboard 頁完全 hide(已付費客戶看自己報告、不需 cookie consent banner、純閱讀體驗)
+  const isReportOrDashboard = pathname?.startsWith('/report/') || pathname?.startsWith('/dashboard')
   // v5.6.10 (Codex L3 review fix):自訂偏好預設關閉(對齊 GDPR「明確同意」原則)
   const [analytics, setAnalytics] = useState(false)
   const [marketing, setMarketing] = useState(false)
@@ -95,6 +102,7 @@ export default function CookieConsent() {
   }
 
   if (!show) return null
+  if (isReportOrDashboard) return null  // v5.10.183 P0:report / dashboard 不顯示
 
   return (
     <div
