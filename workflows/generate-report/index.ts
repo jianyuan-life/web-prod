@@ -220,6 +220,7 @@ export async function generateReportWorkflow(reportId: string) {
       }
 
       // Post-generation QA — 逐一比對每位成員的排盤數據
+      // v5.10.182:lesson #110 修補 — memberBD 必含 plan='R'、讓 steps.ts L580 走 per-member 生肖替換、避免全局替換把第二人的對生肖改錯
       try {
         for (let i = 0; i < memberResults.length; i++) {
           const memberBD = members[i] ? {
@@ -229,6 +230,7 @@ export async function generateReportWorkflow(reportId: string) {
             day: members[i].day || 0,
             hour: members[i].hour || 0,
             gender: members[i].gender || 'M',
+            plan: 'R',  // v5.10.182 P0 修:對應 lesson #110、steps.ts 走 R 方案 per-member 替換
           } as BirthData : null
           reportContent = validateReportAgainstData(reportContent, memberResults[i], memberBD)
         }

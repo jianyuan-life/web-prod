@@ -610,6 +610,32 @@ export function validateReportAgainstData(
       if (content.length !== beforeLen) {
         // 可能整體長度有變，但我們主要是替換同等長度字元
       }
+
+      // v5.10.182:lesson #110 — R 方案 per-member 太陽星座替換(對應 v5.10.181 SELF-CHECK 失敗)
+      // raw_data 中 western_astrology.sun_deg → 算正確 sun_sign label、抓「{name}太陽 X 座 Y°」regex 強制覆寫
+      const sunDeg = (calcResult?.analyses || []).find(a => a.system === '西洋占星')
+      const sunDegMatch = sunDeg ? JSON.stringify(sunDeg).match(/sun_deg["\s:]+(-?\d+\.?\d*)/i) : null
+      const sunDegValue = sunDegMatch ? parseFloat(sunDegMatch[1]) : null
+      if (sunDegValue !== null && !isNaN(sunDegValue)) {
+        const SUN_SIGNS = ['白羊', '金牛', '雙子', '巨蟹', '獅子', '處女', '天秤', '天蠍', '射手', '摩羯', '水瓶', '雙魚']
+        const correctIdx = Math.floor(((sunDegValue % 360) + 360) % 360 / 30)
+        const correctSign = SUN_SIGNS[correctIdx]
+        const correctDeg = (sunDegValue % 30).toFixed(2)
+        // 抓「{name}太陽 (Y座) X.XX°」regex 強制覆寫
+        const nameSunPattern = new RegExp(`(${name}[^太陽]{0,5}?太陽[星座是]*\\s*)([白羊金牛雙子巨蟹獅子處女天秤天蠍射手摩羯水瓶雙魚])(座?\\s*\\d*\\.?\\d*°?)`, 'g')
+        content = content.replace(nameSunPattern, (match, pre, wrongSign, suffix) => {
+          if (wrongSign !== correctSign) {
+            corrections.push({
+              field: `太陽星座（${name}）`,
+              expected: `${correctSign}座 ${correctDeg}°`,
+              found: `${wrongSign}${suffix}`,
+              corrected: true,
+            })
+            return `${pre}${correctSign}座`
+          }
+          return match
+        })
+      }
     }
   }
 
