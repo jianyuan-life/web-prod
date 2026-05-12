@@ -4,20 +4,25 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.10.86（2026-05-08 marathon、9 commits push、frontend 修補 100% 全綠、5 個底層 parse bug 修補完成、L1 Claude QA +1.6 分、Codex review --base v5.10.77 PASS 無 regression、callout fallback 15→0)
+**網站版本：** v5.10.187(2026-05-11 終局、19 commits 累積、4/4 文本 + UI Vision 雙審 PASS、mobile 6/6 全 100、Codex 2 P0 修;**5/12 後本機 hold v5.10.188+189**:Codex L3 抓 lesson #112「永久層」regex 字元類別 dead code、待老闆審 push)
 
-**v5.10.86 marathon 摘要(老闆抓「何紀萳癸水誤標太陽之火」起、徹底底層查清楚)**:
-- v5.10.78 callout 重構 + raw ** sanitize(共識 P0 #2/#7)
-- v5.10.79 G15 family 交叉章節補修
-- v5.10.80 G15 year 裸年份污染修(引入 G15 7LLM regression)
-- **v5.10.81 🚨 parsePersonalityCard L200 底層 bug**(fullText + 白名單順序 short-circuit、何紀萳「太陽之火」→「雨露甘霖」)
-- **v5.10.82 🚨 extractTLDR 引言框污染修**(章節中段古籍 blockquote 被當 TLDR)
-- **v5.10.83 🚨 R compatibilityVerdict「合」substring 污染修**(「不合」substring 被「合」regex 誤命中)
-- v5.10.84 修 v5.10.80 引發的 G15 7LLM regression
-- v5.10.85 G15 7LLM 完整(成員互動 + 五年總覽)
-- **v5.10.86 🚨 D extractDAnswer 章節 alternation short-circuit 修**
+**v5.10.187 終局摘要(2026-05-11)**:
+- 4/4 LLM audit PASS:C Gemini PASS+Qwen 87 / D Gemini 96+Qwen 94 卓越 / G15 Gemini 98.25+Qwen 97.8 / R Gemini 98.625(SQL POSTFIX)
+- UI Vision desktop 平均 97.5、mobile 6/6 全 100 🏆
+- v5.10.181 ETHICS_RULES 西占 SELF-CHECK + v5.10.182 R per-member post-process(實際 dead code、5/12 修)
+- v5.10.184 WCAG AA / v5.10.186 Codex 2 P0 修(GDPR + !important)/ v5.10.187 mobile Cookie
 
-對應 lesson #090(5-LLM strict eval 全 FAIL 95+)+ #091(L200 底層 bug)+ #092(final summary)、見 `Claude-鑑源/tasks/lessons.md`、frontend audit 見 `_ab_test/strict_eval_v5_10_78/frontend_parse_audit.md`(15 個底層 bug、修 5 個 P0)。
+**5/12 本機 hold(老闆審 push)**:
+- web-prod 86711761 v5.10.188:steps.ts:625 regex 字元類別 → name alternation 真因修
+- working tree v5.10.189:Codex re-review P2 deg 保留修
+- jianyuan-hq f86e81d:lessons #111 + #112 寫
+- 詳:`tasks/lessons.md` #111 #112
+
+歷史:
+
+**v5.10.86 marathon 摘要(2026-05-08、frontend 修補、保留作歷史)**:
+- v5.10.78 callout 重構 / v5.10.81 parsePersonalityCard 底層 bug / v5.10.82 extractTLDR / v5.10.83 R compatibilityVerdict / v5.10.86 D extractDAnswer
+- 對應 lesson #090-#092、frontend audit 見 `_ab_test/strict_eval_v5_10_78/frontend_parse_audit.md`
 
 歷史:
 - v5.10.72（2026-05-08、第三件/真 bug 修/D 偽古籍 + 重複吐:d_plan_v2 加 D-4 古籍引用白/黑名單鐵律 + D-5 結尾單段鐵律、對應 lesson #086 + lesson #068 + lesson #056、production safe）

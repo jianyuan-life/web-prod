@@ -634,7 +634,10 @@ export function validateReportAgainstData(
               found: `${wrongSign}${suffix}`,
               corrected: true,
             })
-            return `${pre}${correctSign}座`
+            // v5.10.189:Codex re-review P2 修(度數保留)— 用 correctDeg 強制覆寫
+            //   原 return `${pre}${correctSign}座`(吃掉 suffix 度數、產生「太陽天秤座」無 deg)
+            //   現 return 含 correctDeg、deg 從 raw_data sun_deg % 30 重算正確值
+            return `${pre}${correctSign}座 ${correctDeg}°`
           }
           return match
         })
