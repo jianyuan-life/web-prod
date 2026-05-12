@@ -16,6 +16,7 @@
 import { notFound } from 'next/navigation'
 import { ReportRenderer, isReportType } from '@/components/report/ReportRenderer'
 import { getReport } from '@/lib/report-adapter'
+import { isBetaTester } from '@/lib/auth-helper-server'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -25,16 +26,21 @@ interface PageProps {
   params: Promise<{ type: string; id: string }>
 }
 
-function isFeatureEnabled(): boolean {
-  // v5.10.204 emergency hard-block:
-  //   production verify 發現 process.env check 在 Next 16 build-time 內聯後不可靠
-  //   path 即使 env var 未設、production 仍 200 render demo(已驗 2026-05-13)
-  //   Sprint 1 暫定 hard-block、Sprint 2 改 Beta cookie + Supabase user role 雙驗證
-  //
-  // 🔴 任何時候 production 訪問新路由 → 404
-  // 🟡 dev local 想驗:暫改 return true 後 npm run dev、不要 push
-  return false
-}
+// v5.10.205 Sprint 1 step C(Codex Top 2 + Gemini 共識):
+//   Feature Flag 從 v5.10.204 hard-block return false 升級為 Beta tester email whitelist
+//   - 對齊 lesson #117:server-side runtime env(非 NEXT_PUBLIC_)在 Vercel runtime safe(unlike build-time inline)
+//   - 對齊 Codex 推薦:cookie/user role 替代 process.env hard-coded check
+//   - 對齊 Gemini 推薦:server-side auth gate + Supabase admin.getUser 驗簽
+//
+// 機制:
+//   - 訪客無 JWT → 404(notFound)
+//   - 訪客 JWT email NOT in BETA_TESTER_EMAILS env var → 404
+//   - 訪客 JWT email in whitelist → 進入 ReportRenderer
+//
+// Vercel 設定:
+//   Settings → Environment Variables → BETA_TESTER_EMAILS=jamie@jianyuan.life,...
+//
+// Sprint 2 升級點:改用 Supabase user_metadata.is_beta_tester(避免 env var manage email list)
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { type } = await params
@@ -54,8 +60,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function UnifiedReportPage({ params }: PageProps) {
   const { type, id } = await params
 
-  // Feature Flag:未啟用 → 404(無感、安全)
-  if (!isFeatureEnabled()) {
+  // Feature Flag:Beta tester whitelist check(server-side、Vercel runtime env reliable)
+  const allowed = await isBetaTester()
+  if (!allowed) {
     notFound()
   }
 
