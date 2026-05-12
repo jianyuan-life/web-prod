@@ -2,21 +2,11 @@ import Link from 'next/link'
 import { BLOG_POSTS, getPostBySlug } from '@/lib/blog'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import DOMPurify from 'isomorphic-dompurify'
+import { safeHtmlForBlog } from '@/lib/sanitize'
 
-// v5.3.41 XSS 防護：blog 內文走 markdown → HTML 管線，雖目前來源可信
-// 但預留 sanitize 防未來接入 CMS / 第三方投稿時被 Prompt Injection 入侵
-const BLOG_SANITIZE_CONFIG = {
-  ALLOWED_TAGS: [
-    'p','h1','h2','h3','h4','h5','h6','strong','em','u','s','ul','ol','li',
-    'a','br','hr','blockquote','table','thead','tbody','tr','th','td',
-    'code','pre','span','div','b','i','sup','sub','img',
-  ],
-  ALLOWED_ATTR: ['href','target','rel','class','id','style','colspan','rowspan','align','src','alt','width','height','loading'],
-  ALLOW_DATA_ATTR: false,
-  FORBID_TAGS: ['script','iframe','object','embed','form','input','button','link','meta','style'],
-  FORBID_ATTR: ['onerror','onload','onclick','onmouseover','onfocus','onblur','onsubmit','formaction'],
-}
+// v5.10.197 hot-fix:從 isomorphic-dompurify 改用 lib/sanitize.ts safeHtmlForBlog(sanitize-html、純 JS)
+// 原因:isomorphic-dompurify 在 Vercel Fluid Compute cold start `new JSDOM(...)` 失敗、
+//      導致 /blog/[slug] 跟 /report/[token] 全 500(2026-05-12 事故 root cause)
 
 // SSG — 預先生成所有文章頁面
 export function generateStaticParams() {
@@ -141,7 +131,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
     publisher: { '@type': 'Organization', name: '鑒源 JianYuan', url: 'https://jianyuan.life' },
   }
 
-  const contentHtml = DOMPurify.sanitize(renderMarkdown(post.content), BLOG_SANITIZE_CONFIG)
+  const contentHtml = safeHtmlForBlog(renderMarkdown(post.content))
 
   return (
     <div className="min-h-screen pt-24 pb-16">
