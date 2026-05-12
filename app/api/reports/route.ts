@@ -53,6 +53,34 @@ export async function GET(req: NextRequest) {
   console.info(`[reports] querying email=${queryEmail} source=${querySource}`)
 
   const supabase = getServiceSupabase()
+
+  // v5.10.193 P0 個資洩漏修(Codex L3 + Claude 機械驗證 audit、2026-05-12)
+  //   stripe-session fallback 走最小欄位 + 縮窄到單筆(僅該 session 的 report)
+  //   JWT auth 走原邏輯(用戶 dashboard 拿全部 50 筆 + 完整欄位)
+  //   原 bug:任何人拿 stripe session_id → 反查 email → 拿該 email 全部 50 筆
+  //          含 access_token / report_result / birth_city / customer_email / pdf_url
+  if (querySource === 'stripe-session') {
+    const sessionId = req.nextUrl.searchParams.get('session_id') || ''
+    // QA Agent L1 finding 2/2:同 session 對多筆 report 用 .order().limit(1) 防 maybeSingle null + console 噪音
+    const { data: oneReport, error: oneErr } = await supabase
+      .from('paid_reports')
+      .select('id, plan_code, status, created_at, access_token, generation_progress, retry_count, error_message, self_update_count')
+      .eq('stripe_session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (oneErr) {
+      console.error('[reports] stripe-session query error:', oneErr.message)
+      return NextResponse.json({ error: oneErr.message, authSource: querySource }, { status: 500 })
+    }
+    console.info(`[reports] stripe-session source=${querySource} found=${oneReport ? 1 : 0}`)
+    return NextResponse.json({
+      reports: oneReport ? [oneReport] : [],
+      _debug: { source: querySource, count: oneReport ? 1 : 0 },
+    })
+  }
+
+  // JWT / Supabase admin auth 走原 dashboard 邏輯(50 筆 + 完整欄位)
   const { data, error } = await supabase
     .from('paid_reports')
     .select('id, plan_code, status, created_at, access_token, customer_email, report_result, pdf_url, retry_count, error_message, client_name, amount_usd, generation_progress, timezone, birth_city, self_update_count')

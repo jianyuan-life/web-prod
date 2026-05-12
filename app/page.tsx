@@ -85,12 +85,13 @@ export default function HomePage() {
           <div className="text-[13px] tracking-[0.3em] text-gold/50 mb-8" style={{ fontFamily: 'var(--font-body)' }}>
             鑒源 &middot; JianYuan
           </div>
-          <h1 className="text-4xl md:text-[48px] lg:text-[52px] leading-[1.3] mb-6" style={{ fontFamily: 'var(--font-sans)' }}>
-            <span className="text-cream/90 block text-xl md:text-[32px] font-normal mb-2">
+          {/* v5.10.193 P0 mobile hero h1 溢出修(Playwright audit 抓:whitespace-nowrap 14 字 × 36px = 504px > 393px viewport、超 79px、客戶看不見賣點 copy) */}
+          <h1 className="text-3xl sm:text-4xl md:text-[48px] lg:text-[52px] leading-[1.3] mb-6 text-balance break-words" style={{ fontFamily: 'var(--font-sans)' }}>
+            <span className="text-cream/90 block text-lg sm:text-xl md:text-[32px] font-normal mb-2">
               也許你正在尋找一個答案
             </span>
-            <span className="text-gradient-gold font-semibold whitespace-nowrap">
-              14 套命理系統交叉，看清真實的你
+            <span className="text-gradient-gold font-semibold">
+              14 套命理系統交叉,看清真實的你
             </span>
           </h1>
           <p className="text-base text-text-muted leading-[2] mb-10 max-w-[520px] mx-auto">

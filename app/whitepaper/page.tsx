@@ -44,7 +44,8 @@ export default function WhitepaperPage() {
         <div className="inline-block mb-4 text-sm tracking-widest text-gold uppercase">
           For Professionals · 給專業人士看的研究
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-gradient-gold mb-6 leading-tight">
+        {/* v5.10.193 P0 mobile responsive(QA Agent L1 抓 HOLD finding 2/2、同類修) */}
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gradient-gold mb-6 leading-tight text-balance break-words">
           鑑源命理學術白皮書
         </h1>
         <p className="text-lg md:text-xl text-text-muted max-w-2xl mx-auto leading-relaxed">

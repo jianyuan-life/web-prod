@@ -14,7 +14,8 @@ export default function AboutPage() {
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-6 text-center mb-16">
         <div className="text-xs tracking-[0.3em] text-gold/60 mb-4">ABOUT JIANYUAN</div>
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gradient-gold" style={{ fontFamily: 'var(--font-sans)' }}>
+        {/* v5.10.193 P0 mobile responsive(Playwright audit:預防性、加 text-balance + 確保 sm 斷點) */}
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 text-gradient-gold text-balance break-words" style={{ fontFamily: 'var(--font-sans)' }}>
           回到源頭、看清本質
         </h1>
         <p className="text-text-muted text-base leading-relaxed">
