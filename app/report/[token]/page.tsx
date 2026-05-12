@@ -39,6 +39,7 @@ import ActionRecommendations from '@/components/report/ActionRecommendations'
 import SystemsAnchorList from '@/components/report/SystemsAnchorList'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDRAndStripped } from '@/lib/report-structure'
+import { safeHtml } from '@/lib/sanitize'
 import { localBazi } from '@/lib/bazi-local'
 import {
   generatePlainAdvantage,
@@ -3825,7 +3826,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* 如果沒有結構化數據，顯示原始內容 */}
             {personalityCard.talents.length === 0 && personalityCard.challenges.length === 0 && !personalityCard.firstImpression && !personalityCard.definition && (
-              <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: stripRawMarkdown(renderSectionMarkdown(personalityCard.rawContent)) }} />
+              <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: safeHtml(stripRawMarkdown(renderSectionMarkdown(personalityCard.rawContent))) }} />
             )}
           </div>
         )}
@@ -3978,7 +3979,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 className="glass"
                 style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
               >
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeHtml(renderSectionMarkdown(sec.content)) }} />
               </CollapsibleSection>
             ))}
           </div>
@@ -4131,7 +4132,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                           v5.7.23 修：逐欄條件刪 — 只在結構化欄位有值時才刪 reason 對應 label，避免結構化空+reason 也被刪 = 空白（Codex P1）
                           regex 涵蓋變體：bullet/數字編號/markdown 粗體/中文星門後綴/全形冒號 */}
                       <div className="text-text-muted/90 text-sm leading-7 space-y-1" dangerouslySetInnerHTML={{
-                        __html: ((): string => {
+                        __html: safeHtml(((): string => {
                           let text = String(timing.reason || '')
                           const labels: Array<[string, boolean]> = [
                             ['值符', Boolean(timing.star)],
@@ -4155,7 +4156,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                             .replace(/\n{2,}/g, '\n')
                             .replace(/\n/g, '')
                             .trim()
-                        })()
+                        })())
                       }} />
                     </div>
                   </details>
@@ -4208,7 +4209,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 defaultExpanded={true}
                 style={{ background: 'rgba(197,150,58,0.06)', border: '1px solid rgba(197,150,58,0.15)' }}
               >
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeHtml(renderSectionMarkdown(sec.content)) }} />
               </CollapsibleSection>
             ))}
           </div>
@@ -4228,7 +4229,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 defaultExpanded={true}
                 style={{ background: 'rgba(224,150,58,0.06)', border: '1px solid rgba(224,150,58,0.15)' }}
               >
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(sec.content) }} />
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeHtml(renderSectionMarkdown(sec.content)) }} />
               </CollapsibleSection>
             ))}
           </div>
@@ -4329,7 +4330,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {/* v5.7.45 砍「02」雙編號前綴 */}
                 {sec.title}
               </h2>
-              <div className="report-p" dangerouslySetInnerHTML={{ __html: renderSectionMarkdown(contentToRender) }} />
+              <div className="report-p" dangerouslySetInnerHTML={{ __html: safeHtml(renderSectionMarkdown(contentToRender)) }} />
             </div>
           )
         })}
