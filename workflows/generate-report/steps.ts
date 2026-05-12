@@ -622,7 +622,10 @@ export function validateReportAgainstData(
         const correctSign = SUN_SIGNS[correctIdx]
         const correctDeg = (sunDegValue % 30).toFixed(2)
         // 抓「{name}太陽 (Y座) X.XX°」regex 強制覆寫
-        const nameSunPattern = new RegExp(`(${name}[^太陽]{0,5}?太陽[星座是]*\\s*)([白羊金牛雙子巨蟹獅子處女天秤天蠍射手摩羯水瓶雙魚])(座?\\s*\\d*\\.?\\d*°?)`, 'g')
+        // v5.10.188:lesson #112(Codex L3 抓):原字元類別 `[白羊金牛...]` 只匹配單字、
+        //   抓不到實際 AI 輸出「金牛座」兩字 → 改 name alternation `(白羊|金牛|...)`
+        const SIGN_ALT = SUN_SIGNS.join('|')
+        const nameSunPattern = new RegExp(`(${name}[^太陽]{0,5}?太陽[星座是]*\\s*)(${SIGN_ALT})(座?\\s*\\d*\\.?\\d*°?)`, 'g')
         content = content.replace(nameSunPattern, (match, pre, wrongSign, suffix) => {
           if (wrongSign !== correctSign) {
             corrections.push({
