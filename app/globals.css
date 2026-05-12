@@ -137,6 +137,75 @@
   --motion-redesign-slow: 480ms;
   --easing-redesign-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --easing-redesign-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ============================================================
+   * v5.10.200 — Jamie 2026-05-13 design tokens 規格更新版
+   * 命名空間:--jy-* prefix、避免衝突既有 --color-gold 等 200+ 處 var 用法
+   * Source of truth:lib/design-tokens.ts(TS export 同步)
+   * 既有 token 保留(向後兼容)、新 component 用 --jy-* 變數
+   * ============================================================ */
+
+  /* 夜空命理 × 金箔貴氣(更深更貴的版本)*/
+  --jy-bg-void: #05060F;
+  --jy-bg-space: #0A0E22;
+  --jy-bg-nebula: #101536;
+  --jy-bg-mist: #1A2150;
+  --jy-bg-glow: radial-gradient(circle at 50% 0%, #2A1F5C 0%, #05060F 60%);
+
+  /* Gold scale(規格更新、500 從 #C9A84C → #D4A04A 更暖)*/
+  --jy-gold-50: #FFF8E5;
+  --jy-gold-100: #FCEEC0;
+  --jy-gold-200: #F8DC8C;
+  --jy-gold-400: #E5B95C;
+  --jy-gold-500: #D4A04A;
+  --jy-gold-600: #B8842F;
+  --jy-gold-700: #8B5E1A;
+  --jy-gold-shimmer: linear-gradient(135deg, #FCEEC0 0%, #E5B95C 35%, #B8842F 70%, #FCEEC0 100%);
+
+  /* Semantic + 5 行 */
+  --jy-semantic-flow: #4ADE80;
+  --jy-semantic-balance: #FBBF24;
+  --jy-semantic-adjust: #F97316;
+  --jy-semantic-danger: #EF4444;
+  --jy-semantic-water: #60A5FA;
+  --jy-semantic-wood: #86EFAC;
+  --jy-semantic-fire: #FB7185;
+  --jy-semantic-earth: #D4A04A;
+  --jy-semantic-metal: #E2E8F0;
+
+  /* Text 4 階 + gold */
+  --jy-text-primary: #F8FAFC;
+  --jy-text-secondary: #CBD5E1;
+  --jy-text-tertiary: #94A3B8;
+  --jy-text-muted: #64748B;
+  --jy-text-gold: #E5B95C;
+
+  /* Border */
+  --jy-border-hairline: rgba(255, 255, 255, 0.06);
+  --jy-border-soft: rgba(255, 255, 255, 0.10);
+  --jy-border-gold: rgba(229, 185, 92, 0.30);
+
+  /* Shadow(金光 + 深空)*/
+  --jy-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 24px 48px -16px rgba(0, 0, 0, 0.6);
+  --jy-shadow-gold: 0 0 0 1px rgba(229, 185, 92, 0.4), 0 0 40px -8px rgba(229, 185, 92, 0.35);
+  --jy-shadow-halo: 0 0 80px -10px rgba(229, 185, 92, 0.25), 0 0 160px -40px rgba(167, 139, 250, 0.3);
+  --jy-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  --jy-shadow-elevate: 0 32px 80px -20px rgba(0, 0, 0, 0.7);
+
+  /* Radius(8 階)*/
+  --jy-radius-sm: 8px;
+  --jy-radius-md: 12px;
+  --jy-radius-lg: 16px;
+  --jy-radius-xl: 20px;
+  --jy-radius-2xl: 24px;
+  --jy-radius-3xl: 32px;
+  --jy-radius-pill: 9999px;
+
+  /* Font stack */
+  --jy-font-display: "Noto Serif TC", "Source Han Serif TC", serif;
+  --jy-font-body: "Noto Sans TC", "Inter var", sans-serif;
+  --jy-font-mono: "JetBrains Mono", "IBM Plex Mono", monospace;
+  --jy-font-numeric: "Inter var", "SF Pro Display";
 }
 
 /* 簡體中文字體切換（v5.3.44：與繁中命名規則一致）*/
