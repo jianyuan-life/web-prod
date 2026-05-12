@@ -7,6 +7,7 @@ import { LifeBlueprintReport } from './types/LifeBlueprintReport'
 import { HeartDoubtsReport } from './types/HeartDoubtsReport'
 import { CompatibilityReport } from './types/CompatibilityReport'
 import { FamilyBlueprintReport } from './types/FamilyBlueprintReport'
+import type { ReportData } from '@/types/report-schemas'
 
 export const REPORT_TYPES = ['life-blueprint', 'heart-doubts', 'compatibility', 'family-blueprint'] as const
 export type ReportType = typeof REPORT_TYPES[number]
@@ -18,13 +19,19 @@ export function isReportType(t: string): t is ReportType {
 interface ReportRendererProps {
   type: ReportType
   id: string
-  // TODO Sprint 2:data?: LifeBlueprint | HeartDoubts | Compatibility | Family
+  data?: ReportData | null // Sprint 1:可選、null 時走 skeleton fallback
 }
 
-export function ReportRenderer({ type, id }: ReportRendererProps) {
+export function ReportRenderer({ type, id, data }: ReportRendererProps) {
+  // Sprint 1:type-safe dispatch、data 對應 type 才 pass、否則 skeleton fallback
   switch (type) {
     case 'life-blueprint':
-      return <LifeBlueprintReport id={id} />
+      return (
+        <LifeBlueprintReport
+          id={id}
+          data={data?.type === 'life-blueprint' ? data.data : undefined}
+        />
+      )
     case 'heart-doubts':
       return <HeartDoubtsReport id={id} />
     case 'compatibility':
@@ -32,7 +39,6 @@ export function ReportRenderer({ type, id }: ReportRendererProps) {
     case 'family-blueprint':
       return <FamilyBlueprintReport id={id} />
     default: {
-      // 編譯時保證所有 case 都處理
       const _exhaustive: never = type
       return null
     }

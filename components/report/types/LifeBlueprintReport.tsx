@@ -1,61 +1,205 @@
-// v5.10.201 Sprint 1 — LifeBlueprintReport skeleton(人生藍圖)
-// Schema 對應:tasks/unified_spec_2026-05-13_jianyuan_reports_incremental.md type='life-blueprint'
-// Sprint 1 只放 skeleton + 路由通、實際內容 Sprint 2+ 漸進填
+// v5.10.203 Sprint 1 step 5 — LifeBlueprintReport(接 data prop、real render)
+// Schema 對應:types/report-schemas.ts LifeBlueprintReport
+// Sprint 1:render hero + actions2026 + card5(其餘 sections 待 Sprint 2+ 加)
 import { Eyebrow } from '@/components/ui/Eyebrow'
 import { Card } from '@/components/ui/Card'
 import { GoldDivider } from '@/components/effects/GoldDivider'
+import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 interface LifeBlueprintReportProps {
   id: string
-  // TODO Sprint 2:data: LifeBlueprintReportData(從 paid_reports adapter 來)
+  data?: LifeBlueprintData
 }
 
-export function LifeBlueprintReport({ id }: LifeBlueprintReportProps) {
+export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
+  // Sprint 1:無 data → skeleton fallback
+  if (!data) {
+    return <SkeletonView id={id} />
+  }
+
   return (
     <main
       className="min-h-screen text-[var(--jy-text-primary)]"
-      style={{
-        background: 'var(--jy-bg-glow)',
-        backgroundColor: 'var(--jy-bg-void)',
-      }}
+      style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
+    >
+      <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8">
+        {/* HERO */}
+        <section className="mb-16 text-center">
+          <Eyebrow>{`LIFE BLUEPRINT · ${data.meta.name}`}</Eyebrow>
+          <h1
+            className="mt-8 font-bold"
+            style={{
+              fontFamily: 'var(--jy-font-display)',
+              fontSize: 'clamp(48px, 6vw, 88px)',
+              lineHeight: 1.05,
+              letterSpacing: '-0.04em',
+              background: 'var(--jy-gold-shimmer)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            {data.hero.title}
+          </h1>
+          <p
+            className="mt-6 text-[var(--jy-text-secondary)]"
+            style={{ fontSize: 'clamp(18px, 2vw, 24px)', lineHeight: 1.5 }}
+          >
+            {data.hero.subtitle}
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {data.hero.keyword.map((kw) => (
+              <span
+                key={kw}
+                className="rounded-full border border-[var(--jy-border-gold)] px-4 py-1.5 text-sm text-[var(--jy-text-gold)]"
+              >
+                {kw}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 2026 行動建議 */}
+        <section className="mb-16">
+          <Eyebrow align="left">🎯 2026 行動建議</Eyebrow>
+          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <ActionCard label={data.actions2026.q1q2.label} text={data.actions2026.q1q2.text} accent="green" icon="✨" />
+            <ActionCard label={data.actions2026.fullYear.label} text={data.actions2026.fullYear.text} accent="amber" icon="⚠️" />
+            <ActionCard label={data.actions2026.q3q4.label} text={data.actions2026.q3q4.text} accent="violet" icon="🎯" />
+          </div>
+        </section>
+
+        {/* 命格名片 5 件套 */}
+        <section className="mb-16">
+          <Eyebrow align="left">📜 命格名片 5 件套</Eyebrow>
+          <Card className="mt-8 p-8">
+            <h2
+              className="font-semibold text-[var(--jy-text-primary)]"
+              style={{ fontFamily: 'var(--jy-font-display)', fontSize: 'clamp(22px, 2vw, 28px)' }}
+            >
+              {data.card5.title}
+            </h2>
+            <p className="mt-3 text-[var(--jy-text-secondary)]">{data.card5.subtitle}</p>
+
+            <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+              <BaziPillar label="年" value={data.card5.bazi.year} />
+              <BaziPillar label="月" value={data.card5.bazi.month} />
+              <BaziPillar label="日" value={data.card5.bazi.day} highlight />
+              <BaziPillar label="時" value={data.card5.bazi.hour} />
+            </div>
+
+            <p className="mt-4 text-sm text-[var(--jy-text-tertiary)]">
+              紫微命宮:<span className="text-[var(--jy-text-gold)]">{data.card5.ziwei.palaceStar}</span>(
+              {data.card5.ziwei.palace})
+            </p>
+
+            <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <h3 className="font-medium text-[var(--jy-semantic-flow)]">✓ 天賦 Top 3</h3>
+                <ul className="mt-3 space-y-2 text-[var(--jy-text-secondary)]">
+                  {data.card5.talentsTop3.map((t, i) => <li key={i}>· {t}</li>)}
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-medium text-[var(--jy-semantic-adjust)]">⚠ 課題 Top 3</h3>
+                <ul className="mt-3 space-y-2 text-[var(--jy-text-secondary)]">
+                  {data.card5.challengesTop3.map((c, i) => <li key={i}>· {c}</li>)}
+                </ul>
+              </div>
+            </div>
+          </Card>
+        </section>
+
+        {/* 一句話總結 */}
+        <section className="mb-16 text-center">
+          <p
+            style={{
+              fontFamily: 'var(--jy-font-display)',
+              fontSize: 'clamp(22px, 2vw, 32px)',
+              lineHeight: 1.5,
+              color: 'var(--jy-text-gold)',
+              fontStyle: 'italic',
+            }}
+          >
+            「{data.oneLiner}」
+          </p>
+        </section>
+
+        {/* TODO Sprint 2+ */}
+        <Card className="p-8" interactive={false}>
+          <p className="text-sm text-[var(--jy-text-tertiary)]">
+            ⏳ Sprint 2+ 將漸進加入:命格 3 層洞察 · 14 系統共識矩陣 · 大運時間軸 · 12 月份能量 · 起承轉合 16 章 · 幸運參數 · 月份決策表 · 出門訣 CTA · 報告印章
+          </p>
+          <p className="mt-2 text-xs text-[var(--jy-text-muted)]">
+            報告 ID:<span className="font-mono">{id}</span> · Engine {data.meta.engineVersion}
+          </p>
+        </Card>
+      </div>
+    </main>
+  )
+}
+
+function SkeletonView({ id }: { id: string }) {
+  return (
+    <main
+      className="min-h-screen text-[var(--jy-text-primary)]"
+      style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
     >
       <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8">
         <Eyebrow>LIFE BLUEPRINT · 人生藍圖</Eyebrow>
-
         <h1
-          className="mt-8 font-bold text-[var(--jy-text-primary)]"
+          className="mt-8 font-bold"
           style={{
             fontFamily: 'var(--jy-font-display)',
             fontSize: 'clamp(48px, 6vw, 88px)',
             lineHeight: 1.05,
-            letterSpacing: '-0.04em',
           }}
         >
           人生藍圖
         </h1>
-
         <p className="mt-4 text-[var(--jy-text-tertiary)]">
           報告 ID:<span className="font-mono">{id}</span>
         </p>
-
         <GoldDivider className="my-8" />
-
         <Card className="p-8">
-          <p className="text-[var(--jy-text-secondary)]">
-            ⚠️ Sprint 1 Skeleton — 路由通、Feature Flag 啟用、實際內容由 Sprint 2+ 漸進填入:
+          <p className="text-[var(--jy-text-secondary)]">⚠️ 找不到此 ID 對應的 demo 資料</p>
+          <p className="mt-3 text-sm text-[var(--jy-text-tertiary)]">
+            Sprint 1 demo 路徑:<code>/report/life-blueprint/he-yu-zhun</code>
           </p>
-          <ul className="mt-4 list-disc space-y-2 pl-6 text-[var(--jy-text-secondary)]">
-            <li>HERO 命格封號(<code>score</code> variant)+ 旋轉星盤 SVG</li>
-            <li>2026 行動建議 3 卡(啟動 / 持續 / 整合)</li>
-            <li>命格名片 5 件套(八字四柱 / 紫微命宮 / 天賦 / 課題)</li>
-            <li>命格 3 層洞察(核心性格 / KPI 三軸 / 時間軸)</li>
-            <li>14 系統共識矩陣(7×14、★ + 共識度)</li>
-            <li>大運起伏時間軸(6-8 步)+ 12 月份能量柱</li>
-            <li>起承轉合 16 章(✨📜🎯⚡✦✿)</li>
-            <li>幸運參數 / 月份決策表 / 出門訣 CTA / 報告印章</li>
-          </ul>
         </Card>
       </div>
     </main>
+  )
+}
+
+function ActionCard({ label, text, accent, icon }: { label: string; text: string; accent: 'green' | 'amber' | 'violet'; icon: string }) {
+  const ACCENT_COLOR = {
+    green: 'var(--jy-semantic-flow)',
+    amber: 'var(--jy-semantic-balance)',
+    violet: '#A78BFA',
+  }[accent]
+  return (
+    <Card className="p-6">
+      <div className="text-3xl">{icon}</div>
+      <p className="mt-4 text-sm font-medium" style={{ color: ACCENT_COLOR }}>
+        {label}
+      </p>
+      <p className="mt-2 text-[var(--jy-text-secondary)]">{text}</p>
+    </Card>
+  )
+}
+
+function BaziPillar({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="rounded-xl border border-[var(--jy-border-soft)] p-4 text-center">
+      <p className="text-xs text-[var(--jy-text-tertiary)]">{label}柱</p>
+      <p
+        className={`mt-2 font-bold ${highlight ? 'text-[var(--jy-text-gold)]' : 'text-[var(--jy-text-primary)]'}`}
+        style={{ fontFamily: 'var(--jy-font-display)', fontSize: 'clamp(28px, 3vw, 40px)', lineHeight: 1 }}
+      >
+        {value}
+      </p>
+    </div>
   )
 }

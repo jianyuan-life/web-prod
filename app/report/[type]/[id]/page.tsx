@@ -15,6 +15,7 @@
 //   - 強制 dynamic 避免 build-time prerender(避開 Codex P1 access_token 漏出風險)
 import { notFound } from 'next/navigation'
 import { ReportRenderer, isReportType } from '@/components/report/ReportRenderer'
+import { getReport } from '@/lib/report-adapter'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -63,11 +64,10 @@ export default async function UnifiedReportPage({ params }: PageProps) {
     notFound()
   }
 
-  // TODO Sprint 2:Supabase RLS fetch report by id + adapter 映射到對應 schema
-  //   const data = await getReport(type, id)
-  //   if (!data) notFound()
-  //   return <ReportRenderer type={type} id={id} data={data} />
+  // Sprint 1 step 5:fetch via adapter(目前只有 mock 何宥諄 life-blueprint、其他 type 待 Sprint 2)
+  const reportData = await getReport(type, id)
+  // 找不到也 render skeleton(避免訪客撞 404、Sprint 1 demo 用)
+  // Sprint 2 改成 notFound() / redirect /auth/login
 
-  // Sprint 1:純 skeleton dispatch(無 data fetch、Feature Flag 確認後直接 render)
-  return <ReportRenderer type={type} id={id} />
+  return <ReportRenderer type={type} id={id} data={reportData} />
 }
