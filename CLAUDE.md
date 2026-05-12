@@ -15,8 +15,10 @@ Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 **5/12 本機 hold(老闆審 push)**:
 - web-prod 86711761 v5.10.188:steps.ts:625 regex 字元類別 → name alternation 真因修
 - working tree v5.10.189:Codex re-review P2 deg 保留修
+- v5.10.190 sanitize wired 6 處 page.tsx + v5.10.191 SSOT + v5.10.192 dead helpers 清(lesson #113 #4)
+- **v5.10.193 lib/sanitize.ts ALLOWED_ATTR 補 role + aria-***(lesson #114、L3 Codex pre-push final review 抓 P2 accessibility regression、card-stack table 3+ col 失去 region/list 語意)
 - jianyuan-hq f86e81d:lessons #111 + #112 寫
-- 詳:`tasks/lessons.md` #111 #112
+- 詳:`tasks/lessons.md` #111 #112 #113 #114
 
 歷史:
 
