@@ -59,6 +59,82 @@
      含 emoji fallback，避免「方塊」顯示 */
   --font-sans: "Noto Serif TC", "Georgia", "Times New Roman", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
   --font-body: "Noto Sans TC", "PingFang TC", "Inter", system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+
+  /* ============================================================
+   * v5.10.198 UI Redesign Phase 1 — Jamie 規格書 v1.0 Design Tokens
+   * 加擴展 token、不破壞既有(向後兼容)、漸進式 migration
+   * 既有 --color-gold / --color-dark / --color-cream 等保留、新 token 共存
+   * 規格書:tasks/spec_ui_redesign_2026-05-12_jianyuan_landing.md
+   * ============================================================ */
+
+  /* 背景層次(5 階、Jamie 規格書 2.1)*/
+  --color-bg-base: #080B16;        /* 主底色、最深 */
+  --color-bg-raised: #0E1428;      /* 抬升層(section 對比)*/
+  --color-bg-sunken: #060912;      /* 凹陷層(沉浸區塊)*/
+  --color-bg-card: #111A30;        /* 卡片底 */
+  --color-bg-card-hi: #15203A;     /* 卡片 hover 底 */
+
+  /* 金色色階(7 階、Jamie 規格書 2.1、補既有 --color-gold 之外的明暗階)*/
+  --color-gold-50: #FBF4E0;
+  --color-gold-100: #F0E0B0;
+  --color-gold-300: #E0C679;       /* AAA 對比度大字用 */
+  --color-gold-500: #C9A84C;       /* 主品牌金(對齊既有 --color-gold)*/
+  --color-gold-600: #B8923D;
+  --color-gold-700: #8E6F2A;
+  --color-gold-glow: rgba(201, 168, 76, 0.35);
+
+  /* 文字層次(對齊 WCAG、Jamie 規格書 2.1)*/
+  --color-text-primary: #E8E4DE;   /* AAA 14.2:1、對齊既有 --color-text */
+  --color-text-secondary: #B3B8C5; /* AA+ 7.8:1、對齊既有 --color-text-muted */
+  --color-text-muted-light: #7A8194; /* 弱輔助、avoid clash with --color-text-muted */
+  --color-text-on-gold: #0A0E1A;   /* 金底深字 */
+
+  /* 線條色 */
+  --color-line: rgba(201, 168, 76, 0.18);
+
+  /* 功能色(對齊既有 + 補)*/
+  --color-success-modern: #5BD49A; /* 現代成功綠、Jamie 規格書版 */
+  --color-danger-modern: #E07A6E;  /* 現代紅、Jamie 規格書版 */
+
+  /* 字體(2 個新增、加 next/font 到 layout.tsx 才能用)*/
+  --font-classic: "Source Han Serif TC", "Noto Serif TC", "Source Han Serif SC", "Noto Serif SC", serif;
+  --font-display: "Cinzel", "Trajan Pro", "Optima", serif;
+
+  /* Display 字級(clamp 響應式、Jamie 規格書 2.2)*/
+  --text-display-1: clamp(48px, 6vw, 88px);
+  --text-display-1-line-height: 1.05;
+  --text-display-1-letter-spacing: -0.02em;
+  --text-display-2: clamp(36px, 4vw, 56px);
+  --text-display-2-line-height: 1.1;
+  --text-display-2-letter-spacing: -0.015em;
+  --text-h2-redesign: clamp(28px, 3vw, 40px);
+  --text-h3-redesign: clamp(20px, 2vw, 24px);
+  --text-eyebrow: 12px;
+  --text-eyebrow-letter-spacing: 0.24em;
+
+  /* 間距(Jamie 規格書 2.3)*/
+  --spacing-section-y-desktop: 120px;
+  --spacing-section-y-mobile: 80px;
+  --spacing-container: min(1200px, 92vw);
+
+  /* 圓角(Jamie 規格書 2.4)*/
+  --radius-sm-redesign: 6px;
+  --radius-md-redesign: 10px;
+  --radius-lg-redesign: 16px;
+  --radius-xl-redesign: 24px;
+  --radius-pill: 999px;
+
+  /* Shadow(Jamie 規格書 2.4)*/
+  --shadow-gold-glow: 0 8px 32px rgba(201, 168, 76, 0.25), inset 0 0 0 1px rgba(201, 168, 76, 0.18);
+  --shadow-card-redesign: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover-redesign: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0, 0, 0, 0.45);
+
+  /* Motion(對齊既有 --motion-* 但補規格書版、與既有 fast=150ms/medium=200ms/slow=300ms 共存)*/
+  --motion-redesign-fast: 160ms;
+  --motion-redesign-base: 240ms;
+  --motion-redesign-slow: 480ms;
+  --easing-redesign-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-redesign-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* 簡體中文字體切換（v5.3.44：與繁中命名規則一致）*/
