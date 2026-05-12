@@ -1567,9 +1567,9 @@ export function buildUserPrompt(
       if (t.rows) {
         for (const row of t.rows) {
           const rowStr = row.join(' ')
-          if (!sunSign && /太陽/.test(rowStr)) { const m = rowStr.match(/太陽[^]*?([白羊金牛雙子巨蟹獅子處女天秤天蠍射手摩羯水瓶雙魚]{2}座?\s*[\d.]*°?)/); if (m) sunSign = m[1] }
-          if (!moonSign && /月亮/.test(rowStr)) { const m = rowStr.match(/月亮[^]*?([白羊金牛雙子巨蟹獅子處女天秤天蠍射手摩羯水瓶雙魚]{2}座?\s*[\d.]*°?)/); if (m) moonSign = m[1] }
-          if (!ascSign && /上升/.test(rowStr)) { const m = rowStr.match(/上升[^]*?([白羊金牛雙子巨蟹獅子處女天秤天蠍射手摩羯水瓶雙魚]{2}座?\s*[\d.]*°?)/); if (m) ascSign = m[1] }
+          if (!sunSign && /太陽/.test(rowStr)) { const m = rowStr.match(/太陽[^]*?((?:白羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚)座?\s*[\d.]*°?)/); if (m) sunSign = m[1] }
+          if (!moonSign && /月亮/.test(rowStr)) { const m = rowStr.match(/月亮[^]*?((?:白羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚)座?\s*[\d.]*°?)/); if (m) moonSign = m[1] }
+          if (!ascSign && /上升/.test(rowStr)) { const m = rowStr.match(/上升[^]*?((?:白羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚)座?\s*[\d.]*°?)/); if (m) ascSign = m[1] }
         }
       }
     }

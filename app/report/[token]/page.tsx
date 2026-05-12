@@ -2113,11 +2113,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           }
           const ai81 = String(report.report_result?.ai_content || '')
           let mingZhu = ''
-          const mzM = ai81.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,8})/)
+          const mzM = ai81.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*((?:紫微|天機|太陽|武曲|天同|廉貞|天府|太陰|貪狼|巨門|天相|天梁|七殺|破軍)[^，。、\s]{0,8})/)
           if (mzM) mingZhu = mzM[1].trim().slice(0, 6)
           // v5.10.16 R+12 加 markdown multiline fallback:命宮**\n\n- **主星**：天府(何宣逸 ai_content 實格式)
           if (!mingZhu) {
-            const mzM2 = ai81.match(/命宮[\s\S]{0,30}主星[\s\S]{0,5}[：:][\s\*]*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s\*\n]{0,8})/)
+            const mzM2 = ai81.match(/命宮[\s\S]{0,30}主星[\s\S]{0,5}[：:][\s\*]*((?:紫微|天機|太陽|武曲|天同|廉貞|天府|太陰|貪狼|巨門|天相|天梁|七殺|破軍)[^，。、\s\*\n]{0,8})/)
             if (mzM2) mingZhu = mzM2[1].trim().slice(0, 6)
           }
           const dayMaster = String(baziRaw.day_master || calcResult?.day_master || (pillars[2] ? pillars[2][0] : ''))
@@ -2784,10 +2784,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           // v5.7.81 抽紫微命宮主星(Claude P1「命宮只顯示亥、缺主星」修)
           const ai81 = String(report.report_result?.ai_content || '')
           let mingZhu = ''
-          const mzM = ai81.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,8})/)
+          const mzM = ai81.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*((?:紫微|天機|太陽|武曲|天同|廉貞|天府|太陰|貪狼|巨門|天相|天梁|七殺|破軍)[^，。、\s]{0,8})/)
           if (mzM) mingZhu = mzM[1].trim().slice(0, 10)
           else {
-            const mzM2 = ai81.match(/紫微命盤[^：。\n]{0,30}?([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,6})\s*坐?(?:於|在)?\s*命宮/)
+            const mzM2 = ai81.match(/紫微命盤[^：。\n]{0,30}?((?:紫微|天機|太陽|武曲|天同|廉貞|天府|太陰|貪狼|巨門|天相|天梁|七殺|破軍)[^，。、\s]{0,6})\s*坐?(?:於|在)?\s*命宮/)
             if (mzM2) mingZhu = mzM2[1]
           }
           const sysCount = analysesSummary.length
@@ -3664,7 +3664,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {personalityCard?.title && (() => {
                   const ai = String(report.report_result?.ai_content || '')
                   const mgM = ai.match(/命宮[（(]?([子丑寅卯辰巳午未申酉戌亥])[）)]?/)
-                  const mzM = ai.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*([紫微天機太陽武曲天同廉貞天府太陰貪狼巨門天相天梁七殺破軍][^，。、\s]{0,4})/)
+                  const mzM = ai.match(/命宮[^（(]{0,5}主星[^（(]{0,2}[（(:：]?\s*((?:紫微|天機|太陽|武曲|天同|廉貞|天府|太陰|貪狼|巨門|天相|天梁|七殺|破軍)[^，。、\s]{0,4})/)
                   const rrAny = (report.report_result || {}) as Record<string, unknown>
                   const ziweiAna = ((rrAny.analyses || {}) as Record<string, unknown>)?.ziwei as Record<string, unknown> | undefined
                   const ziweiRaw = (ziweiAna?.raw_data || {}) as Record<string, unknown>
