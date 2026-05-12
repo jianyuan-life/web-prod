@@ -26,9 +26,14 @@ interface PageProps {
 }
 
 function isFeatureEnabled(): boolean {
-  // Sprint 1:純 env var(production 預設 false)
-  // Sprint 2:擴展為 white-list email + Beta cookie
-  return process.env.ENABLE_NEW_REPORT_RENDERER === 'true'
+  // v5.10.204 emergency hard-block:
+  //   production verify 發現 process.env check 在 Next 16 build-time 內聯後不可靠
+  //   path 即使 env var 未設、production 仍 200 render demo(已驗 2026-05-13)
+  //   Sprint 1 暫定 hard-block、Sprint 2 改 Beta cookie + Supabase user role 雙驗證
+  //
+  // 🔴 任何時候 production 訪問新路由 → 404
+  // 🟡 dev local 想驗:暫改 return true 後 npm run dev、不要 push
+  return false
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
