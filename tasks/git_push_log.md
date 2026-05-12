@@ -235,3 +235,24 @@
 - type-check:✅
 - Vercel deploy:⏳ BUILDING(~1-2 min)
 - 工程意義:Stop hook v2 連續第 4 次強制續做 + 老闆插話雙觸發、追出共識 P0 真因(本 session sec-N dead 4 次同模式)、一次解兩個方案
+
+---
+
+## 2026-05-12 audit + hold(lesson #111 #112)
+
+**git_push_log.md 從 v5.10.28(5/5)後 100+ commits 漏紀錄、5/8-5/11 marathon 全沒寫**
+真實 push 紀錄請看 `git log --oneline` 直接讀(v5.10.78~v5.10.187)。
+
+### 本 session(2026-05-12)真實狀態(hold 中、未 push)
+- **commit 35fb7a78**:W1 minor refactor(lib/sanitize.ts + SectionExpander 用共享)
+- **commit 86711761 v5.10.188**:steps.ts:625 R 太陽星座 regex 字元類別 → name alternation
+  - 對應 lesson #110「永久層」失效 + lesson #112(本 session 寫)
+  - Codex L3 唯一抓到(L1/L2/L4 audit production output 抓不到)
+- **working tree v5.10.189**:Codex re-review P2 deg 保留 + CLAUDE.md SSOT 同步
+- **Supabase 已查**:`paid_reports status='generating' = 0`、jianyuan-deploy 第 0 步 PASS
+- **老闆需按鈕**:授權 push origin/main → Vercel deploy → 下次 R 客戶 post-process 真生效
+
+### 規則(本 session lesson #111 #112):
+- 「工程永久層」commit 必跑 Codex L3 review 才能標 PASS
+- regex 含中文 character set 必警鈴(99% 是字元類別誤用)
+- Session 啟動必讀最新接力檔、不接 todo.md 舊清單
