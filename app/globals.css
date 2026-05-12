@@ -96,9 +96,11 @@
   --color-success-modern: #5BD49A; /* 現代成功綠、Jamie 規格書版 */
   --color-danger-modern: #E07A6E;  /* 現代紅、Jamie 規格書版 */
 
-  /* 字體(2 個新增、加 next/font 到 layout.tsx 才能用)*/
+  /* 字體(Cinzel 已 next/font/google import 在 layout.tsx)
+   * Source Han Serif TC 留 fallback(無 next/font 支援、需 self-host 字體檔)
+   * --font-display-google 由 next/font/google 提供(Cinzel 真實)*/
   --font-classic: "Source Han Serif TC", "Noto Serif TC", "Source Han Serif SC", "Noto Serif SC", serif;
-  --font-display: "Cinzel", "Trajan Pro", "Optima", serif;
+  --font-display: var(--font-display-google), "Cinzel", "Trajan Pro", "Optima", serif;
 
   /* Display 字級(clamp 響應式、Jamie 規格書 2.2)*/
   --text-display-1: clamp(48px, 6vw, 88px);

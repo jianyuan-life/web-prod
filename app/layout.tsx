@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import pkg from '../package.json'
-import { Noto_Serif_TC, Noto_Sans_TC, Noto_Serif_SC, Noto_Sans_SC } from 'next/font/google'
+import { Noto_Serif_TC, Noto_Sans_TC, Noto_Serif_SC, Noto_Sans_SC, Cinzel } from 'next/font/google'
 import Link from 'next/link'
 import Image from 'next/image'
 import Navbar from '@/components/Navbar'
@@ -21,6 +21,8 @@ const notoSans = Noto_Sans_TC({ subsets: ['latin'], weight: ['400', '500', '700'
 // 簡體中文字體（簡體模式時由 LocaleContent 切換 class）
 const notoSerifSC = Noto_Serif_SC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans-sc', display: 'swap' })
 const notoSansSC = Noto_Sans_SC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body-sc', display: 'swap' })
+// v5.10.198 UI redesign Phase 2:Cinzel for display(英文 logo / Chapter numbers、Jamie 規格書 2.2 --font-display)
+const cinzel = Cinzel({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-display-google', display: 'swap' })
 
 export const metadata: Metadata = {
   title: {
@@ -56,7 +58,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable}`} suppressHydrationWarning>
+    <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable} ${cinzel.variable}`} suppressHydrationWarning>
       <head>
         {/* Meta Pixel (Facebook Pixel) — 只在設定環境變數時載入 */}
         {process.env.NEXT_PUBLIC_META_PIXEL_ID && (
