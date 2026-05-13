@@ -10,9 +10,34 @@
 //   4. /r/<type>/<bad-format-id> 應 404
 //   5. /report/[token]/ 舊路由仍 200(向後相容)
 
-import { createRequire } from 'module'
-const require = createRequire('file:///D:/npm-global/node_modules/')
-const { chromium } = require('playwright')
+// v5.10.265 Codex L3 audit 修 P1#3:CI 可移植性
+//   - 原硬編 D:/npm-global(本機開發 OK、Linux GitHub Actions 失敗)
+//   - 改:try local node_modules → fall back global → fall back system
+//   - 在 GitHub Actions runner 上、playwright 通過 npm install 進 node_modules
+
+let chromium
+try {
+  // 1. Try local node_modules first(Linux CI 預期路徑)
+  const m = await import('playwright')
+  chromium = m.chromium
+} catch {
+  try {
+    // 2. Try Windows global npm path(本機開發)
+    const { createRequire } = await import('module')
+    const r = createRequire('file:///D:/npm-global/node_modules/')
+    chromium = r('playwright').chromium
+  } catch {
+    try {
+      // 3. Try Linux global npm path
+      const { createRequire } = await import('module')
+      const r = createRequire('file:///usr/lib/node_modules/')
+      chromium = r('playwright').chromium
+    } catch (e) {
+      console.error('Cannot find playwright:', e.message)
+      process.exit(1)
+    }
+  }
+}
 
 const BASE = 'https://www.jianyuan.life'
 

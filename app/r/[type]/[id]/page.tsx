@@ -78,9 +78,14 @@ export default async function UnifiedReportPage({ params }: PageProps) {
   }
 
   // Sprint 1 step 5:fetch via adapter(目前只有 mock 何宥諄 life-blueprint、其他 type 待 Sprint 2)
+  // v5.10.265 Codex L3 final audit 修 P1#1:reportData null 應 notFound()、不 render skeleton
+  //   - 原:return null 仍 render skeleton(誤導 R/G15 客戶看 mock 跡象)
+  //   - 新:adapter null → 404(對 R/G15 暫停 fetch 是 by design)
+  //   - demo URL 仍由 adapter 上方 early return mock 接、不受影響
   const reportData = await getReport(type, id)
-  // 找不到也 render skeleton(避免訪客撞 404、Sprint 1 demo 用)
-  // Sprint 2 改成 notFound() / redirect /auth/login
+  if (!reportData) {
+    notFound()
+  }
 
   return <ReportRenderer type={type} id={id} data={reportData} />
 }
