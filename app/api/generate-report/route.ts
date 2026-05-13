@@ -113,6 +113,8 @@ async function callClaudeStreaming(
   maxTokens: number,
   timeoutMs: number = 200000,
   tracking?: { reportId?: string; planCode?: string; callStage?: string },
+  // v5.10.277:加 model param 給 Sonnet/Haiku fallback 用、預設仍 Opus 4.6
+  model: string = 'claude-opus-4-6',
 ): Promise<string> {
   const tStart = Date.now()
   const controller = new AbortController()
@@ -131,9 +133,9 @@ async function callClaudeStreaming(
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      // v5.3.9：Claude Opus 4.7 不接受 temperature 參數（400: deprecated for this model）
+      // v5.10.277:用傳入 model param(預設 Opus、fallback Sonnet)
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model,
         max_tokens: maxTokens,
         stream: true,
         messages: [
@@ -148,7 +150,7 @@ async function callClaudeStreaming(
     // v5.3.5 記帳：連線失敗
     try {
       await recordAIUsage({
-        provider: 'anthropic', model: 'claude-opus-4-6',
+        provider: 'anthropic', model,
         promptTokens: 0, completionTokens: 0,
         reportId: tracking?.reportId, planCode: tracking?.planCode,
         callStage: tracking?.callStage || 'fallback_route',
@@ -169,7 +171,7 @@ async function callClaudeStreaming(
     console.error(`Claude API 回傳 HTTP ${res.status}，回應內容: ${errText.slice(0, 500)}`)
     try {
       await recordAIUsage({
-        provider: 'anthropic', model: 'claude-opus-4-6',
+        provider: 'anthropic', model,
         promptTokens: 0, completionTokens: 0,
         reportId: tracking?.reportId, planCode: tracking?.planCode,
         callStage: tracking?.callStage || 'fallback_route',
@@ -225,7 +227,7 @@ async function callClaudeStreaming(
     // v5.3.5 記帳：串流失敗（可能已消耗 tokens，用字元粗估）
     try {
       await recordAIUsage({
-        provider: 'anthropic', model: 'claude-opus-4-6',
+        provider: 'anthropic', model,
         promptTokens: estPromptTokens,
         completionTokens: estimateTokens(result),
         reportId: tracking?.reportId, planCode: tracking?.planCode,
@@ -249,7 +251,7 @@ async function callClaudeStreaming(
   // 標 status=incomplete 但 metadata 說明是成功，讓後台查帳時知道是估算值
   try {
     await recordAIUsage({
-      provider: 'anthropic', model: 'claude-opus-4-6',
+      provider: 'anthropic', model,
       promptTokens: estPromptTokens,
       completionTokens: estimateTokens(result),
       reportId: tracking?.reportId, planCode: tracking?.planCode,
@@ -1120,7 +1122,26 @@ ${analyses.length}套系統排盤完整數據：
         console.warn('CLAUDE_API_KEY 未設定，C 方案直接使用 DeepSeek fallback')
       }
 
-      // Claude 失敗或 key 未設定 → fallback DeepSeek
+      // v5.10.277 Opus 失敗 → 改 fallback Claude Sonnet 4.6(同家族、體驗一致、CLAUDE.md「DeepSeek 永久移除」)
+      // 順序:Opus 4.6 → Sonnet 4.6 → DeepSeek(legacy backup、未來 Sprint 2.x 移除)
+      if (!reportContent && CLAUDE_API_KEY) {
+        try {
+          console.info('C 方案 Sonnet fallback:嘗試 Claude Sonnet 4.6...')
+          const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+          const rawResult = await callClaudeStreaming(systemPrompt, buildGenericUserPrompt(), 16000, 200000, {
+            reportId, planCode, callStage: 'C_fallback_sonnet',
+          }, 'claude-sonnet-4-6')
+          reportContent = cleanAIResponse(rawResult)
+          aiModelUsed = 'claude-sonnet-4-6'
+          console.info(`C 方案 Sonnet fallback 完成：${reportContent.length} 字`)
+          // 仍是 downgrade、ops 該知道(Sonnet 跟 Opus 品質有差、但同 family、客戶感知小)
+          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', 'Opus failed').catch(() => {})
+        } catch (e) {
+          console.error('C 方案 Sonnet fallback 也失敗、最後嘗試 DeepSeek:', e)
+        }
+      }
+
+      // Claude 全失敗或 key 未設定 → fallback DeepSeek(legacy 最後 backup、Sprint 2.x 移除)
       if (!reportContent) {
         try {
           const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
@@ -1128,7 +1149,7 @@ ${analyses.length}套系統排盤完整數據：
           aiModelUsed = 'deepseek-chat'
           console.info(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
           // v5.10.268 Gemini P0「LLM Fallback 體驗斷崖」alert:客戶收到劣化模型、ops 即介入
-          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude failed or key missing').catch(() => {})
+          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude Opus + Sonnet both failed').catch(() => {})
         } catch (e) {
           console.error('C 方案 DeepSeek fallback 也失敗:', e)
           await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
@@ -1158,14 +1179,29 @@ ${analyses.length}套系統排盤完整數據：
         console.warn(`CLAUDE_API_KEY 未設定，方案 ${planCode} 直接使用 DeepSeek`)
       }
 
-      // Claude 失敗或 key 未設定 → fallback DeepSeek
+      // v5.10.277:Opus 失敗 → Sonnet 4.6 fallback(同家族)、最後才 DeepSeek
+      if (!reportContent && CLAUDE_API_KEY) {
+        try {
+          console.info(`方案 ${planCode}:Sonnet fallback 嘗試...`)
+          reportContent = cleanAIResponse(await callClaudeStreaming(systemPrompt, userPrompt, 32768, 200000, {
+            reportId, planCode, callStage: `${planCode}_fallback_sonnet`,
+          }, 'claude-sonnet-4-6'))
+          aiModelUsed = 'claude-sonnet-4-6'
+          console.info(`方案 ${planCode} Sonnet 完成：${reportContent.length} 字`)
+          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', 'Opus failed').catch(() => {})
+        } catch (sonnetE) {
+          console.error(`方案 ${planCode} Sonnet 也失敗、最後嘗試 DeepSeek:`, sonnetE)
+        }
+      }
+
+      // Claude 全失敗或 key 未設定 → fallback DeepSeek(legacy)
       if (!reportContent) {
         try {
           reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, userPrompt))
           aiModelUsed = 'deepseek-chat'
           console.info(`方案 ${planCode} DeepSeek fallback 完成：${reportContent.length} 字`)
           // v5.10.268 Gemini P0「LLM Fallback 體驗斷崖」alert(同 C plan、D/R/G15/E* 都會落到這)
-          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude failed or key missing').catch(() => {})
+          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude Opus + Sonnet both failed').catch(() => {})
         } catch (e) {
           console.error(`方案 ${planCode} DeepSeek fallback 也失敗:`, e)
           await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
