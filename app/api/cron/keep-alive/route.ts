@@ -3,15 +3,14 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { checkCronAuth } from '@/lib/cron-auth'
 
 export const maxDuration = 30
 
 export async function GET(req: NextRequest) {
-  // 驗證 cron secret（防止外部未授權呼叫）
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  // v5.10.279:fail-closed auth(Codex P0#3 修)
+  const authFail = checkCronAuth(req)
+  if (authFail) return authFail
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
   const healthUrl = `${apiUrl}/health`

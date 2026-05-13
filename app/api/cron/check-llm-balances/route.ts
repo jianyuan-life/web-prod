@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { notifyLLMBalanceLow, notifyLLMBalanceCritical, notify } from '@/lib/ai/observability/telegram'
+import { checkCronAuth } from '@/lib/cron-auth'
 
 export const maxDuration = 60
 
@@ -280,10 +281,9 @@ async function checkGemini(): Promise<BalanceRow> {
 }
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  // v5.10.279 fail-closed auth(Codex P0#3)
+  const authFail = checkCronAuth(req)
+  if (authFail) return authFail
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',

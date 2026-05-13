@@ -40,13 +40,21 @@ async function sendTelegram(text: string): Promise<void> {
 }
 
 export async function GET(req: NextRequest) {
-  // 驗證 cron secret
+  // v5.10.279 fail-closed auth(Codex P0#3):CRON_SECRET + ADMIN_KEY 必非空
+  const cronSecret = process.env.CRON_SECRET
+  const adminKeyEnv = process.env.ADMIN_KEY
+  if ((!cronSecret || cronSecret.trim().length < 16) && (!adminKeyEnv || adminKeyEnv.trim().length < 16)) {
+    console.error('[monthly-pnl] 兩個 secret 都未設、拒絕')
+    return NextResponse.json({ error: 'Auth secrets not configured' }, { status: 500 })
+  }
+
   const authHeader = req.headers.get('authorization')
   const force = req.nextUrl.searchParams.get('force')
   const adminKey = req.headers.get('x-admin-key')
   // v5.3.33 安全修：force=1 必須搭配 ADMIN_KEY，否則不可跳過 CRON_SECRET
-  const isCronAuth = authHeader === `Bearer ${process.env.CRON_SECRET}`
-  const isAdminForce = force === '1' && !!adminKey && adminKey === process.env.ADMIN_KEY
+  // v5.10.279:加 secret 非空檢查、防 fail-open
+  const isCronAuth = !!cronSecret && cronSecret.trim().length >= 16 && authHeader === `Bearer ${cronSecret}`
+  const isAdminForce = force === '1' && !!adminKey && !!adminKeyEnv && adminKeyEnv.trim().length >= 16 && adminKey === adminKeyEnv
   if (!isCronAuth && !isAdminForce) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
