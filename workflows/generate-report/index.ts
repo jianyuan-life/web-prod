@@ -80,10 +80,18 @@ export async function generateReportWorkflow(reportId: string) {
       }
 
       // 品質閘門
+      // v5.10.285 P1 修(Codex L3 finding):G15 跨系統幻想禁區命中 → 轉 needs_human_review、不交付
       try {
         const qResult = await qualityGate(reportContent, 'G15', familyReports.length)
         if (!qResult.passed) {
           console.warn(`G15 品質閘門警告: ${qResult.warnings.join('; ')}`)
+          const hasCrossSys = qResult.hardFailures?.some(s => s.includes('[GLOBAL P0-CROSS-SYS]')) || false
+          if (hasCrossSys) {
+            const reasonMsg = `[跨系統幻想禁區命中、lesson #056、G15 不可交付] ${qResult.hardFailures?.slice(0, 3).join('; ').slice(0, 400)}`
+            await markReportNeedsHumanReview(reportId, reasonMsg, undefined, reportContent, 'claude-opus-4-6')
+            await closeProgressStream()
+            return { success: false, error: 'G15 跨系統幻想禁區命中、轉人工審核' }
+          }
         }
       } catch (e) {
         console.error('G15 品質閘門執行失敗:', e)
@@ -239,10 +247,18 @@ export async function generateReportWorkflow(reportId: string) {
       }
 
       // 品質閘門
+      // v5.10.285 P1 修(Codex L3 finding):R 方案跨系統幻想禁區命中 → 轉 needs_human_review、不交付
       try {
         const qResult = await qualityGate(reportContent, 'R', memberResults.length)
         if (!qResult.passed) {
           console.warn(`R 品質閘門警告: ${qResult.warnings.join('; ')}`)
+          const hasCrossSys = qResult.hardFailures?.some(s => s.includes('[GLOBAL P0-CROSS-SYS]')) || false
+          if (hasCrossSys) {
+            const reasonMsg = `[跨系統幻想禁區命中、lesson #056、R 不可交付] ${qResult.hardFailures?.slice(0, 3).join('; ').slice(0, 400)}`
+            await markReportNeedsHumanReview(reportId, reasonMsg, undefined, reportContent, 'claude-opus-4-6')
+            await closeProgressStream()
+            return { success: false, error: 'R 跨系統幻想禁區命中、轉人工審核' }
+          }
         }
       } catch (e) {
         console.error('R 品質閘門執行失敗:', e)
@@ -664,8 +680,16 @@ export async function generateReportWorkflow(reportId: string) {
   // 3f. 品質閘門最終判定：
   //   C 方案連 3 次失敗 → 標為 needs_human_review（供 /jamie/quality-reports 處理）
   //   其他方案首次 5 LLM 未通過 → 仍交付但 Telegram 已發警告（client-facing SLA）
-  if (!qualityPassed && planCode === 'C') {
-    const reasonMsg = `品質閘門連續 ${qualityRetryCount + 1} 次失敗: ${lastQualityIssues.slice(0, 3).join('; ').slice(0, 400)}`
+  // v5.10.285 P1 修(Codex L3 audit v5.10.284 finding):跨系統幻想 P0-CROSS-SYS 全方案永遠擋
+  //   原本 GLOBAL_FORBIDDEN_CROSS_SYSTEM 加 hardFailures、但 D/E*/R/G15 不重試 + 不擋發送
+  //   = lesson #056 永久禁區形同空轉、客戶仍會看到禁忌 mapping
+  //   修:hardFailures 含 GLOBAL P0-CROSS-SYS = needs_human_review、不論 plan、不發送
+  const hasCrossSystemViolation = lastQualityIssues.some(s => s.includes('[GLOBAL P0-CROSS-SYS]'))
+  if (!qualityPassed && (planCode === 'C' || hasCrossSystemViolation)) {
+    const reasonPrefix = hasCrossSystemViolation
+      ? `[跨系統幻想禁區命中、lesson #056] `
+      : ''
+    const reasonMsg = `${reasonPrefix}品質閘門連續 ${qualityRetryCount + 1} 次失敗: ${lastQualityIssues.slice(0, 3).join('; ').slice(0, 400)}`
     try {
       // v5.3.18：傳入 reportContent，讓後台 /jamie/quality-reports 能看到原文（不用重跑再燒 $5）
       await markReportNeedsHumanReview(reportId, reasonMsg, undefined, reportContent, aiModelUsed)
