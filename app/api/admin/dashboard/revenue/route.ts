@@ -26,6 +26,7 @@ type Report = {
   id: string
   plan_code: string | null
   amount_usd: number | string | null
+  refunded_amount_usd: number | string | null
   status: string | null
   customer_email: string | null
   created_at: string | null
@@ -54,15 +55,21 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabase()
 
+  // v5.10.273 P0 修(Codex+Gemini 共識):revenue 必 select refunded_amount_usd + 過濾 deleted_at
+  //   原:沒抓 refunded_amount_usd、未來退款後後台會 show gross 不 show net
+  //   原:沒 filter deleted_at、軟刪 row 仍計營收
+  //   修:select 含 refunded、過濾 deleted、總額用 amount - refunded(NET revenue)
   const [currRes, prevRes] = await Promise.all([
     supabase
       .from('paid_reports')
-      .select('id, plan_code, amount_usd, status, customer_email, created_at')
+      .select('id, plan_code, amount_usd, refunded_amount_usd, status, customer_email, created_at')
+      .is('deleted_at', null)
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: true }),
     supabase
       .from('paid_reports')
-      .select('id, amount_usd, status, created_at, customer_email')
+      .select('id, amount_usd, refunded_amount_usd, status, created_at, customer_email')
+      .is('deleted_at', null)
       .gte('created_at', previousSince.toISOString())
       .lt('created_at', since.toISOString()),
   ])
@@ -70,9 +77,16 @@ export async function GET(req: NextRequest) {
   const reports: Report[] = (currRes.data as Report[]) || []
   const prevReports: Report[] = (prevRes.data as Report[]) || []
 
-  // 過濾只算「有付費」的訂單
-  const paying = reports.filter(r => Number(r.amount_usd) > 0)
-  const prevPaying = prevReports.filter(r => Number(r.amount_usd) > 0)
+  // v5.10.273:NET revenue = amount_usd - refunded_amount_usd(防虛增)
+  const netAmount = (r: Report): number => {
+    const gross = Number(r.amount_usd) || 0
+    const refunded = Number(r.refunded_amount_usd) || 0
+    return Math.max(0, gross - refunded) // 防數據錯誤造成負值
+  }
+
+  // 過濾只算「有付費」的訂單(NET > 0、排除 full refund)
+  const paying = reports.filter(r => netAmount(r) > 0)
+  const prevPaying = prevReports.filter(r => netAmount(r) > 0)
 
   // ==== 時間序列（by day 或 month） ====
   const trendMap: Record<string, { total: number } & Record<string, number>> = {}
@@ -85,7 +99,7 @@ export async function GET(req: NextRequest) {
       for (const p of PLAN_CODES) trendMap[bucket][p] = 0
     }
     const plan = ((r.plan_code || '').split(/\s/)[0] || 'other').toUpperCase()
-    const amt = Number(r.amount_usd) || 0
+    const amt = netAmount(r)
     trendMap[bucket].total += amt
     if (PLAN_CODES.includes(plan as typeof PLAN_CODES[number])) {
       trendMap[bucket][plan] += amt
@@ -114,7 +128,7 @@ export async function GET(req: NextRequest) {
     const plan = ((r.plan_code || '').split(/\s/)[0] || 'other').toUpperCase()
     if (!planStats[plan]) planStats[plan] = { count: 0, revenue: 0, unique_customers: new Set() }
     planStats[plan].count++
-    planStats[plan].revenue += Number(r.amount_usd) || 0
+    planStats[plan].revenue += netAmount(r) // v5.10.273 用 NET
     if (r.customer_email) planStats[plan].unique_customers.add(r.customer_email.toLowerCase())
   }
   const planRanking = Object.entries(planStats).map(([plan, s]) => ({
@@ -126,11 +140,12 @@ export async function GET(req: NextRequest) {
   })).sort((a, b) => b.revenue_usd - a.revenue_usd)
 
   // ==== AOV（整體） ====
-  const totalRevenue = paying.reduce((s, r) => s + Number(r.amount_usd), 0)
+  // v5.10.273:用 NET revenue(amount - refunded)、不算 full refund 訂單
+  const totalRevenue = paying.reduce((s, r) => s + netAmount(r), 0)
   const aov = paying.length > 0 ? Math.round((totalRevenue / paying.length) * 100) / 100 : 0
 
   // ==== 成長率（vs 前期間） ====
-  const prevRevenue = prevPaying.reduce((s, r) => s + Number(r.amount_usd), 0)
+  const prevRevenue = prevPaying.reduce((s, r) => s + netAmount(r), 0)
   const growthPct = prevRevenue > 0
     ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 1000) / 10
     : null
