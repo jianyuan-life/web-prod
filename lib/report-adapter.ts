@@ -26,7 +26,8 @@ import { mockHeYuZhunLifeBlueprint } from '@/lib/mocks/he-yu-zhun-life-blueprint
 import { MOCK_HEART_DOUBTS_HE_XUAN_YI } from '@/lib/mocks/heart-doubts-he-xuan-yi'
 import { MOCK_COMPATIBILITY_LIN_YUAN_LIN } from '@/lib/mocks/compatibility-lin-yuan-lin'
 import { MOCK_FAMILY_BLUEPRINT_HE_JIA } from '@/lib/mocks/family-blueprint-he-jia'
-import { extractBaziFromMarkdown, extractOneLinerFromMarkdown } from '@/lib/parsers/life-blueprint-md-parser'
+// v5.10.246 加 / v5.10.247 暫不用:parser 留檔備 Sprint 2.x LLM Extraction 後使用
+// import { extractBaziFromMarkdown, extractOneLinerFromMarkdown } from '@/lib/parsers/life-blueprint-md-parser'
 
 // v5.10.240 Sprint 2 starter — Supabase service client(server-only、bypass RLS for adapter)
 // 對應 Codex L3 + Gemini L4 共識:adapter 用 service_role、user-facing path 用 RLS
@@ -211,11 +212,15 @@ async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | 
   if (!data) return null
 
   try {
-    // v5.10.246:從 ai_content markdown 抽真資料(Top-1 ROI:bazi + oneLiner)
-    // 解析失敗 fallback mock(過渡期、Sprint 2.x LLM Extraction migration 後可廢)
-    const aiContent = data.report_result?.ai_content || ''
-    const realBazi = extractBaziFromMarkdown(aiContent)
-    const realOneLiner = extractOneLinerFromMarkdown(aiContent)
+    // v5.10.247 P0 hot-fix(Codex L3 + Gemini L4 共識 review):
+    //   - v5.10.246 parser 上線 silently fallback 到 mock = 「data contamination」P0
+    //   - 實測 32 row 中、僅 8 row table format(25%)、22 row prose-only(75%)、parser 多會失敗
+    //   - 失敗時前端會 render 何宥諄的 mock bazi、客戶可能誤認為自己的命盤(品牌信任崩潰)
+    //   - Gemini「寧可報錯也絕不能給錯的命理資料」+ Codex「silent data contamination」
+    //   - Hot-fix:暫時不啟用 parser、回到 v5.10.245 mock spread 行為(僅 meta 真)
+    //   - 永久解:Sprint 2.x LLM Extraction migration(claude-3.5-haiku 一次性轉 35 row 成 JSON)
+    //     + 新訂單 Structured Outputs(從源頭就產 JSON)+ DB 加 report_result_json column
+    //   - 詳:tasks/sprint_2_x_markdown_parser_plan.md
 
     // Minimum mapping:用 row 拼 LifeBlueprintReport
     // 完整 17 sections parsing 留 Sprint 2.x LLM Extraction(Codex+Gemini 共識)
@@ -228,17 +233,14 @@ async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | 
         birthPlace: data.birth_city || mockHeYuZhunLifeBlueprint.meta.birthPlace,
         reportDate: new Date(data.created_at).toISOString().split('T')[0],
       },
-      // v5.10.246:card5.bazi 真資料(若 parser 成功)、否則保留 mock
-      card5: {
-        ...mockHeYuZhunLifeBlueprint.card5,
-        bazi: realBazi || mockHeYuZhunLifeBlueprint.card5.bazi,
-      },
-      // v5.10.246:oneLiner 真資料(若 parser 成功)、否則保留 mock
-      oneLiner: realOneLiner || mockHeYuZhunLifeBlueprint.oneLiner,
     }
 
-    if (realBazi) console.info('[adapter] bazi parsed from markdown:', realBazi)
-    if (realOneLiner) console.info('[adapter] oneLiner parsed from markdown(len):', realOneLiner.length)
+    // 警告 log:目前 fetch 真客戶但 16 sections 仍 mock、屬已知過渡期狀態
+    console.warn(
+      '[adapter] life-blueprint minimum mapping(meta only)、',
+      '16 sections 仍 mock、待 Sprint 2.x LLM Extraction migration:',
+      data.id,
+    )
 
     return { type: 'life-blueprint', data: report }
   } catch (err) {
