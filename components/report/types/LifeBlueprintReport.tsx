@@ -18,6 +18,7 @@ import { ChapterGroup, ChapterSection } from '@/components/report/shared/Chapter
 import { YearEnergyMonths } from '@/components/report/shared/YearEnergyMonths'
 import { ZiweiNatalChart } from '@/components/report/shared/ZiweiNatalChart'
 import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
+import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 interface LifeBlueprintReportProps {
