@@ -124,6 +124,7 @@ export async function GET(req: NextRequest) {
       })
 
       // 標記 feedback_sent = true（合併既有 generation_progress）
+      // v5.10.286 P2 修(Gemini L4 finding):cron race 防衛 — UPDATE 加 deleted_at IS NULL
       const existingProgress = (progress || {}) as Record<string, unknown>
       await supabase.from('paid_reports').update({
         generation_progress: {
@@ -131,7 +132,7 @@ export async function GET(req: NextRequest) {
           feedback_sent: true,
           feedback_sent_at: new Date().toISOString(),
         },
-      }).eq('id', report.id)
+      }).eq('id', report.id).is('deleted_at', null)
 
       sentCount++
       console.info(`✅ 反饋郵件已寄送至 ${report.customer_email}（報告 ${report.id}）`)

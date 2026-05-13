@@ -230,6 +230,8 @@ export async function GET(req: NextRequest) {
       })
 
       // 標記已發送
+      // v5.10.286 P2 修(Gemini L4 finding):防 race — 報告若在 cron 跑 process 時被軟刪、UPDATE 還會
+      //   寫鬼幽 status。WHERE 加 deleted_at IS NULL 防衛(雖然 email 已發、但至少 status 一致)
       const existing = (progress || {}) as Record<string, unknown>
       await supabase.from('paid_reports').update({
         generation_progress: {
@@ -237,7 +239,7 @@ export async function GET(req: NextRequest) {
           followup_sent: true,
           followup_sent_at: new Date().toISOString(),
         },
-      }).eq('id', report.id)
+      }).eq('id', report.id).is('deleted_at', null)
 
       sentCount++
       console.info(`✅ 跟進信已發送: ${report.customer_email} (${planName})`)
