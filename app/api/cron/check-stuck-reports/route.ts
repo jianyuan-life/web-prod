@@ -33,11 +33,13 @@ export async function GET(req: NextRequest) {
   const now = Date.now()
   const threshold = new Date(now - STUCK_THRESHOLD_MIN * 60 * 1000).toISOString()
 
+  // v5.10.283 soft delete filter:軟刪 stuck 報告不再 alert / 處理
   const { data: stuck, error } = await supabase
     .from('paid_reports')
     .select('id, client_name, plan_code, created_at, generation_progress')
     .eq('status', 'generating')
     .lt('created_at', threshold)
+    .is('deleted_at', null)
     .order('created_at', { ascending: true })
     .limit(50)
 

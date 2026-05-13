@@ -33,11 +33,13 @@ export async function GET(req: NextRequest) {
 
   // ── Part A: 處理 pending/failed 報告（可安全重新觸發）──
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+  // v5.10.283 soft delete filter:軟刪報告不再 retry / send notification
   const { data: pendingReports, error: queryErr } = await supabase
     .from('paid_reports')
     .select('id, retry_count, status, created_at, generation_progress')
     .in('status', ['pending', 'failed'])
     .lt('created_at', fiveMinAgo)
+    .is('deleted_at', null)
     .order('created_at', { ascending: true })
     .limit(5)
 
@@ -109,10 +111,12 @@ export async function GET(req: NextRequest) {
   // ── Part B: 監控 generating 報告（只看不碰，除非真的超時）──
   // 30 分鐘超時：C 方案 3-call + 品質重試 最長需要 20 分鐘
   // 設 30 分鐘留足緩衝，避免誤殺正在跑的 workflow
+  // v5.10.283 soft delete filter:軟刪 generating 報告不再監控
   const { data: generatingReports } = await supabase
     .from('paid_reports')
     .select('id, created_at, generation_progress')
     .eq('status', 'generating')
+    .is('deleted_at', null)
     .order('created_at', { ascending: true })
     .limit(20)
 

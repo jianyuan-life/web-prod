@@ -45,12 +45,14 @@ export async function GET(req: NextRequest) {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   // 查詢已完成報告：email_sent_at 在 46 小時前至 7 天內
+  // v5.10.283 soft delete filter:軟刪報告不再寄反饋邀請信
   const { data: reports, error: queryErr } = await supabase
     .from('paid_reports')
     .select('id, customer_email, birth_data, plan_code, access_token, generation_progress, email_sent_at')
     .eq('status', 'completed')
     .lt('email_sent_at', hourAgo46)
     .gte('email_sent_at', sevenDaysAgo)
+    .is('deleted_at', null)
     .order('email_sent_at', { ascending: true })
     .limit(20)
 

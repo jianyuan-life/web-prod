@@ -46,10 +46,12 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
     )
 
+    // v5.10.283 soft delete filter:軟刪報告不再 render OG 圖
     const { data } = await supabase
       .from('paid_reports')
       .select('plan_code, report_result')
       .eq('access_token', token)
+      .is('deleted_at', null)
       .single()
 
     if (data) {

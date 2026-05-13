@@ -42,6 +42,7 @@ type SnapshotRpcPayload = {
   today: {
     orders: number
     revenue_usd: number
+    net_revenue_usd: number          // v5.10.283 新增:扣退款後實際入帳
     reports_completed: number
     reports_failed: number
     reports_generating: number
@@ -52,6 +53,7 @@ type SnapshotRpcPayload = {
   yesterday: {
     orders: number
     revenue_usd: number
+    net_revenue_usd: number          // v5.10.283 新增
     dau: number
     paying_customers: number
   }
@@ -82,10 +84,10 @@ export async function GET(req: NextRequest) {
   const payload = (data ?? {
     generated_at: new Date().toISOString(),
     today: {
-      orders: 0, revenue_usd: 0, reports_completed: 0, reports_failed: 0,
+      orders: 0, revenue_usd: 0, net_revenue_usd: 0, reports_completed: 0, reports_failed: 0,
       reports_generating: 0, dau: 0, paying_customers: 0, free_tool_usage: 0,
     },
-    yesterday: { orders: 0, revenue_usd: 0, dau: 0, paying_customers: 0 },
+    yesterday: { orders: 0, revenue_usd: 0, net_revenue_usd: 0, dau: 0, paying_customers: 0 },
   }) as SnapshotRpcPayload
 
   const today = payload.today
@@ -93,6 +95,9 @@ export async function GET(req: NextRequest) {
 
   const todayRevenue = Number(today.revenue_usd) || 0
   const yesterdayRevenue = Number(yesterday.revenue_usd) || 0
+  // v5.10.283 net revenue:扣退款後實際入帳
+  const todayNetRevenue = Number(today.net_revenue_usd) || 0
+  const yesterdayNetRevenue = Number(yesterday.net_revenue_usd) || 0
 
   const deltaPct = (t: number, y: number): number | null => {
     if (y === 0) return t === 0 ? 0 : null
@@ -107,6 +112,11 @@ export async function GET(req: NextRequest) {
       revenue_usd: Math.round(todayRevenue * 100) / 100,
       revenue_twd: Math.round(todayRevenue * USD_TO_TWD * 100) / 100,
       revenue_delta_pct: deltaPct(todayRevenue, yesterdayRevenue),
+      // v5.10.283 net revenue(扣退款後)
+      net_revenue_usd: Math.round(todayNetRevenue * 100) / 100,
+      net_revenue_twd: Math.round(todayNetRevenue * USD_TO_TWD * 100) / 100,
+      net_revenue_delta_pct: deltaPct(todayNetRevenue, yesterdayNetRevenue),
+      refund_loss_usd: Math.round((todayRevenue - todayNetRevenue) * 100) / 100,
       reports_completed: today.reports_completed,
       reports_failed: today.reports_failed,
       reports_generating: today.reports_generating,
@@ -119,6 +129,7 @@ export async function GET(req: NextRequest) {
     yesterday: {
       orders: yesterday.orders,
       revenue_usd: Math.round(yesterdayRevenue * 100) / 100,
+      net_revenue_usd: Math.round(yesterdayNetRevenue * 100) / 100,
       dau: yesterday.dau,
       paying_customers: yesterday.paying_customers,
     },

@@ -40,12 +40,14 @@ export async function GET(req: NextRequest) {
 
     if (email) {
       // 精確搜尋：取得該 email 下所有已完成的 C 方案報告
+      // v5.10.283 soft delete filter:已軟刪報告不應出現在 G15 家族藍圖選單
       const { data, error } = await supabase
         .from('paid_reports')
         .select('id, client_name, plan_code, status, created_at')
         .eq('customer_email', email)
         .eq('plan_code', 'C')
         .eq('status', 'completed')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(20)
 
@@ -66,6 +68,7 @@ export async function GET(req: NextRequest) {
     // 模糊搜尋：用姓名搜尋（ilike）
     // 安全限制：只搜尋當前登入用戶 email 下的報告，防止探測其他用戶資料
     if (query && query.length >= 1) {
+      // v5.10.283 soft delete filter:已軟刪報告不應出現在搜尋結果
       const { data, error } = await supabase
         .from('paid_reports')
         .select('id, client_name, plan_code, status, created_at')
@@ -73,6 +76,7 @@ export async function GET(req: NextRequest) {
         .eq('status', 'completed')
         .ilike('customer_email', authEmail)
         .ilike('client_name', `%${query.replace(/[%_]/g, '\\$&')}%`)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(10)
 

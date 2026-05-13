@@ -41,11 +41,13 @@ export async function GET(req: NextRequest) {
   const endIso = endUtc.toISOString()
 
   const [reportsRes, costRes, feedbackRes, adminAuditRes] = await Promise.all([
+    // v5.10.283 soft delete filter:daily digest 不算軟刪報告
     supabase
       .from('paid_reports')
       .select('id, plan_code, status, amount_usd, customer_email, created_at')
       .gte('created_at', startIso)
-      .lt('created_at', endIso),
+      .lt('created_at', endIso)
+      .is('deleted_at', null),
     supabase
       .from('ai_cost_log')
       .select('cost_usd, provider, status')
@@ -100,11 +102,13 @@ export async function GET(req: NextRequest) {
     const BATCH = 50
     for (let i = 0; i < emails.length; i += BATCH) {
       const chunk = emails.slice(i, i + BATCH)
+      // v5.10.283 soft delete filter:新客戶判斷不算軟刪歷史
       const { data: priorReports } = await supabase
         .from('paid_reports')
         .select('customer_email')
         .in('customer_email', chunk)
         .lt('created_at', startIso)
+        .is('deleted_at', null)
       for (const r of (priorReports || [])) {
         if (r.customer_email) priorSet.add(r.customer_email)
       }

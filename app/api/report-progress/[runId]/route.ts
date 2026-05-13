@@ -30,6 +30,7 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
   const { searchParams } = new URL(request.url)
 
   // 方案 A：query access_token 比對 paid_reports
+  // v5.10.283 soft delete filter:軟刪報告不再 grant report-progress 訪問權
   const accessToken = searchParams.get('access_token')
   if (accessToken && accessToken.length >= 10) {
     try {
@@ -38,6 +39,7 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
         .from('paid_reports')
         .select('id')
         .eq('access_token', accessToken)
+        .is('deleted_at', null)
         .maybeSingle()
       if (data?.id) return true
     } catch {
@@ -46,6 +48,7 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
   }
 
   // 方案 B：登入 session（只要是已登入且擁有任何 paid_reports）
+  // v5.10.283 soft delete filter:全軟刪客戶不再有 progress 訪問權
   try {
     const user = await getAuthUser(request)
     if (user.email) {
@@ -54,6 +57,7 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
         .from('paid_reports')
         .select('id')
         .eq('customer_email', user.email)
+        .is('deleted_at', null)
         .limit(1)
       if (data && data.length > 0) return true
     }

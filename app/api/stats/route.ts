@@ -21,10 +21,12 @@ export async function GET(req: NextRequest) {
     const supabase = getServiceSupabase()
 
     if (statType === 'paid') {
+      // v5.10.283 soft delete filter:public LiveCounter 不應算軟刪報告
       const { count, error } = await supabase
         .from('paid_reports')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'completed')
+        .is('deleted_at', null)
       if (error) return NextResponse.json({ count: BASE_COUNT, type: statType })
       return NextResponse.json({ count: (count ?? 0) + BASE_COUNT, type: statType })
     }
@@ -42,10 +44,12 @@ export async function GET(req: NextRequest) {
       .from('user_analytics')
       .select('*', { count: 'exact', head: true })
 
+    // v5.10.283 soft delete filter:public LiveCounter 不應算軟刪報告
     const { count: paidCount, error: paidErr } = await supabase
       .from('paid_reports')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'completed')
+      .is('deleted_at', null)
 
     if (freeErr && paidErr) {
       return NextResponse.json({ count: BASE_COUNT, type: 'all' })

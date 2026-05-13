@@ -152,11 +152,13 @@ export async function GET(req: NextRequest) {
 
   // ==== E2 續訂率（月度單盤 — 以 email 為單位計算 M2/M3/M6/M12） ====
   // 邏輯：抓出所有 E2 訂單，按 email group，計算同一 email 跨月購買次數
+  // v5.10.283 P1 修(Codex P0#1 同根):補 deleted_at 過濾、refunded_amount_usd 用於 MRR 淨值
   const { data: allE2 } = await supabase
     .from('paid_reports')
-    .select('customer_email, created_at, amount_usd, status')
+    .select('customer_email, created_at, amount_usd, refunded_amount_usd, status')
     .ilike('plan_code', 'E2%')
     .gt('amount_usd', 0)
+    .is('deleted_at', null)
     .order('created_at', { ascending: true })
 
   const e2ByEmail: Record<string, string[]> = {}
@@ -189,11 +191,16 @@ export async function GET(req: NextRequest) {
   }
 
   // ==== MRR 估算（最近 30 天內 E2 新訂+續訂總收入，當作月訂閱貢獻） ====
+  // v5.10.283 P1 修:用 NET amount(扣退款)、不再算 gross
   const last30Start = new Date(Date.now() - 30 * 24 * 3600 * 1000)
   const mrrCandidates = (allE2 || []).filter(r => {
     return r.created_at && new Date(r.created_at) >= last30Start && Number(r.amount_usd) > 0 && r.status !== 'refunded'
   })
-  const mrr = mrrCandidates.reduce((s, r) => s + Number(r.amount_usd), 0)
+  const mrr = mrrCandidates.reduce((s, r) => {
+    const gross = Number(r.amount_usd) || 0
+    const refunded = Number(r.refunded_amount_usd) || 0
+    return s + Math.max(0, gross - refunded)
+  }, 0)
 
   return NextResponse.json({
     period,

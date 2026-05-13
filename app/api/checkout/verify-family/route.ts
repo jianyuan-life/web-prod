@@ -38,12 +38,14 @@ export async function POST(req: NextRequest) {
       }
 
       // 查詢該 email 是否有 completed 的 C 方案報告
+      // v5.10.283 soft delete filter:已軟刪報告不應通過家族成員驗證
       const { data: reports, error: dbErr } = await supabase
         .from('paid_reports')
         .select('id, client_name, status, plan_code')
         .eq('customer_email', trimmed)
         .eq('plan_code', 'C')
         .eq('status', 'completed')
+        .is('deleted_at', null)
         .limit(1)
 
       if (dbErr) {
