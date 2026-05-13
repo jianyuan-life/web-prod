@@ -61,7 +61,7 @@ export default function WhitepaperPage() {
             href="/whitepaper_v1.pdf"
             target="_blank"
             rel="noopener"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gold text-midnight font-semibold shadow-lg hover:opacity-90 transition"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gold text-dark font-semibold shadow-lg hover:opacity-90 transition"
           >
             下載 PDF（免費提供，21 頁）
           </a>
@@ -166,7 +166,7 @@ export default function WhitepaperPage() {
         </p>
         <a
           href="mailto:support@jianyuan.life?subject=關於鑑源命理學術白皮書"
-          className="inline-block px-8 py-3 rounded-full bg-gold text-midnight font-semibold hover:opacity-90 transition"
+          className="inline-block px-8 py-3 rounded-full bg-gold text-dark font-semibold hover:opacity-90 transition"
         >
           聯繫研究部門
         </a>
