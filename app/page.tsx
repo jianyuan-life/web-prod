@@ -121,7 +121,7 @@ export default function HomePage() {
 
         {/* 向下箭頭 */}
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 animate-bounce-slow">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(201,168,76,0.3)" strokeWidth="2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--jy-gold-alpha-30)" strokeWidth="2">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </div>
@@ -153,7 +153,7 @@ export default function HomePage() {
       {/* ========== 免費工具引導 ========== */}
       <section className="py-16 relative">
         <div className="max-w-[720px] mx-auto px-6">
-          <div className="glass rounded-[20px] p-10 md:p-12 text-center border border-gold/[0.12]" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.04), rgba(15,22,40,0.4))' }}>
+          <div className="glass rounded-[20px] p-10 md:p-12 text-center border border-gold/[0.12]" style={{ background: 'linear-gradient(135deg, var(--jy-gold-alpha-04), var(--jy-bg-deep-glass-40))' }}>
             <h2 className="text-xl md:text-2xl font-bold text-cream mb-3" style={{ fontFamily: 'var(--font-sans)' }}>
               30 秒，免費看見你的命格密碼
             </h2>
@@ -219,7 +219,7 @@ export default function HomePage() {
               { title: '鑒源命理', items: ['最多 14 套系統交叉分析', '44,421+ 條規則客觀運算', '最低 $29 美金起', '報告約 30-60 分鐘完成', '規則驅動，排盤可驗證'], highlight: true },
               { title: '免費算命網站', items: ['套公式的罐頭回覆', '千篇一律的描述', '沒有個人化深度', '無法回答「為什麼」', '沒有行動建議'], highlight: false },
             ].map((col) => (
-              <div key={col.title} className={`glass rounded-2xl p-6 relative ${col.highlight ? 'border-gold/25 shadow-[0_0_40px_rgba(201,168,76,0.08)]' : ''}`}>
+              <div key={col.title} className={`glass rounded-2xl p-6 relative ${col.highlight ? 'border-gold/25 shadow-[0_0_40px_var(--jy-gold-alpha-08)]' : ''}`}>
                 {col.highlight && (
                   <span className="absolute -top-3 right-6 bg-gold text-dark text-[11px] font-bold px-3.5 py-1 rounded-full">推薦</span>
                 )}
@@ -414,7 +414,7 @@ export default function HomePage() {
       {/* ========== 出門訣推廣 ========== */}
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="glass rounded-2xl p-8 md:p-12 border border-gold/10" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.06), rgba(15,22,40,0.4))' }}>
+          <div className="glass rounded-2xl p-8 md:p-12 border border-gold/10" style={{ background: 'linear-gradient(135deg, var(--jy-gold-alpha-06), var(--jy-bg-deep-glass-40))' }}>
             <div className="flex flex-col md:flex-row gap-8 items-center">
               {/* 羅盤圖示 */}
               <div className="shrink-0 w-24 h-24 flex items-center justify-center">
@@ -422,8 +422,8 @@ export default function HomePage() {
                   <circle cx="32" cy="32" r="24" />
                   <circle cx="32" cy="32" r="18" opacity="0.4" />
                   <circle cx="32" cy="32" r="10" opacity="0.2" />
-                  <polygon points="32,12 29,32 32,28 35,32" fill="rgba(201,168,76,0.3)" stroke="var(--color-gold)" strokeWidth="1" />
-                  <polygon points="32,52 29,32 32,36 35,32" fill="rgba(201,168,76,0.08)" stroke="var(--color-gold)" strokeWidth="1" opacity="0.5" />
+                  <polygon points="32,12 29,32 32,28 35,32" fill="var(--jy-gold-alpha-30)" stroke="var(--color-gold)" strokeWidth="1" />
+                  <polygon points="32,52 29,32 32,36 35,32" fill="var(--jy-gold-alpha-08)" stroke="var(--color-gold)" strokeWidth="1" opacity="0.5" />
                 </svg>
               </div>
               <div className="flex-1">
@@ -634,7 +634,7 @@ export default function HomePage() {
       {/* ========== Final CTA ========== */}
       <section className="py-28 relative">
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse at 50% 100%, rgba(201,168,76,0.06) 0%, transparent 50%), radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.10) 0%, transparent 40%), radial-gradient(ellipse at 70% 30%, rgba(74,122,255,0.08) 0%, transparent 45%)',
+          background: 'radial-gradient(ellipse at 50% 100%, var(--jy-gold-alpha-06) 0%, transparent 50%), radial-gradient(ellipse at 30% 50%, var(--jy-violet-alpha-10) 0%, transparent 40%), radial-gradient(ellipse at 70% 30%, var(--jy-blue-alpha-08) 0%, transparent 45%)',
         }} />
         <div className="relative z-10 max-w-2xl mx-auto px-6 text-center">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">

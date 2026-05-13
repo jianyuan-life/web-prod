@@ -173,9 +173,10 @@ async function fetchPaidReportRow(
     }
 
     const supabase = getServiceSupabase()
+    // v5.10.291 Sprint 2.x Phase 3:加 report_result_json + parse_status select(LLM extracted 5 top fields)
     const { data, error } = await supabase
       .from('paid_reports')
-      .select('id, plan_code, customer_email, client_name, birth_city, timezone, birth_data, report_result, created_at, user_id')
+      .select('id, plan_code, customer_email, client_name, birth_city, timezone, birth_data, report_result, report_result_json, parse_status, schema_version, created_at, user_id')
       .eq('id', id)
       .maybeSingle<PaidReportRow>()
 
@@ -232,24 +233,60 @@ async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | 
     //     + 新訂單 Structured Outputs(從源頭就產 JSON)+ DB 加 report_result_json column
     //   - 詳:tasks/sprint_2_x_markdown_parser_plan.md
 
+    // v5.10.291 Sprint 2.x Phase 3:若 LLM extracted JSON 存在、用 real data 覆寫 Top 5 fields
+    // 32/32 C row 已 ship 全 'full' parse_status(v5.10.290 commit 5bf61198)
+    const extracted = (data.report_result_json && data.parse_status === 'full')
+      ? data.report_result_json as {
+          meta?: { name?: string | null; birthDate?: string | null; birthTime?: string | null; birthPlace?: string | null }
+          card5?: { bazi?: { year?: string | null; month?: string | null; day?: string | null; hour?: string | null } }
+          oneLiner?: string | null
+        }
+      : null
+
+    // BaziPillars 需 dayMaster(從 day pillar 取首字)
+    const deriveDayMaster = (day?: string | null): string => {
+      if (!day || day.length < 1) return ''
+      return day.charAt(0)
+    }
+
+    const extractedBazi = extracted?.card5?.bazi
+    const realBazi = extractedBazi ? {
+      year: extractedBazi.year || mockHeYuZhunLifeBlueprint.card5.bazi.year,
+      month: extractedBazi.month || mockHeYuZhunLifeBlueprint.card5.bazi.month,
+      day: extractedBazi.day || mockHeYuZhunLifeBlueprint.card5.bazi.day,
+      hour: extractedBazi.hour || mockHeYuZhunLifeBlueprint.card5.bazi.hour,
+      dayMaster: deriveDayMaster(extractedBazi.day) || mockHeYuZhunLifeBlueprint.card5.bazi.dayMaster,
+    } : mockHeYuZhunLifeBlueprint.card5.bazi
+
     // Minimum mapping:用 row 拼 LifeBlueprintReport
     // 完整 17 sections parsing 留 Sprint 2.x LLM Extraction(Codex+Gemini 共識)
+    // v5.10.291:LLM extracted 5 top fields(meta + card5.bazi + oneLiner)真實覆寫
     const report: LifeBlueprintReport = {
       ...mockHeYuZhunLifeBlueprint, // fallback 全部 mock sections
       meta: {
         ...mockHeYuZhunLifeBlueprint.meta,
         id: data.id,
-        name: data.client_name || mockHeYuZhunLifeBlueprint.meta.name,
-        birthPlace: data.birth_city || mockHeYuZhunLifeBlueprint.meta.birthPlace,
+        // v5.10.291 真 meta from LLM extraction(else fallback client_name / mock)
+        name: extracted?.meta?.name || data.client_name || mockHeYuZhunLifeBlueprint.meta.name,
+        birthDate: extracted?.meta?.birthDate || mockHeYuZhunLifeBlueprint.meta.birthDate,
+        birthPlace: extracted?.meta?.birthPlace || data.birth_city || mockHeYuZhunLifeBlueprint.meta.birthPlace,
         reportDate: new Date(data.created_at).toISOString().split('T')[0],
+      },
+      // v5.10.291 真八字 4 柱 from LLM extraction
+      card5: {
+        ...mockHeYuZhunLifeBlueprint.card5,
+        bazi: realBazi,
+        // oneLiner 對應 card5.subtitle(短描述)
+        subtitle: extracted?.oneLiner || mockHeYuZhunLifeBlueprint.card5.subtitle,
       },
     }
 
-    // 警告 log:目前 fetch 真客戶但 16 sections 仍 mock、屬已知過渡期狀態
+    // 警告 log:v5.10.291 後、若 extracted 存在則 4 fields 真實、其餘 13 sections 仍 mock
+    const realFieldCount = extracted ? '4 fields real (meta + bazi + oneLiner)' : '0 fields real (full mock)'
     console.warn(
-      '[adapter] life-blueprint minimum mapping(meta only)、',
-      '16 sections 仍 mock、待 Sprint 2.x LLM Extraction migration:',
+      `[adapter] life-blueprint Sprint 2.x Phase 3:${realFieldCount}、13 sections 仍 mock、待 Sprint 2.x Phase 4+:`,
       data.id,
+      data.parse_status,
     )
 
     return { type: 'life-blueprint', data: report }

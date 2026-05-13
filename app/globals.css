@@ -162,6 +162,17 @@
   --jy-gold-700: #8B5E1A;
   --jy-gold-shimmer: linear-gradient(135deg, #FCEEC0 0%, #E5B95C 35%, #B8842F 70%, #FCEEC0 100%);
 
+  /* v5.10.291 Marketing tokens alpha overlay(landing/pricing hero glass / glow / border)*/
+  --jy-gold-alpha-04: rgba(201, 168, 76, 0.04);
+  --jy-gold-alpha-06: rgba(201, 168, 76, 0.06);
+  --jy-gold-alpha-08: rgba(201, 168, 76, 0.08);
+  --jy-gold-alpha-12: rgba(201, 168, 76, 0.12);
+  --jy-gold-alpha-30: rgba(201, 168, 76, 0.30);
+  --jy-bg-deep-glass: rgba(15, 22, 40, 0.30);
+  --jy-bg-deep-glass-40: rgba(15, 22, 40, 0.40);
+  --jy-violet-alpha-10: rgba(139, 92, 246, 0.10);
+  --jy-blue-alpha-08: rgba(74, 122, 255, 0.08);
+
   /* Semantic + 5 行 */
   --jy-semantic-flow: #4ADE80;
   --jy-semantic-balance: #FBBF24;
