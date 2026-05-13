@@ -746,10 +746,10 @@ ${PSYCHOLOGY_RULES}
 // 輔助函式：將報告標記為失敗
 async function markReportFailed(reportId: string, errorMessage: string) {
   try {
-    // 取得當前重試次數
+    // 取得當前重試次數 + 客戶資訊(for Telegram alert)
     const { data } = await getSupabase()
       .from('paid_reports')
-      .select('retry_count')
+      .select('retry_count, plan_code, customer_email, client_name, amount_usd')
       .eq('id', reportId)
       .single()
     const currentRetry = data?.retry_count ?? 0
@@ -761,6 +761,26 @@ async function markReportFailed(reportId: string, errorMessage: string) {
     }).eq('id', reportId)
 
     console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
+
+    // v5.10.270 Codex P0#3 修:retry_count handling 不一致 → markReportFailed 觸發 Telegram alert
+    // 客戶花 $29-279 報告失敗、ops 必須立即知道(refund / 重新生成 / 致歉信)
+    if (currentRetry >= 2) {
+      try {
+        const { notify } = await import('@/lib/ai/observability/telegram')
+        const planName = data?.plan_code || 'unknown'
+        const body =
+          `Report ID: ${reportId}\n` +
+          `方案: ${planName}\n` +
+          `客戶: ${data?.client_name || '?'} / ${data?.customer_email || '?'}\n` +
+          `金額: $${data?.amount_usd || '?'}\n` +
+          `重試次數: ${currentRetry + 1}/3\n` +
+          `失敗原因: ${errorMessage.slice(0, 300)}\n\n` +
+          `客戶已付款、立即介入:檢查 Python API/Claude API、考慮 refund 或人工生成`
+        await notify('🔴 報告生成失敗(已達/接近重試上限)', body)
+      } catch (telegramErr) {
+        console.error('Telegram 通知失敗(不阻塞):', telegramErr)
+      }
+    }
   } catch (e) {
     console.error('標記失敗狀態時出錯:', e)
   }
