@@ -12,6 +12,11 @@ import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
 import { BaziPillars } from '@/components/report/shared/BaziPillars'
 import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
+import { ReportToolbar } from '@/components/report/shared/ReportToolbar'
+import { ScrollProgress } from '@/components/effects/ScrollProgress'
+import { MouseGlow } from '@/components/effects/MouseGlow'
+import { BackToTop } from '@/components/effects/BackToTop'
+import { Starfield } from '@/components/effects/Starfield'
 import type { CompatibilityReport as CompatibilityData } from '@/types/report-schemas'
 
 interface CompatibilityReportProps {
@@ -23,8 +28,16 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
   if (!data) return <SkeletonView id={id} />
 
   return (
-    <main className="min-h-screen text-[var(--jy-text-primary)]" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
-      <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8">
+    <>
+      <ScrollProgress />
+      <ReportToolbar
+        reportTitle={`合否? · ${data.pair.a.name}×${data.pair.b.name}`}
+        onDownloadPDF={() => { window.location.href = `/api/r/compatibility/${data.meta.id}/pdf` }}
+      />
+      <main className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
+        <Starfield className="opacity-40" starCount={30} />
+        <MouseGlow size={500} intensity={0.05} />
+        <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
         {/* HERO 雙人 × 判定徽章 */}
         <section className="mb-16 text-center">
@@ -421,8 +434,10 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
           />
           <CrisisFooter />
         </section>
-      </div>
-    </main>
+        </div>
+        <BackToTop />
+      </main>
+    </>
   )
 }
 
