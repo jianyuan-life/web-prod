@@ -1,11 +1,11 @@
 // v5.10.198 UI redesign Phase 2 — Card 玻璃擬態(Jamie 規格書 3.2)
 // v5.10.199 Gemini L4 P1-1 修:Polymorphic 'as' prop 改 React.ElementType + 泛型 type-safe
+// v5.10.215 Gemini P0 修:移除 'use client'(Card 為純 div wrapper、無互動、應為 RSC、降 client bundle)
 //
 // 樣式:
 //   bg-bg-card/70 backdrop-blur-xl border border-line rounded-lg shadow-card
 //   hover:shadow-card-hover -translate-y-1 border-[rgba(201,168,76,0.35)]
 //   過渡 240ms
-'use client'
 
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react'
 
