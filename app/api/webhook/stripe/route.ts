@@ -680,6 +680,119 @@ export async function POST(req: NextRequest) {
     } catch (notifyErr) {
       console.error('Stripe 失敗告警發送失敗:', notifyErr)
     }
+  } else if (event.type === 'charge.refunded' || event.type === 'refund.created' || event.type === 'refund.updated') {
+    // v5.10.271 Gemini L4 P0#1:Stripe refund webhook → 自動更新 paid_reports.refunded_*
+    //   原:webhook 不處理 refund event、Jamie 在 Stripe Dashboard refund 後 DB 不更新
+    //   風險:revenue 後台顯示 gross(虛增)、chargeback 也漏記
+    //   修:接 charge.refunded / refund.created / refund.updated、更新 DB
+    try {
+      const charge = event.data.object as {
+        id?: string
+        payment_intent?: string
+        amount_refunded?: number // cents
+        amount?: number
+        refunded?: boolean
+        metadata?: Record<string, string>
+        refunds?: { data?: Array<{ id?: string; amount?: number; reason?: string }> }
+      }
+      // refund.created event 的 object 結構不同
+      const refund = event.data.object as {
+        id?: string
+        charge?: string
+        payment_intent?: string
+        amount?: number // cents
+        reason?: string
+      }
+      const piId = charge.payment_intent || refund.payment_intent
+      if (!piId) {
+        console.warn('[webhook] refund event 無 payment_intent、跳過:', event.type)
+        return NextResponse.json({ received: true, skipped: 'no_payment_intent' })
+      }
+
+      // Stripe payment_intent → checkout session 反查
+      const stripe = getStripe()
+      const sessions = await stripe.checkout.sessions.list({ payment_intent: piId, limit: 1 })
+      const sessionId = sessions.data[0]?.id
+      if (!sessionId) {
+        console.warn('[webhook] refund event 找不到 checkout session:', piId)
+        return NextResponse.json({ received: true, skipped: 'no_session' })
+      }
+
+      const refundedAmountCents = charge.amount_refunded ?? refund.amount ?? 0
+      const refundedUsd = refundedAmountCents / 100
+      const refundId = refund.id || charge.refunds?.data?.[0]?.id || null
+      const reason = refund.reason || charge.refunds?.data?.[0]?.reason || event.type
+
+      const supabase = getSupabase()
+      const { data: report, error: lookupErr } = await supabase
+        .from('paid_reports')
+        .select('id, refunded_at, refunded_amount_usd, amount_usd, customer_email, client_name')
+        .eq('stripe_session_id', sessionId)
+        .maybeSingle()
+
+      if (lookupErr || !report) {
+        console.warn('[webhook] refund event 找不到 paid_report:', sessionId, lookupErr?.message)
+        return NextResponse.json({ received: true, skipped: 'no_report' })
+      }
+
+      // 冪等:若 refund 金額已 >= event refund 金額、跳過(防 stripe 重送)
+      if ((report.refunded_amount_usd || 0) >= refundedUsd) {
+        console.info('[webhook] refund event 已處理:', report.id, refundedUsd)
+        return NextResponse.json({ received: true, idempotent: true })
+      }
+
+      const isFullRefund = refundedUsd >= (report.amount_usd || 0)
+      await supabase.from('paid_reports').update({
+        refunded_at: new Date().toISOString(),
+        refunded_amount_usd: refundedUsd,
+        refund_reason: reason,
+        stripe_refund_id: refundId,
+        // full refund 才改 status
+        ...(isFullRefund ? { status: 'refunded' } : {}),
+      }).eq('id', report.id)
+
+      console.info(`✅ Refund 處理完:${report.id}, $${refundedUsd}, full=${isFullRefund}`)
+
+      // Telegram 告知 ops
+      try {
+        const { notify } = await import('@/lib/ai/observability/telegram')
+        await notify(
+          '💰 退款處理',
+          `Report: ${report.id}\n` +
+          `客戶: ${report.client_name || '?'} / ${report.customer_email || '?'}\n` +
+          `退款額: $${refundedUsd} (${isFullRefund ? '全額' : '部分'})\n` +
+          `原因: ${reason}\n` +
+          `Stripe Refund ID: ${refundId || 'n/a'}`,
+        )
+      } catch { /* noop */ }
+    } catch (refundErr) {
+      console.error('[webhook] refund event 處理失敗:', refundErr)
+    }
+  } else if (event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed') {
+    // v5.10.271 Gemini L4 P0#1:Stripe dispute webhook → 立即 Telegram alert(chargeback 是緊急情況)
+    try {
+      const dispute = event.data.object as {
+        id?: string
+        amount?: number // cents
+        reason?: string
+        status?: string
+        charge?: string
+      }
+      const amount = (dispute.amount || 0) / 100
+      const { notify } = await import('@/lib/ai/observability/telegram')
+      await notify(
+        '🚨 Stripe Dispute(Chargeback)',
+        `Dispute ID: ${dispute.id}\n` +
+        `Charge: ${dispute.charge}\n` +
+        `金額: $${amount}\n` +
+        `原因: ${dispute.reason || '?'}\n` +
+        `狀態: ${dispute.status || '?'}\n` +
+        `Event: ${event.type}\n\n` +
+        `立即查 Stripe Dashboard 應對(回應 evidence 期限通常 7 天、否則自動 lost)`,
+      )
+    } catch (e) {
+      console.error('[webhook] dispute alert 失敗:', e)
+    }
   }
 
   return NextResponse.json({ received: true })
