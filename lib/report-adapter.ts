@@ -21,6 +21,7 @@ import type {
 
 import { mockHeYuZhunLifeBlueprint } from '@/lib/mocks/he-yu-zhun-life-blueprint'
 import { MOCK_HEART_DOUBTS_HE_XUAN_YI } from '@/lib/mocks/heart-doubts-he-xuan-yi'
+import { MOCK_COMPATIBILITY_LIN_YUAN_LIN } from '@/lib/mocks/compatibility-lin-yuan-lin'
 
 /**
  * Sprint 1 mock adapter:從 (type, id) 回 mock 資料
@@ -40,7 +41,10 @@ export async function getReport(type: ReportType, id: string): Promise<ReportDat
   if (type === 'heart-doubts' && (id === 'demo' || id === 'he-xuan-yi')) {
     return { type: 'heart-doubts', data: MOCK_HEART_DOUBTS_HE_XUAN_YI }
   }
-  // Sprint 2 mock(林沅霖 compatibility / 何紀萳 family-blueprint)待加
+  if (type === 'compatibility' && (id === 'demo' || id === 'lin-yuan-lin-x-he-xuan-yi' || id === 'lin-yuan-lin')) {
+    return { type: 'compatibility', data: MOCK_COMPATIBILITY_LIN_YUAN_LIN }
+  }
+  // Sprint 2 mock(何紀萳 family-blueprint)待加
 
   // 真 paid_reports 查 → Sprint 2 加
   // const supabase = createClient(...)

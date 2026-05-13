@@ -40,7 +40,12 @@ export function ReportRenderer({ type, id, data }: ReportRendererProps) {
         />
       )
     case 'compatibility':
-      return <CompatibilityReport id={id} />
+      return (
+        <CompatibilityReport
+          id={id}
+          data={data?.type === 'compatibility' ? data.data : undefined}
+        />
+      )
     case 'family-blueprint':
       return <FamilyBlueprintReport id={id} />
     default: {
