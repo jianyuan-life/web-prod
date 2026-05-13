@@ -1,5 +1,6 @@
 // v5.10.212 — FamilyBlueprintReport(對齊 schema、用本 session 元件 + 5 年流年卡)
 import { Eyebrow } from '@/components/ui/Eyebrow'
+import { HeroBlock } from '@/components/report/shared/HeroBlock'
 import { Card } from '@/components/ui/Card'
 import { GoldDivider } from '@/components/effects/GoldDivider'
 import { BaziPillars } from '@/components/report/shared/BaziPillars'
@@ -39,48 +40,15 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         <MouseGlow size={500} intensity={0.05} />
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
-        {/* HERO 家族圈 */}
-        <section className="mb-16 text-center">
-          <Eyebrow>FAMILY BLUEPRINT · 家族藍圖</Eyebrow>
-          <h1
-            className="mt-8 font-bold"
-            style={{
-              fontFamily: 'var(--jy-font-display)',
-              fontSize: 'clamp(48px, 6vw, 88px)',
-              lineHeight: 1.05,
-              letterSpacing: '-0.04em',
-              background: 'var(--jy-gold-shimmer)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            {data.meta.familyName}
-          </h1>
-          <p className="mt-4 text-[var(--jy-text-tertiary)]">
-            {data.meta.memberCount} 位成員 · 精華 {data.meta.durationShort} 分鐘 · 完整 {data.meta.durationFull} 分鐘
-          </p>
-
-          {/* 三人剪影圈(SVG 簡化版)*/}
-          <div className="mt-10 flex justify-center gap-6 flex-wrap">
-            {data.members.map((m) => (
-              <div key={m.name} className="flex flex-col items-center">
-                <div
-                  className="h-20 w-20 rounded-full flex items-center justify-center font-bold text-xl"
-                  style={{
-                    background: 'var(--jy-gold-shimmer)',
-                    color: 'var(--jy-text-on-gold, #0A0E1A)',
-                    fontFamily: 'var(--jy-font-display)',
-                  }}
-                  aria-label={`${m.role} ${m.name}`}
-                >
-                  {m.role}
-                </div>
-                <p className="mt-3 text-[var(--jy-text-secondary)]">{m.name}</p>
-                <p className="text-xs text-[var(--jy-text-muted)]">日主 {m.bazi.dayMaster}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* HERO 家族圈 — v5.10.258 wire dead component #4:HeroBlock family variant
+            原 inline hero 跟 HeroBlock 內邏輯一致(同設計師輸出)、改用 HeroBlock 是 DRY 重構 */}
+        <HeroBlock
+          variant="family"
+          eyebrow="FAMILY BLUEPRINT · 家族藍圖"
+          familyName={data.meta.familyName}
+          members={data.members.map((m) => ({ role: m.role, name: m.name, dayMaster: m.bazi.dayMaster }))}
+          durations={{ short: data.meta.durationShort, full: data.meta.durationFull }}
+        />
 
         <GoldDivider className="my-12" />
 
