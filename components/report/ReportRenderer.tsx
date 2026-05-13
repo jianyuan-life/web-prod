@@ -33,7 +33,12 @@ export function ReportRenderer({ type, id, data }: ReportRendererProps) {
         />
       )
     case 'heart-doubts':
-      return <HeartDoubtsReport id={id} />
+      return (
+        <HeartDoubtsReport
+          id={id}
+          data={data?.type === 'heart-doubts' ? data.data : undefined}
+        />
+      )
     case 'compatibility':
       return <CompatibilityReport id={id} />
     case 'family-blueprint':
