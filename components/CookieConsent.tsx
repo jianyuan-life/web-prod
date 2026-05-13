@@ -114,7 +114,7 @@ export default function CookieConsent() {
     <div
       role="dialog"
       aria-labelledby="cookie-consent-title"
-      aria-describedby="cookie-consent-desc"
+      aria-describedby="cookie-desc-short"
       className={`${positionClass} p-3 sm:p-4 bg-dark/95 backdrop-blur-xl border border-gold/30 rounded-xl shadow-2xl`}
       style={{ animation: 'slideUp 0.3s ease-out' }}
     >
