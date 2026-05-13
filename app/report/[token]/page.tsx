@@ -1192,10 +1192,12 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   )
 
+  // v5.10.272 soft delete filter:被軟刪的 report 不再公開
   const { data } = await supabase
     .from('paid_reports')
     .select('plan_code')
     .eq('access_token', token)
+    .is('deleted_at', null)
     .single()
 
   // 不使用客戶姓名，僅用方案名稱（去識別化）
@@ -1252,10 +1254,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
   )
 
+  // v5.10.272 soft delete filter:被軟刪的 report 拿不到、客戶看到 404
   const { data, error } = await supabase
     .from('paid_reports')
     .select('*')
     .eq('access_token', token)
+    .is('deleted_at', null)
     .single()
 
   // Bug #26：只有真的「查不到報告」才 404；已建立但尚未完成的 report 一律顯示 loading 頁

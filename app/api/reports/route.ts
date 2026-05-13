@@ -81,10 +81,12 @@ export async function GET(req: NextRequest) {
   }
 
   // JWT / Supabase admin auth 走原 dashboard 邏輯(50 筆 + 完整欄位)
+  // v5.10.272:filter deleted_at IS NULL(對應 soft delete migration、客戶刪除後不再顯示)
   const { data, error } = await supabase
     .from('paid_reports')
     .select('id, plan_code, status, created_at, access_token, customer_email, report_result, pdf_url, retry_count, error_message, client_name, amount_usd, generation_progress, timezone, birth_city, self_update_count')
     .ilike('customer_email', queryEmail)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(50)
 
@@ -200,11 +202,17 @@ export async function DELETE(req: NextRequest) {
 
   const supabase = getServiceSupabase()
 
+  // v5.10.272 P0 修(Codex L3 backend audit P0#2):
+  //   原:hard delete paid_reports → revenue_log 仍有 row → 後台會計 vs 報告數永久分叉
+  //   原:客戶刪自己報告後、若 dispute「我沒買過」、平台無 evidence
+  //   修:soft delete(set deleted_at = NOW())、preserve audit trail + revenue 對齊
+  //   注意:其他 query 需配合 .is('deleted_at', null) 過濾(已在 dashboard/* 跟 reports GET 加)
   const { error } = await supabase
     .from('paid_reports')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
     .ilike('customer_email', authEmail.toLowerCase())
+    .is('deleted_at', null) // 已軟刪除不重複
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
