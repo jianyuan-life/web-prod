@@ -21,6 +21,8 @@ import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import { ReportToolbar } from '@/components/report/shared/ReportToolbar'
 import { TermTooltip } from '@/components/report/shared/TermTooltip'
+import { TermAuto } from '@/components/report/shared/TermAuto'
+import { getTerm } from '@/lib/term-dictionary'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
 import { MouseGlow } from '@/components/effects/MouseGlow'
 import { BackToTop } from '@/components/effects/BackToTop'
@@ -447,18 +449,28 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
               <Eyebrow align="left">📚 14 系統交叉發現</Eyebrow>
               <div className="mt-8">
                 <ChapterGroup type="multiple">
-                  {data.appendix14Systems.map((sys, i) => (
-                    <ChapterSection
-                      key={i}
-                      number={i + 1}
-                      emoji="📜"
-                      title={sys.system}
-                    >
-                      <p className="text-[var(--jy-text-secondary)] leading-relaxed">
-                        {sys.finding}
-                      </p>
-                    </ChapterSection>
-                  ))}
+                  {data.appendix14Systems.map((sys, i) => {
+                    // v5.10.251 wire dead component:TermAuto auto-wrap 已知系統名(若 term-dictionary 有定義)
+                    const systemDef = getTerm(sys.system)
+                    return (
+                      <ChapterSection
+                        key={i}
+                        number={i + 1}
+                        emoji="📜"
+                        title={sys.system}
+                      >
+                        {systemDef ? (
+                          <p className="text-[var(--jy-text-muted)] text-xs mb-2">
+                            <TermAuto>{sys.system}</TermAuto>
+                            <span className="ml-1.5">·{systemDef.system}</span>
+                          </p>
+                        ) : null}
+                        <p className="text-[var(--jy-text-secondary)] leading-relaxed">
+                          {sys.finding}
+                        </p>
+                      </ChapterSection>
+                    )
+                  })}
                 </ChapterGroup>
               </div>
             </section>
