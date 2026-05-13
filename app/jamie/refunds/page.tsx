@@ -56,6 +56,8 @@ export default function RefundsPage() {
   const [refundReason, setRefundReason] = useState<'requested_by_customer' | 'duplicate' | 'fraudulent'>('requested_by_customer')
   const [refundLoading, setRefundLoading] = useState(false)
   const [refundError, setRefundError] = useState('')
+  // v5.10.280 P0(Codex 危險 action confirmation):必輸入精確 amount 才能 confirm
+  const [refundTypedConfirm, setRefundTypedConfirm] = useState('')
 
   const fetchRows = useCallback(async () => {
     if (!adminKey) return
@@ -102,6 +104,7 @@ export default function RefundsPage() {
         alert(`退款成功\n金額：$${data.refunded_amount_usd}\n推薦積分回收：${data.points_clawed_back}`)
         setRefundTarget(null)
         setRefundAmount('')
+        setRefundTypedConfirm('')
         fetchRows()
       } else {
         setRefundError(data.error || data.detail || '退款失敗')
@@ -260,7 +263,7 @@ export default function RefundsPage() {
 
             <label className="block text-xs text-gray-400 mb-1">退款金額（USD，留空=全額退）</label>
             <input type="number" step="0.01" placeholder={String(refundTarget.amount_usd)}
-              value={refundAmount} onChange={e => setRefundAmount(e.target.value)}
+              value={refundAmount} onChange={e => { setRefundAmount(e.target.value); setRefundTypedConfirm('') }}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white mb-3" />
 
             <label className="block text-xs text-gray-400 mb-1">退款理由</label>
@@ -271,20 +274,44 @@ export default function RefundsPage() {
               <option value="fraudulent">詐騙交易</option>
             </select>
 
-            {refundError && (
-              <div className="mb-3 text-red-400 text-xs">{refundError}</div>
-            )}
+            {/* v5.10.280 P0 typed confirmation(Codex audit 危險 action) */}
+            {(() => {
+              const plannedAmount = refundAmount ? Number(refundAmount) : Number(refundTarget.amount_usd)
+              const isValidAmount = !isNaN(plannedAmount) && plannedAmount > 0
+              const expectedConfirm = isValidAmount ? `退款 $${plannedAmount.toFixed(2)}` : ''
+              const canSubmit = isValidAmount && refundTypedConfirm === expectedConfirm
 
-            <div className="flex gap-2">
-              <button onClick={() => setRefundTarget(null)} disabled={refundLoading}
-                className="flex-1 py-2 bg-white/5 text-gray-400 rounded-lg hover:bg-white/10 text-sm">
-                取消
-              </button>
-              <button onClick={handleRefund} disabled={refundLoading}
-                className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 text-sm disabled:opacity-50">
-                {refundLoading ? '處理中...' : '確認退款'}
-              </button>
-            </div>
+              return (
+                <>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    ⚠️ 確認:請輸入「{expectedConfirm}」防誤點
+                  </label>
+                  <input type="text"
+                    value={refundTypedConfirm}
+                    onChange={e => setRefundTypedConfirm(e.target.value)}
+                    placeholder={expectedConfirm}
+                    className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-sm text-white mb-3 ${
+                      canSubmit ? 'border-red-500' : 'border-yellow-500/50'
+                    }`} />
+
+                  {refundError && (
+                    <div className="mb-3 text-red-400 text-xs">{refundError}</div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button onClick={() => { setRefundTarget(null); setRefundTypedConfirm('') }} disabled={refundLoading}
+                      className="flex-1 py-2 bg-white/5 text-gray-400 rounded-lg hover:bg-white/10 text-sm">
+                      取消
+                    </button>
+                    <button onClick={handleRefund} disabled={refundLoading || !canSubmit}
+                      className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+                      title={canSubmit ? '' : '請輸入完整確認字串'}>
+                      {refundLoading ? '處理中...' : '確認退款'}
+                    </button>
+                  </div>
+                </>
+              )
+            })()}
 
             <div className="mt-3 text-[10px] text-gray-500">
               ⓘ 此操作會呼叫 Stripe Refund API，並自動扣回已發放的推薦積分，並留痕到稽核日誌。
