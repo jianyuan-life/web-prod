@@ -20,6 +20,15 @@ type Order = {
   retry_count?: number; birth_data?: Record<string, string>
 }
 
+// v5.10.278:get_history response shape
+type ReportHistory = {
+  current: unknown
+  previous: unknown
+  recalculated_at: string | null
+  recalculated_by: string | null
+  has_backup: boolean
+}
+
 export default function OrdersPage() {
   const { adminKey } = useAdminAuth()
   const [orders, setOrders] = useState<Order[]>([])
@@ -90,6 +99,56 @@ export default function OrdersPage() {
     } else {
       const err = await res.json()
       alert(err.error || '重試失敗')
+    }
+  }
+
+  // v5.10.278:查報告歷史(配 v5.10.276 endpoint)— ops 可看 previous_report_result
+  const viewHistory = async (id: string) => {
+    const res = await adminFetch('/api/admin/orders', {
+      adminKey,
+      method: 'POST',
+      body: JSON.stringify({ id, action: 'get_history' }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      alert(err.error || '查歷史失敗')
+      return
+    }
+    const data: ReportHistory = await res.json()
+    if (!data.has_backup) {
+      alert('此報告從未 recalculate、無備份可看')
+      return
+    }
+    const summary = [
+      `Report ID: ${id}`,
+      `最後 recalculate: ${data.recalculated_at || 'n/a'}`,
+      `觸發者: ${data.recalculated_by || 'n/a'}`,
+      '',
+      '若要還原舊版、回主列表點「還原舊版」按鈕(會 swap)',
+    ].join('\n')
+    alert(summary)
+  }
+
+  // v5.10.278:還原舊版(typed confirmation 避免誤點)
+  const restoreOrder = async (id: string, clientName: string) => {
+    // typed confirmation:必須輸入「還原 <client>」才執行(對應 Codex P0「危險 action 缺確認」)
+    const expected = `還原 ${clientName}`
+    const input = prompt(`⚠️ 此操作會把報告 swap 回 previous_report_result\n\n客戶:${clientName}\n\n請輸入「${expected}」確認:`)
+    if (input !== expected) {
+      if (input !== null) alert('輸入不符、已取消')
+      return
+    }
+    const res = await adminFetch('/api/admin/orders', {
+      adminKey,
+      method: 'POST',
+      body: JSON.stringify({ id, action: 'restore' }),
+    })
+    if (res.ok) {
+      alert('✅ 已還原至上一版、客戶下次看會看舊版內容')
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'completed', error_message: undefined } : o))
+    } else {
+      const err = await res.json()
+      alert(err.error || '還原失敗')
     }
   }
 
@@ -173,10 +232,21 @@ export default function OrdersPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{new Date(order.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</td>
                   <td className="px-4 py-3">
-                    <button onClick={e => { e.stopPropagation(); retryOrder(order.id) }}
-                      className={`text-xs hover:opacity-80 ${order.status === 'completed' ? 'text-blue-400' : 'text-amber-400'}`}>
-                      {order.status === 'completed' ? '重新生成' : order.status === 'failed' ? '重試' : '強制重試'}
-                    </button>
+                    <div className="flex gap-2 items-center">
+                      <button onClick={e => { e.stopPropagation(); retryOrder(order.id) }}
+                        className={`text-xs hover:opacity-80 ${order.status === 'completed' ? 'text-blue-400' : 'text-amber-400'}`}>
+                        {order.status === 'completed' ? '重新生成' : order.status === 'failed' ? '重試' : '強制重試'}
+                      </button>
+                      {/* v5.10.278:歷史 + 還原(配 v5.10.276 endpoint、Codex P0#6 + Gemini P0#4 完整收尾) */}
+                      <button onClick={e => { e.stopPropagation(); viewHistory(order.id) }}
+                        className="text-xs text-gray-400 hover:text-gray-200" title="查看上一版備份">
+                        歷史
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); restoreOrder(order.id, order.client_name) }}
+                        className="text-xs text-purple-400 hover:opacity-80" title="還原到上一版(需 typed confirmation)">
+                        還原
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 {expandedId === order.id && (
