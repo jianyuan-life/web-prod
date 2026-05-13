@@ -37,11 +37,27 @@ function getServiceSupabase() {
 }
 
 // plan_code → ReportType mapping(對齊 lib/plan-names.ts SSOT)
-const PLAN_CODE_TO_TYPE: Record<string, ReportType> = {
+// v5.10.244 P2 修(Codex L3 audit):union type narrowing、編譯期抓錯 plan_code
+export type SupportedPlanCode = 'C' | 'D' | 'R' | 'G15'
+
+const PLAN_CODE_TO_TYPE: Record<SupportedPlanCode, ReportType> = {
   'C': 'life-blueprint',
   'D': 'heart-doubts',
   'R': 'compatibility',
   'G15': 'family-blueprint',
+}
+
+// 從 paid_reports 拉 row 的 minimum 型別(v5.10.244 修 Codex P2:row 無型別)
+// Sprint 2.x select 加欄位時、本 interface 同步補 partner_name / family_members 等
+export interface PaidReportRow {
+  id: string
+  plan_code: string
+  customer_email: string | null
+  client_name: string | null
+  birth_city: string | null
+  timezone: string | null
+  report_result: unknown // JSONB、Sprint 2.x markdown parser 用
+  created_at: string
 }
 
 /**
@@ -94,7 +110,10 @@ export async function getReport(type: ReportType, id: string): Promise<ReportDat
  *
  * 回傳 row data 給各 type adapter 自己 mapping、null 表示拒絕(not found / RLS / type mismatch)
  */
-async function fetchPaidReportRow(id: string, expectedPlanCode: string) {
+async function fetchPaidReportRow(
+  id: string,
+  expectedPlanCode: SupportedPlanCode,
+): Promise<PaidReportRow | null> {
   try {
     const userEmail = await getServerComponentUserEmail()
     if (!userEmail) {
@@ -107,7 +126,7 @@ async function fetchPaidReportRow(id: string, expectedPlanCode: string) {
       .from('paid_reports')
       .select('id, plan_code, customer_email, client_name, birth_city, timezone, report_result, created_at')
       .eq('id', id)
-      .maybeSingle()
+      .maybeSingle<PaidReportRow>()
 
     if (error || !data) {
       console.warn('[adapter] paid_reports lookup failed:', error?.message, id)
