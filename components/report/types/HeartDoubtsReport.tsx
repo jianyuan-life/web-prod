@@ -12,6 +12,7 @@ import { MonthlyDecisionTable } from '@/components/report/shared/MonthlyDecision
 import { PracticeCard } from '@/components/report/shared/PracticeCard'
 import { ReportSeal } from '@/components/report/shared/ReportSeal'
 import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
+import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import type { HeartDoubtsReport as HeartDoubtsData } from '@/types/report-schemas'
 
 interface HeartDoubtsReportProps {
@@ -340,6 +341,13 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
             </h3>
             <QuickSummary title="" bullets={data.letter.body} />
           </Card>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* FeedbackForm — Sprint 1 wire(v5.10.224) */}
+        <section className="mb-12">
+          <FeedbackForm reportId={data.meta.id} reportType="heart-doubts" />
         </section>
 
         <GoldDivider className="my-12" />

@@ -10,6 +10,7 @@ import { PracticeCard } from '@/components/report/shared/PracticeCard'
 import { ReportSeal } from '@/components/report/shared/ReportSeal'
 import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
 import { LuckyParams } from '@/components/report/shared/LuckyParams'
+import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import type { FamilyBlueprintReport as FamilyData } from '@/types/report-schemas'
 
 interface FamilyBlueprintReportProps {
@@ -391,6 +392,13 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
             </p>
             <QuickSummary title="" bullets={data.letter.body} />
           </Card>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* FeedbackForm — Sprint 1 wire(v5.10.224) */}
+        <section className="mb-12">
+          <FeedbackForm reportId={data.meta.id} reportType="family-blueprint" />
         </section>
 
         <GoldDivider className="my-12" />

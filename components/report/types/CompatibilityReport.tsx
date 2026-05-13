@@ -10,6 +10,7 @@ import { PracticeCard } from '@/components/report/shared/PracticeCard'
 import { ReportSeal } from '@/components/report/shared/ReportSeal'
 import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
 import { BaziPillars } from '@/components/report/shared/BaziPillars'
+import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import type { CompatibilityReport as CompatibilityData } from '@/types/report-schemas'
 
 interface CompatibilityReportProps {
@@ -393,6 +394,13 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
               <p className="text-[var(--jy-text-secondary)] leading-relaxed italic">{data.letter.together}</p>
             </Card>
           </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* FeedbackForm — Sprint 1 wire(v5.10.224) */}
+        <section className="mb-12">
+          <FeedbackForm reportId={data.meta.id} reportType="compatibility" />
         </section>
 
         <GoldDivider className="my-12" />

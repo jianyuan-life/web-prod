@@ -17,6 +17,7 @@ import { ActionPlanStages } from '@/components/report/shared/ActionPlanStages'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import { YearEnergyMonths } from '@/components/report/shared/YearEnergyMonths'
 import { ZiweiNatalChart } from '@/components/report/shared/ZiweiNatalChart'
+import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 interface LifeBlueprintReportProps {
@@ -479,6 +480,13 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
               </p>
             </div>
           </Card>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* FeedbackForm — Sprint 1 wire(v5.10.224) */}
+        <section className="mb-12">
+          <FeedbackForm reportId={data.meta.id} reportType="life-blueprint" />
         </section>
 
         <GoldDivider className="my-12" />
