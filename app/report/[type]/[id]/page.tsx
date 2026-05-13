@@ -71,8 +71,9 @@ export default async function UnifiedReportPage({ params }: PageProps) {
     notFound()
   }
 
-  // id 基本 format 驗證(UUID 或數字、避免 SQL injection)
-  if (!id || !/^[a-zA-Z0-9_-]{8,64}$/.test(id)) {
+  // id 基本 format 驗證(UUID / mock slug / 數字、避免 SQL injection)
+  // v5.10.219 Playwright sub-agent P0 修:{8,64} 卡 'he-jia'(6字)、改 {2,64} 容納短 mock id
+  if (!id || !/^[a-zA-Z0-9_-]{2,64}$/.test(id)) {
     notFound()
   }
 

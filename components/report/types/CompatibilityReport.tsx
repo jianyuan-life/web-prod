@@ -291,6 +291,74 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         <GoldDivider className="my-12" />
 
+        {/* 轉篇:bestPoints + cautions + relationFlow(Codex P1 修、v5.10.218) */}
+        {data.bestPoints.length > 0 && (
+          <section className="mb-12">
+            <Eyebrow align="left">✦ 你們最好的地方({data.bestPoints.length} 條)</Eyebrow>
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {data.bestPoints.map((bp, i) => (
+                <Card key={i} className="p-5" interactive={false}>
+                  <h4 className="font-semibold text-[var(--jy-semantic-flow)]">✦ {bp.title}</h4>
+                  <p className="mt-2 text-xs text-[var(--jy-text-tertiary)]">支持:{bp.support.join(' / ')}</p>
+                  <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">{bp.guide}</p>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {data.cautions.length > 0 && (
+          <section className="mb-12">
+            <Eyebrow align="left">⚠ 你們需要注意的地方({data.cautions.length} 條)</Eyebrow>
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {data.cautions.map((c, i) => (
+                <Card key={i} className="p-5 border-l-4" style={{ borderLeftColor: 'var(--jy-semantic-balance)' }} interactive={false}>
+                  <h4 className="font-semibold text-[var(--jy-semantic-balance)]">⚠ {c.title}</h4>
+                  <p className="mt-2 text-xs text-[var(--jy-text-tertiary)]">支持:{c.support.join(' / ')}</p>
+                  <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">觸發:{c.trigger}</p>
+                  <p className="mt-1 text-xs text-[var(--jy-text-gold)]">補救:{c.remedy}</p>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mb-12">
+          <Card className="p-8" interactive={false}>
+            <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-3" style={{ fontFamily: 'var(--jy-font-display)' }}>
+              💞 你們的關係流年總覽
+            </h3>
+            <p className="text-[var(--jy-text-secondary)] leading-relaxed">{data.relationFlow.summary}</p>
+          </Card>
+        </section>
+
+        {/* 起篇 questionChapter + practices(本 session 漏) */}
+        <section className="mb-12">
+          <Eyebrow align="left">🎯 你們的問題(深度解析)</Eyebrow>
+          <Card className="mt-8 p-8" interactive={false}>
+            <QuickSummary bullets={[data.questionChapter.quickSummary]} />
+          </Card>
+        </section>
+
+        {data.practices.length > 0 && (
+          <section className="mb-12">
+            <Eyebrow align="left">✿ 刻意練習({data.practices.length} 條)</Eyebrow>
+            <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+              {data.practices.map((p, i) => (
+                <PracticeCard
+                  key={i}
+                  title={p.title}
+                  purpose={p.purpose}
+                  duration={p.duration}
+                  steps={p.steps}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <GoldDivider className="my-12" />
+
         {/* 處方箋 */}
         <section className="mb-12">
           <Eyebrow align="left">✿ 改善建議——關係處方箋</Eyebrow>

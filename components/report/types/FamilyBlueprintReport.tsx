@@ -195,6 +195,91 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         <GoldDivider className="my-12" />
 
+        {/* goods + cautions + communicationModel + parenting(Codex P1 修、v5.10.219) */}
+        {data.goods.length > 0 && (
+          <section className="mb-12">
+            <Eyebrow align="left">✦ 家族好的地方({data.goods.length} 條)</Eyebrow>
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {data.goods.map((g, i) => (
+                <Card key={i} className="p-5" interactive={false}>
+                  <div className="text-2xl mb-2" aria-hidden>{g.element}</div>
+                  <h4 className="font-semibold text-[var(--jy-semantic-flow)]">{g.title}</h4>
+                  <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">{g.content}</p>
+                  <p className="mt-2 text-xs text-[var(--jy-text-tertiary)]">善用:{g.howToUse}</p>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {data.cautions.length > 0 && (
+          <section className="mb-12">
+            <Eyebrow align="left">⚠ 家族需要注意的地方({data.cautions.length} 條)</Eyebrow>
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {data.cautions.map((c, i) => (
+                <Card key={i} className="p-5 border-l-4" style={{ borderLeftColor: 'var(--jy-semantic-balance)' }} interactive={false}>
+                  <h4 className="font-semibold text-[var(--jy-semantic-balance)]">⚠ {c.title}</h4>
+                  <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">{c.detail}</p>
+                  <p className="mt-2 text-xs text-[var(--jy-text-gold)]">應對:{c.response}</p>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mb-12">
+          <Eyebrow align="left">💬 家族溝通模式</Eyebrow>
+          <Card className="mt-8 p-8" interactive={false}>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-6">
+              <RoleChip label="決策者" name={data.communicationModel.roles.decisionMaker} />
+              <RoleChip label="協調者" name={data.communicationModel.roles.coordinator} />
+              <RoleChip label="執行者" name={data.communicationModel.roles.executor} />
+              <RoleChip label="情緒穩定" name={data.communicationModel.roles.emotionStabilizer} />
+            </div>
+            <div className="border-t border-[var(--jy-border-hairline)] pt-4">
+              <h4 className="font-medium text-[var(--jy-text-gold)] mb-2">情緒傳導鏈</h4>
+              <p className="text-[var(--jy-text-secondary)] text-sm">
+                {data.communicationModel.emotionChain.map(e => `${e.from} → ${e.to}`).join(' → ')}
+              </p>
+              <KeyTakeaway title="切斷點" className="mt-4">{data.communicationModel.cutPoint}</KeyTakeaway>
+            </div>
+          </Card>
+        </section>
+
+        <section className="mb-12">
+          <Eyebrow align="left">👨‍👩‍👦 親子教養方向</Eyebrow>
+          <Card className="mt-8 p-8" interactive={false}>
+            <p className="italic text-[var(--jy-text-gold)] text-lg leading-relaxed mb-6">
+              「{data.parenting.childTalent}」
+            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mb-6">
+              <Card className="p-5" interactive={false}>
+                <h4 className="font-medium text-[var(--jy-semantic-water)] mb-2">父適合當什麼</h4>
+                <p className="text-sm text-[var(--jy-text-secondary)]">{data.parenting.fatherRole}</p>
+              </Card>
+              <Card className="p-5" interactive={false}>
+                <h4 className="font-medium text-[var(--jy-semantic-fire)] mb-2">母適合當什麼</h4>
+                <p className="text-sm text-[var(--jy-text-secondary)]">{data.parenting.motherRole}</p>
+              </Card>
+            </div>
+            <div>
+              <h4 className="font-medium text-[var(--jy-text-gold)] mb-3">親子衝突預防(各階段)</h4>
+              <ul className="space-y-2">
+                {data.parenting.conflictPrevention.map((cp, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm">
+                    <span className="flex-shrink-0 inline-flex h-6 px-2 items-center rounded text-xs" style={{ backgroundColor: 'rgba(229,185,92,0.15)', color: 'var(--jy-text-gold)' }}>
+                      {cp.ageRange}
+                    </span>
+                    <span className="text-[var(--jy-text-secondary)]">{cp.warning}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Card>
+        </section>
+
+        <GoldDivider className="my-12" />
+
         {/* 5 年流年 */}
         <section className="mb-12">
           <Eyebrow align="left">📅 家族 5 年流年</Eyebrow>
@@ -322,6 +407,15 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         </section>
       </div>
     </main>
+  )
+}
+
+function RoleChip({ label, name }: { label: string; name: string }) {
+  return (
+    <div className="text-center rounded-lg p-3 bg-[var(--jy-bg-card)]/40 border border-[var(--jy-border-hairline)]">
+      <p className="text-xs uppercase tracking-wider text-[var(--jy-text-muted)]">{label}</p>
+      <p className="mt-1 font-semibold text-[var(--jy-text-gold)]">{name}</p>
+    </div>
   )
 }
 
