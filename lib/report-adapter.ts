@@ -12,6 +12,7 @@
 
 import 'server-only'
 import { createClient } from '@supabase/supabase-js'
+import { getServerComponentUserEmail } from '@/lib/auth-helper-server'
 import type {
   LifeBlueprintReport,
   HeartDoubtsReport,
@@ -95,6 +96,15 @@ export async function getReport(type: ReportType, id: string): Promise<ReportDat
  */
 async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | null> {
   try {
+    // v5.10.241 P0 修(Gemini Sprint 2 review 抓):
+    // service_role 跑 Supabase 會 bypass RLS、必須手動驗 ownership(否則 attacker 用任意 id 拿別人報告)
+    // 拿 logged-in user email、跟 paid_reports.customer_email 比對
+    const userEmail = await getServerComponentUserEmail()
+    if (!userEmail) {
+      console.warn('[adapter] no logged-in user、reject Supabase fetch')
+      return null
+    }
+
     const supabase = getServiceSupabase()
     const { data, error } = await supabase
       .from('paid_reports')
@@ -104,6 +114,12 @@ async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | 
 
     if (error || !data) {
       console.warn('[adapter] paid_reports lookup failed:', error?.message, id)
+      return null
+    }
+
+    // P0 ownership check:user email 必 match customer_email(case-insensitive)
+    if (!data.customer_email || data.customer_email.toLowerCase() !== userEmail.toLowerCase()) {
+      console.warn('[adapter] ownership reject:', { userEmail, customer: data.customer_email, id })
       return null
     }
 
