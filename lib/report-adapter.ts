@@ -51,7 +51,9 @@ const PLAN_CODE_TO_TYPE: Record<SupportedPlanCode, ReportType> = {
 
 // 從 paid_reports 拉 row 的 minimum 型別(v5.10.244 修 Codex P2:row 無型別)
 // v5.10.245:加 birth_data + user_id(SQL 實際 schema 確認、user_id 已存在)
-// Sprint 2.x markdown parser 完成後再加 report_result 詳細型別
+// v5.10.260:加 Sprint 2.5 Phase 1 已 apply 的 7 新 column(備 Sprint 2.x parser 啟用時用)
+//   - migration name: sprint_2_5_add_partner_family_columns(Supabase MCP applied)
+//   - 目前全部 NULL(待 Sprint 2.x backfill + 新訂單寫入)
 export interface PaidReportRow {
   id: string
   plan_code: string
@@ -63,6 +65,14 @@ export interface PaidReportRow {
   report_result: ReportResult | null // JSONB、含 ai_content markdown
   created_at: string
   user_id: string | null // v5.10.245 確認 column 已存在(80 row 中 32.5% match)
+  // v5.10.260 Sprint 2.5 Phase 1 新 column(R/G15 補完整身份用):
+  partner_name: string | null // R 方案:合盤對方姓名(目前 Sprint 2.x 開始寫入)
+  partner_birth_date: string | null // R 方案:對方出生日 ISO date
+  partner_birth_city: string | null // R 方案:對方出生地
+  family_name: string | null // G15 方案:家族名稱(避免 charAt(0) 不準)
+  report_result_json: unknown | null // Sprint 2.x LLM Extraction:markdown → JSON schema
+  schema_version: string | null // 例:'v5.10.x-life-blueprint'
+  parse_status: 'full' | 'partial' | 'failed' | null // Sprint 2.x extraction migration 狀態
 }
 
 // v5.10.245:birth_data 多型(C/D 單人 vs R 雙人 vs G15 家庭)
