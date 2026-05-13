@@ -71,13 +71,15 @@ export async function POST(req: NextRequest) {
   let report: ReportRow | null = null
 
   if (reportId) {
+    // v5.10.289:soft delete filter — 軟刪報告不允許 admin 觸發退款(若需退款應先 restore)
     const { data, error: fetchErr } = await supabase
       .from('paid_reports')
       .select('id, stripe_session_id, amount_usd, status, customer_email, refunded_at')
       .eq('id', reportId)
+      .is('deleted_at', null)
       .single()
     if (fetchErr || !data) {
-      return NextResponse.json({ error: '找不到報告' }, { status: 404 })
+      return NextResponse.json({ error: '找不到報告(或已軟刪、需先 restore 才能退款)' }, { status: 404 })
     }
     report = data as unknown as ReportRow
     if (report?.refunded_at) {

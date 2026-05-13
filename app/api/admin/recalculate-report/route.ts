@@ -97,14 +97,16 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabase()
 
   // 1. 取得報告資料(v5.10.274 加 report_result 給 history 備份)
+  // v5.10.289:soft delete filter — 軟刪報告不允許 admin 重算(若需重算應先 restore)
   const { data: report, error: readErr } = await supabase
     .from('paid_reports')
     .select('id, status, birth_data, plan_code, customer_email, timezone, birth_city, birth_country, birth_lat, birth_lng, report_result')
     .eq('id', reportId)
+    .is('deleted_at', null)
     .maybeSingle()
 
   if (readErr || !report) {
-    return NextResponse.json({ error: '找不到報告' }, { status: 404 })
+    return NextResponse.json({ error: '找不到報告(或已軟刪、需先 restore 才能重算)' }, { status: 404 })
   }
 
   if (!force && !['completed', 'failed', 'pending'].includes(report.status)) {
