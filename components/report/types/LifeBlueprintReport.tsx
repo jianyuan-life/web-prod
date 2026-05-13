@@ -19,6 +19,13 @@ import { YearEnergyMonths } from '@/components/report/shared/YearEnergyMonths'
 import { ZiweiNatalChart } from '@/components/report/shared/ZiweiNatalChart'
 import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
+import { ReportToolbar } from '@/components/report/shared/ReportToolbar'
+import { TermTooltip } from '@/components/report/shared/TermTooltip'
+import { ScrollProgress } from '@/components/effects/ScrollProgress'
+import { MouseGlow } from '@/components/effects/MouseGlow'
+import { BackToTop } from '@/components/effects/BackToTop'
+import { Starfield } from '@/components/effects/Starfield'
+import { Stagger, StaggerItem } from '@/components/effects/Stagger'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 interface LifeBlueprintReportProps {
@@ -33,12 +40,29 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
   }
 
   return (
-    <main
-      className="min-h-screen text-[var(--jy-text-primary)]"
-      style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
-    >
-      <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8">
+    <>
+      <ScrollProgress />
+      <ReportToolbar
+        reportTitle={`${data.hero.title} · ${data.meta.name}`}
+        onShare={() => {
+          if (typeof navigator !== 'undefined' && navigator.share) {
+            void navigator.share({ title: `${data.hero.title} · ${data.meta.name}`, url: window.location.href })
+          }
+        }}
+        onDownloadPDF={() => {
+          window.location.href = `/api/r/life-blueprint/${data.meta.id}/pdf`
+        }}
+      />
+      <main
+        className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden"
+        style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
+      >
+        <Starfield className="opacity-40" starCount={30} />
+        <MouseGlow size={500} intensity={0.05} />
+        <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
         {/* HERO */}
+        <Stagger>
+        <StaggerItem>
         <section className="mb-16 text-center">
           <Eyebrow>{`LIFE BLUEPRINT · ${data.meta.name}`}</Eyebrow>
           <h1
@@ -497,6 +521,9 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           <PDFDownloadButton reportType="life-blueprint" reportId={data.meta.id} />
         </section>
 
+        </StaggerItem>
+        </Stagger>
+
         {/* 報告印章 + 危機求助 Footer */}
         <section className="space-y-6">
           <ReportSeal
@@ -507,8 +534,10 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           />
           <CrisisFooter />
         </section>
-      </div>
-    </main>
+        </div>
+        <BackToTop />
+      </main>
+    </>
   )
 }
 
