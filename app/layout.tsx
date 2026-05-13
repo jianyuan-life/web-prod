@@ -10,6 +10,7 @@ import ReferralHandler from '@/components/ReferralHandler'
 import GlobalBackToTop from '@/components/GlobalBackToTop'
 import EmailLink from '@/components/EmailLink'
 import CookieConsent from '@/components/CookieConsent'
+import { GlobalToastProvider } from '@/components/report/shared/GlobalToast'
 import './globals.css'
 
 // v5.3.44 字型 variable 保留歷史命名（QA 稽核發現動了會破壞 200+ 處品牌標題視覺）
@@ -208,6 +209,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Tracker />
         <ReferralHandler />
         <CookieConsent />
+        {/* v5.10.250 wire dead component:GlobalToastProvider 包整 app、開放 useToast() 全域可用 */}
+        <GlobalToastProvider>
         <LocaleContent>
         <Navbar />
         <main className="pt-16">{children}</main>
@@ -267,6 +270,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </footer>
         </LocaleContent>
+        </GlobalToastProvider>
       </body>
     </html>
   )
