@@ -64,30 +64,82 @@ export function extractBaziFromMarkdown(content: string): BaziPillars | null {
 }
 
 /**
+ * v5.10.247:統一 entry point、嘗試 table 與 inline 兩種 format
+ *
+ * 推薦 caller 直接 call 本函式、自動 fallback inline → null
+ * 對應 Sprint 2.x 真實 sample 分佈:32 C row 中 8 table + 2 inline + 22 prose-only
+ */
+export function extractBaziAuto(content: string): { bazi: BaziPillars; format: 'table' | 'inline' } | null {
+  const tableBazi = extractBaziFromMarkdown(content)
+  if (tableBazi) return { bazi: tableBazi, format: 'table' }
+
+  const inlineBazi = extractBaziInlineFromMarkdown(content)
+  if (inlineBazi) return { bazi: inlineBazi, format: 'inline' }
+
+  return null
+}
+
+/**
  * 從 ai_content 抽單一 pillar 的天干地支
  *
  * Pattern:`| <pillarName> | <ganZhi> | <納音> |`
- * 兼容:全/半形空白、`柱` 字前後可能有 emoji / 加粗 / 不同分隔
+ * 兼容(v5.10.247 加強、對應 Codex P1 finding):
+ *   - 全/半形空白(U+3000)
+ *   - 加粗 `**` 在 label 跟 value 兩側(`| 年柱 | **癸卯** |`)
+ *   - emoji / 裝飾字符在 label 前(`| 🔥 年柱 |`)
+ *   - 嚴格 value 白名單:`[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]`(防其他漢字誤抓)
  */
 function matchPillar(content: string, pillarName: '年柱' | '月柱' | '日柱' | '時柱'): string | null {
-  // regex:`|` + 任意空白 + pillarName + 任意空白 + `|` + 任意空白 + (天干地支:2 個漢字) + 任意空白 + `|`
-  // 兼容全形空白(U+3000)、加粗(**)、emoji
+  // 嚴格 char class:天干 10 字 + 地支 12 字、不抓其他漢字
+  // label 前後允許:空白 / 全形空白 / `*` 加粗 / 任何非 `|` 的裝飾字符(emoji)
+  // value 前後允許:空白 / 全形空白 / `*` 加粗
   const escapedName = pillarName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const pattern = new RegExp(
-    `\\|[\\s\\u3000\\*]*${escapedName}[\\s\\u3000\\*]*\\|[\\s\\u3000]*([\\u4e00-\\u9fff]{2})[\\s\\u3000]*\\|`,
+    `\\|[^|]*?${escapedName}[\\s\\u3000\\*]*\\|[\\s\\u3000\\*]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])[\\s\\u3000\\*]*\\|`,
     'm',
   )
 
   const match = content.match(pattern)
   if (!match || !match[1]) return null
 
+  // White-list char class 已保證 length=2 + heavenly stem + earthly branch
+  // 仍保留 redundant 驗證(double check、防 regex bug)
   const ganZhi = match[1]
-  // 驗證:必 2 字、第 1 字為天干、第 2 字為地支
   if (ganZhi.length !== 2) return null
   if (!isValidHeavenlyStem(ganZhi.charAt(0))) return null
   if (!isValidEarthlyBranch(ganZhi.charAt(1))) return null
 
   return ganZhi
+}
+
+/**
+ * v5.10.247 新增:解析 inline format(對應實測 32 row 中 2 row 用此格式)
+ *
+ * Pattern 1:`四柱八字**：庚午 丙戌 庚戌 丙戌`
+ * Pattern 2:`四柱八字: 庚午 丙戌 庚戌 丙戌`
+ *
+ * @returns BaziPillars(若 4 個 pillar 都抓到 + dayMaster 有效)、否則 null
+ */
+export function extractBaziInlineFromMarkdown(content: string): BaziPillars | null {
+  if (!content || typeof content !== 'string') return null
+
+  try {
+    const pattern = /四柱八字[\s\*　]*[：:][\s　]*([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])[\s　]+([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])[\s　]+([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])[\s　]+([甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])/
+
+    const match = content.match(pattern)
+    if (!match) return null
+
+    const [, year, month, day, hour] = match
+    if (!year || !month || !day || !hour) return null
+
+    const dayMaster = day.charAt(0)
+    if (!isValidHeavenlyStem(dayMaster)) return null
+
+    return { year, month, day, hour, dayMaster }
+  } catch (err) {
+    console.error('[md-parser] extractBaziInlineFromMarkdown error:', err)
+    return null
+  }
 }
 
 const HEAVENLY_STEMS = new Set(['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'])
