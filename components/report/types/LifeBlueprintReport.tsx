@@ -16,6 +16,7 @@ import { RadarTriad } from '@/components/report/shared/RadarTriad'
 import { ActionPlanStages } from '@/components/report/shared/ActionPlanStages'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import { YearEnergyMonths } from '@/components/report/shared/YearEnergyMonths'
+import { ZiweiNatalChart } from '@/components/report/shared/ZiweiNatalChart'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 interface LifeBlueprintReportProps {
@@ -287,19 +288,15 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           <section className="mb-16">
             <Eyebrow align="left">🪐 命盤一覽</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Card className="p-6" interactive={false}>
-                <h3 className="font-semibold text-[var(--jy-text-primary)] mb-3">紫微 12 宮主星</h3>
-                <ul className="space-y-2">
-                  {data.natalOverview.ziwei12palaces.map((p, i) => (
-                    <li key={i} className="flex items-center gap-3 text-sm">
-                      <span className={`min-w-[3rem] font-medium ${p.bigFour ? 'text-[var(--jy-text-gold)]' : 'text-[var(--jy-text-tertiary)]'}`}>
-                        {p.palace}
-                      </span>
-                      <span className="text-[var(--jy-text-secondary)]">{p.stars.join(' / ')}</span>
-                      <span className="ml-auto text-xs text-[var(--jy-text-muted)]">{p.ganzhi}</span>
-                    </li>
-                  ))}
-                </ul>
+              <Card className="p-6 flex justify-center" interactive={false}>
+                <ZiweiNatalChart
+                  palaces={data.natalOverview.ziwei12palaces}
+                  centerInfo={{
+                    yearGanzhi: '2026 丙午',
+                    mainStar: data.card5.ziwei.palaceStar,
+                  }}
+                  size={500}
+                />
               </Card>
               <Card className="p-6" interactive={false}>
                 <h3 className="font-semibold text-[var(--jy-text-primary)] mb-3">📅 今日指引</h3>
