@@ -5,6 +5,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { fireGoldShower } from '@/components/effects/Confetti'
 
 export interface FeedbackFormProps {
   reportId: string
@@ -77,6 +78,8 @@ export function FeedbackForm({
       if (onSubmit) await onSubmit(data)
       // Sprint 2:POST /api/feedback (Supabase insert)
       setSubmitted(true)
+      // 提交成功 → 金色雨慶祝(對應 lesson #122 wire dead code Confetti)
+      fireGoldShower()
     } catch (e) {
       setError(e instanceof Error ? e.message : '提交失敗、請稍後再試')
     } finally {
