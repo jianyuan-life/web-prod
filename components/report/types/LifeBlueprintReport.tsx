@@ -4,6 +4,17 @@
 import { Eyebrow } from '@/components/ui/Eyebrow'
 import { Card } from '@/components/ui/Card'
 import { GoldDivider } from '@/components/effects/GoldDivider'
+import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
+import { QuickSummary } from '@/components/report/shared/QuickSummary'
+import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
+import { ReportSeal } from '@/components/report/shared/ReportSeal'
+import { TopList5 } from '@/components/report/shared/TopList5'
+import { PracticeCard } from '@/components/report/shared/PracticeCard'
+import { LuckyParams } from '@/components/report/shared/LuckyParams'
+import { BaziPillars } from '@/components/report/shared/BaziPillars'
+import { RadarTriad } from '@/components/report/shared/RadarTriad'
+import { ActionPlanStages } from '@/components/report/shared/ActionPlanStages'
+import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 interface LifeBlueprintReportProps {
@@ -111,6 +122,200 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           </Card>
         </section>
 
+        {/* 命格 3 層洞察 — Step 2 dashboard 三軸 */}
+        <section className="mb-16">
+          <Eyebrow align="left">🎯 命格 3 層洞察</Eyebrow>
+
+          <div className="mt-8 space-y-8">
+            {/* Step 1:核心性格 */}
+            <Card className="p-8" interactive={false}>
+              <h3
+                className="text-2xl font-semibold text-[var(--jy-text-primary)] mb-3"
+                style={{ fontFamily: 'var(--jy-font-display)' }}
+              >
+                {data.insight3steps.step1.title}
+              </h3>
+              <p className="text-[var(--jy-text-secondary)] leading-relaxed">
+                {data.insight3steps.step1.content}
+              </p>
+            </Card>
+
+            {/* Step 2:三軸 KPI Dashboard */}
+            <div className="space-y-6">
+              <RadarTriad
+                data={data.insight3steps.step2.dashboard}
+                tags={data.insight3steps.step2.tags}
+              />
+              {data.insight3steps.step2.trapWarning && (
+                <KeyTakeaway title="⚠ 陷阱預警">
+                  {data.insight3steps.step2.trapWarning}
+                </KeyTakeaway>
+              )}
+            </div>
+
+            {/* Step 3:行動時間軸 */}
+            <Card className="p-8" interactive={false}>
+              <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">
+                ⏰ 優先行動清單
+              </h3>
+              <ol className="space-y-3">
+                {data.insight3steps.step3.priorityActions.map((action, i) => (
+                  <li key={i} className="flex items-start gap-4">
+                    <span
+                      className="flex-shrink-0 inline-flex h-7 px-3 items-center rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: 'rgba(229, 185, 92, 0.15)',
+                        color: 'var(--jy-text-gold)',
+                      }}
+                    >
+                      {action.date}
+                    </span>
+                    <div className="flex-1">
+                      <span className="text-[var(--jy-text-tertiary)] text-sm mr-2">[{action.type}]</span>
+                      <span className="text-[var(--jy-text-secondary)]">{action.text}</span>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-6 pt-6 border-t border-[var(--jy-border-hairline)]">
+                <h4 className="text-sm font-medium text-[var(--jy-semantic-flow)] mb-2">📊 成功指標</h4>
+                <ul className="space-y-1.5">
+                  {data.insight3steps.step3.successMetrics.map((m, i) => (
+                    <li key={i} className="text-sm text-[var(--jy-text-secondary)]">✓ {m}</li>
+                  ))}
+                </ul>
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 命格 5 大核心洞察 */}
+        {data.insight5cards.length > 0 && (
+          <section className="mb-16">
+            <Eyebrow align="left">⚡ 命格 5 大核心洞察</Eyebrow>
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {data.insight5cards.map((card, i) => (
+                <Card key={i} className="p-6">
+                  <div className="text-3xl mb-3" aria-hidden>{card.icon}</div>
+                  <h3 className="font-semibold text-[var(--jy-text-primary)]">{card.title}</h3>
+                  <p className="mt-1 text-sm text-[var(--jy-text-gold)]">{card.subtitle}</p>
+                  <p className="mt-3 text-sm text-[var(--jy-text-secondary)] leading-relaxed">{card.detail}</p>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 八字四柱(從 card5.bazi 重新展示、加十神)*/}
+        <section className="mb-16">
+          <Eyebrow align="left">📜 八字四柱詳細</Eyebrow>
+          <div className="mt-8">
+            <BaziPillars data={data.card5.bazi} highlightDayMaster />
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* Top 5 天賦 + 風險 */}
+        <section className="mb-16 grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <TopList5
+            items={data.talentsTop5.map((t) => ({
+              title: t.title,
+              supportSystems: t.supportSystems,
+              confidence: t.confidence,
+              detail: t.manifestation,
+              action: t.howToAmplify,
+            }))}
+            variant="talent"
+          />
+          <TopList5
+            items={data.risksTop5.map((r) => ({
+              title: r.title,
+              supportSystems: r.supportSystems,
+              confidence: r.confidence,
+              detail: r.triggerTime,
+              action: r.prevention,
+            }))}
+            variant="risk"
+          />
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 三階段行動計畫 */}
+        <section className="mb-16">
+          <Eyebrow align="left">🚀 三階段行動計畫</Eyebrow>
+          <div className="mt-8">
+            <ActionPlanStages
+              immediate={data.planStages.immediate}
+              short={data.planStages.short}
+              long={data.planStages.long}
+            />
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 幸運參數 */}
+        <section className="mb-16">
+          <Eyebrow align="left">🍀 幸運參數</Eyebrow>
+          <div className="mt-8">
+            <LuckyParams data={data.luckyParams} />
+          </div>
+        </section>
+
+        {/* 命格處方箋 — practices5 */}
+        {data.practices5.length > 0 && (
+          <>
+            <GoldDivider className="my-12" />
+            <section className="mb-16">
+              <Eyebrow align="left">✿ 命格處方箋</Eyebrow>
+              <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {data.practices5.map((p, i) => (
+                  <PracticeCard
+                    key={i}
+                    title={p.title}
+                    purpose={p.commandRecipe}
+                    bond={p.painPoint}
+                    steps={p.steps}
+                    obstacle={p.obstacle}
+                  />
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* 起承轉合附錄系統列(若 appendix14Systems 有資料)*/}
+        {data.appendix14Systems.length > 0 && (
+          <>
+            <GoldDivider className="my-12" />
+            <section className="mb-16">
+              <Eyebrow align="left">📚 14 系統交叉發現</Eyebrow>
+              <div className="mt-8">
+                <ChapterGroup type="multiple">
+                  {data.appendix14Systems.map((sys, i) => (
+                    <ChapterSection
+                      key={i}
+                      number={i + 1}
+                      emoji="📜"
+                      title={sys.system}
+                    >
+                      <p className="text-[var(--jy-text-secondary)] leading-relaxed">
+                        {sys.finding}
+                      </p>
+                    </ChapterSection>
+                  ))}
+                </ChapterGroup>
+              </div>
+            </section>
+          </>
+        )}
+
+        <GoldDivider className="my-12" />
+
         {/* 一句話總結 */}
         <section className="mb-16 text-center">
           <p
@@ -126,15 +331,43 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           </p>
         </section>
 
-        {/* TODO Sprint 2+ */}
-        <Card className="p-8" interactive={false}>
-          <p className="text-sm text-[var(--jy-text-tertiary)]">
-            ⏳ Sprint 2+ 將漸進加入:命格 3 層洞察 · 14 系統共識矩陣 · 大運時間軸 · 12 月份能量 · 起承轉合 16 章 · 幸運參數 · 月份決策表 · 出門訣 CTA · 報告印章
-          </p>
-          <p className="mt-2 text-xs text-[var(--jy-text-muted)]">
-            報告 ID:<span className="font-mono">{id}</span> · Engine {data.meta.engineVersion}
-          </p>
-        </Card>
+        {/* 寫給您的話(letterFinal) */}
+        <section className="mb-16">
+          <Card className="p-10" interactive={false}>
+            <h3
+              className="text-2xl font-semibold text-[var(--jy-text-gold)] mb-6 text-center"
+              style={{ fontFamily: 'var(--jy-font-display)' }}
+            >
+              寫給{data.meta.name}的話
+            </h3>
+            <div className="space-y-4 text-[var(--jy-text-secondary)] leading-relaxed">
+              <QuickSummary
+                title="回顧 / 此刻 / 未來"
+                bullets={[
+                  data.letterFinal.retrospect,
+                  data.letterFinal.present,
+                  data.letterFinal.future,
+                ]}
+              />
+              <p className="text-center text-lg pt-4 italic" style={{ color: 'var(--jy-text-gold)' }}>
+                「{data.letterFinal.declaration}」
+              </p>
+            </div>
+          </Card>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 報告印章 + 危機求助 Footer */}
+        <section className="space-y-6">
+          <ReportSeal
+            reportId={data.meta.id}
+            hash={data.meta.hash}
+            engineVersion={data.meta.engineVersion}
+            reportDate={data.meta.reportDate}
+          />
+          <CrisisFooter />
+        </section>
       </div>
     </main>
   )
