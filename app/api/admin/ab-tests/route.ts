@@ -245,7 +245,8 @@ export async function PATCH(req: NextRequest) {
   const supabase = getSupabase()
   const { error } = await supabase.from('ab_experiments').update(update).eq('key', key)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  await writeAuditLog(req, 'create', 'system', key, {
+  // v5.10.275 Codex P0 修:PATCH 應 audit action='update'、原寫 'create' 是錯標(false history)
+  await writeAuditLog(req, 'update', 'system', key, {
     resource: 'ab_experiment_update',
     changes: update,
   })
