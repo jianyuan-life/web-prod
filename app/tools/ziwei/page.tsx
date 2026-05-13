@@ -664,19 +664,19 @@ export default function ZiweiToolPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm text-text-muted mb-1.5">出生年</label>
-                  <input type="number" min="1920" max="2025" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
+                  <input aria-label="出生年" type="number" min="1920" max="2025" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm text-text-muted mb-1.5">{form.calendarType === 'lunar' ? '農曆月' : '月'}</label>
-                  <select value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}
+                  <select aria-label={form.calendarType === 'lunar' ? '農曆月' : '月'} value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
                     {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{form.calendarType === 'lunar' ? `${['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '臘'][i]}月` : `${i + 1}月`}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm text-text-muted mb-1.5">{form.calendarType === 'lunar' ? '農曆日' : '日'}</label>
-                  <select value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })}
+                  <select aria-label={form.calendarType === 'lunar' ? '農曆日' : '日'} value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
                     {Array.from({ length: 30 }, (_, i) => <option key={i + 1} value={i + 1}>{form.calendarType === 'lunar' ? `${['初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十', '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'][i]}` : `${i + 1}日`}</option>)}
                   </select>
@@ -706,18 +706,18 @@ export default function ZiweiToolPage() {
                   </p>
                 )}
                 {form.timeMode === 'shichen' && (
-                  <select value={form.hour} onChange={(e) => setForm({ ...form, hour: e.target.value })}
+                  <select aria-label="出生時辰" value={form.hour} onChange={(e) => setForm({ ...form, hour: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
                     {SHICHEN.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
                 )}
                 {form.timeMode === 'exact' && (
                   <div className="grid grid-cols-2 gap-3">
-                    <select value={form.exactHour} onChange={(e) => setForm({ ...form, exactHour: e.target.value })}
+                    <select aria-label="出生小時" value={form.exactHour} onChange={(e) => setForm({ ...form, exactHour: e.target.value })}
                       className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
                       {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')} 時</option>)}
                     </select>
-                    <select value={form.exactMinute} onChange={(e) => setForm({ ...form, exactMinute: e.target.value })}
+                    <select aria-label="出生分鐘" value={form.exactMinute} onChange={(e) => setForm({ ...form, exactMinute: e.target.value })}
                       className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
                       {Array.from({ length: 60 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, '0')} 分</option>)}
                     </select>
