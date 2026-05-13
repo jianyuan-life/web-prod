@@ -201,70 +201,36 @@ async function fetchHeartDoubtsFromSupabase(id: string): Promise<ReportData | nu
 
 /**
  * v5.10.242 Sprint 2 擴:compatibility(plan_code='R')真接
- * Minimum mapping、完整 pair.a/pair.b synastry + 10 sections parser 留 Sprint 2.x
- *
- * 注意:R 方案 paid_reports 含 partner_name / partner_birth_date 欄位、目前 select 沒抓
- * 完整 pair 對接 Sprint 2.x:加 select 'partner_name, partner_birth_date, partner_birth_city'
+ * v5.10.243 P0 修(Codex P1 + Gemini P0 共識):
+ *   - Mock spread pair.b 會洩漏「林沅霖」假身份給付費客戶
+ *   - 比 not-found 更糟:客戶看到錯伴侶名字 = 信任崩潰
+ *   - Hot-fix:R 方案暫時 return null(404 better than 假身份)
+ *   - Sprint 2.x 完整修:加 select partner_name/partner_birth_date/partner_birth_city
+ *     + DTO/Zod schema mapping、不再 mock spread
  */
 async function fetchCompatibilityFromSupabase(id: string): Promise<ReportData | null> {
-  const data = await fetchPaidReportRow(id, 'R')
-  if (!data) return null
-
-  try {
-    const report: CompatibilityReport = {
-      ...MOCK_COMPATIBILITY_LIN_YUAN_LIN,
-      meta: {
-        ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.meta,
-        id: data.id,
-        reportDate: new Date(data.created_at).toISOString().split('T')[0],
-      },
-      // pair.a 名字用 row data 替換、pair.b 留 mock(Sprint 2.x 補 partner_name)
-      pair: {
-        ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair,
-        a: {
-          ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair.a,
-          name: data.client_name || MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair.a.name,
-        },
-      },
-    }
-
-    return { type: 'compatibility', data: report }
-  } catch (err) {
-    console.error('[adapter] compatibility mapping error:', err)
-    return null
-  }
+  // v5.10.243:不從 Supabase fetch 真資料、直接 return null
+  // 對應 Codex L3「客戶會看到錯對象」+ Gemini L4「Mock 數據污染正式報告」P0
+  // demo URL(lin-yuan-lin-x-he-xuan-yi)仍由上方 mock fallback 接(行 65)
+  console.warn('[adapter] compatibility Supabase fetch deferred to Sprint 2.x:', id)
+  return null
 }
 
 /**
  * v5.10.242 Sprint 2 擴:family-blueprint(plan_code='G15')真接
- * Minimum mapping、完整 members[] + 9 sections parser 留 Sprint 2.x
- *
- * 注意:G15 方案 paid_reports 含 family_members 欄位(JSONB)、目前 select 沒抓
- * 完整 members 對接 Sprint 2.x:加 select 'family_members'
+ * v5.10.243 P0 修(Codex P1 + Gemini P0 共識):
+ *   - Mock spread members 會洩漏「何家三口」假家庭給付費客戶
+ *   - charAt(0) 推 familyName 對複姓/英文/原住民全錯(Gemini P1)
+ *   - Hot-fix:G15 方案暫時 return null
+ *   - Sprint 2.x 完整修:加 select family_members(JSONB)+ family_name 欄位
+ *     + DTO/Zod schema mapping
  */
 async function fetchFamilyBlueprintFromSupabase(id: string): Promise<ReportData | null> {
-  const data = await fetchPaidReportRow(id, 'G15')
-  if (!data) return null
-
-  try {
-    const report: FamilyBlueprintReport = {
-      ...MOCK_FAMILY_BLUEPRINT_HE_JIA,
-      meta: {
-        ...MOCK_FAMILY_BLUEPRINT_HE_JIA.meta,
-        id: data.id,
-        // familyName 從 client_name 推斷(例:何宥諄 → 何家)、Sprint 2.x 加 family_name 欄位後改正
-        familyName: data.client_name
-          ? `${data.client_name.charAt(0)}家`
-          : MOCK_FAMILY_BLUEPRINT_HE_JIA.meta.familyName,
-        reportDate: new Date(data.created_at).toISOString().split('T')[0],
-      },
-    }
-
-    return { type: 'family-blueprint', data: report }
-  } catch (err) {
-    console.error('[adapter] family-blueprint mapping error:', err)
-    return null
-  }
+  // v5.10.243:不從 Supabase fetch 真資料、直接 return null
+  // 對應 Codex L3「客戶會看到錯家庭」+ Gemini L4「Mock 污染 + charAt 不安全」P0
+  // demo URL(he-jia / he-ji-nan)仍由上方 mock fallback 接(行 68)
+  console.warn('[adapter] family-blueprint Supabase fetch deferred to Sprint 2.x:', id)
+  return null
 }
 
 // 預留 Sprint 2 mapping helper signatures
