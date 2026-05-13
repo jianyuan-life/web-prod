@@ -47,7 +47,12 @@ export function ReportRenderer({ type, id, data }: ReportRendererProps) {
         />
       )
     case 'family-blueprint':
-      return <FamilyBlueprintReport id={id} />
+      return (
+        <FamilyBlueprintReport
+          id={id}
+          data={data?.type === 'family-blueprint' ? data.data : undefined}
+        />
+      )
     default: {
       const _exhaustive: never = type
       return null

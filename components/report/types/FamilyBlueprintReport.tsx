@@ -1,54 +1,359 @@
-// v5.10.201 Sprint 1 — FamilyBlueprintReport skeleton(家族藍圖)
-// Schema 對應:tasks/unified_spec_2026-05-13_jianyuan_reports_incremental.md type='family-blueprint'
+// v5.10.212 — FamilyBlueprintReport(對齊 schema、用本 session 元件 + 5 年流年卡)
 import { Eyebrow } from '@/components/ui/Eyebrow'
 import { Card } from '@/components/ui/Card'
 import { GoldDivider } from '@/components/effects/GoldDivider'
+import { BaziPillars } from '@/components/report/shared/BaziPillars'
+import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
+import { QuickSummary } from '@/components/report/shared/QuickSummary'
+import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
+import { PracticeCard } from '@/components/report/shared/PracticeCard'
+import { ReportSeal } from '@/components/report/shared/ReportSeal'
+import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
+import { LuckyParams } from '@/components/report/shared/LuckyParams'
+import type { FamilyBlueprintReport as FamilyData } from '@/types/report-schemas'
 
 interface FamilyBlueprintReportProps {
   id: string
+  data?: FamilyData
 }
 
-export function FamilyBlueprintReport({ id }: FamilyBlueprintReportProps) {
+export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) {
+  if (!data) return <SkeletonView id={id} />
+
   return (
-    <main
-      className="min-h-screen text-[var(--jy-text-primary)]"
-      style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
-    >
+    <main className="min-h-screen text-[var(--jy-text-primary)]" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
+      <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8">
+
+        {/* HERO 家族圈 */}
+        <section className="mb-16 text-center">
+          <Eyebrow>FAMILY BLUEPRINT · 家族藍圖</Eyebrow>
+          <h1
+            className="mt-8 font-bold"
+            style={{
+              fontFamily: 'var(--jy-font-display)',
+              fontSize: 'clamp(48px, 6vw, 88px)',
+              lineHeight: 1.05,
+              letterSpacing: '-0.04em',
+              background: 'var(--jy-gold-shimmer)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            {data.meta.familyName}
+          </h1>
+          <p className="mt-4 text-[var(--jy-text-tertiary)]">
+            {data.meta.memberCount} 位成員 · 精華 {data.meta.durationShort} 分鐘 · 完整 {data.meta.durationFull} 分鐘
+          </p>
+
+          {/* 三人剪影圈(SVG 簡化版)*/}
+          <div className="mt-10 flex justify-center gap-6 flex-wrap">
+            {data.members.map((m) => (
+              <div key={m.name} className="flex flex-col items-center">
+                <div
+                  className="h-20 w-20 rounded-full flex items-center justify-center font-bold text-xl"
+                  style={{
+                    background: 'var(--jy-gold-shimmer)',
+                    color: 'var(--jy-text-on-gold, #0A0E1A)',
+                    fontFamily: 'var(--jy-font-display)',
+                  }}
+                  aria-label={`${m.role} ${m.name}`}
+                >
+                  {m.role}
+                </div>
+                <p className="mt-3 text-[var(--jy-text-secondary)]">{m.name}</p>
+                <p className="text-xs text-[var(--jy-text-muted)]">日主 {m.bazi.dayMaster}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 五行分佈對比 */}
+        <section className="mb-12">
+          <Eyebrow align="left">🔥 全家五行分佈</Eyebrow>
+          <div className="mt-8 space-y-6">
+            <Card className="p-8" interactive={false}>
+              <p
+                className="italic text-[var(--jy-text-gold)] leading-relaxed mb-6"
+                style={{ fontSize: 'clamp(16px, 2vw, 20px)' }}
+              >
+                {data.fiveElementsDistribution.metaphor}
+              </p>
+              <KeyTakeaway title="關鍵發現">
+                {data.fiveElementsDistribution.keyFinding}
+              </KeyTakeaway>
+            </Card>
+
+            {/* 三人五行表 */}
+            <Card className="p-6" interactive={false}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--jy-border-soft)]">
+                    <th className="text-left py-3 px-2 text-[var(--jy-text-muted)] uppercase text-xs">成員</th>
+                    {(['木', '火', '土', '金', '水'] as const).map((el) => (
+                      <th key={el} className="text-center py-3 px-2 text-[var(--jy-text-gold)]">{el}</th>
+                    ))}
+                    <th className="text-left py-3 px-2 text-[var(--jy-text-muted)] uppercase text-xs">日主</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.fiveElementsDistribution.chartData.map((row) => (
+                    <tr key={row.member} className="border-b border-[var(--jy-border-hairline)] last:border-0">
+                      <td className="py-3 px-2 text-[var(--jy-text-primary)]">{row.member}</td>
+                      {(['木', '火', '土', '金', '水'] as const).map((el) => (
+                        <td key={el} className="text-center py-3 px-2 tabular-nums" style={{
+                          color: row.values[el] >= 3 ? 'var(--jy-text-gold)' : (row.values[el] === 0 ? 'var(--jy-semantic-danger)' : 'var(--jy-text-secondary)'),
+                          fontWeight: row.values[el] >= 3 ? 'bold' : 'normal',
+                        }}>
+                          {row.values[el]}
+                        </td>
+                      ))}
+                      <td className="py-3 px-2 text-[var(--jy-text-secondary)] font-medium">{row.dayMaster}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 三人八字 */}
+        <section className="mb-12">
+          <Eyebrow align="left">📜 各成員八字</Eyebrow>
+          <div className="mt-8 space-y-6">
+            {data.members.map((m) => (
+              <div key={m.name}>
+                <h3 className="text-lg font-medium text-[var(--jy-text-primary)] mb-3">
+                  {m.role} · {m.name}
+                </h3>
+                <BaziPillars data={m.bazi} highlightDayMaster />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 三角動力圖 */}
+        {data.triangleDynamics && (
+          <section className="mb-12">
+            <Eyebrow align="left">🔺 三角動力</Eyebrow>
+            <Card className="mt-8 p-8" interactive={false}>
+              <ul className="space-y-2 mb-6">
+                {data.triangleDynamics.edges.map((e, i) => (
+                  <li key={i} className="text-[var(--jy-text-secondary)]">
+                    <span className="text-[var(--jy-text-gold)]">{e.from} → {e.to}</span>
+                    {' :: '}{e.energy}
+                  </li>
+                ))}
+              </ul>
+              <KeyTakeaway title="最危險的循環">
+                {data.triangleDynamics.dangerousMode}
+              </KeyTakeaway>
+              <div className="mt-4">
+                <h4 className="font-medium text-[var(--jy-text-gold)] mb-2">打破三角的 3 個方法</h4>
+                <ol className="list-decimal pl-6 space-y-1.5 text-[var(--jy-text-secondary)]">
+                  {data.triangleDynamics.breakingTriangle.map((b, i) => (
+                    <li key={i}>{b}</li>
+                  ))}
+                </ol>
+              </div>
+            </Card>
+          </section>
+        )}
+
+        {/* 對偶分析(摺疊) */}
+        <section className="mb-12">
+          <Eyebrow align="left">👥 三組對偶分析</Eyebrow>
+          <div className="mt-8">
+            <ChapterGroup type="multiple">
+              {Object.entries(data.pairAnalysis).map(([key, pair]) => {
+                if (!pair) return null
+                return (
+                  <ChapterSection key={key} emoji="👥" title={pair.pair}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <PairItem label="八字合盤" verdict={pair.baziSynastry.verdict} text={pair.baziSynastry.summary} />
+                      <PairItem label="紫微互參" verdict={pair.ziweiInterplay.verdict} text={pair.ziweiInterplay.summary} />
+                      <PairItem label="生肖" verdict={pair.zodiacInteraction.verdict} text={pair.zodiacInteraction.relation} />
+                      <PairItem label="生命靈數" verdict={pair.numerologyInteraction.verdict} text={pair.numerologyInteraction.summary} />
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-[var(--jy-text-gold)] mb-2">→ 相處指南</h5>
+                      <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
+                        {pair.guidance.map((g, i) => <li key={i}>· {g}</li>)}
+                      </ul>
+                    </div>
+                  </ChapterSection>
+                )
+              })}
+            </ChapterGroup>
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 5 年流年 */}
+        <section className="mb-12">
+          <Eyebrow align="left">📅 家族 5 年流年</Eyebrow>
+          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {data.yearly5.map((y) => (
+              <Card key={y.year} className="p-5" interactive={false}>
+                <div className="text-center mb-3">
+                  <div className="text-2xl mb-1" aria-hidden>{y.icon}</div>
+                  <h4 className="text-xl font-bold text-[var(--jy-text-gold)]" style={{ fontFamily: 'var(--jy-font-display)' }}>
+                    {y.year}
+                  </h4>
+                  <p className="text-xs text-[var(--jy-text-tertiary)]">{y.ganzhi}</p>
+                  <p className="text-sm text-[var(--jy-text-secondary)] mt-1">{y.nickname}</p>
+                </div>
+                <p className="text-xs text-[var(--jy-text-secondary)] mb-3">{y.overallEnergy}</p>
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {y.keywords.map((kw) => (
+                    <span key={kw} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: 'rgba(229,185,92,0.10)', color: 'var(--jy-text-gold)' }}>
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+                <div className="space-y-1 text-[10px] text-[var(--jy-text-tertiary)]">
+                  <p>最佳月:{y.keyMonths.best.join('、')}</p>
+                  <p>最差月:{y.keyMonths.worst.join('、')}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <Card className="mt-6 p-6" interactive={false}>
+            <h4 className="font-medium text-[var(--jy-text-gold)] mb-3">5 年總覽</h4>
+            <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
+              <li>🌟 黃金年:{data.fiveYearOverview.goldenYear}</li>
+              <li>🔄 修整年:{data.fiveYearOverview.repairYear}</li>
+              <li>🎯 重大決策窗口:{data.fiveYearOverview.decisionWindows.join(' / ')}</li>
+              <li>⚠ 最大挑戰:{data.fiveYearOverview.biggestChallenge}</li>
+            </ul>
+          </Card>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 改善處方箋 8 條 */}
+        <section className="mb-12">
+          <Eyebrow align="left">✿ 改善建議——家族處方箋({data.prescriptions.length} 條)</Eyebrow>
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+            {data.prescriptions.map((p, i) => (
+              <PracticeCard
+                key={i}
+                title={p.title}
+                purpose={p.importance}
+                bond={p.psychBasis}
+                steps={p.steps}
+                obstacle={p.expected}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* 行動指南 + 幸運元素 */}
+        <section className="mb-12">
+          <Eyebrow align="left">🍀 家族行動指南 + 幸運元素</Eyebrow>
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+            <Card className="p-5" interactive={false}>
+              <h4 className="font-medium text-[var(--jy-semantic-flow)] mb-3">每日</h4>
+              <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
+                {data.actionGuide.daily.map((a, i) => <li key={i}>· {a}</li>)}
+              </ul>
+            </Card>
+            <Card className="p-5" interactive={false}>
+              <h4 className="font-medium text-[var(--jy-semantic-balance)] mb-3">每月</h4>
+              <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
+                {data.actionGuide.monthly.map((a, i) => <li key={i}>· {a}</li>)}
+              </ul>
+            </Card>
+            <Card className="p-5" interactive={false}>
+              <h4 className="font-medium text-[var(--jy-text-gold)] mb-3">每年</h4>
+              <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
+                {data.actionGuide.yearly.map((a, i) => <li key={i}>· {a}</li>)}
+              </ul>
+            </Card>
+          </div>
+          <div className="mt-6">
+            <LuckyParams data={{
+              colors: [data.actionGuide.luckyElements.commonColor, data.actionGuide.luckyElements.assistColor],
+              numbers: data.actionGuide.luckyElements.numbers,
+              directions: [data.actionGuide.luckyElements.direction],
+              hours: [],
+              plants: [],
+              avoid: [],
+              talents: data.actionGuide.luckyElements.activities,
+            }} />
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 寫給家的話 */}
+        <section className="mb-12">
+          <Card className="p-10" interactive={false}>
+            <h3
+              className="text-2xl font-semibold text-[var(--jy-text-gold)] mb-6 text-center"
+              style={{ fontFamily: 'var(--jy-font-display)' }}
+            >
+              寫給{data.meta.familyName}的話
+            </h3>
+            <p className="text-lg text-[var(--jy-text-gold)] italic text-center mb-6">
+              {data.letter.quickSummary}
+            </p>
+            <QuickSummary title="" bullets={data.letter.body} />
+          </Card>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* Footer */}
+        <section className="space-y-6">
+          <ReportSeal
+            reportId={data.meta.id}
+            hash={data.meta.hash}
+            engineVersion={data.meta.engineVersion}
+            reportDate={data.meta.reportDate}
+          />
+          <CrisisFooter />
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function PairItem({ label, verdict, text }: { label: string; verdict: string; text: string }) {
+  const VERDICT_COLOR: Record<string, string> = {
+    '合': 'var(--jy-semantic-flow)',
+    '需磨合': 'var(--jy-semantic-balance)',
+    '不合': 'var(--jy-semantic-danger)',
+  }
+  const color = VERDICT_COLOR[verdict] || 'var(--jy-text-secondary)'
+  return (
+    <div className="rounded-lg p-3 bg-[var(--jy-bg-card)]/40 border border-[var(--jy-border-hairline)]">
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-xs uppercase tracking-wider text-[var(--jy-text-muted)]">{label}</span>
+        <span className="text-xs font-medium" style={{ color }}>{verdict}</span>
+      </div>
+      <p className="text-sm text-[var(--jy-text-secondary)]">{text}</p>
+    </div>
+  )
+}
+
+function SkeletonView({ id }: { id: string }) {
+  return (
+    <main className="min-h-screen text-[var(--jy-text-primary)]" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
       <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8">
         <Eyebrow>FAMILY BLUEPRINT · 家族藍圖</Eyebrow>
-
-        <h1
-          className="mt-8 font-bold text-[var(--jy-text-primary)]"
-          style={{
-            fontFamily: 'var(--jy-font-display)',
-            fontSize: 'clamp(48px, 6vw, 88px)',
-            lineHeight: 1.05,
-            letterSpacing: '-0.04em',
-          }}
-        >
-          家族藍圖
-        </h1>
-
-        <p className="mt-4 text-[var(--jy-text-tertiary)]">
-          報告 ID:<span className="font-mono">{id}</span>
-        </p>
-
+        <h1 className="mt-8 font-bold" style={{ fontFamily: 'var(--jy-font-display)', fontSize: 'clamp(48px, 6vw, 88px)', lineHeight: 1.05 }}>家族藍圖</h1>
+        <p className="mt-4 text-[var(--jy-text-tertiary)]">報告 ID:<span className="font-mono">{id}</span></p>
         <GoldDivider className="my-8" />
-
         <Card className="p-8">
-          <p className="text-[var(--jy-text-secondary)]">
-            ⚠️ Sprint 1 Skeleton — Sprint 2+ 填:
-          </p>
-          <ul className="mt-4 list-disc space-y-2 pl-6 text-[var(--jy-text-secondary)]">
-            <li>HERO 家族圈(<code>family</code> variant、三人剪影 + 中央連結光線)</li>
-            <li>家族五行分佈對比(三人並排雷達圖 + 「廚房比喻」金色框)</li>
-            <li>父 × 母 / 母 × 子 / 父 × 子 對偶分析(八字合盤 + 紫微互參 + 生肖 + 數字)</li>
-            <li>★ 三角動力圖(SVG 三角 + 沿邊運動粒子、點擊高亮配對)</li>
-            <li>家族溝通模式(情緒傳導鏈 SVG)+ 親子教養方向</li>
-            <li>家族 5 年流年(2026 烈火 🔥 / 2027 餘溫 / 2028 穩定 🪙 / 2029 收成 / 2030 重整)</li>
-            <li>改善建議 8 條(水源保護 / 爸爸減壓 / 教養對齊 / ...)</li>
-            <li>家族行動指南(每日 / 每月 / 每年)+ family letter</li>
-          </ul>
+          <p className="text-[var(--jy-text-secondary)]">⚠️ 找不到此 ID 對應的 demo 資料</p>
+          <p className="mt-3 text-sm text-[var(--jy-text-tertiary)]">Sprint 1 demo 路徑:<code>/report/family-blueprint/he-jia</code></p>
         </Card>
       </div>
     </main>
