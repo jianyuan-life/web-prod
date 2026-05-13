@@ -232,6 +232,103 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
           </div>
         </section>
 
+        {/* 轉篇 - root + caveats(Codex P1 修、v5.10.217) */}
+        <section className="mb-12">
+          <Eyebrow align="left">🎯 轉篇:根源剖析 + 注意事項</Eyebrow>
+          <div className="mt-8 space-y-6">
+            {/* Root */}
+            <Card className="p-8" interactive={false}>
+              <h3
+                className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4"
+                style={{ fontFamily: 'var(--jy-font-display)' }}
+              >
+                🔍 根源剖析
+              </h3>
+              <QuickSummary bullets={[data.root.quickSummary]} />
+              <div className="mt-4 space-y-2">
+                {data.root.body.map((p, i) => (
+                  <p key={i} className="text-[var(--jy-text-secondary)] leading-relaxed">{p}</p>
+                ))}
+              </div>
+            </Card>
+            {/* Caveats */}
+            {data.caveats.length > 0 && (
+              <Card className="p-8" interactive={false}>
+                <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">⚠ 需要注意的地方({data.caveats.length} 條)</h3>
+                <ul className="space-y-4">
+                  {data.caveats.map((c, i) => (
+                    <li key={i} className="border-l-4 pl-4 py-2" style={{ borderLeftColor: 'var(--jy-semantic-balance)' }}>
+                      <h4 className="font-medium text-[var(--jy-semantic-balance)]">{c.title}</h4>
+                      <p className="mt-1 text-sm text-[var(--jy-text-secondary)]">{c.bond}</p>
+                      <p className="mt-2 text-xs text-[var(--jy-text-tertiary)]"><span className="text-[var(--jy-text-muted)]">補救:</span> {c.remedy}</p>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 合篇 - way + goods + improvements(Codex P1 修、v5.10.217) */}
+        <section className="mb-12">
+          <Eyebrow align="left">✦ 合篇:你的路 + 好的地方 + 改善建議</Eyebrow>
+          <div className="mt-8 space-y-6">
+            {/* Way */}
+            <Card className="p-8" interactive={false}>
+              <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4" style={{ fontFamily: 'var(--jy-font-display)' }}>
+                🛤 你的路 — 怎麼走出來
+              </h3>
+              <QuickSummary bullets={[data.way.quickSummary]} />
+              <div className="mt-4 space-y-2">
+                {data.way.body.map((p, i) => (
+                  <p key={i} className="text-[var(--jy-text-secondary)] leading-relaxed">{p}</p>
+                ))}
+              </div>
+            </Card>
+            {/* Goods */}
+            {data.goods.length > 0 && (
+              <Card className="p-8" interactive={false}>
+                <h3 className="text-xl font-semibold text-[var(--jy-semantic-flow)] mb-4">✦ 你好的地方({data.goods.length} 條)</h3>
+                <ul className="space-y-4">
+                  {data.goods.map((g, i) => (
+                    <li key={i}>
+                      <h4 className="font-medium text-[var(--jy-text-gold)]">{g.title}</h4>
+                      <p className="mt-1 text-xs text-[var(--jy-text-tertiary)]">支持系統:{g.support}</p>
+                      <p className="mt-2 text-sm text-[var(--jy-text-secondary)]"><span className="text-[var(--jy-text-muted)]">善用方式:</span> {g.howToUse}</p>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+            {/* Improvements */}
+            {data.improvements.length > 0 && (
+              <Card className="p-8" interactive={false}>
+                <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">✿ 改善建議({data.improvements.length} 條)</h3>
+                <ul className="space-y-6">
+                  {data.improvements.map((imp, i) => (
+                    <li key={i} className="border-l-4 pl-4 py-2" style={{ borderLeftColor: 'var(--jy-text-gold)' }}>
+                      <h4 className="font-semibold text-[var(--jy-text-gold)]">{imp.title}</h4>
+                      <p className="mt-2 text-sm text-[var(--jy-text-tertiary)]">為什麼是你:{imp.whyYou}</p>
+                      <ol className="mt-3 list-decimal pl-6 space-y-1 text-sm text-[var(--jy-text-secondary)]">
+                        {imp.steps.map((s, j) => <li key={j}>{s}</li>)}
+                      </ol>
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <p className="text-[var(--jy-semantic-danger)]">不做會:{imp.ifNot}</p>
+                        <p className="text-[var(--jy-semantic-flow)]">做了會:{imp.ifDo}</p>
+                      </div>
+                      <p className="mt-2 text-xs text-[var(--jy-text-muted)]">⏰ 最佳時機:{imp.bestTime}</p>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+          </div>
+        </section>
+
+        <GoldDivider className="my-12" />
+
         {/* 寫給你的話 */}
         <section className="mb-12">
           <Card className="p-10" interactive={false}>
