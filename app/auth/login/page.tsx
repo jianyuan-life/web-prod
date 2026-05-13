@@ -135,7 +135,7 @@ function LoginForm() {
         </div>
 
         <p className="mt-6 text-center text-sm text-text-muted">
-          還沒有帳號？ <Link href="/auth/signup" className="text-gold hover:underline">立即註冊</Link>
+          還沒有帳號？ <Link href="/auth/signup" className="text-gold underline hover:no-underline">立即註冊</Link>
         </p>
       </div>
     </div>

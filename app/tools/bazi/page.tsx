@@ -1354,7 +1354,7 @@ export default function FreeToolPage() {
                   </div>
                   <p className="text-xs text-text-muted/50">
                     還沒準備好？{' '}
-                    <Link href="/auth/signup" className="text-gold hover:underline">免費註冊帳號</Link>
+                    <Link href="/auth/signup" className="text-gold underline hover:no-underline">免費註冊帳號</Link>
                     {' '}先收藏命格資料，隨時回來查閱
                   </p>
                 </div>
