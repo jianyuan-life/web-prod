@@ -20,10 +20,15 @@ import './globals.css'
 const notoSerif = Noto_Serif_TC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' })
 const notoSans = Noto_Sans_TC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body', display: 'swap' })
 // 簡體中文字體（簡體模式時由 LocaleContent 切換 class）
-const notoSerifSC = Noto_Serif_SC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans-sc', display: 'swap' })
-const notoSansSC = Noto_Sans_SC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body-sc', display: 'swap' })
+// v5.10.253 P1 perf 修(本 session 補做):
+//   - preload: false 防 server-side 強行 preload SC font(只 zh-TW 用戶不會看到簡體、白白下載 ~1MB)
+//   - SC 字體只在 .lang-sc class 存在時才實際載入(瀏覽器懶載)
+//   - 對應 home FCP 3964ms 改善目標(transfer 4239→3200 KiB 預期)
+const notoSerifSC = Noto_Serif_SC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans-sc', display: 'swap', preload: false })
+const notoSansSC = Noto_Sans_SC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body-sc', display: 'swap', preload: false })
 // v5.10.198 UI redesign Phase 2:Cinzel for display(英文 logo / Chapter numbers、Jamie 規格書 2.2 --font-display)
-const cinzel = Cinzel({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-display-google', display: 'swap' })
+// v5.10.253 perf 修:weight 從 4 個減為 2 個(只用 500/700、其他 weight 0 引用)、節省 ~200 KiB
+const cinzel = Cinzel({ subsets: ['latin'], weight: ['500', '700'], variable: '--font-display-google', display: 'swap' })
 
 export const metadata: Metadata = {
   title: {
