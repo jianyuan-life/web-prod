@@ -913,7 +913,22 @@ ${numA?.sub_summary ? `數字能量學摘要：${numA.sub_summary}` : ''}
 農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
 ${analyses.length}套系統排盤完整數據：
 `
+      // v5.10.267 P0 修(Codex L3 audit Finding #4):defensive schema validation
+      //   - 原:`a.score` undefined → "評分：undefined 分" 給 AI(prompt rule #4 說 skip 但 TS 沒實際 skip)
+      //   - 修:strict required field check、缺一即 skip 整個系統 + log warn 給營運(對應 Codex「靜默少資料 hard fail」)
+      let skippedSystems = 0
       for (const a of analyses.slice(0, 15)) {
+        // 必欄位檢查:system 名 + score(必有 calculator 給才算有效)
+        if (!a.system || typeof a.score !== 'number' || isNaN(a.score)) {
+          console.warn(`[generate-report] schema-drift skip system:`, {
+            reportId, planCode,
+            system: a.system,
+            scoreType: typeof a.score,
+            scoreValue: a.score,
+          })
+          skippedSystems++
+          continue
+        }
         userPrompt += `\n【${a.system}】評分：${a.score}分`
         if (a.summary) userPrompt += `\n摘要：${a.summary}`
         if (a.good_points?.length) {
@@ -954,6 +969,16 @@ ${analyses.length}套系統排盤完整數據：
           }
         }
         userPrompt += '\n'
+      }
+
+      // v5.10.267 schema-drift 警告:若 skip 太多系統、可能 calculator 半壞
+      if (skippedSystems > 0) {
+        console.warn(`[generate-report] schema-drift summary: skipped ${skippedSystems}/${analyses.length} systems for report ${reportId}`)
+        // 若 skip > 30% 系統、表示 calculator 大半壞、應失敗(防客戶拿到只有 5/15 系統的劣化報告)
+        if (skippedSystems > Math.floor(analyses.length * 0.3)) {
+          console.error(`[generate-report] CRITICAL: too many systems skipped (${skippedSystems}/${analyses.length}), calculator likely broken`)
+          // 注意:這裡仍 continue 跑 AI、log 給營運監控、Sprint 2.x 改 hard fail + apology email
+        }
       }
 
       // 出門訣時間限制：客戶選的可配合時段
