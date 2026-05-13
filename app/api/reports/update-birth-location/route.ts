@@ -68,10 +68,12 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. 驗證擁有權 + 自助更新次數
+  // v5.10.281 soft delete filter:軟刪報告不可 self-update
   const { data: report, error: readErr } = await supabase
     .from('paid_reports')
     .select('id, customer_email, status, birth_data, self_update_count')
     .eq('id', reportId)
+    .is('deleted_at', null)
     .maybeSingle()
 
   if (readErr || !report) {

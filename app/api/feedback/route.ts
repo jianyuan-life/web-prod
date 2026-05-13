@@ -19,10 +19,12 @@ async function getAuthUser(req: NextRequest): Promise<{ id: string; email: strin
 // 驗證用戶是否為此報告的付費客戶
 async function verifyReportOwner(reportId: string, userEmail: string): Promise<boolean> {
   const supabase = getServiceSupabase()
+  // v5.10.281 soft delete filter:軟刪報告不可寄 feedback
   const { data } = await supabase
     .from('paid_reports')
     .select('customer_email')
     .eq('id', reportId)
+    .is('deleted_at', null)
     .single()
   if (!data?.customer_email) return false
   return data.customer_email.toLowerCase() === userEmail.toLowerCase()

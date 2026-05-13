@@ -40,10 +40,12 @@ export async function GET(req: Request) {
   if (token) {
     try {
       const supabase = getServiceSupabase()
+      // v5.10.281 soft delete filter:被軟刪 report 不公開 share card
       const { data } = await supabase
         .from('paid_reports')
         .select('plan_code, client_name, report_result')
         .eq('access_token', token)
+        .is('deleted_at', null)
         .maybeSingle()
 
       if (data) {

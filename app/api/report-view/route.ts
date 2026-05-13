@@ -33,11 +33,13 @@ export async function POST(req: NextRequest) {
     )
 
     // 驗證 report_id 存在且 access_token 匹配（防偽造刷數據）
+    // v5.10.281 soft delete filter:軟刪報告不可 view tracking
     const { data: report } = await supabase
       .from('paid_reports')
       .select('id')
       .eq('id', report_id)
       .eq('access_token', access_token)
+      .is('deleted_at', null)
       .single()
     if (!report) {
       return NextResponse.json({ error: '報告不存在' }, { status: 404 })

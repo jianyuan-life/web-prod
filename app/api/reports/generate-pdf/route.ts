@@ -70,10 +70,12 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = getServiceSupabase()
+    // v5.10.281 soft delete filter:軟刪報告不可生成 PDF
     const { data: report, error } = await supabase
       .from('paid_reports')
       .select('id, plan_code, status, client_name, pdf_url, report_result, birth_data, customer_email, user_id, stripe_session_id, access_token')
       .eq('id', reportId)
+      .is('deleted_at', null)
       .maybeSingle()
 
     if (error || !report) {
