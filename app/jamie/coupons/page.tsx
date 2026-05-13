@@ -62,7 +62,14 @@ export default function CouponsPage() {
     }
   }
 
-  const toggleCoupon = async (id: string) => {
+  // v5.10.284 typed confirmation:停用 = 客戶結帳不能用、立即影響、必確認(收益面風險)
+  const toggleCoupon = async (id: string, code: string, isActive: boolean) => {
+    const action = isActive ? '停用' : '啟用'
+    const sideEffect = isActive
+      ? '⚠️ 停用後所有客戶結帳將無法使用此優惠碼、立即生效'
+      : '⚠️ 啟用後客戶可立即在結帳頁使用此優惠碼'
+    const msg = `${sideEffect}\n\n優惠碼:${code}\n動作:${action}\n\n確認執行?`
+    if (!confirm(msg)) return
     await adminFetch(`/api/admin/coupons`, {
       adminKey,
       method: 'PATCH',
@@ -71,8 +78,15 @@ export default function CouponsPage() {
     fetchCoupons()
   }
 
-  const deleteCoupon = async (id: string) => {
-    if (!confirm('確認刪除此優惠碼？')) return
+  // v5.10.284 typed confirmation:刪除 = 永久消失、不可救、強制 typed
+  const deleteCoupon = async (id: string, code: string, usedCount: number) => {
+    const typed = prompt(
+      `⚠️ 永久刪除優惠碼!\n\n優惠碼:${code}\n已使用次數:${usedCount}\n\n此操作不可恢復、刪除後客戶無法使用、歷史紀錄保留。\n\n輸入「刪除 ${code}」確認執行:`,
+    )
+    if (typed !== `刪除 ${code}`) {
+      if (typed !== null) alert('輸入不符、刪除已取消')
+      return
+    }
     await adminFetch(`/api/admin/coupons`, {
       adminKey,
       method: 'PATCH',
@@ -206,11 +220,11 @@ export default function CouponsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => toggleCoupon(coupon.id)}
+                <button onClick={() => toggleCoupon(coupon.id, coupon.code, coupon.is_active)}
                   className={`px-3 py-1 rounded text-xs ${coupon.is_active ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-green-400 hover:bg-green-400/10'}`}>
                   {coupon.is_active ? '停用' : '啟用'}
                 </button>
-                <button onClick={() => deleteCoupon(coupon.id)}
+                <button onClick={() => deleteCoupon(coupon.id, coupon.code, coupon.used_count)}
                   className="px-3 py-1 rounded text-xs text-red-400 hover:bg-red-400/10">刪除</button>
               </div>
             </div>

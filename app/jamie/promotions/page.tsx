@@ -68,7 +68,13 @@ export default function PromotionsPage() {
     }
   }
 
-  const togglePromotion = async (id: string) => {
+  // v5.10.284 typed confirmation:促銷停用 / 啟用會立即影響所有客戶結帳價格、必確認
+  const togglePromotion = async (id: string, name: string, discountPercent: number, isActive: boolean) => {
+    const action = isActive ? '停用' : '啟用'
+    const sideEffect = isActive
+      ? `⚠️ 停用後客戶結帳將不再套用此 ${discountPercent}% 折扣`
+      : `⚠️ 啟用後所有適用方案客戶將自動套用 ${discountPercent}% 折扣`
+    if (!confirm(`${sideEffect}\n\n促銷:${name}\n動作:${action}\n\n確認執行?`)) return
     await adminFetch(`/api/admin/promotions`, {
       adminKey,
       method: 'PATCH',
@@ -77,8 +83,15 @@ export default function PromotionsPage() {
     fetchPromotions()
   }
 
-  const deletePromotion = async (id: string) => {
-    if (!confirm('確認刪除此促銷活動？')) return
+  // v5.10.284 typed confirmation:刪除促銷活動 = 永久消失、強制 typed
+  const deletePromotion = async (id: string, name: string) => {
+    const typed = prompt(
+      `⚠️ 永久刪除促銷活動!\n\n促銷:${name}\n\n此操作不可恢復、刪除後無法重建相同 ID。\n\n輸入「刪除 ${name}」確認執行:`,
+    )
+    if (typed !== `刪除 ${name}`) {
+      if (typed !== null) alert('輸入不符、刪除已取消')
+      return
+    }
     await adminFetch(`/api/admin/promotions`, {
       adminKey,
       method: 'PATCH',
@@ -198,11 +211,11 @@ export default function PromotionsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => togglePromotion(promo.id)}
+                  <button onClick={() => togglePromotion(promo.id, promo.name, promo.discount_percent, promo.is_active)}
                     className={`px-3 py-1 rounded text-xs ${promo.is_active ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-green-400 hover:bg-green-400/10'}`}>
                     {promo.is_active ? '停用' : '啟用'}
                   </button>
-                  <button onClick={() => deletePromotion(promo.id)}
+                  <button onClick={() => deletePromotion(promo.id, promo.name)}
                     className="px-3 py-1 rounded text-xs text-red-400 hover:bg-red-400/10">刪除</button>
                 </div>
               </div>

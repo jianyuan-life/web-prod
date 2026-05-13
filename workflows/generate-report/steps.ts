@@ -2704,6 +2704,25 @@ export async function qualityGate(
 
   const warnings: string[] = []
 
+  // ════════════════════════════════════════════════════════════
+  // v5.10.283 全方案跨系統幻想禁區檢查(對應 lesson #056 永久層)
+  // 原本只 G15 跑、現在升級全方案(C/D/G15/R/E1-E4)、任一命中即 P0
+  // 跨系統幻想 = 0 古籍依據幻想、永遠擋、不論 plan / strict mode
+  // ════════════════════════════════════════════════════════════
+  const GLOBAL_FORBIDDEN_CROSS_SYSTEM: { pattern: RegExp; name: string }[] = [
+    { pattern: /八字.*喜用神.*奇門.*方位|奇門.*依.*八字.*喜用神/, name: '八字喜用神 × 奇門擇方(禁)' },
+    { pattern: /紫微.*命主.*奇門|紫微.*對應.*奇門盤面/, name: '紫微命主 × 奇門對應(禁)' },
+    { pattern: /西占.*八字.*十神.*映射|十神.*對應.*行星/, name: '西占 × 八字十神映射(禁)' },
+    { pattern: /喜用神.*[→指].*門.*星.*神|五行.*[→指].*門.*星.*神/, name: '五行 → 門/星/神 cross-domain mapping(禁)' },
+    { pattern: /八字十神.*[→指].*榮格原型|七殺\s*[＝=]\s*戰士|食神\s*[＝=]\s*創造者/, name: '十神 → 榮格原型 mapping(禁、lesson #056 R-11b)' },
+    { pattern: /人類圖.*閘門.*易經.*卦象.*cross|閘門.*[→指].*卦/, name: '人類圖閘門 × 易經卦象 cross-mapping(禁、超出原版 64 卦對應)' },
+  ]
+  for (const rule of GLOBAL_FORBIDDEN_CROSS_SYSTEM) {
+    if (rule.pattern.test(reportContent)) {
+      warnings.push(`[GLOBAL P0-CROSS-SYS] 跨系統幻想禁區命中:${rule.name} (lesson #056、全方案永遠擋、0 古籍依據)`)
+    }
+  }
+
   // 1. 系統數量檢查（C 方案需 15 套）
   if (planCode === 'C' && systemsCount < 15) {
     warnings.push(`排盤系統不足: 期望 15 套，實際 ${systemsCount} 套`)
