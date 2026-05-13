@@ -69,36 +69,33 @@ export async function getReport(type: ReportType, id: string): Promise<ReportDat
     return { type: 'family-blueprint', data: MOCK_FAMILY_BLUEPRINT_HE_JIA }
   }
 
-  // v5.10.240 Sprint 2 starter:真接 Supabase paid_reports
-  // 對應 Codex L3 SOP「第 1 件:1 個 type 真接 + minimum mapping」
-  // life-blueprint 先做、其他 type Sprint 2.x 漸進
+  // v5.10.240 Sprint 2 starter + v5.10.242 擴 4 type:真接 Supabase paid_reports
+  // 對應 Codex L3 SOP「1 個 type 真接 + minimum mapping」+ Gemini L4 「ownership check」
+  // 4 type 全擴、共用 ownership + plan_code 驗證模式
   if (type === 'life-blueprint') {
     return await fetchLifeBlueprintFromSupabase(id)
   }
+  if (type === 'heart-doubts') {
+    return await fetchHeartDoubtsFromSupabase(id)
+  }
+  if (type === 'compatibility') {
+    return await fetchCompatibilityFromSupabase(id)
+  }
+  if (type === 'family-blueprint') {
+    return await fetchFamilyBlueprintFromSupabase(id)
+  }
 
-  // 其他 type 真接 Sprint 2.x 加(Codex 估 1.5-2 天 each)
   return null
 }
 
 /**
- * Sprint 2 starter:從 paid_reports 真接 life-blueprint(plan_code='C')
+ * v5.10.242 共用 helper:fetch + ownership + plan_code 驗證
+ * 對應 Gemini Sprint 2 review 抓 service_role bypass RLS 漏洞、必手動驗 ownership
  *
- * 流程:
- *   1. select paid_reports by id(service_role 可 bypass RLS)
- *   2. 驗證 plan_code='C'(否則 type_mismatch)
- *   3. 用 row 拼 minimum LifeBlueprintReport schema(完整 17 sections parser 留 Sprint 2.x)
- *   4. fallback:rawMarkdown 從 report_result.ai_content
- *
- * Sprint 2 完整化(Codex 推薦):
- *   - markdown parser(regex `^###\s+(.+)$` 切章)
- *   - 17 sections 完整 mapping
- *   - error 分類(not_found / RLS reject / parse_failed)
+ * 回傳 row data 給各 type adapter 自己 mapping、null 表示拒絕(not found / RLS / type mismatch)
  */
-async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | null> {
+async function fetchPaidReportRow(id: string, expectedPlanCode: string) {
   try {
-    // v5.10.241 P0 修(Gemini Sprint 2 review 抓):
-    // service_role 跑 Supabase 會 bypass RLS、必須手動驗 ownership(否則 attacker 用任意 id 拿別人報告)
-    // 拿 logged-in user email、跟 paid_reports.customer_email 比對
     const userEmail = await getServerComponentUserEmail()
     if (!userEmail) {
       console.warn('[adapter] no logged-in user、reject Supabase fetch')
@@ -123,11 +120,38 @@ async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | 
       return null
     }
 
-    if (data.plan_code !== 'C') {
-      console.warn('[adapter] type mismatch:', { id, expected: 'C', got: data.plan_code })
+    if (data.plan_code !== expectedPlanCode) {
+      console.warn('[adapter] type mismatch:', { id, expected: expectedPlanCode, got: data.plan_code })
       return null
     }
 
+    return data
+  } catch (err) {
+    console.error('[adapter] fetchPaidReportRow error:', err)
+    return null
+  }
+}
+
+/**
+ * Sprint 2 starter:從 paid_reports 真接 life-blueprint(plan_code='C')
+ *
+ * 流程:
+ *   1. select paid_reports by id(service_role 可 bypass RLS)
+ *   2. 驗證 plan_code='C'(否則 type_mismatch)
+ *   3. 用 row 拼 minimum LifeBlueprintReport schema(完整 17 sections parser 留 Sprint 2.x)
+ *   4. fallback:rawMarkdown 從 report_result.ai_content
+ *
+ * Sprint 2 完整化(Codex 推薦):
+ *   - markdown parser(regex `^###\s+(.+)$` 切章)
+ *   - 17 sections 完整 mapping
+ *   - error 分類(not_found / RLS reject / parse_failed)
+ */
+async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | null> {
+  // v5.10.241 + v5.10.242:共用 ownership + plan_code 驗證 helper
+  const data = await fetchPaidReportRow(id, 'C')
+  if (!data) return null
+
+  try {
     // Minimum mapping:用 row 拼 LifeBlueprintReport
     // 完整 17 sections parsing 留 Sprint 2.x(Codex 估 1 day)
     // 暫時:meta 真、其他 sections 用 mock(避免空白頁)
@@ -144,7 +168,101 @@ async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | 
 
     return { type: 'life-blueprint', data: report }
   } catch (err) {
-    console.error('[adapter] life-blueprint fetch error:', err)
+    console.error('[adapter] life-blueprint mapping error:', err)
+    return null
+  }
+}
+
+/**
+ * v5.10.242 Sprint 2 擴:heart-doubts(plan_code='D')真接
+ * Minimum mapping、完整 12 sections + 12 evidence parser 留 Sprint 2.x
+ */
+async function fetchHeartDoubtsFromSupabase(id: string): Promise<ReportData | null> {
+  const data = await fetchPaidReportRow(id, 'D')
+  if (!data) return null
+
+  try {
+    const report: HeartDoubtsReport = {
+      ...MOCK_HEART_DOUBTS_HE_XUAN_YI,
+      meta: {
+        ...MOCK_HEART_DOUBTS_HE_XUAN_YI.meta,
+        id: data.id,
+        name: data.client_name || MOCK_HEART_DOUBTS_HE_XUAN_YI.meta.name,
+        reportDate: new Date(data.created_at).toISOString().split('T')[0],
+      },
+    }
+
+    return { type: 'heart-doubts', data: report }
+  } catch (err) {
+    console.error('[adapter] heart-doubts mapping error:', err)
+    return null
+  }
+}
+
+/**
+ * v5.10.242 Sprint 2 擴:compatibility(plan_code='R')真接
+ * Minimum mapping、完整 pair.a/pair.b synastry + 10 sections parser 留 Sprint 2.x
+ *
+ * 注意:R 方案 paid_reports 含 partner_name / partner_birth_date 欄位、目前 select 沒抓
+ * 完整 pair 對接 Sprint 2.x:加 select 'partner_name, partner_birth_date, partner_birth_city'
+ */
+async function fetchCompatibilityFromSupabase(id: string): Promise<ReportData | null> {
+  const data = await fetchPaidReportRow(id, 'R')
+  if (!data) return null
+
+  try {
+    const report: CompatibilityReport = {
+      ...MOCK_COMPATIBILITY_LIN_YUAN_LIN,
+      meta: {
+        ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.meta,
+        id: data.id,
+        reportDate: new Date(data.created_at).toISOString().split('T')[0],
+      },
+      // pair.a 名字用 row data 替換、pair.b 留 mock(Sprint 2.x 補 partner_name)
+      pair: {
+        ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair,
+        a: {
+          ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair.a,
+          name: data.client_name || MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair.a.name,
+        },
+      },
+    }
+
+    return { type: 'compatibility', data: report }
+  } catch (err) {
+    console.error('[adapter] compatibility mapping error:', err)
+    return null
+  }
+}
+
+/**
+ * v5.10.242 Sprint 2 擴:family-blueprint(plan_code='G15')真接
+ * Minimum mapping、完整 members[] + 9 sections parser 留 Sprint 2.x
+ *
+ * 注意:G15 方案 paid_reports 含 family_members 欄位(JSONB)、目前 select 沒抓
+ * 完整 members 對接 Sprint 2.x:加 select 'family_members'
+ */
+async function fetchFamilyBlueprintFromSupabase(id: string): Promise<ReportData | null> {
+  const data = await fetchPaidReportRow(id, 'G15')
+  if (!data) return null
+
+  try {
+    const report: FamilyBlueprintReport = {
+      ...MOCK_FAMILY_BLUEPRINT_HE_JIA,
+      meta: {
+        ...MOCK_FAMILY_BLUEPRINT_HE_JIA.meta,
+        id: data.id,
+        // familyName 從 client_name 推斷(例:何宥諄 → 何家)、Sprint 2.x 加 family_name 欄位後改正
+        familyName: data.client_name
+          ? `${data.client_name.charAt(0)}家`
+          : MOCK_FAMILY_BLUEPRINT_HE_JIA.meta.familyName,
+        reportDate: new Date(data.created_at).toISOString().split('T')[0],
+      },
+    }
+
+    return { type: 'family-blueprint', data: report }
+  } catch (err) {
+    console.error('[adapter] family-blueprint mapping error:', err)
     return null
   }
 }
