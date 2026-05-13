@@ -1,0 +1,264 @@
+[
+  {
+    "token": "d143f949-192c-4808-a516-61b03a19f146",
+    "viewport": {
+      "name": "desktop1440",
+      "width": 1440,
+      "height": 900
+    },
+    "version": "v5.10.40",
+    "data": {
+      "stacks": [
+        {
+          "idx": 0,
+          "maxWidth": "800px",
+          "offsetWidth": 800,
+          "clientWidth": 800,
+          "cardCount": 8
+        },
+        {
+          "idx": 1,
+          "maxWidth": "800px",
+          "offsetWidth": 800,
+          "clientWidth": 800,
+          "cardCount": 12
+        },
+        {
+          "idx": 2,
+          "maxWidth": "800px",
+          "offsetWidth": 800,
+          "clientWidth": 800,
+          "cardCount": 12
+        },
+        {
+          "idx": 3,
+          "maxWidth": "800px",
+          "offsetWidth": 800,
+          "clientWidth": 800,
+          "cardCount": 7
+        }
+      ],
+      "cardSamples": [
+        {
+          "idx": 0,
+          "cardWidth": 800,
+          "title": "1",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        },
+        {
+          "idx": 1,
+          "cardWidth": 800,
+          "title": "2",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        },
+        {
+          "idx": 2,
+          "cardWidth": 800,
+          "title": "3",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        },
+        {
+          "idx": 3,
+          "cardWidth": 800,
+          "title": "4",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        },
+        {
+          "idx": 4,
+          "cardWidth": 800,
+          "title": "5",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        }
+      ],
+      "overflowX": false,
+      "truncatedCells": 0,
+      "totalCards": 39
+    }
+  },
+  {
+    "token": "d143f949-192c-4808-a516-61b03a19f146",
+    "viewport": {
+      "name": "mobile375",
+      "width": 375,
+      "height": 812
+    },
+    "version": "v5.10.40",
+    "data": {
+      "stacks": [
+        {
+          "idx": 0,
+          "maxWidth": "800px",
+          "offsetWidth": 294,
+          "clientWidth": 294,
+          "cardCount": 8
+        },
+        {
+          "idx": 1,
+          "maxWidth": "800px",
+          "offsetWidth": 294,
+          "clientWidth": 294,
+          "cardCount": 12
+        },
+        {
+          "idx": 2,
+          "maxWidth": "800px",
+          "offsetWidth": 294,
+          "clientWidth": 294,
+          "cardCount": 12
+        },
+        {
+          "idx": 3,
+          "maxWidth": "800px",
+          "offsetWidth": 294,
+          "clientWidth": 294,
+          "cardCount": 7
+        }
+      ],
+      "cardSamples": [
+        {
+          "idx": 0,
+          "cardWidth": 294,
+          "title": "1",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        },
+        {
+          "idx": 1,
+          "cardWidth": 294,
+          "title": "2",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        },
+        {
+          "idx": 2,
+          "cardWidth": 294,
+          "title": "3",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        },
+        {
+          "idx": 3,
+          "cardWidth": 294,
+          "title": "4",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        },
+        {
+          "idx": 4,
+          "cardWidth": 294,
+          "title": "5",
+          "titleFontSize": "18px",
+          "titleColor": "rgb(201, 168, 76)",
+          "titleFontWeight": "600",
+          "titleLineHeight": "24.3px",
+          "labelText": null,
+          "labelColor": null,
+          "labelFontSize": null,
+          "labelFontWeight": null,
+          "labelLetterSpacing": null,
+          "valueColor": null,
+          "valueFontSize": null,
+          "rowCount": 0
+        }
+      ],
+      "overflowX": false,
+      "truncatedCells": 0,
+      "totalCards": 39
+    }
+  }
+]

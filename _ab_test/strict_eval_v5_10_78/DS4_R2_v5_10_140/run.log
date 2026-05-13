@@ -1,0 +1,33 @@
+
+=== C 何宥諄 desktop (1440x900) ===
+https://jianyuan.life/report/d143f949-192c-4808-a516-61b03a19f146?cb=v5_10_140
+  ver: v5.10.140  all: v5.10.140
+  sidebar: exists=true display=block width=240px linkCount=17
+  main: width=1112px found=true
+  click-jump: scrolled=9154px success=true
+  scrollspy: active=0/34 idx=-1
+
+=== C 何宥諄 mobile (375x812) ===
+https://jianyuan.life/report/d143f949-192c-4808-a516-61b03a19f146?cb=v5_10_140
+  ver: v5.10.140  all: v5.10.140
+  sidebar: exists=true display=none width=0px linkCount=17
+  main: width=343px found=true
+  mobileHidden: true
+
+=== C 何紀萳 desktop (1440x900) ===
+https://jianyuan.life/report/64b15504-b3c4-4153-aff6-3f279363dc7e?cb=v5_10_140
+  ver: v5.10.140  all: v5.10.140
+  sidebar: exists=true display=block width=240px linkCount=16
+  main: width=1112px found=true
+  click-jump: scrolled=10898px success=true
+  scrollspy: active=0/32 idx=-1
+
+=== C 何紀萳 mobile (375x812) ===
+https://jianyuan.life/report/64b15504-b3c4-4153-aff6-3f279363dc7e?cb=v5_10_140
+  ver: v5.10.140  all: v5.10.140
+  sidebar: exists=true display=none width=0px linkCount=16
+  main: width=343px found=true
+  mobileHidden: true
+
+=== JSON saved ===
+output: D:\Users\Desktop\Claude專案\Claude-鑑源\Claude-鑑源網頁製作部門\_ab_test\strict_eval_v5_10_78\DS4_R2_v5_10_140\capture_result.json

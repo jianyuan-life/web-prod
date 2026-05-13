@@ -1,0 +1,51 @@
+
+=== C 何宥諄 desktop (1440x900) ===
+https://jianyuan.life/report/d143f949-192c-4808-a516-61b03a19f146?cb=v5_10_127_L4
+  ver: v5.10.130  height: 70525px ✓  tables: 16/16  noise: SS=0 chip=0 callout-fb=0 十五-leak=3
+
+=== C 何宥諄 mobile (390x844) ===
+https://jianyuan.life/report/d143f949-192c-4808-a516-61b03a19f146?cb=v5_10_127_L4
+  ver: v5.10.130  height: 137727px ✗  tables: 16/16  noise: SS=0 chip=0 callout-fb=0 十五-leak=3
+
+=== C 何紀萳 desktop (1440x900) ===
+https://jianyuan.life/report/64b15504-b3c4-4153-aff6-3f279363dc7e?cb=v5_10_127_L4
+  ver: v5.10.130  height: 66717px ✓  tables: 19/19  noise: SS=0 chip=0 callout-fb=0 十五-leak=3
+
+=== C 何紀萳 mobile (390x844) ===
+https://jianyuan.life/report/64b15504-b3c4-4153-aff6-3f279363dc7e?cb=v5_10_127_L4
+  ver: v5.10.131  height: 137138px ✗  tables: 19/19  noise: SS=0 chip=0 callout-fb=0 十五-leak=3
+
+=== G15 何家(271) desktop (1440x900) ===
+https://jianyuan.life/report/271dcda0-e348-4d98-9c09-4beb14a4634a?cb=v5_10_127_L4
+  ver: v5.10.131  height: 40464px ✓  tables: 2/2  noise: SS=0 chip=0 callout-fb=0 十五-leak=0
+
+=== G15 何家(271) mobile (390x844) ===
+https://jianyuan.life/report/271dcda0-e348-4d98-9c09-4beb14a4634a?cb=v5_10_127_L4
+  ver: v5.10.131  height: 77622px ✓  tables: 2/2  noise: SS=0 chip=0 callout-fb=0 十五-leak=0
+
+=== G15 何家(9b6) desktop (1440x900) ===
+https://jianyuan.life/report/9b6edb0a-f1db-4484-8306-c088e78be8c8?cb=v5_10_127_L4
+  ver: v5.10.131  height: 36250px ✓  tables: 8/8  noise: SS=0 chip=0 callout-fb=0 十五-leak=0
+
+=== G15 何家(9b6) mobile (390x844) ===
+https://jianyuan.life/report/9b6edb0a-f1db-4484-8306-c088e78be8c8?cb=v5_10_127_L4
+  ver: v5.10.131  height: 68390px ✓  tables: 8/8  noise: SS=0 chip=0 callout-fb=0 十五-leak=0
+
+=== D 何宣 desktop (1440x900) ===
+https://jianyuan.life/report/4e636025-fb87-4099-a91d-a4f6c64df7e5?cb=v5_10_127_L4
+  ver: v5.10.131  height: 1430px ✓  tables: 0/0  noise: SS=0 chip=0 callout-fb=0 十五-leak=0
+
+=== D 何宣 mobile (390x844) ===
+https://jianyuan.life/report/4e636025-fb87-4099-a91d-a4f6c64df7e5?cb=v5_10_127_L4
+  ver: v5.10.131  height: 1513px ✓  tables: 0/0  noise: SS=0 chip=0 callout-fb=0 十五-leak=0
+
+=== R 李馮 desktop (1440x900) ===
+https://jianyuan.life/report/89e112dc-e0c1-4f0b-b8e8-5e5b51f6f8c7?cb=v5_10_127_L4
+  ver: v5.10.131  height: 1430px ✓  tables: 0/0  noise: SS=0 chip=0 callout-fb=0 十五-leak=0
+
+=== R 李馮 mobile (390x844) ===
+https://jianyuan.life/report/89e112dc-e0c1-4f0b-b8e8-5e5b51f6f8c7?cb=v5_10_127_L4
+  ver: v5.10.131  height: 1513px ✓  tables: 0/0  noise: SS=0 chip=0 callout-fb=0 十五-leak=0
+
+=== JSON saved: D:\Users\Desktop\Claude專案\Claude-鑑源\Claude-鑑源網頁製作部門\_ab_test\strict_eval_v5_10_78\visual_audit_v5_10_127_L4\capture_result.json ===
+=== SUMMARY: avg=88.67  PASS(95+)=NO ===

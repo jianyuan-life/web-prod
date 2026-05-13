@@ -1,0 +1,279 @@
+[
+  {
+    "token": "d143f949-192c-4808-a516-61b03a19f146",
+    "name": "C_HoYouChun",
+    "plan": "C",
+    "viewport": "desktop",
+    "versionDetected": "v5.10.139",
+    "versionAll": [
+      "v5.10.139"
+    ],
+    "typography": {
+      "report-p": {
+        "count": 261,
+        "fontSize": "18px",
+        "lineHeight": "32.4px",
+        "marginTop": "0px",
+        "marginBottom": "40px",
+        "fontWeight": "400",
+        "color": "rgb(26, 35, 64)"
+      },
+      "report-h3": {
+        "count": 31,
+        "fontSize": "20px",
+        "lineHeight": "30px",
+        "marginTop": "16px",
+        "marginBottom": "16px",
+        "fontWeight": "600",
+        "color": "rgb(201, 168, 76)"
+      },
+      "report-h2": {
+        "count": 0
+      }
+    },
+    "leaks": {
+      "dongxi15": 0,
+      "shiwu_xt": 1,
+      "shiwu_da": 0,
+      "shiwu_15set": 0,
+      "digit_15set": 2,
+      "fifteen_total": 4,
+      "fourteen_xt": 12
+    },
+    "starStar": 0,
+    "callouts": {
+      "total": 0,
+      "fallback": 0,
+      "fallbackTexts": []
+    },
+    "lazyguide": {
+      "hasLazyguide": true,
+      "partSectionCount": 4
+    },
+    "motion": {
+      "motionFast": "150ms",
+      "motionMedium": "200ms",
+      "motionSlow": "300ms",
+      "easingStandard": "cubic-bezier(0.2, 0, 0, 1)"
+    },
+    "dims": {
+      "documentHeight": 69722,
+      "viewportWidth": 1440
+    },
+    "screenshot": "screenshots\\C_d143f949_desktop_v5_10_138.png"
+  },
+  {
+    "token": "64b15504-b3c4-4153-aff6-3f279363dc7e",
+    "name": "C_HoChiNan",
+    "plan": "C",
+    "viewport": "desktop",
+    "versionDetected": "v5.10.139",
+    "versionAll": [
+      "v5.10.139"
+    ],
+    "typography": {
+      "report-p": {
+        "count": 318,
+        "fontSize": "18px",
+        "lineHeight": "32.4px",
+        "marginTop": "0px",
+        "marginBottom": "40px",
+        "fontWeight": "400",
+        "color": "rgb(26, 35, 64)"
+      },
+      "report-h3": {
+        "count": 33,
+        "fontSize": "20px",
+        "lineHeight": "30px",
+        "marginTop": "16px",
+        "marginBottom": "16px",
+        "fontWeight": "600",
+        "color": "rgb(201, 168, 76)"
+      },
+      "report-h2": {
+        "count": 0
+      }
+    },
+    "leaks": {
+      "dongxi15": 0,
+      "shiwu_xt": 1,
+      "shiwu_da": 0,
+      "shiwu_15set": 0,
+      "digit_15set": 2,
+      "fifteen_total": 4,
+      "fourteen_xt": 11
+    },
+    "starStar": 0,
+    "callouts": {
+      "total": 0,
+      "fallback": 0,
+      "fallbackTexts": []
+    },
+    "lazyguide": {
+      "hasLazyguide": true,
+      "partSectionCount": 4
+    },
+    "motion": {
+      "motionFast": "150ms",
+      "motionMedium": "200ms",
+      "motionSlow": "300ms",
+      "easingStandard": "cubic-bezier(0.2, 0, 0, 1)"
+    },
+    "dims": {
+      "documentHeight": 65752,
+      "viewportWidth": 1440
+    },
+    "screenshot": "screenshots\\C_64b15504_desktop_v5_10_138.png"
+  },
+  {
+    "token": "271dcda0-e348-4d98-9c09-4beb14a4634a",
+    "name": "G15_HoFamily",
+    "plan": "G15",
+    "viewport": "desktop",
+    "versionDetected": "v5.10.139",
+    "versionAll": [
+      "v5.10.139"
+    ],
+    "typography": {
+      "report-p": {
+        "count": 144,
+        "fontSize": "19px",
+        "lineHeight": "38px",
+        "marginTop": "0px",
+        "marginBottom": "44px",
+        "fontWeight": "400",
+        "color": "rgb(232, 228, 222)"
+      },
+      "report-h3": {
+        "count": 20,
+        "fontSize": "19px",
+        "lineHeight": "29.45px",
+        "marginTop": "16px",
+        "marginBottom": "16px",
+        "fontWeight": "600",
+        "color": "rgb(201, 168, 76)"
+      },
+      "report-h2": {
+        "count": 0
+      }
+    },
+    "leaks": {
+      "dongxi15": 0,
+      "shiwu_xt": 0,
+      "shiwu_da": 0,
+      "shiwu_15set": 0,
+      "digit_15set": 0,
+      "fifteen_total": 0,
+      "fourteen_xt": 2
+    },
+    "starStar": 0,
+    "callouts": {
+      "total": 0,
+      "fallback": 0,
+      "fallbackTexts": []
+    },
+    "lazyguide": {
+      "hasLazyguide": true,
+      "partSectionCount": 4
+    },
+    "motion": {
+      "motionFast": "150ms",
+      "motionMedium": "200ms",
+      "motionSlow": "300ms",
+      "easingStandard": "cubic-bezier(0.2, 0, 0, 1)"
+    },
+    "dims": {
+      "documentHeight": 40853,
+      "viewportWidth": 1440
+    },
+    "screenshot": "screenshots\\G15_271dcda0_desktop_v5_10_138.png"
+  },
+  {
+    "token": "9b6edb0a-f1db-4484-8306-c088e78be8c8",
+    "name": "unknown_9b",
+    "plan": "?",
+    "viewport": "desktop",
+    "error": "ENOENT: no such file or directory, open 'D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_round3_v5_10_138_final\\screenshots\\?_9b6edb0a_desktop_v5_10_138.png'"
+  },
+  {
+    "id": "4e636025-fb87-4099-a91d-a4f6c64df7e5",
+    "name": "D_HoXuan",
+    "plan": "D",
+    "viewport": "desktop",
+    "error": "404",
+    "versionDetected": "v5.10.139",
+    "textLen": 389
+  },
+  {
+    "id": "89e112dc-e0c1-4f0b-b8e8-5e5b51f6f8c7",
+    "name": "unknown_89",
+    "plan": "?",
+    "viewport": "desktop",
+    "error": "404",
+    "versionDetected": "v5.10.139",
+    "textLen": 389
+  },
+  {
+    "token": "d143f949-192c-4808-a516-61b03a19f146",
+    "name": "C_HoYouChun_M",
+    "plan": "C",
+    "viewport": "mobile",
+    "versionDetected": "v5.10.139",
+    "versionAll": [
+      "v5.10.139"
+    ],
+    "typography": {
+      "report-p": {
+        "count": 261,
+        "fontSize": "17px",
+        "lineHeight": "31.45px",
+        "marginTop": "0px",
+        "marginBottom": "40px",
+        "fontWeight": "400",
+        "color": "rgb(26, 35, 64)"
+      },
+      "report-h3": {
+        "count": 31,
+        "fontSize": "16.8px",
+        "lineHeight": "25.2px",
+        "marginTop": "16px",
+        "marginBottom": "16px",
+        "fontWeight": "600",
+        "color": "rgb(201, 168, 76)"
+      },
+      "report-h2": {
+        "count": 0
+      }
+    },
+    "leaks": {
+      "dongxi15": 0,
+      "shiwu_xt": 2,
+      "shiwu_da": 0,
+      "shiwu_15set": 0,
+      "digit_15set": 2,
+      "fifteen_total": 5,
+      "fourteen_xt": 13
+    },
+    "starStar": 0,
+    "callouts": {
+      "total": 0,
+      "fallback": 0,
+      "fallbackTexts": []
+    },
+    "lazyguide": {
+      "hasLazyguide": true,
+      "partSectionCount": 4
+    },
+    "motion": {
+      "motionFast": "150ms",
+      "motionMedium": "200ms",
+      "motionSlow": "300ms",
+      "easingStandard": "cubic-bezier(0.2, 0, 0, 1)"
+    },
+    "dims": {
+      "documentHeight": 142529,
+      "viewportWidth": 375
+    },
+    "screenshot": "screenshots\\C_d143f949_mobile_v5_10_138.png"
+  }
+]

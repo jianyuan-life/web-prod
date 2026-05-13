@@ -526,7 +526,7 @@ function SkeletonView({ id }: { id: string }) {
         <Card className="p-8">
           <p className="text-[var(--jy-text-secondary)]">⚠️ 找不到此 ID 對應的 demo 資料</p>
           <p className="mt-3 text-sm text-[var(--jy-text-tertiary)]">
-            Sprint 1 demo 路徑:<code>/report/life-blueprint/he-yu-zhun</code>
+            Sprint 1 demo 路徑:<code>/r/life-blueprint/he-yu-zhun</code>
           </p>
         </Card>
       </div>

@@ -1,0 +1,168 @@
+{
+  "perClient": [
+    {
+      "client": "C_d143f949",
+      "name": "C 何宥諄",
+      "plan": "C",
+      "D1": 20,
+      "D2": 10,
+      "D3": 8,
+      "D4": 20,
+      "D5": 8,
+      "total": 66,
+      "mobileHeight": 137727,
+      "ratio": "1.95",
+      "noise": {
+        "d": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 3
+        },
+        "m": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 3
+        }
+      }
+    },
+    {
+      "client": "C_64b15504",
+      "name": "C 何紀萳",
+      "plan": "C",
+      "D1": 20,
+      "D2": 10,
+      "D3": 8,
+      "D4": 20,
+      "D5": 8,
+      "total": 66,
+      "mobileHeight": 137138,
+      "ratio": "2.06",
+      "noise": {
+        "d": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 3
+        },
+        "m": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 3
+        }
+      }
+    },
+    {
+      "client": "G15_271dcda0",
+      "name": "G15 何家(271)",
+      "plan": "G15",
+      "D1": 20,
+      "D2": 20,
+      "D3": 20,
+      "D4": 20,
+      "D5": 20,
+      "total": 100,
+      "mobileHeight": 77622,
+      "ratio": "1.92",
+      "noise": {
+        "d": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 0
+        },
+        "m": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 0
+        }
+      }
+    },
+    {
+      "client": "G15_9b6edb0a",
+      "name": "G15 何家(9b6)",
+      "plan": "G15",
+      "D1": 20,
+      "D2": 20,
+      "D3": 20,
+      "D4": 20,
+      "D5": 20,
+      "total": 100,
+      "mobileHeight": 68390,
+      "ratio": "1.89",
+      "noise": {
+        "d": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 0
+        },
+        "m": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 0
+        }
+      }
+    },
+    {
+      "client": "D_4e636025",
+      "name": "D 何宣",
+      "plan": "D",
+      "D1": 20,
+      "D2": 20,
+      "D3": 20,
+      "D4": 20,
+      "D5": 20,
+      "total": 100,
+      "mobileHeight": 1513,
+      "ratio": "1.06",
+      "noise": {
+        "d": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 0
+        },
+        "m": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 0
+        }
+      }
+    },
+    {
+      "client": "R_89e112dc",
+      "name": "R 李馮",
+      "plan": "R",
+      "D1": 20,
+      "D2": 20,
+      "D3": 20,
+      "D4": 20,
+      "D5": 20,
+      "total": 100,
+      "mobileHeight": 1513,
+      "ratio": "1.06",
+      "noise": {
+        "d": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 0
+        },
+        "m": {
+          "starStar": 0,
+          "chip": 0,
+          "calloutFallback": 0,
+          "fifteenLeak": 0
+        }
+      }
+    }
+  ],
+  "average": 88.66666666666667,
+  "totalClients": 6
+}

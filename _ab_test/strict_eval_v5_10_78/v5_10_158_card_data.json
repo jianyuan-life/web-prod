@@ -1,0 +1,53 @@
+[
+  {
+    "token": "C_HoYouChun",
+    "vp": "desktop_1920",
+    "title": "1",
+    "title_color": "rgb(201, 168, 76)",
+    "title_fontSize": "15px",
+    "title_borderBottom": "2px solid rgba(201, 168, 76, 0.2)",
+    "row_count": 5,
+    "first_3_rows": [
+      "年齡2-11",
+      "年份2025-2034",
+      "核心主題自我建構期，打基礎"
+    ],
+    "card_padding": "14px 18px",
+    "card_border": "1px solid rgba(201, 168, 76, 0.15)",
+    "card_bg": "rgba(255, 255, 255, 0.02)"
+  },
+  {
+    "token": "C_HoYouChun",
+    "vp": "desktop_1440",
+    "title": "1",
+    "title_color": "rgb(201, 168, 76)",
+    "title_fontSize": "15px",
+    "title_borderBottom": "2px solid rgba(201, 168, 76, 0.2)",
+    "row_count": 5,
+    "first_3_rows": [
+      "年齡2-11",
+      "年份2025-2034",
+      "核心主題自我建構期，打基礎"
+    ],
+    "card_padding": "14px 18px",
+    "card_border": "1px solid rgba(201, 168, 76, 0.15)",
+    "card_bg": "rgba(255, 255, 255, 0.02)"
+  },
+  {
+    "token": "C_HoYouChun",
+    "vp": "mobile_375",
+    "title": "1",
+    "title_color": "rgb(201, 168, 76)",
+    "title_fontSize": "15px",
+    "title_borderBottom": "2px solid rgba(201, 168, 76, 0.2)",
+    "row_count": 5,
+    "first_3_rows": [
+      "年齡2-11",
+      "年份2025-2034",
+      "核心主題自我建構期，打基礎"
+    ],
+    "card_padding": "14px 18px",
+    "card_border": "1px solid rgba(201, 168, 76, 0.15)",
+    "card_bg": "rgba(255, 255, 255, 0.02)"
+  }
+]

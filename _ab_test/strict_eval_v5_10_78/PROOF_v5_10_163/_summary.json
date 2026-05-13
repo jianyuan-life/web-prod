@@ -1,0 +1,513 @@
+{
+  "ts": "2026-05-10T13:50:31.972Z",
+  "reports": [
+    {
+      "name": "C_d143f949",
+      "plan": "C",
+      "token": "d143f949-192c-4808-a516-61b03a19f146",
+      "screenshots": [
+        {
+          "type": "card_stack",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_d143f949_card_stack.png"
+        },
+        {
+          "type": "table_breakout",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_d143f949_table_breakout.png"
+        },
+        {
+          "type": "section",
+          "kw": "節奏",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_d143f949_section_節奏.png"
+        },
+        {
+          "type": "section",
+          "kw": "12 個月",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_d143f949_section_12_個月.png"
+        }
+      ],
+      "report_version": [
+        "v5.10.163"
+      ],
+      "inventory": {
+        "card_stack_count": 4,
+        "table_breakout_count": 12,
+        "table_count": 12,
+        "stack_data": [
+          {
+            "idx": 0,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 1,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 2,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 3,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          }
+        ]
+      },
+      "sections": [
+        {
+          "kw": "節奏",
+          "tag": "H3",
+          "text": "人生節奏總覽表",
+          "top": 38025
+        },
+        {
+          "kw": "12 個月",
+          "tag": "H3",
+          "text": "12 個月逐月分析",
+          "top": 45680
+        },
+        {
+          "kw": "矩陣",
+          "tag": "H2",
+          "text": "九、十四系統交叉驗證矩陣",
+          "top": 34320
+        },
+        {
+          "kw": "系統",
+          "tag": "H3",
+          "text": "十四套命理系統交叉評分",
+          "top": 2662
+        },
+        {
+          "kw": "人生",
+          "tag": "H2",
+          "text": "何宥諄 人生藍圖（兒童專版）",
+          "top": 4556
+        },
+        {
+          "kw": "運勢曲線",
+          "tag": "H2",
+          "text": "八、年度運勢曲線（2026・丙午年）",
+          "top": 54798
+        },
+        {
+          "kw": "速查表",
+          "tag": "H2",
+          "text": "十三、幸運參數速查表",
+          "top": 54273
+        },
+        {
+          "kw": "幸運參數",
+          "tag": "H2",
+          "text": "十三、幸運參數速查表",
+          "top": 54273
+        }
+      ]
+    },
+    {
+      "name": "C_64b15504",
+      "plan": "C",
+      "token": "64b15504-b3c4-4153-aff6-3f279363dc7e",
+      "screenshots": [
+        {
+          "type": "card_stack",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_64b15504_card_stack.png"
+        },
+        {
+          "type": "table_breakout",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_64b15504_table_breakout.png"
+        },
+        {
+          "type": "section",
+          "kw": "節奏",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_64b15504_section_節奏.png"
+        },
+        {
+          "type": "section",
+          "kw": "12 個月",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_64b15504_section_12_個月.png"
+        }
+      ],
+      "report_version": [
+        "v5.10.163"
+      ],
+      "inventory": {
+        "card_stack_count": 4,
+        "table_breakout_count": 15,
+        "table_count": 15,
+        "stack_data": [
+          {
+            "idx": 0,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 1,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 2,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 3,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          }
+        ]
+      },
+      "sections": [
+        {
+          "kw": "節奏",
+          "tag": "H3",
+          "text": "未來——你接下來的人生節奏",
+          "top": 37357
+        },
+        {
+          "kw": "12 個月",
+          "tag": "H3",
+          "text": "12 個月逐月分析",
+          "top": 44753
+        },
+        {
+          "kw": "矩陣",
+          "tag": "H2",
+          "text": "八、十四系統交叉驗證矩陣",
+          "top": 35779
+        },
+        {
+          "kw": "系統",
+          "tag": "H3",
+          "text": "十四套命理系統交叉評分",
+          "top": 2989
+        },
+        {
+          "kw": "人生",
+          "tag": "H2",
+          "text": "何紀萳 人生藍圖",
+          "top": 5033
+        },
+        {
+          "kw": "速查表",
+          "tag": "H2",
+          "text": "十二、幸運參數速查表",
+          "top": 54961
+        },
+        {
+          "kw": "幸運參數",
+          "tag": "H2",
+          "text": "十二、幸運參數速查表",
+          "top": 54961
+        }
+      ]
+    },
+    {
+      "name": "C_bf9e30da",
+      "plan": "C",
+      "token": "bf9e30da-eaba-4efd-95ec-1e5e3b8e30f9",
+      "screenshots": [
+        {
+          "type": "card_stack",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_bf9e30da_card_stack.png"
+        },
+        {
+          "type": "table_breakout",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_bf9e30da_table_breakout.png"
+        },
+        {
+          "type": "section",
+          "kw": "節奏",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_bf9e30da_section_節奏.png"
+        },
+        {
+          "type": "section",
+          "kw": "12 個月",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\C_bf9e30da_section_12_個月.png"
+        }
+      ],
+      "report_version": [
+        "v5.10.163"
+      ],
+      "inventory": {
+        "card_stack_count": 4,
+        "table_breakout_count": 11,
+        "table_count": 11,
+        "stack_data": [
+          {
+            "idx": 0,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 1,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 2,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          },
+          {
+            "idx": 3,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          }
+        ]
+      },
+      "sections": [
+        {
+          "kw": "節奏",
+          "tag": "H3",
+          "text": "人生節奏總覽表",
+          "top": 40695
+        },
+        {
+          "kw": "12 個月",
+          "tag": "H3",
+          "text": "12 個月逐月分析",
+          "top": 46564
+        },
+        {
+          "kw": "矩陣",
+          "tag": "H2",
+          "text": "九、十四系統交叉驗證矩陣",
+          "top": 36801
+        },
+        {
+          "kw": "系統",
+          "tag": "H3",
+          "text": "十四套命理系統交叉評分",
+          "top": 2614
+        },
+        {
+          "kw": "人生",
+          "tag": "H2",
+          "text": "何宣逸 人生藍圖",
+          "top": 5088
+        },
+        {
+          "kw": "運勢曲線",
+          "tag": "H2",
+          "text": "八、年度運勢曲線（丙午年、西元 2026 年）",
+          "top": 53482
+        },
+        {
+          "kw": "速查表",
+          "tag": "H2",
+          "text": "十三、幸運參數速查表",
+          "top": 54299
+        },
+        {
+          "kw": "幸運參數",
+          "tag": "H2",
+          "text": "十三、幸運參數速查表",
+          "top": 54299
+        }
+      ]
+    },
+    {
+      "name": "G15_9b6edb0a",
+      "plan": "G15",
+      "token": "9b6edb0a-f1db-4484-8306-c088e78be8c8",
+      "screenshots": [
+        {
+          "type": "card_stack",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\G15_9b6edb0a_card_stack.png"
+        },
+        {
+          "type": "table_breakout",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\G15_9b6edb0a_table_breakout.png"
+        },
+        {
+          "type": "section",
+          "kw": "人生",
+          "path": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\PROOF_v5_10_163\\G15_9b6edb0a_section_人生.png"
+        }
+      ],
+      "report_version": [
+        "v5.10.163"
+      ],
+      "inventory": {
+        "card_stack_count": 1,
+        "table_breakout_count": 7,
+        "table_count": 7,
+        "stack_data": [
+          {
+            "idx": 0,
+            "offsetLeft": 278,
+            "offsetWidth": 800,
+            "rectLeft": 330,
+            "rectWidth": 800,
+            "parentWidth": 1299,
+            "parentLeft": 80,
+            "maxWidth": "800px",
+            "margin": "18px 249.5px",
+            "marginLeft": "249.5px",
+            "marginRight": "249.5px",
+            "display": "block",
+            "firstCardWidth": 800,
+            "col1Text": null,
+            "col1Width": null
+          }
+        ]
+      },
+      "sections": [
+        {
+          "kw": "人生",
+          "tag": "H2",
+          "text": "人生軌跡 — 發展與現況",
+          "top": 2891
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+=== FULL SCROLL v5.10.164 SUMMARY ===
+
+
+[C] token=d143f949-192c-4808-a516-61b03a19f146
+  page height: 36250px
+  shots: 30
+  blank shots: 0
+  console errors: 0
+  page errors: 1
+  files:
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_00.png (y=0, SPAN, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_01.png (y=800, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_02.png (y=1600, DIV, els=9)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_03.png (y=2400, DIV, els=9)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_04.png (y=3200, DIV, els=11)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_05.png (y=4000, DIV, els=12)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_06.png (y=4800, DIV, els=11)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_07.png (y=5600, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_08.png (y=6400, STRONG, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_09.png (y=7200, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_10.png (y=8000, BLOCKQUOTE, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_11.png (y=8800, BLOCKQUOTE, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_12.png (y=9600, TH, els=18)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_13.png (y=10400, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_14.png (y=11200, LI, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_15.png (y=12000, BLOCKQUOTE, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_16.png (y=12800, DIV, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_17.png (y=13600, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_18.png (y=14400, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_19.png (y=15200, UL, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_20.png (y=16000, BLOCKQUOTE, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_21.png (y=16800, BLOCKQUOTE, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_22.png (y=17600, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_23.png (y=18400, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_24.png (y=19200, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_25.png (y=20000, TH, els=18)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_26.png (y=20800, LI, els=18)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_27.png (y=21600, DIV, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_28.png (y=22400, BLOCKQUOTE, els=17)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/C/scroll_29.png (y=23200, BLOCKQUOTE, els=17)
+  --- page errors ---
+    Error: Minified React error #419; visit https://react.dev/errors/419 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+
+[D] token=9c08fc78-7c0e-4bd3-a70f-6f0e714c62bd
+  page height: 16327px
+  shots: 21
+  blank shots: 0
+  console errors: 0
+  page errors: 1
+  files:
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_00.png (y=0, DIV, els=11)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_01.png (y=800, DIV, els=9)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_02.png (y=1600, P, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_03.png (y=2400, DIV, els=12)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_04.png (y=3200, DIV, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_05.png (y=4000, DIV, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_06.png (y=4800, P, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_07.png (y=5600, UL, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_08.png (y=6400, LI, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_09.png (y=7200, DIV, els=9)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_10.png (y=8000, H2, els=10)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_11.png (y=8800, DIV, els=12)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_12.png (y=9600, DIV, els=9)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_13.png (y=10400, P, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_14.png (y=11200, DIV, els=12)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_15.png (y=12000, UL, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_16.png (y=12800, UL, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_17.png (y=13600, DIV, els=8)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_18.png (y=14400, H3, els=11)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_19.png (y=15200, P, els=10)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/D/scroll_20.png (y=15485, DIV, els=6)
+  --- page errors ---
+    Error: Minified React error #419; visit https://react.dev/errors/419 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+
+[G15] token=9b6edb0a-f1db-4484-8306-c088e78be8c8
+  page height: 25606px
+  shots: 30
+  blank shots: 0
+  console errors: 0
+  page errors: 1
+  files:
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_00.png (y=0, DIV, els=8)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_01.png (y=800, DIV, els=9)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_02.png (y=1600, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_03.png (y=2400, DIV, els=7)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_04.png (y=3200, DIV, els=18)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_05.png (y=4000, DIV, els=18)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_06.png (y=4800, LI, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_07.png (y=5600, BLOCKQUOTE, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_08.png (y=6400, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_09.png (y=7200, DIV, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_10.png (y=8000, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_11.png (y=8800, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_12.png (y=9600, DIV, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_13.png (y=10400, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_14.png (y=11200, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_15.png (y=12000, DIV, els=12)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_16.png (y=12800, UL, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_17.png (y=13600, H2, els=12)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_18.png (y=14400, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_19.png (y=15200, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_20.png (y=16000, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_21.png (y=16800, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_22.png (y=17600, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_23.png (y=18400, BLOCKQUOTE, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_24.png (y=19200, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_25.png (y=20000, DIV, els=14)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_26.png (y=20800, DIV, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_27.png (y=21600, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_28.png (y=22400, LI, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/G15/scroll_29.png (y=23200, BUTTON, els=9)
+  --- page errors ---
+    Error: Minified React error #419; visit https://react.dev/errors/419 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+
+[R] token=116836df-55a9-4d9a-ac33-3aae5c8ea7f9
+  page height: 18601px
+  shots: 24
+  blank shots: 0
+  console errors: 0
+  page errors: 1
+  files:
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_00.png (y=0, A, els=12)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_01.png (y=800, H2, els=12)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_02.png (y=1600, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_03.png (y=2400, BLOCKQUOTE, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_04.png (y=3200, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_05.png (y=4000, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_06.png (y=4800, DIV, els=10)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_07.png (y=5600, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_08.png (y=6400, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_09.png (y=7200, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_10.png (y=8000, STRONG, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_11.png (y=8800, P, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_12.png (y=9600, STRONG, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_13.png (y=10400, DIV, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_14.png (y=11200, DIV, els=15)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_15.png (y=12000, LI, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_16.png (y=12800, LI, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_17.png (y=13600, DIV, els=10)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_18.png (y=14400, LI, els=16)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_19.png (y=15200, DIV, els=18)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_20.png (y=16000, DIV, els=13)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_21.png (y=16800, DIV, els=11)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_22.png (y=17600, DIV, els=3)
+    D:/Users/Desktop/Claude專案/Claude-鑑源/Claude-鑑源網頁製作部門/_ab_test/strict_eval_v5_10_78/FULL_SCROLL_v5_10_164/R/scroll_23.png (y=17759, DIV, els=6)
+  --- page errors ---
+    Error: Minified React error #419; visit https://react.dev/errors/419 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.

@@ -1,0 +1,354 @@
+{
+  "summary": {
+    "timestamp": "2026-05-10T12:50:25.791Z",
+    "version_target": "v5.10.158",
+    "total_pages": 12,
+    "success": 12,
+    "error": 0,
+    "total_card_stacks": 12,
+    "total_cards": 0,
+    "total_empty_cards": 0,
+    "total_card_overflow": 0,
+    "total_truncated_cells": 0,
+    "total_horiz_overflow_pages": 0,
+    "total_long_tables_remaining_table": 0
+  },
+  "results": [
+    {
+      "name": "C_HoYouChun",
+      "plan": "C",
+      "vp": "desktop_1920",
+      "url": "https://jianyuan.life/report/d143f949-192c-4808-a516-61b03a19f146?cb=v158_1778417227028",
+      "versions": [
+        "v5.10.159"
+      ],
+      "stats": {
+        "stackCount": 4,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 12,
+        "longTables": 0,
+        "shortTables": 12,
+        "stickyCol1Count": 74,
+        "truncatedCells": 0,
+        "docW": 1920,
+        "winW": 1920,
+        "horizOverflow": false,
+        "overflowEls": 0
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\C_HoYouChun_desktop_1920.png"
+    },
+    {
+      "name": "C_HoYouChun",
+      "plan": "C",
+      "vp": "desktop_1440",
+      "url": "https://jianyuan.life/report/d143f949-192c-4808-a516-61b03a19f146?cb=v158_1778417250597",
+      "versions": [
+        "v5.10.159"
+      ],
+      "stats": {
+        "stackCount": 4,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 12,
+        "longTables": 0,
+        "shortTables": 12,
+        "stickyCol1Count": 74,
+        "truncatedCells": 0,
+        "docW": 1440,
+        "winW": 1440,
+        "horizOverflow": false,
+        "overflowEls": 15
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\C_HoYouChun_desktop_1440.png"
+    },
+    {
+      "name": "C_HoYouChun",
+      "plan": "C",
+      "vp": "mobile_375",
+      "url": "https://jianyuan.life/report/d143f949-192c-4808-a516-61b03a19f146?cb=v158_1778417273187",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 4,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 12,
+        "longTables": 0,
+        "shortTables": 12,
+        "stickyCol1Count": 12,
+        "truncatedCells": 0,
+        "docW": 375,
+        "winW": 375,
+        "horizOverflow": false,
+        "overflowEls": 17
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\C_HoYouChun_mobile_375.png"
+    },
+    {
+      "name": "D_HoXuan",
+      "plan": "D",
+      "vp": "desktop_1920",
+      "url": "https://jianyuan.life/report/4e636025-fb87-4099-a91d-a4f6c64df7e5?cb=v158_1778417297397",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 0,
+        "longTables": 0,
+        "shortTables": 0,
+        "stickyCol1Count": 0,
+        "truncatedCells": 0,
+        "docW": 1920,
+        "winW": 1920,
+        "horizOverflow": false,
+        "overflowEls": 0
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\D_HoXuan_desktop_1920.png"
+    },
+    {
+      "name": "D_HoXuan",
+      "plan": "D",
+      "vp": "desktop_1440",
+      "url": "https://jianyuan.life/report/4e636025-fb87-4099-a91d-a4f6c64df7e5?cb=v158_1778417308998",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 0,
+        "longTables": 0,
+        "shortTables": 0,
+        "stickyCol1Count": 0,
+        "truncatedCells": 0,
+        "docW": 1440,
+        "winW": 1440,
+        "horizOverflow": false,
+        "overflowEls": 0
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\D_HoXuan_desktop_1440.png"
+    },
+    {
+      "name": "D_HoXuan",
+      "plan": "D",
+      "vp": "mobile_375",
+      "url": "https://jianyuan.life/report/4e636025-fb87-4099-a91d-a4f6c64df7e5?cb=v158_1778417319738",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 0,
+        "longTables": 0,
+        "shortTables": 0,
+        "stickyCol1Count": 0,
+        "truncatedCells": 0,
+        "docW": 375,
+        "winW": 375,
+        "horizOverflow": false,
+        "overflowEls": 0
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\D_HoXuan_mobile_375.png"
+    },
+    {
+      "name": "G15_HoFamily",
+      "plan": "G15",
+      "vp": "desktop_1920",
+      "url": "https://jianyuan.life/report/271dcda0-e348-4d98-9c09-4beb14a4634a?cb=v158_1778417330645",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 2,
+        "longTables": 0,
+        "shortTables": 2,
+        "stickyCol1Count": 11,
+        "truncatedCells": 0,
+        "docW": 1920,
+        "winW": 1920,
+        "horizOverflow": false,
+        "overflowEls": 0
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\G15_HoFamily_desktop_1920.png"
+    },
+    {
+      "name": "G15_HoFamily",
+      "plan": "G15",
+      "vp": "desktop_1440",
+      "url": "https://jianyuan.life/report/271dcda0-e348-4d98-9c09-4beb14a4634a?cb=v158_1778417347048",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 2,
+        "longTables": 0,
+        "shortTables": 2,
+        "stickyCol1Count": 11,
+        "truncatedCells": 0,
+        "docW": 1440,
+        "winW": 1440,
+        "horizOverflow": false,
+        "overflowEls": 1
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\G15_HoFamily_desktop_1440.png"
+    },
+    {
+      "name": "G15_HoFamily",
+      "plan": "G15",
+      "vp": "mobile_375",
+      "url": "https://jianyuan.life/report/271dcda0-e348-4d98-9c09-4beb14a4634a?cb=v158_1778417362801",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 2,
+        "longTables": 0,
+        "shortTables": 2,
+        "stickyCol1Count": 2,
+        "truncatedCells": 0,
+        "docW": 375,
+        "winW": 375,
+        "horizOverflow": false,
+        "overflowEls": 5
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\G15_HoFamily_mobile_375.png"
+    },
+    {
+      "name": "R_latest",
+      "plan": "R",
+      "vp": "desktop_1920",
+      "url": "https://jianyuan.life/report/116836df-55a9-4d9a-ac33-3aae5c8ea7f9?cb=v158_1778417379723",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 2,
+        "longTables": 0,
+        "shortTables": 2,
+        "stickyCol1Count": 13,
+        "truncatedCells": 0,
+        "docW": 1920,
+        "winW": 1920,
+        "horizOverflow": false,
+        "overflowEls": 0
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\R_latest_desktop_1920.png"
+    },
+    {
+      "name": "R_latest",
+      "plan": "R",
+      "vp": "desktop_1440",
+      "url": "https://jianyuan.life/report/116836df-55a9-4d9a-ac33-3aae5c8ea7f9?cb=v158_1778417394308",
+      "versions": [
+        "v5.10.160"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 2,
+        "longTables": 0,
+        "shortTables": 2,
+        "stickyCol1Count": 13,
+        "truncatedCells": 0,
+        "docW": 1440,
+        "winW": 1440,
+        "horizOverflow": false,
+        "overflowEls": 1
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\R_latest_desktop_1440.png"
+    },
+    {
+      "name": "R_latest",
+      "plan": "R",
+      "vp": "mobile_375",
+      "url": "https://jianyuan.life/report/116836df-55a9-4d9a-ac33-3aae5c8ea7f9?cb=v158_1778417408574",
+      "versions": [
+        "v5.10.161"
+      ],
+      "stats": {
+        "stackCount": 0,
+        "totalCards": 0,
+        "cardsWithTitle": 0,
+        "cardsEmpty": 0,
+        "cardTitleColors": [],
+        "cardOverflow": 0,
+        "cardSamples": [],
+        "tableCount": 2,
+        "longTables": 0,
+        "shortTables": 2,
+        "stickyCol1Count": 2,
+        "truncatedCells": 0,
+        "docW": 375,
+        "winW": 375,
+        "horizOverflow": false,
+        "overflowEls": 4
+      },
+      "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_158_qa_screenshots\\R_latest_mobile_375.png"
+    }
+  ]
+}

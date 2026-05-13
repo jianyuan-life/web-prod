@@ -1,0 +1,197 @@
+{
+  "total": 6,
+  "pass": 6,
+  "totalTables": 9,
+  "col1Fail": 0,
+  "results": [
+    {
+      "token": "9c08fc78-7c0e-4bd3-a70f-6f0e714c62bd",
+      "name": "D_latest",
+      "plan": "D",
+      "viewport": "desktop_1920",
+      "versions": [
+        "v5.10.147"
+      ],
+      "tables": [
+        {
+          "idx": 0,
+          "colCount": 4,
+          "col1Text": "時間",
+          "col1Left": 163,
+          "col1Right": 358,
+          "containerLeft": 162,
+          "containerRight": 1762,
+          "col1Visible": true,
+          "tableScrollW": 1598,
+          "containerW": 1598,
+          "tableOverflows": false
+        }
+      ],
+      "overallPass": true
+    },
+    {
+      "token": "9c08fc78-7c0e-4bd3-a70f-6f0e714c62bd",
+      "name": "D_latest",
+      "plan": "D",
+      "viewport": "desktop_1440",
+      "versions": [
+        "v5.10.147"
+      ],
+      "tables": [
+        {
+          "idx": 0,
+          "colCount": 4,
+          "col1Text": "時間",
+          "col1Left": 39,
+          "col1Right": 205,
+          "containerLeft": 38,
+          "containerRight": 1406,
+          "col1Visible": true,
+          "tableScrollW": 1366,
+          "containerW": 1366,
+          "tableOverflows": false
+        }
+      ],
+      "overallPass": true
+    },
+    {
+      "token": "9c08fc78-7c0e-4bd3-a70f-6f0e714c62bd",
+      "name": "D_latest",
+      "plan": "D",
+      "viewport": "mobile_375",
+      "versions": [
+        "v5.10.147"
+      ],
+      "tables": [
+        {
+          "idx": 0,
+          "colCount": 4,
+          "col1Text": "時間",
+          "col1Left": 59,
+          "col1Right": 139,
+          "containerLeft": 42,
+          "containerRight": 336,
+          "col1Visible": true,
+          "tableScrollW": 354,
+          "containerW": 294,
+          "tableOverflows": true
+        }
+      ],
+      "overallPass": true
+    },
+    {
+      "token": "116836df-55a9-4d9a-ac33-3aae5c8ea7f9",
+      "name": "R_latest",
+      "plan": "R",
+      "viewport": "desktop_1920",
+      "versions": [
+        "v5.10.147"
+      ],
+      "tables": [
+        {
+          "idx": 0,
+          "colCount": 3,
+          "col1Text": "系統",
+          "col1Left": 171,
+          "col1Right": 432,
+          "containerLeft": 170,
+          "containerRight": 1770,
+          "col1Visible": true,
+          "tableScrollW": 1598,
+          "containerW": 1598,
+          "tableOverflows": false
+        },
+        {
+          "idx": 1,
+          "colCount": 4,
+          "col1Text": "年份",
+          "col1Left": 171,
+          "col1Right": 387,
+          "containerLeft": 170,
+          "containerRight": 1770,
+          "col1Visible": true,
+          "tableScrollW": 1598,
+          "containerW": 1598,
+          "tableOverflows": false
+        }
+      ],
+      "overallPass": true
+    },
+    {
+      "token": "116836df-55a9-4d9a-ac33-3aae5c8ea7f9",
+      "name": "R_latest",
+      "plan": "R",
+      "viewport": "desktop_1440",
+      "versions": [
+        "v5.10.147"
+      ],
+      "tables": [
+        {
+          "idx": 0,
+          "colCount": 3,
+          "col1Text": "系統",
+          "col1Left": 47,
+          "col1Right": 270,
+          "containerLeft": 46,
+          "containerRight": 1414,
+          "col1Visible": true,
+          "tableScrollW": 1366,
+          "containerW": 1366,
+          "tableOverflows": false
+        },
+        {
+          "idx": 1,
+          "colCount": 4,
+          "col1Text": "年份",
+          "col1Left": 47,
+          "col1Right": 231,
+          "containerLeft": 46,
+          "containerRight": 1414,
+          "col1Visible": true,
+          "tableScrollW": 1366,
+          "containerW": 1366,
+          "tableOverflows": false
+        }
+      ],
+      "overallPass": true
+    },
+    {
+      "token": "116836df-55a9-4d9a-ac33-3aae5c8ea7f9",
+      "name": "R_latest",
+      "plan": "R",
+      "viewport": "mobile_375",
+      "versions": [
+        "v5.10.147"
+      ],
+      "tables": [
+        {
+          "idx": 0,
+          "colCount": 3,
+          "col1Text": "系統",
+          "col1Left": 59,
+          "col1Right": 139,
+          "containerLeft": 42,
+          "containerRight": 336,
+          "col1Visible": true,
+          "tableScrollW": 294,
+          "containerW": 294,
+          "tableOverflows": false
+        },
+        {
+          "idx": 1,
+          "colCount": 4,
+          "col1Text": "年份",
+          "col1Left": 59,
+          "col1Right": 139,
+          "containerLeft": 42,
+          "containerRight": 336,
+          "col1Visible": true,
+          "tableScrollW": 345,
+          "containerW": 294,
+          "tableOverflows": true
+        }
+      ],
+      "overallPass": true
+    }
+  ]
+}

@@ -1,0 +1,360 @@
+﻿{
+  "desktop": {
+    "viewport": "desktop",
+    "width": 1440,
+    "height": 900,
+    "found_table_breakout": true,
+    "table_count": 16,
+    "th_position": "N/A (mobile thead hidden)",
+    "td_position": "sticky",
+    "td_left": "0px",
+    "td_bg": "rgb(15, 22, 40)",
+    "scroll_test": {
+      "td_before_left": 45.5,
+      "td_after_left": 45.5,
+      "container_left": 45.5,
+      "td_offset_from_container": 0,
+      "sticky_works": true,
+      "scroll_left_after": 195
+    },
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_150_sticky_verify_desktop.png",
+    "error": null,
+    "diag_tables": [
+      {
+        "idx": 0,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 1,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 2,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 3,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 4,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 5,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 6,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 7,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 8,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 9,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 10,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 11,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 12,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 13,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      },
+      {
+        "idx": 14,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": false
+      },
+      {
+        "idx": 15,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "table-cell",
+        "tdPosition": "sticky",
+        "tdLeft": "0px",
+        "tdBg": "rgb(15, 22, 40)"
+      }
+    ]
+  },
+  "mobile": {
+    "viewport": "mobile",
+    "width": 375,
+    "height": 812,
+    "found_table_breakout": true,
+    "table_count": 16,
+    "th_position": "N/A (mobile thead hidden)",
+    "td_position": "static",
+    "td_left": "0px",
+    "td_bg": "rgba(0, 0, 0, 0)",
+    "scroll_test": {
+      "td_before_left": 58,
+      "td_after_left": 58,
+      "container_left": 43,
+      "td_offset_from_container": 15,
+      "sticky_works": false,
+      "scroll_left_after": 0
+    },
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_150_sticky_verify_mobile.png",
+    "error": null,
+    "diag_tables": [
+      {
+        "idx": 0,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 1,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 2,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 3,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 4,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 5,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 6,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 7,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 8,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 9,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 10,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 11,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 12,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 13,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      },
+      {
+        "idx": 14,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": false
+      },
+      {
+        "idx": 15,
+        "hasInnerTable": true,
+        "hasTh": false,
+        "hasTd": true,
+        "tdDisplay": "block",
+        "tdPosition": "static",
+        "tdLeft": "0px",
+        "tdBg": "rgba(0, 0, 0, 0)"
+      }
+    ]
+  }
+}

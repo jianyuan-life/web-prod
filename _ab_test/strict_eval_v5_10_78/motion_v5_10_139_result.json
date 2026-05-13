@@ -1,0 +1,75 @@
+{
+  "token": "d143f949-192c-4808-a516-61b03a19f146",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "ts": "2026-05-10T08:47:12.297Z",
+  "version": {
+    "latest": "v5.10.139",
+    "all": [
+      "v5.10.139"
+    ]
+  },
+  "deployVerified": true,
+  "motionTokens": {
+    "--motion-fast": "150ms",
+    "--motion-medium": "200ms",
+    "--motion-slow": "300ms",
+    "--easing-standard": "cubic-bezier(0.2, 0, 0, 1)",
+    "--easing-emphasized": "cubic-bezier(0.05, 0.7, 0.1, 1)"
+  },
+  "transitions": {
+    "sectionCardCount": 19,
+    "sectionCardTransitions": [
+      "transform 0.2s, box-shadow 0.2s, border-color 0.2s",
+      "transform 0.2s, box-shadow 0.2s, border-color 0.2s",
+      "transform 0.2s, box-shadow 0.2s, border-color 0.2s"
+    ],
+    "tocLinkCount": 34,
+    "tocLinkTransitions": [
+      "0.15s cubic-bezier(0.2, 0, 0, 1)",
+      "0.15s cubic-bezier(0.2, 0, 0, 1)",
+      "0.15s cubic-bezier(0.2, 0, 0, 1)"
+    ],
+    "hoverLiftCount": 0,
+    "hoverLiftTransitions": []
+  },
+  "partSections": [
+    {
+      "id": "part-qi",
+      "offsetTop": 4088,
+      "text": "生命藍圖 — 認識本我"
+    },
+    {
+      "id": "part-cheng",
+      "offsetTop": 12157,
+      "text": "人生軌跡 — 發展與現況"
+    },
+    {
+      "id": "part-zhuan",
+      "offsetTop": 29520,
+      "text": "時運流轉 — 未來展望"
+    },
+    {
+      "id": "part-he",
+      "offsetTop": 29737,
+      "text": "行動指引 — 總結與實踐"
+    }
+  ],
+  "quickJump": {
+    "found": true,
+    "targetId": "part-qi",
+    "linkText": "起篇 · 3 章生命藍圖 — 認識本我",
+    "beforeScroll": 0,
+    "afterScroll": 4088,
+    "targetOffset": 4087.828125,
+    "scrollDelta": 4088,
+    "scrolledToTarget": true,
+    "totalLinks": 4
+  },
+  "screenshotTop": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\motion_v5_10_139_screenshots\\top_1778402844941.png",
+  "reducedMotion": {
+    "foundReducedMotionRule": true
+  }
+}

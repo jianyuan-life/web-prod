@@ -1,0 +1,44 @@
+﻿{
+  "desktop": {
+    "viewport": "desktop",
+    "width": 1440,
+    "height": 900,
+    "found_table_breakout": true,
+    "table_count": 16,
+    "th_position": "N/A (mobile thead hidden)",
+    "td_position": "sticky",
+    "td_left": "0px",
+    "td_bg": "rgb(15, 22, 40)",
+    "scroll_test": {
+      "td_before_left": 45.5,
+      "td_after_left": 45.5,
+      "container_left": 45.5,
+      "td_offset_from_container": 0,
+      "sticky_works": true,
+      "scroll_left_after": 195
+    },
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_150_sticky_verify_desktop.png",
+    "error": null
+  },
+  "mobile": {
+    "viewport": "mobile",
+    "width": 375,
+    "height": 812,
+    "found_table_breakout": true,
+    "table_count": 16,
+    "th_position": "N/A (mobile thead hidden)",
+    "td_position": "static",
+    "td_left": "0px",
+    "td_bg": "rgba(0, 0, 0, 0)",
+    "scroll_test": {
+      "td_before_left": 58,
+      "td_after_left": 58,
+      "container_left": 43,
+      "td_offset_from_container": 15,
+      "sticky_works": false,
+      "scroll_left_after": 0
+    },
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\v5_10_150_sticky_verify_mobile.png",
+    "error": null
+  }
+}

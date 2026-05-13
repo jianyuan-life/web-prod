@@ -1,0 +1,1228 @@
+[
+  {
+    "token": "d143f949-192c-4808-a516-61b03a19f146",
+    "name": "C 何宥諄",
+    "plan": "C",
+    "viewport": "desktop",
+    "footerVersion": "v5.10.128",
+    "tableCount": 16,
+    "passCount": 16,
+    "failCount": 0,
+    "tables": [
+      {
+        "tableIdx": 0,
+        "label": "他的天賦武器",
+        "tableWidth": 1366,
+        "headerCol1Text": "排序",
+        "headerCol1Width": 94,
+        "col1Sample": [
+          {
+            "text": "★★★★★",
+            "w": 94
+          },
+          {
+            "text": "★★★★★",
+            "w": 94
+          },
+          {
+            "text": "★★★★☆",
+            "w": 94
+          }
+        ],
+        "minCol1Width": 94,
+        "passed": true,
+        "rowCount": 6
+      },
+      {
+        "tableIdx": 1,
+        "label": "他的天賦武器",
+        "tableWidth": 1366,
+        "headerCol1Text": "年齡段",
+        "headerCol1Width": 152,
+        "col1Sample": [
+          {
+            "text": "2-11 歲",
+            "w": 152
+          },
+          {
+            "text": "12-21 歲",
+            "w": 152
+          },
+          {
+            "text": "22-31 歲",
+            "w": 152
+          }
+        ],
+        "minCol1Width": 152,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 2,
+        "label": "他長大後的賺錢模式（先天傾向）",
+        "tableWidth": 1366,
+        "headerCol1Text": "優先級",
+        "headerCol1Width": 109,
+        "col1Sample": [
+          {
+            "text": "★★★★★",
+            "w": 109
+          },
+          {
+            "text": "★★★★☆",
+            "w": 109
+          },
+          {
+            "text": "★★★★☆",
+            "w": 109
+          }
+        ],
+        "minCol1Width": 109,
+        "passed": true,
+        "rowCount": 6
+      },
+      {
+        "tableIdx": 3,
+        "label": "您孩子的人際模式——他怎麼跟人連結",
+        "tableWidth": 1366,
+        "headerCol1Text": "年齡",
+        "headerCol1Width": 91,
+        "col1Sample": [
+          {
+            "text": "3-5 歲",
+            "w": 91
+          },
+          {
+            "text": "6-8 歲",
+            "w": 91
+          },
+          {
+            "text": "9-11 歲",
+            "w": 91
+          }
+        ],
+        "minCol1Width": 91,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 4,
+        "label": "您孩子的體質地圖——哪裡強、哪裡弱",
+        "tableWidth": 1366,
+        "headerCol1Text": "時段",
+        "headerCol1Width": 167,
+        "col1Sample": [
+          {
+            "text": "7:00-8:00",
+            "w": 167
+          },
+          {
+            "text": "8:00-12:00",
+            "w": 167
+          },
+          {
+            "text": "12:00-13:00",
+            "w": 167
+          }
+        ],
+        "minCol1Width": 167,
+        "passed": true,
+        "rowCount": 7
+      },
+      {
+        "tableIdx": 5,
+        "label": "您孩子的體質地圖——哪裡強、哪裡弱",
+        "tableWidth": 1366,
+        "headerCol1Text": "季節",
+        "headerCol1Width": 280,
+        "col1Sample": [
+          {
+            "text": "春（2-4 月）",
+            "w": 280
+          },
+          {
+            "text": "夏（5-7 月）",
+            "w": 280
+          },
+          {
+            "text": "秋（8-10 月）",
+            "w": 280
+          }
+        ],
+        "minCol1Width": 280,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 6,
+        "label": "您孩子的體質地圖——哪裡強、哪裡弱",
+        "tableWidth": 1366,
+        "headerCol1Text": "月份",
+        "headerCol1Width": 227,
+        "col1Sample": [
+          {
+            "text": "4 月（丁巳）",
+            "w": 227
+          },
+          {
+            "text": "5 月（戊午）",
+            "w": 227
+          },
+          {
+            "text": "8 月（辛酉）",
+            "w": 227
+          }
+        ],
+        "minCol1Width": 227,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 7,
+        "label": "過去 3 年回顧（0-3 歲，丙辰大運起步）",
+        "tableWidth": 1366,
+        "headerCol1Text": "大運段",
+        "headerCol1Width": 117,
+        "col1Sample": [
+          {
+            "text": "1",
+            "w": 117
+          },
+          {
+            "text": "2",
+            "w": 117
+          },
+          {
+            "text": "3",
+            "w": 117
+          }
+        ],
+        "minCol1Width": 117,
+        "passed": true,
+        "rowCount": 9
+      },
+      {
+        "tableIdx": 8,
+        "label": "年度總論：一個字——「動」",
+        "tableWidth": 1366,
+        "headerCol1Text": "農曆月",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "1 月",
+            "w": 80
+          },
+          {
+            "text": "2 月",
+            "w": 80
+          },
+          {
+            "text": "3 月",
+            "w": 80
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 13
+      },
+      {
+        "tableIdx": 9,
+        "label": "年度總論：一個字——「動」",
+        "tableWidth": 1366,
+        "headerCol1Text": "面向",
+        "headerCol1Width": 343,
+        "col1Sample": [
+          {
+            "text": "健康檢查 / 就醫",
+            "w": 343
+          },
+          {
+            "text": "換幼兒園 / 報名課程",
+            "w": 343
+          },
+          {
+            "text": "出遠門 / 旅行",
+            "w": 343
+          }
+        ],
+        "minCol1Width": 343,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 10,
+        "label": "年度總論：一個字——「動」",
+        "tableWidth": 1366,
+        "headerCol1Text": "月份",
+        "headerCol1Width": 319,
+        "col1Sample": [
+          {
+            "text": "農曆 4 月（丁巳）",
+            "w": 319
+          },
+          {
+            "text": "農曆 5 月（戊午）",
+            "w": 319
+          },
+          {
+            "text": "農曆 8 月（辛酉）",
+            "w": 319
+          }
+        ],
+        "minCol1Width": 319,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 11,
+        "label": "ASCII 年度曲線圖",
+        "tableWidth": 1366,
+        "headerCol1Text": "月份",
+        "headerCol1Width": 115,
+        "col1Sample": [
+          {
+            "text": "2026-01",
+            "w": 115
+          },
+          {
+            "text": "2026-02",
+            "w": 115
+          },
+          {
+            "text": "2026-03",
+            "w": 115
+          }
+        ],
+        "minCol1Width": 115,
+        "passed": true,
+        "rowCount": 13
+      },
+      {
+        "tableIdx": 12,
+        "label": "九、十五系統交叉驗證矩陣",
+        "tableWidth": 1419.875,
+        "headerCol1Text": "面向",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "天賦學習",
+            "w": 80
+          },
+          {
+            "text": "性格種子",
+            "w": 80
+          },
+          {
+            "text": "健康體質",
+            "w": 80
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 8
+      },
+      {
+        "tableIdx": 13,
+        "label": "十三、幸運參數速查表",
+        "tableWidth": 1366,
+        "headerCol1Text": "類別",
+        "headerCol1Width": 213,
+        "col1Sample": [
+          {
+            "text": "幸運顏色",
+            "w": 213
+          },
+          {
+            "text": "幸運數字",
+            "w": 213
+          },
+          {
+            "text": "幸運方位",
+            "w": 213
+          }
+        ],
+        "minCol1Width": 213,
+        "passed": true,
+        "rowCount": 9
+      },
+      {
+        "tableIdx": 14,
+        "label": "附錄：14 系統排盤速覽",
+        "tableWidth": 1366,
+        "headerCol1Text": "系統",
+        "headerCol1Width": 683,
+        "col1Sample": [],
+        "minCol1Width": 683,
+        "passed": true,
+        "rowCount": 1
+      },
+      {
+        "tableIdx": 15,
+        "label": "附錄：14 系統排盤速覽",
+        "tableWidth": 1366,
+        "headerCol1Text": "八字四柱",
+        "headerCol1Width": 285,
+        "col1Sample": [
+          {
+            "text": "紫微斗數",
+            "w": 285
+          },
+          {
+            "text": "奇門遁甲",
+            "w": 285
+          },
+          {
+            "text": "風水堪輿",
+            "w": 285
+          }
+        ],
+        "minCol1Width": 285,
+        "passed": true,
+        "rowCount": 15
+      }
+    ],
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_audit_v5_10_126\\screenshots\\C_d143f949_desktop.png"
+  },
+  {
+    "token": "d143f949-192c-4808-a516-61b03a19f146",
+    "name": "C 何宥諄",
+    "plan": "C",
+    "viewport": "mobile",
+    "footerVersion": "v5.10.128",
+    "tableCount": 16,
+    "passCount": 16,
+    "failCount": 0,
+    "tables": [
+      {
+        "tableIdx": 0,
+        "label": "他的天賦武器",
+        "tableWidth": 309,
+        "headerCol1Text": "排序",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "★★★★★",
+            "w": 279
+          },
+          {
+            "text": "★★★★★",
+            "w": 279
+          },
+          {
+            "text": "★★★★☆",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 6
+      },
+      {
+        "tableIdx": 1,
+        "label": "他的天賦武器",
+        "tableWidth": 309,
+        "headerCol1Text": "年齡段",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "2-11 歲",
+            "w": 279
+          },
+          {
+            "text": "12-21 歲",
+            "w": 279
+          },
+          {
+            "text": "22-31 歲",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 2,
+        "label": "他長大後的賺錢模式（先天傾向）",
+        "tableWidth": 309,
+        "headerCol1Text": "優先級",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "★★★★★",
+            "w": 279
+          },
+          {
+            "text": "★★★★☆",
+            "w": 279
+          },
+          {
+            "text": "★★★★☆",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 6
+      },
+      {
+        "tableIdx": 3,
+        "label": "您孩子的人際模式——他怎麼跟人連結",
+        "tableWidth": 309,
+        "headerCol1Text": "年齡",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "3-5 歲",
+            "w": 279
+          },
+          {
+            "text": "6-8 歲",
+            "w": 279
+          },
+          {
+            "text": "9-11 歲",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 4,
+        "label": "您孩子的體質地圖——哪裡強、哪裡弱",
+        "tableWidth": 309,
+        "headerCol1Text": "時段",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "7:00-8:00",
+            "w": 279
+          },
+          {
+            "text": "8:00-12:00",
+            "w": 279
+          },
+          {
+            "text": "12:00-13:00",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 7
+      },
+      {
+        "tableIdx": 5,
+        "label": "您孩子的體質地圖——哪裡強、哪裡弱",
+        "tableWidth": 309,
+        "headerCol1Text": "季節",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "春（2-4 月）",
+            "w": 279
+          },
+          {
+            "text": "夏（5-7 月）",
+            "w": 279
+          },
+          {
+            "text": "秋（8-10 月）",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 6,
+        "label": "您孩子的體質地圖——哪裡強、哪裡弱",
+        "tableWidth": 309,
+        "headerCol1Text": "月份",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "4 月（丁巳）",
+            "w": 279
+          },
+          {
+            "text": "5 月（戊午）",
+            "w": 279
+          },
+          {
+            "text": "8 月（辛酉）",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 7,
+        "label": "過去 3 年回顧（0-3 歲，丙辰大運起步）",
+        "tableWidth": 309,
+        "headerCol1Text": "大運段",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "1",
+            "w": 279
+          },
+          {
+            "text": "2",
+            "w": 279
+          },
+          {
+            "text": "3",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 9
+      },
+      {
+        "tableIdx": 8,
+        "label": "年度總論：一個字——「動」",
+        "tableWidth": 309,
+        "headerCol1Text": "農曆月",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "1 月",
+            "w": 279
+          },
+          {
+            "text": "2 月",
+            "w": 279
+          },
+          {
+            "text": "3 月",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 13
+      },
+      {
+        "tableIdx": 9,
+        "label": "年度總論：一個字——「動」",
+        "tableWidth": 275,
+        "headerCol1Text": "面向",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "健康檢查 / 就醫",
+            "w": 245
+          },
+          {
+            "text": "換幼兒園 / 報名課程",
+            "w": 245
+          },
+          {
+            "text": "出遠門 / 旅行",
+            "w": 245
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 10,
+        "label": "年度總論：一個字——「動」",
+        "tableWidth": 275,
+        "headerCol1Text": "月份",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "農曆 4 月（丁巳）",
+            "w": 245
+          },
+          {
+            "text": "農曆 5 月（戊午）",
+            "w": 245
+          },
+          {
+            "text": "農曆 8 月（辛酉）",
+            "w": 245
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 5
+      },
+      {
+        "tableIdx": 11,
+        "label": "ASCII 年度曲線圖",
+        "tableWidth": 309,
+        "headerCol1Text": "月份",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "2026-01",
+            "w": 279
+          },
+          {
+            "text": "2026-02",
+            "w": 279
+          },
+          {
+            "text": "2026-03",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 13
+      },
+      {
+        "tableIdx": 12,
+        "label": "九、十五系統交叉驗證矩陣",
+        "tableWidth": 309,
+        "headerCol1Text": "面向",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "天賦學習",
+            "w": 279
+          },
+          {
+            "text": "性格種子",
+            "w": 279
+          },
+          {
+            "text": "健康體質",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 8
+      },
+      {
+        "tableIdx": 13,
+        "label": "十三、幸運參數速查表",
+        "tableWidth": 309,
+        "headerCol1Text": "類別",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "幸運顏色",
+            "w": 279
+          },
+          {
+            "text": "幸運數字",
+            "w": 279
+          },
+          {
+            "text": "幸運方位",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 9
+      },
+      {
+        "tableIdx": 14,
+        "label": "附錄：14 系統排盤速覽",
+        "tableWidth": 309,
+        "headerCol1Text": "系統",
+        "headerCol1Width": 80,
+        "col1Sample": [],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 1
+      },
+      {
+        "tableIdx": 15,
+        "label": "附錄：14 系統排盤速覽",
+        "tableWidth": 309,
+        "headerCol1Text": "八字四柱",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "紫微斗數",
+            "w": 279
+          },
+          {
+            "text": "奇門遁甲",
+            "w": 279
+          },
+          {
+            "text": "風水堪輿",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 15
+      }
+    ],
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_audit_v5_10_126\\screenshots\\C_d143f949_mobile.png"
+  },
+  {
+    "token": "9b6edb0a-f1db-4484-8306-c088e78be8c8",
+    "name": "G15 7LLM",
+    "plan": "G15",
+    "viewport": "desktop",
+    "footerVersion": "v5.10.128",
+    "tableCount": 8,
+    "passCount": 8,
+    "failCount": 0,
+    "tables": [
+      {
+        "tableIdx": 0,
+        "label": "全家五行分佈對比",
+        "tableWidth": 1366,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 196,
+        "col1Sample": [
+          {
+            "text": "何宥諄（兒子）",
+            "w": 196
+          },
+          {
+            "text": "何紀萳（媽媽）",
+            "w": 196
+          },
+          {
+            "text": "何宣逸（爸爸）",
+            "w": 196
+          }
+        ],
+        "minCol1Width": 196,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 1,
+        "label": "2026年（丙午年——天干丙火、地支午火）",
+        "tableWidth": 1366,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 132,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 132
+          },
+          {
+            "text": "何紀萳",
+            "w": 132
+          },
+          {
+            "text": "何宥諄",
+            "w": 132
+          }
+        ],
+        "minCol1Width": 132,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 2,
+        "label": "2027年（丁未年——天干丁火、地支未土）",
+        "tableWidth": 1366,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 174,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 174
+          },
+          {
+            "text": "何紀萳",
+            "w": 174
+          },
+          {
+            "text": "何宥諄",
+            "w": 174
+          }
+        ],
+        "minCol1Width": 174,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 3,
+        "label": "2028年（戊申年——天干戊土、地支申金）",
+        "tableWidth": 1366,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 210,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 210
+          },
+          {
+            "text": "何紀萳",
+            "w": 210
+          },
+          {
+            "text": "何宥諄",
+            "w": 210
+          }
+        ],
+        "minCol1Width": 210,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 4,
+        "label": "2029年（己酉年——天干己土、地支酉金）",
+        "tableWidth": 1366,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 184,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 184
+          },
+          {
+            "text": "何紀萳",
+            "w": 184
+          },
+          {
+            "text": "何宥諄",
+            "w": 184
+          }
+        ],
+        "minCol1Width": 184,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 5,
+        "label": "2030年（庚戌年——天干庚金、地支戌土）",
+        "tableWidth": 1366,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 155,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 155
+          },
+          {
+            "text": "何紀萳",
+            "w": 155
+          },
+          {
+            "text": "何宥諄",
+            "w": 155
+          }
+        ],
+        "minCol1Width": 155,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 6,
+        "label": "五年總覽",
+        "tableWidth": 1366,
+        "headerCol1Text": "年份",
+        "headerCol1Width": 292,
+        "col1Sample": [
+          {
+            "text": "2026",
+            "w": 292
+          },
+          {
+            "text": "2027",
+            "w": 292
+          },
+          {
+            "text": "2028",
+            "w": 292
+          }
+        ],
+        "minCol1Width": 292,
+        "passed": true,
+        "rowCount": 6
+      },
+      {
+        "tableIdx": 7,
+        "label": "九、家族行動指南",
+        "tableWidth": 1366,
+        "headerCol1Text": "項目",
+        "headerCol1Width": 337,
+        "col1Sample": [
+          {
+            "text": "共同幸運色",
+            "w": 337
+          },
+          {
+            "text": "輔助幸運色",
+            "w": 337
+          },
+          {
+            "text": "幸運方位",
+            "w": 337
+          }
+        ],
+        "minCol1Width": 337,
+        "passed": true,
+        "rowCount": 6
+      }
+    ],
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_audit_v5_10_126\\screenshots\\G15_9b6edb0a_desktop.png"
+  },
+  {
+    "token": "9b6edb0a-f1db-4484-8306-c088e78be8c8",
+    "name": "G15 7LLM",
+    "plan": "G15",
+    "viewport": "mobile",
+    "footerVersion": "v5.10.128",
+    "tableCount": 8,
+    "passCount": 8,
+    "failCount": 0,
+    "tables": [
+      {
+        "tableIdx": 0,
+        "label": "全家五行分佈對比",
+        "tableWidth": 309,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "何宥諄（兒子）",
+            "w": 279
+          },
+          {
+            "text": "何紀萳（媽媽）",
+            "w": 279
+          },
+          {
+            "text": "何宣逸（爸爸）",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 1,
+        "label": "2026年（丙午年——天干丙火、地支午火）",
+        "tableWidth": 309,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 279
+          },
+          {
+            "text": "何紀萳",
+            "w": 279
+          },
+          {
+            "text": "何宥諄",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 2,
+        "label": "2027年（丁未年——天干丁火、地支未土）",
+        "tableWidth": 309,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 279
+          },
+          {
+            "text": "何紀萳",
+            "w": 279
+          },
+          {
+            "text": "何宥諄",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 3,
+        "label": "2028年（戊申年——天干戊土、地支申金）",
+        "tableWidth": 309,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 279
+          },
+          {
+            "text": "何紀萳",
+            "w": 279
+          },
+          {
+            "text": "何宥諄",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 4,
+        "label": "2029年（己酉年——天干己土、地支酉金）",
+        "tableWidth": 309,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 279
+          },
+          {
+            "text": "何紀萳",
+            "w": 279
+          },
+          {
+            "text": "何宥諄",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 5,
+        "label": "2030年（庚戌年——天干庚金、地支戌土）",
+        "tableWidth": 309,
+        "headerCol1Text": "成員",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "何宣逸",
+            "w": 279
+          },
+          {
+            "text": "何紀萳",
+            "w": 279
+          },
+          {
+            "text": "何宥諄",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 4
+      },
+      {
+        "tableIdx": 6,
+        "label": "五年總覽",
+        "tableWidth": 309,
+        "headerCol1Text": "年份",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "2026",
+            "w": 279
+          },
+          {
+            "text": "2027",
+            "w": 279
+          },
+          {
+            "text": "2028",
+            "w": 279
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 6
+      },
+      {
+        "tableIdx": 7,
+        "label": "九、家族行動指南",
+        "tableWidth": 312,
+        "headerCol1Text": "項目",
+        "headerCol1Width": 80,
+        "col1Sample": [
+          {
+            "text": "共同幸運色",
+            "w": 282
+          },
+          {
+            "text": "輔助幸運色",
+            "w": 282
+          },
+          {
+            "text": "幸運方位",
+            "w": 282
+          }
+        ],
+        "minCol1Width": 80,
+        "passed": true,
+        "rowCount": 6
+      }
+    ],
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_audit_v5_10_126\\screenshots\\G15_9b6edb0a_mobile.png"
+  },
+  {
+    "token": "4e636025-fb87-4099-a91d-a4f6c64df7e5",
+    "name": "D 何宣",
+    "plan": "D",
+    "viewport": "desktop",
+    "footerVersion": "v5.10.128",
+    "tableCount": 0,
+    "passCount": 0,
+    "failCount": 0,
+    "tables": [],
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_audit_v5_10_126\\screenshots\\D_4e636025_desktop.png"
+  },
+  {
+    "token": "4e636025-fb87-4099-a91d-a4f6c64df7e5",
+    "name": "D 何宣",
+    "plan": "D",
+    "viewport": "mobile",
+    "footerVersion": "v5.10.129",
+    "tableCount": 0,
+    "passCount": 0,
+    "failCount": 0,
+    "tables": [],
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_audit_v5_10_126\\screenshots\\D_4e636025_mobile.png"
+  },
+  {
+    "token": "89e112dc-e0c1-4f0b-b8e8-5e5b51f6f8c7",
+    "name": "R 李馮",
+    "plan": "R",
+    "viewport": "desktop",
+    "footerVersion": "v5.10.129",
+    "tableCount": 0,
+    "passCount": 0,
+    "failCount": 0,
+    "tables": [],
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_audit_v5_10_126\\screenshots\\R_89e112dc_desktop.png"
+  },
+  {
+    "token": "89e112dc-e0c1-4f0b-b8e8-5e5b51f6f8c7",
+    "name": "R 李馮",
+    "plan": "R",
+    "viewport": "mobile",
+    "footerVersion": "v5.10.129",
+    "tableCount": 0,
+    "passCount": 0,
+    "failCount": 0,
+    "tables": [],
+    "screenshot": "D:\\Users\\Desktop\\Claude專案\\Claude-鑑源\\Claude-鑑源網頁製作部門\\_ab_test\\strict_eval_v5_10_78\\visual_audit_v5_10_126\\screenshots\\R_89e112dc_mobile.png"
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "plan": "C",
+    "viewport": "desktop1440",
+    "version": "v5.10.40"
+  },
+  {
+    "plan": "C",
+    "viewport": "mobile375",
+    "version": "v5.10.40"
+  },
+  {
+    "plan": "D",
+    "viewport": "desktop1440",
+    "version": "5.10.162"
+  },
+  {
+    "plan": "D",
+    "viewport": "mobile375",
+    "version": "5.10.162"
+  },
+  {
+    "plan": "G15",
+    "viewport": "desktop1440",
+    "version": "v5.10.40"
+  },
+  {
+    "plan": "G15",
+    "viewport": "mobile375",
+    "version": "v5.10.40"
+  },
+  {
+    "plan": "R",
+    "viewport": "desktop1440",
+    "version": "5.10.162"
+  },
+  {
+    "plan": "R",
+    "viewport": "mobile375",
+    "version": "5.10.162"
+  }
+]

@@ -1,0 +1,152 @@
+[
+  {
+    "token": "d143f949-192c-4808-a516-61b03a19f146",
+    "name": "C_HoYouChun",
+    "plan": "C",
+    "versionDetected": "v5.10.134",
+    "versionAll": [
+      "v5.10.134"
+    ],
+    "typography": {
+      "report-p": {
+        "count": 261,
+        "fontSize": "18px",
+        "lineHeight": "32.4px",
+        "marginTop": "0px",
+        "marginBottom": "40px",
+        "fontWeight": "400",
+        "color": "rgb(26, 35, 64)"
+      },
+      "report-h3": {
+        "count": 31,
+        "fontSize": "20px",
+        "lineHeight": "30px",
+        "marginTop": "14px",
+        "marginBottom": "16px",
+        "fontWeight": "600",
+        "color": "rgb(201, 168, 76)"
+      },
+      "report-h2": {
+        "count": 0
+      },
+      "is-family report-p": {
+        "count": 0
+      }
+    },
+    "leaks": {
+      "dongxi15": 0,
+      "shiwu_xt": 1,
+      "shiwu_da": 0,
+      "shiwu_tao": 0,
+      "fifteen_leak_total": 3
+    },
+    "starStar": 0,
+    "callouts": {
+      "total": 0,
+      "fallback": 0
+    },
+    "dims": {
+      "documentHeight": 69390,
+      "viewportWidth": 1440
+    },
+    "screenshot": "screenshots\\C_d143f949_desktop_v5_10_134.png"
+  },
+  {
+    "token": "271dcda0-e348-4d98-9c09-4beb14a4634a",
+    "name": "G15_HoFamily",
+    "plan": "G15",
+    "versionDetected": "v5.10.135",
+    "versionAll": [
+      "v5.10.135"
+    ],
+    "typography": {
+      "report-p": {
+        "count": 144,
+        "fontSize": "19px",
+        "lineHeight": "38px",
+        "marginTop": "0px",
+        "marginBottom": "44px",
+        "fontWeight": "400",
+        "color": "rgb(232, 228, 222)"
+      },
+      "report-h3": {
+        "count": 20,
+        "fontSize": "19px",
+        "lineHeight": "29.45px",
+        "marginTop": "14px",
+        "marginBottom": "16px",
+        "fontWeight": "600",
+        "color": "rgb(201, 168, 76)"
+      },
+      "report-h2": {
+        "count": 0
+      },
+      "is-family report-p": {
+        "count": 144,
+        "fontSize": "19px",
+        "lineHeight": "38px",
+        "marginTop": "0px",
+        "marginBottom": "44px",
+        "fontWeight": "400",
+        "color": "rgb(232, 228, 222)"
+      }
+    },
+    "leaks": {
+      "dongxi15": 0,
+      "shiwu_xt": 0,
+      "shiwu_da": 0,
+      "shiwu_tao": 0,
+      "fifteen_leak_total": 0
+    },
+    "starStar": 0,
+    "callouts": {
+      "total": 0,
+      "fallback": 0
+    },
+    "dims": {
+      "documentHeight": 40520,
+      "viewportWidth": 1440
+    },
+    "screenshot": "screenshots\\G15_271dcda0_desktop_v5_10_134.png"
+  },
+  {
+    "token": "4e636025-fb87-4099-a91d-a4f6c64df7e5",
+    "name": "D_HoXuan",
+    "plan": "D",
+    "versionDetected": "v5.10.135",
+    "versionAll": [
+      "v5.10.135"
+    ],
+    "typography": {
+      "report-p": {
+        "count": 0
+      },
+      "report-h3": {
+        "count": 0
+      },
+      "report-h2": {
+        "count": 0
+      },
+      "is-family report-p": {
+        "count": 0
+      }
+    },
+    "leaks": {
+      "dongxi15": 0,
+      "shiwu_xt": 0,
+      "shiwu_da": 0,
+      "shiwu_tao": 0,
+      "fifteen_leak_total": 0
+    },
+    "starStar": 0,
+    "callouts": {
+      "total": 0,
+      "fallback": 0
+    },
+    "dims": {
+      "documentHeight": 1430,
+      "viewportWidth": 1440
+    },
+    "screenshot": "screenshots\\D_4e636025_desktop_v5_10_134.png"
+  }
+]

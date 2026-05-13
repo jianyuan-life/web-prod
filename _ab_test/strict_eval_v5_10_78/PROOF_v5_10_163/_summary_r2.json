@@ -1,0 +1,437 @@
+[
+  {
+    "name": "C_d143f949",
+    "tableData": [
+      {
+        "idx": 0,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 6,
+        "colCount": 4,
+        "col1Header": "排序",
+        "col1Width": 180,
+        "col1Body": "★★★★★",
+        "allHeaders": [
+          {
+            "text": "排序",
+            "width": 180
+          },
+          {
+            "text": "才藝方向",
+            "width": 160
+          },
+          {
+            "text": "為什麼適合他",
+            "width": 887
+          },
+          {
+            "text": "具體建議",
+            "width": 422
+          }
+        ],
+        "top": 9979,
+        "width": 1649,
+        "left": 47
+      },
+      {
+        "idx": 1,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 4,
+        "colCount": 4,
+        "col1Header": "年齡段",
+        "col1Width": 180,
+        "col1Body": "2-11 歲",
+        "allHeaders": [
+          {
+            "text": "年齡段",
+            "width": 180
+          },
+          {
+            "text": "大運",
+            "width": 199
+          },
+          {
+            "text": "主題",
+            "width": 346
+          },
+          {
+            "text": "教養策略重點",
+            "width": 641
+          }
+        ],
+        "top": 10855,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 2,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 6,
+        "colCount": 4,
+        "col1Header": "優先級",
+        "col1Width": 180,
+        "col1Body": "★★★★★",
+        "allHeaders": [
+          {
+            "text": "優先級",
+            "width": 180
+          },
+          {
+            "text": "投資項目",
+            "width": 203
+          },
+          {
+            "text": "為什麼值得",
+            "width": 722
+          },
+          {
+            "text": "預算建議",
+            "width": 260
+          }
+        ],
+        "top": 14307,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 3,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 5,
+        "colCount": 4,
+        "col1Header": "年齡",
+        "col1Width": 180,
+        "col1Body": "3-5 歲",
+        "allHeaders": [
+          {
+            "text": "年齡",
+            "width": 180
+          },
+          {
+            "text": "時間",
+            "width": 144
+          },
+          {
+            "text": "人際發展重點",
+            "width": 534
+          },
+          {
+            "text": "家長行動",
+            "width": 508
+          }
+        ],
+        "top": 20376,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 4,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 7,
+        "colCount": 3,
+        "col1Header": "時段",
+        "col1Width": 180,
+        "col1Body": "7:00-8:00",
+        "allHeaders": [
+          {
+            "text": "時段",
+            "width": 180
+          },
+          {
+            "text": "建議",
+            "width": 355
+          },
+          {
+            "text": "原因",
+            "width": 831
+          }
+        ],
+        "top": 28955,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 5,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 5,
+        "colCount": 3,
+        "col1Header": "季節",
+        "col1Width": 180,
+        "col1Body": "春（2-4 月）",
+        "allHeaders": [
+          {
+            "text": "季節",
+            "width": 180
+          },
+          {
+            "text": "重點",
+            "width": 223
+          },
+          {
+            "text": "具體做法",
+            "width": 963
+          }
+        ],
+        "top": 29331,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 6,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 5,
+        "colCount": 3,
+        "col1Header": "月份",
+        "col1Width": 180,
+        "col1Body": "4 月（丁巳）",
+        "allHeaders": [
+          {
+            "text": "月份",
+            "width": 180
+          },
+          {
+            "text": "風險",
+            "width": 645
+          },
+          {
+            "text": "行動",
+            "width": 541
+          }
+        ],
+        "top": 29622,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 7,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 5,
+        "colCount": 3,
+        "col1Header": "面向",
+        "col1Width": 180,
+        "col1Body": "健康檢查 / 就醫",
+        "allHeaders": [
+          {
+            "text": "面向",
+            "width": 180
+          },
+          {
+            "text": "最佳月份",
+            "width": 387
+          },
+          {
+            "text": "原因",
+            "width": 799
+          }
+        ],
+        "top": 49526,
+        "width": 1366,
+        "left": 47
+      }
+    ]
+  },
+  {
+    "name": "G15_9b6edb0a",
+    "tableData": [
+      {
+        "idx": 0,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 4,
+        "colCount": 4,
+        "col1Header": "成員",
+        "col1Width": 180,
+        "col1Body": "何宣逸",
+        "allHeaders": [
+          {
+            "text": "成員",
+            "width": 180
+          },
+          {
+            "text": "流年影響",
+            "width": 494
+          },
+          {
+            "text": "壓力指數",
+            "width": 253
+          },
+          {
+            "text": "需要關注",
+            "width": 439
+          }
+        ],
+        "top": 24447,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 1,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 4,
+        "colCount": 3,
+        "col1Header": "成員",
+        "col1Width": 180,
+        "col1Body": "何宣逸",
+        "allHeaders": [
+          {
+            "text": "成員",
+            "width": 180
+          },
+          {
+            "text": "流年影響",
+            "width": 764
+          },
+          {
+            "text": "能量趨勢",
+            "width": 422
+          }
+        ],
+        "top": 26244,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 2,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 4,
+        "colCount": 3,
+        "col1Header": "成員",
+        "col1Width": 180,
+        "col1Body": "何宣逸",
+        "allHeaders": [
+          {
+            "text": "成員",
+            "width": 180
+          },
+          {
+            "text": "流年影響",
+            "width": 771
+          },
+          {
+            "text": "能量趨勢",
+            "width": 415
+          }
+        ],
+        "top": 27817,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 3,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 4,
+        "colCount": 3,
+        "col1Header": "成員",
+        "col1Width": 180,
+        "col1Body": "何宣逸",
+        "allHeaders": [
+          {
+            "text": "成員",
+            "width": 180
+          },
+          {
+            "text": "流年影響",
+            "width": 846
+          },
+          {
+            "text": "能量趨勢",
+            "width": 340
+          }
+        ],
+        "top": 29235,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 4,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 4,
+        "colCount": 3,
+        "col1Header": "成員",
+        "col1Width": 180,
+        "col1Body": "何宣逸",
+        "allHeaders": [
+          {
+            "text": "成員",
+            "width": 180
+          },
+          {
+            "text": "流年影響",
+            "width": 706
+          },
+          {
+            "text": "能量趨勢",
+            "width": 480
+          }
+        ],
+        "top": 30392,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 5,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 6,
+        "colCount": 3,
+        "col1Header": "年份",
+        "col1Width": 180,
+        "col1Body": "2026",
+        "allHeaders": [
+          {
+            "text": "年份",
+            "width": 180
+          },
+          {
+            "text": "能量定調",
+            "width": 485
+          },
+          {
+            "text": "全家關鍵字",
+            "width": 701
+          }
+        ],
+        "top": 31477,
+        "width": 1366,
+        "left": 47
+      },
+      {
+        "idx": 6,
+        "tag_chain": "outer→table",
+        "rendered": "CARD_STACK_or_BREAKOUT",
+        "rowCount": 6,
+        "colCount": 3,
+        "col1Header": "項目",
+        "col1Width": 180,
+        "col1Body": "共同幸運色",
+        "allHeaders": [
+          {
+            "text": "項目",
+            "width": 180
+          },
+          {
+            "text": "建議",
+            "width": 562
+          },
+          {
+            "text": "命理依據",
+            "width": 624
+          }
+        ],
+        "top": 31713,
+        "width": 1366,
+        "left": 45
+      }
+    ]
+  }
+]

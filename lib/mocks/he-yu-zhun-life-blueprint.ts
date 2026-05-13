@@ -3,7 +3,7 @@
 // Sprint 1:minimum schema-compatible mock(hero / card5 / actions2026 + 各 section minimum 一條)
 // Sprint 2+:加完整 17 sections(insight5cards / consensusMatrix / daYun / talentsTop5 / risksTop5...)
 //
-// 用途:Feature Flag 啟用後、訪問 /report/life-blueprint/he-yu-zhun 看 demo render
+// 用途:Feature Flag 啟用後、訪問 /r/life-blueprint/he-yu-zhun 看 demo render
 import type { LifeBlueprintReport } from '@/types/report-schemas'
 
 export const mockHeYuZhunLifeBlueprint: LifeBlueprintReport = {

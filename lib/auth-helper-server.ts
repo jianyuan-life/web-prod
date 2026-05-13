@@ -76,11 +76,6 @@ export async function getServerComponentUserEmail(): Promise<string | null> {
  * 對應 lesson #117:server-side runtime env(非 NEXT_PUBLIC_)在 Vercel reliable
  */
 export async function isBetaTester(): Promise<boolean> {
-  // [TEMP-AUDIT-2026-05-13] dev-only bypass for 4-demo verify - REMOVE AFTER
-  if (process.env.NODE_ENV === 'development' && process.env.BETA_TESTER_EMAILS === 'audit@jianyuan.life') {
-    return true
-  }
-
   const whitelist = (process.env.BETA_TESTER_EMAILS || '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
