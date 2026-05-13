@@ -48,7 +48,8 @@ const PLAN_CODE_TO_TYPE: Record<SupportedPlanCode, ReportType> = {
 }
 
 // 從 paid_reports 拉 row 的 minimum 型別(v5.10.244 修 Codex P2:row 無型別)
-// Sprint 2.x select 加欄位時、本 interface 同步補 partner_name / family_members 等
+// v5.10.245:加 birth_data + user_id(SQL 實際 schema 確認、user_id 已存在)
+// Sprint 2.x markdown parser 完成後再加 report_result 詳細型別
 export interface PaidReportRow {
   id: string
   plan_code: string
@@ -56,8 +57,46 @@ export interface PaidReportRow {
   client_name: string | null
   birth_city: string | null
   timezone: string | null
-  report_result: unknown // JSONB、Sprint 2.x markdown parser 用
+  birth_data: BirthData | null // JSONB、含 R/G15 members
+  report_result: ReportResult | null // JSONB、含 ai_content markdown
   created_at: string
+  user_id: string | null // v5.10.245 確認 column 已存在(80 row 中 32.5% match)
+}
+
+// v5.10.245:birth_data 多型(C/D 單人 vs R 雙人 vs G15 家庭)
+export interface PersonBirthInfo {
+  name: string
+  role?: 'self' | 'other' | string
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute?: number
+  gender?: 'M' | 'F'
+  birth_city?: string
+  city_lat?: number
+  city_lng?: number
+  latitude?: number
+  longitude?: number
+  timezone_offset?: number
+  time_mode?: 'exact' | 'shichen' | string
+  time_unknown?: boolean
+  calendar_type?: 'solar' | 'lunar' | string
+}
+
+export type BirthData =
+  | { plan: 'C' | 'D'; members?: PersonBirthInfo[] } // 單人
+  | { plan: 'R'; members: PersonBirthInfo[]; customer_note?: string; relation_description?: string } // 雙人
+  | { plan_type: 'family_reports'; report_ids: string[]; member_names: string[] } // G15 多人(別 schema)
+  | Record<string, unknown> // 兼容舊 row format
+
+export interface ReportResult {
+  ai_model?: string
+  ai_tokens?: number
+  ai_content?: string // markdown、Sprint 2.x parse 成 schema sections
+  report_id?: string
+  systems_count?: number
+  analyses_summary?: unknown
 }
 
 /**
@@ -124,7 +163,7 @@ async function fetchPaidReportRow(
     const supabase = getServiceSupabase()
     const { data, error } = await supabase
       .from('paid_reports')
-      .select('id, plan_code, customer_email, client_name, birth_city, timezone, report_result, created_at')
+      .select('id, plan_code, customer_email, client_name, birth_city, timezone, birth_data, report_result, created_at, user_id')
       .eq('id', id)
       .maybeSingle<PaidReportRow>()
 
