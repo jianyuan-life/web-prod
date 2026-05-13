@@ -114,7 +114,7 @@ export default function Navbar() {
               className="text-text-muted hover:text-gold transition-colors flex items-center gap-1 py-2 px-2.5 rounded-lg bg-gold/[0.08] border border-gold/10"
               aria-haspopup="menu"
               aria-expanded={toolsOpen}
-              aria-controls="tools-menu"
+              {...(toolsOpen ? { 'aria-controls': 'tools-menu' } : {})}
               aria-label={`${txt.nav_free}（免費工具選單）`}
               onClick={() => setToolsOpen(prev => !prev)}
               onKeyDown={(e) => {
