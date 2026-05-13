@@ -26,6 +26,7 @@ import { mockHeYuZhunLifeBlueprint } from '@/lib/mocks/he-yu-zhun-life-blueprint
 import { MOCK_HEART_DOUBTS_HE_XUAN_YI } from '@/lib/mocks/heart-doubts-he-xuan-yi'
 import { MOCK_COMPATIBILITY_LIN_YUAN_LIN } from '@/lib/mocks/compatibility-lin-yuan-lin'
 import { MOCK_FAMILY_BLUEPRINT_HE_JIA } from '@/lib/mocks/family-blueprint-he-jia'
+import { extractBaziFromMarkdown, extractOneLinerFromMarkdown } from '@/lib/parsers/life-blueprint-md-parser'
 
 // v5.10.240 Sprint 2 starter — Supabase service client(server-only、bypass RLS for adapter)
 // 對應 Codex L3 + Gemini L4 共識:adapter 用 service_role、user-facing path 用 RLS
@@ -210,9 +211,14 @@ async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | 
   if (!data) return null
 
   try {
+    // v5.10.246:從 ai_content markdown 抽真資料(Top-1 ROI:bazi + oneLiner)
+    // 解析失敗 fallback mock(過渡期、Sprint 2.x LLM Extraction migration 後可廢)
+    const aiContent = data.report_result?.ai_content || ''
+    const realBazi = extractBaziFromMarkdown(aiContent)
+    const realOneLiner = extractOneLinerFromMarkdown(aiContent)
+
     // Minimum mapping:用 row 拼 LifeBlueprintReport
-    // 完整 17 sections parsing 留 Sprint 2.x(Codex 估 1 day)
-    // 暫時:meta 真、其他 sections 用 mock(避免空白頁)
+    // 完整 17 sections parsing 留 Sprint 2.x LLM Extraction(Codex+Gemini 共識)
     const report: LifeBlueprintReport = {
       ...mockHeYuZhunLifeBlueprint, // fallback 全部 mock sections
       meta: {
@@ -222,7 +228,17 @@ async function fetchLifeBlueprintFromSupabase(id: string): Promise<ReportData | 
         birthPlace: data.birth_city || mockHeYuZhunLifeBlueprint.meta.birthPlace,
         reportDate: new Date(data.created_at).toISOString().split('T')[0],
       },
+      // v5.10.246:card5.bazi 真資料(若 parser 成功)、否則保留 mock
+      card5: {
+        ...mockHeYuZhunLifeBlueprint.card5,
+        bazi: realBazi || mockHeYuZhunLifeBlueprint.card5.bazi,
+      },
+      // v5.10.246:oneLiner 真資料(若 parser 成功)、否則保留 mock
+      oneLiner: realOneLiner || mockHeYuZhunLifeBlueprint.oneLiner,
     }
+
+    if (realBazi) console.info('[adapter] bazi parsed from markdown:', realBazi)
+    if (realOneLiner) console.info('[adapter] oneLiner parsed from markdown(len):', realOneLiner.length)
 
     return { type: 'life-blueprint', data: report }
   } catch (err) {
