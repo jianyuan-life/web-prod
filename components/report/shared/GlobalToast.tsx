@@ -51,12 +51,19 @@ export interface ToastProviderProps {
   swipeDirection?: 'left' | 'right' | 'up' | 'down'
 }
 
+// v5.10.264 Gemini L4 audit:加 toast 數量上限、防 API 錯誤狂刷彈窗
+const MAX_TOAST = 3
+
 export function GlobalToastProvider({ children, swipeDirection = 'right' }: ToastProviderProps) {
   const [items, setItems] = useState<ToastItem[]>([])
 
   const toast = useCallback((opts: ToastOptions) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    setItems((prev) => [...prev, { id, ...opts }])
+    // v5.10.264:Gemini「Toast 防爆機制」、cap 最多 3 個同時顯、超過自動 shift 最舊
+    setItems((prev) => {
+      const next = [...prev, { id, ...opts }]
+      return next.length > MAX_TOAST ? next.slice(-MAX_TOAST) : next
+    })
   }, [])
 
   const dismiss = useCallback((id: string) => {
