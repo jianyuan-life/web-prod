@@ -1,0 +1,84 @@
+# v5.10.256 Production smoke + a11y test(Codex L3 P0「CI/測試門檻」+ Gemini L4「CI/CD a11y 監控」)
+#
+# 觸發:
+#   - schedule:每天 02:00 UTC (10:00 台灣時間)、發現劣化即報
+#   - workflow_dispatch:手動跑(deploy 後)
+#   - push to main(自動跑、catch regression)
+#
+# 任務:
+#   1. 跑 scripts/smoke-test-routes.mjs(21 routes、Beta gate 行為驗)
+#   2. 跑 scripts/test-md-parser.mjs(5 cases、parser unit test)
+#   3. (未來)跑 axe-core 對 production 14 page、預期 0 violations
+#
+# 對應:
+#   - CLAUDE.md 第 10 條:push production 必 Playwright verify
+#   - lesson #116 ~ #124(本 session 學到、production verify 必持續做)
+
+name: Production Smoke & A11y
+
+on:
+  schedule:
+    # 每天台灣時間 10:00(02:00 UTC)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # 手動觸發
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'scripts/smoke-test-routes.mjs'
+      - 'scripts/test-md-parser.mjs'
+      - '.github/workflows/production-smoke.yml'
+
+concurrency:
+  group: production-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke-and-a11y:
+    name: Production smoke + parser unit test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # 1. 安裝 Playwright(用 npm cache 加速)
+      - name: Install Playwright + chromium
+        run: |
+          npm install -g playwright@1.58.0 axe-core@4.10.2
+          npx playwright install chromium
+
+      # 2. Parser unit test(本機 regex 驗證、不需 production)
+      - name: Parser smoke test(5 cases)
+        run: node scripts/test-md-parser.mjs
+
+      # 3. Production route smoke test(21 routes)
+      # 等 deploy 完才跑(push 觸發時)
+      - name: Wait for Vercel deploy
+        if: github.event_name == 'push'
+        run: |
+          echo "等 Vercel deploy 完(轉述 v5.10.x 版號 → production)"
+          sleep 180  # 3 分鐘給 Vercel build + propagate
+
+      - name: Production smoke test(21 routes)
+        run: |
+          # 自動修 require path、用 global Playwright
+          node -e "
+            const { createRequire } = require('module');
+            const path = '${{ runner.os == 'Linux' && '/usr/lib/node_modules/' || 'C:\\\\npm-global\\\\node_modules\\\\' }}';
+            console.log('Playwright path:', path);
+          " || echo "path detection failed、continue 用 GitHub setup"
+          # Linux GitHub runner 用 global path:/usr/lib/node_modules/playwright
+          sed -i 's|file:///D:/npm-global/node_modules/|file:///usr/lib/node_modules/|g' scripts/smoke-test-routes.mjs
+          node scripts/smoke-test-routes.mjs
+
+      # 4. 結果通知(failure 時)
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Production smoke or parser test FAILED"
+          echo "請查 logs、可能 production 有 regression"
