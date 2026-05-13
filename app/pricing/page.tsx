@@ -83,7 +83,7 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gold text-dark text-[10px] font-bold rounded-full">最超值</div>
             )}
             {plan.seasonal && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-accent text-cream text-[10px] font-bold rounded-full">立春前 30 天限時</div>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-700 text-white text-[10px] font-bold rounded-full">立春前 30 天限時</div>
             )}
             <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
             <h3 className="text-lg font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
@@ -175,7 +175,7 @@ export default function PricingPage() {
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gold text-dark text-[10px] font-bold rounded-full">最熱門</div>
                 )}
                 {plan.seasonal && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-accent text-cream text-[10px] font-bold rounded-full">立春前限時</div>
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-700 text-white text-[10px] font-bold rounded-full">立春前限時</div>
                 )}
                 <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
                 <h3 className="text-lg font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
