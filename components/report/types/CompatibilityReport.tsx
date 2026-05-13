@@ -3,6 +3,7 @@ import { Eyebrow } from '@/components/ui/Eyebrow'
 import { Card } from '@/components/ui/Card'
 import { GoldDivider } from '@/components/effects/GoldDivider'
 import { VerdictBadge } from '@/components/report/shared/VerdictBadge'
+import { HeroBlock } from '@/components/report/shared/HeroBlock'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
 import { QuickSummary } from '@/components/report/shared/QuickSummary'
@@ -39,67 +40,17 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         <MouseGlow size={500} intensity={0.05} />
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
-        {/* HERO 雙人 × 判定徽章 */}
-        <section className="mb-16 text-center">
-          <Eyebrow>COMPATIBILITY · 合否?</Eyebrow>
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <h1
-              className="font-bold"
-              style={{
-                fontFamily: 'var(--jy-font-display)',
-                fontSize: 'clamp(36px, 5vw, 72px)',
-                lineHeight: 1.1,
-                background: 'var(--jy-gold-shimmer)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              {data.pair.a.name}
-            </h1>
-            <span
-              className="text-[var(--jy-text-gold)] cross-rotate"
-              style={{ fontSize: 'clamp(28px, 3vw, 48px)' }}
-              aria-hidden
-            >
-              ✕
-            </span>
-            <h1
-              className="font-bold"
-              style={{
-                fontFamily: 'var(--jy-font-display)',
-                fontSize: 'clamp(36px, 5vw, 72px)',
-                lineHeight: 1.1,
-                background: 'var(--jy-gold-shimmer)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              {data.pair.b.name}
-            </h1>
-          </div>
-
-          <p className="mt-4 text-[var(--jy-text-tertiary)]">
-            場景:<span className="text-[var(--jy-text-secondary)]">{data.scenario}</span>
-            {' · '}
-            <span>精華 {data.meta.durationShort} 分鐘 · 完整 {data.meta.durationFull} 分鐘</span>
-          </p>
-
-          <div className="mt-10 flex justify-center">
-            <VerdictBadge
-              verdict={data.verdict}
-              subtitle={data.verdictMeta.subtitle}
-              size="lg"
-            />
-          </div>
-
-          {/* ✕ 旋轉動畫 */}
-          <style>{`
-            .cross-rotate { animation: cross-rotate-anim 8s linear infinite; display: inline-block; }
-            @keyframes cross-rotate-anim { from { transform: rotate(0); } to { transform: rotate(360deg); } }
-            @media (prefers-reduced-motion: reduce) { .cross-rotate { animation: none; } }
-          `}</style>
-        </section>
+        {/* HERO 雙人 × 判定徽章 — v5.10.259 wire HeroBlock 'verdict' variant(DRY refactor) */}
+        <HeroBlock
+          variant="verdict"
+          eyebrow="COMPATIBILITY · 合否?"
+          nameA={data.pair.a.name}
+          nameB={data.pair.b.name}
+          scenario={data.scenario}
+          durations={{ short: data.meta.durationShort, full: data.meta.durationFull }}
+          verdict={data.verdict}
+          verdictSubtitle={data.verdictMeta.subtitle}
+        />
 
         {/* 你們的問題 */}
         <section className="mb-12">

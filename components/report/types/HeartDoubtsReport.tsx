@@ -3,6 +3,7 @@ import { Eyebrow } from '@/components/ui/Eyebrow'
 import { Card } from '@/components/ui/Card'
 import { GoldDivider } from '@/components/effects/GoldDivider'
 import { ScoreCircle } from '@/components/report/shared/ScoreCircle'
+import { HeroBlock } from '@/components/report/shared/HeroBlock'
 import { BaziPillars } from '@/components/report/shared/BaziPillars'
 import { EvidenceList } from '@/components/report/shared/EvidenceList'
 import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
@@ -44,46 +45,19 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
         <MouseGlow size={500} intensity={0.05} />
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
-        {/* HERO 評分卡 */}
-        <section className="mb-16 grid grid-cols-1 gap-12 lg:grid-cols-2 items-center">
-          <div className="flex flex-col items-center lg:items-start">
-            <Eyebrow>HEART DOUBTS · 心之所惑</Eyebrow>
-            <h1
-              className="mt-6 font-bold"
-              style={{
-                fontFamily: 'var(--jy-font-display)',
-                fontSize: 'clamp(48px, 6vw, 88px)',
-                lineHeight: 1.05,
-                letterSpacing: '-0.04em',
-                background: 'var(--jy-gold-shimmer)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              {data.meta.name}
-            </h1>
-            <p className="mt-4 text-[var(--jy-text-tertiary)]">
-              出生:<span className="text-[var(--jy-text-secondary)]">{new Date(data.meta.birthDate).toLocaleDateString('zh-TW')}</span>
-            </p>
-            <p className="mt-1 text-xs text-[var(--jy-text-muted)]">
-              精華 {data.meta.durationShort} 分鐘 · 完整 {data.meta.durationFull} 分鐘
-            </p>
-          </div>
-
-          {/* ScoreCircle 命格綜合評分 */}
-          <div className="flex flex-col items-center">
-            <ScoreCircle
-              grade={data.score.grade}
-              value={data.score.value}
-              percentile={data.score.percentile}
-              challengeLevel={data.score.challengeLevel}
-              size={280}
-            />
-            <p className="mt-4 text-xs text-[var(--jy-text-muted)]">
-              {data.score.systemsCount} 套系統交叉分析
-            </p>
-          </div>
-        </section>
+        {/* HERO 評分卡 — v5.10.259 wire HeroBlock 'score' variant(DRY refactor、跟原 inline 邏輯一致) */}
+        <HeroBlock
+          variant="score"
+          eyebrow="HEART DOUBTS · 心之所惑"
+          name={data.meta.name}
+          birthDate={data.meta.birthDate}
+          durations={{ short: data.meta.durationShort, full: data.meta.durationFull }}
+          grade={data.score.grade}
+          value={data.score.value}
+          percentile={data.score.percentile}
+          challengeLevel={data.score.challengeLevel}
+          systemsCount={data.score.systemsCount}
+        />
 
         <GoldDivider className="my-12" />
 
