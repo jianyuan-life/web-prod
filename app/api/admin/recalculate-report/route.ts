@@ -96,10 +96,10 @@ export async function POST(req: NextRequest) {
 
   const supabase = getSupabase()
 
-  // 1. 取得報告資料
+  // 1. 取得報告資料(v5.10.274 加 report_result 給 history 備份)
   const { data: report, error: readErr } = await supabase
     .from('paid_reports')
-    .select('id, status, birth_data, plan_code, customer_email, timezone, birth_city, birth_country, birth_lat, birth_lng')
+    .select('id, status, birth_data, plan_code, customer_email, timezone, birth_city, birth_country, birth_lat, birth_lng, report_result')
     .eq('id', reportId)
     .maybeSingle()
 
@@ -149,6 +149,9 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. 寫回 Supabase，並把 status 拉回 pending 以重觸發生成
+  // v5.10.274 P0 修(Gemini P0#4):recalculate 前 backup 原 report_result
+  //   - 客戶 dispute「新的不對、要回舊版」時、admin 可從 previous_report_result 還原
+  //   - admin actor(目前用 reason 字段、Sprint 2.x 改 user_id)
   const { error: updateErr } = await supabase
     .from('paid_reports')
     .update({
@@ -157,6 +160,10 @@ export async function POST(req: NextRequest) {
       status: 'pending',
       error_message: null,
       tz_migrated_at: timezone ? new Date().toISOString() : undefined,
+      // v5.10.274:備份原 report_result 給 audit/restore
+      previous_report_result: report.report_result || null,
+      recalculated_at: new Date().toISOString(),
+      recalculated_by: reason || 'admin:recalculate-report',
     })
     .eq('id', reportId)
 

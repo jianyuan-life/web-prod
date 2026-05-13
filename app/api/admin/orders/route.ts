@@ -57,10 +57,10 @@ export async function PATCH(req: NextRequest) {
 
   const supabase = getSupabase()
 
-  // 查詢報告
+  // 查詢報告(v5.10.274 加 report_result 給 history backup)
   const { data: report, error: fetchErr } = await supabase
     .from('paid_reports')
-    .select('id, status, retry_count')
+    .select('id, status, retry_count, report_result')
     .eq('id', id)
     .single()
 
@@ -70,12 +70,16 @@ export async function PATCH(req: NextRequest) {
 
   // 重置狀態為 pending，讓 workflow 重新搶佔
   // 管理員可對任何狀態重新生成（包括 completed — 用於報告被截斷需要重跑的情況）
+  // v5.10.274:backup 原 report_result 給 dispute restore 用(對應 Gemini P0#4)
   await supabase.from('paid_reports').update({
     status: 'pending',
     error_message: null,
     report_result: null,
     pdf_url: null,
     retry_count: (report.retry_count ?? 0) + 1,
+    previous_report_result: report.report_result || null,
+    recalculated_at: new Date().toISOString(),
+    recalculated_by: 'admin:orders-patch',
   }).eq('id', id)
 
   // 觸發 Workflow
