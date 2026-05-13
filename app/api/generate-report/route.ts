@@ -12,6 +12,7 @@ import {
 import { validateReportAgainstData } from '@/workflows/generate-report/steps'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
+import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
@@ -1106,6 +1107,8 @@ ${analyses.length}套系統排盤完整數據：
           reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt()))
           aiModelUsed = 'deepseek-chat'
           console.info(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
+          // v5.10.268 Gemini P0「LLM Fallback 體驗斷崖」alert:客戶收到劣化模型、ops 即介入
+          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude failed or key missing').catch(() => {})
         } catch (e) {
           console.error('C 方案 DeepSeek fallback 也失敗:', e)
           await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
@@ -1141,6 +1144,8 @@ ${analyses.length}套系統排盤完整數據：
           reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, userPrompt))
           aiModelUsed = 'deepseek-chat'
           console.info(`方案 ${planCode} DeepSeek fallback 完成：${reportContent.length} 字`)
+          // v5.10.268 Gemini P0「LLM Fallback 體驗斷崖」alert(同 C plan、D/R/G15/E* 都會落到這)
+          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude failed or key missing').catch(() => {})
         } catch (e) {
           console.error(`方案 ${planCode} DeepSeek fallback 也失敗:`, e)
           await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)

@@ -286,6 +286,30 @@ export async function notifyReportStuck(
 }
 
 /**
+ * v5.10.268 LLM Fallback 體驗斷崖 alert(對應 Gemini L4 audit P0):
+ *   - 客戶花 $89-279 期待 Claude Opus、Claude 失敗 fallback 到較弱模型
+ *   - 客戶收到品質劣化報告、不知情、信任崩潰風險
+ *   - 觸發即發 Telegram、ops 立刻人工介入(refund offer / 重生成)
+ */
+export async function notifyModelDowngrade(
+  reportId: string,
+  planCode: string,
+  expected: string,
+  actual: string,
+  reason: string,
+): Promise<boolean> {
+  const msg =
+    `🚨 <b>LLM Fallback 觸發（客戶報告品質下降）</b>\n\n` +
+    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>方案：</b>${esc(planCode)}\n` +
+    `<b>預期模型：</b>${esc(expected)}\n` +
+    `<b>實際模型：</b>${esc(actual)}\n` +
+    `<b>降級原因：</b>${esc(reason).slice(0, 300)}\n\n` +
+    `<i>客戶可能拿到劣化報告、人工介入評估 refund / 重生成</i>`
+  return sendTelegramMessage(msg)
+}
+
+/**
  * 單日 AI 成本超預算
  */
 export async function notifyAbnormalCost(
