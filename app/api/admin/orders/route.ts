@@ -121,3 +121,75 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: '已重新觸發報告生成' })
 }
+
+// v5.10.276 P0 補完(Codex P0#6 + Gemini P0#4):restore previous_report_result
+//   action='restore':把 previous_report_result swap 回 report_result(client undo recalculate)
+//   action='get_history':只回 previous_report_result 給 ops 預覽
+//
+// POST /api/admin/orders
+//   body: { id: string, action: 'restore' | 'get_history', key?: string }
+export async function POST(req: NextRequest) {
+  const rlFail = checkAdminRateLimit(req)
+  if (rlFail) return rlFail
+  const body = await req.json()
+  const { id, action, key } = body
+  const authFail = checkAdminAuth(req, key)
+  if (authFail) return authFail
+  if (!id) return NextResponse.json({ error: '缺少 id' }, { status: 400 })
+
+  const supabase = getSupabase()
+
+  // get_history:回 backup 給 ops 預覽
+  if (action === 'get_history') {
+    const { data, error } = await supabase
+      .from('paid_reports')
+      .select('id, status, report_result, previous_report_result, recalculated_at, recalculated_by')
+      .eq('id', id)
+      .single()
+    if (error || !data) return NextResponse.json({ error: '找不到報告' }, { status: 404 })
+    return NextResponse.json({
+      current: data.report_result,
+      previous: data.previous_report_result,
+      recalculated_at: data.recalculated_at,
+      recalculated_by: data.recalculated_by,
+      has_backup: !!data.previous_report_result,
+    })
+  }
+
+  // restore:swap previous → current
+  if (action === 'restore') {
+    const { data, error: fetchErr } = await supabase
+      .from('paid_reports')
+      .select('id, report_result, previous_report_result, status')
+      .eq('id', id)
+      .single()
+    if (fetchErr || !data) return NextResponse.json({ error: '找不到報告' }, { status: 404 })
+    if (!data.previous_report_result) {
+      return NextResponse.json({ error: '無備份可復原(從未 recalculate)' }, { status: 400 })
+    }
+
+    // swap:current → backup, backup → current(可二次 undo)
+    const { error: updateErr } = await supabase
+      .from('paid_reports')
+      .update({
+        report_result: data.previous_report_result,
+        previous_report_result: data.report_result,
+        recalculated_at: new Date().toISOString(),
+        recalculated_by: 'admin:restore',
+        status: 'completed',  // restore 假設舊版是 completed(若不對 admin 可手動改)
+        error_message: null,
+      })
+      .eq('id', id)
+
+    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+
+    await writeAuditLog(req, 'update', 'report', String(id), {
+      action: 'restore_previous_report_result',
+      restored_at: new Date().toISOString(),
+    })
+
+    return NextResponse.json({ success: true, message: '已還原至 previous_report_result' })
+  }
+
+  return NextResponse.json({ error: 'action 無效(支援:restore / get_history)' }, { status: 400 })
+}
