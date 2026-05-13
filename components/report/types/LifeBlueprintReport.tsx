@@ -15,6 +15,7 @@ import { BaziPillars } from '@/components/report/shared/BaziPillars'
 import { RadarTriad } from '@/components/report/shared/RadarTriad'
 import { ActionPlanStages } from '@/components/report/shared/ActionPlanStages'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
+import { YearEnergyMonths } from '@/components/report/shared/YearEnergyMonths'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 interface LifeBlueprintReportProps {
@@ -241,6 +242,18 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
             variant="risk"
           />
         </section>
+
+        <GoldDivider className="my-12" />
+
+        {/* 12 月份能量(YearEnergyMonths)— v5.10.214 */}
+        {data.yearEnergy12.length > 0 && (
+          <section className="mb-16">
+            <Eyebrow align="left">📅 2026 12 月份能量</Eyebrow>
+            <Card className="mt-8 p-6" interactive={false}>
+              <YearEnergyMonths data={data.yearEnergy12} title="" />
+            </Card>
+          </section>
+        )}
 
         <GoldDivider className="my-12" />
 
