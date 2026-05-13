@@ -245,6 +245,121 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         <GoldDivider className="my-12" />
 
+        {/* 大運時間軸(daYun)— Codex P1 修(v5.10.216) */}
+        {data.daYun.length > 0 && (
+          <section className="mb-16">
+            <Eyebrow align="left">⏱ 大運起伏時間軸</Eyebrow>
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {data.daYun.map((dy) => {
+                const energyColor = dy.energy >= 75 ? 'var(--jy-text-gold)' : dy.energy >= 50 ? 'var(--jy-semantic-balance)' : 'var(--jy-semantic-adjust)'
+                return (
+                  <Card key={dy.seq} className="p-5" interactive={false}>
+                    <div className="flex items-baseline justify-between mb-3">
+                      <h4 className="text-2xl font-bold" style={{ fontFamily: 'var(--jy-font-display)', color: energyColor }}>
+                        {dy.ganZhi}
+                      </h4>
+                      <span className="text-xs text-[var(--jy-text-tertiary)]">{dy.ageRange} 歲 · {dy.years}</span>
+                    </div>
+                    <p className="text-sm text-[var(--jy-text-secondary)] mb-2">
+                      <span className="text-[var(--jy-text-muted)]">十神:</span> {dy.tenGod}
+                      <span className="ml-3 text-[var(--jy-text-muted)]">能量:</span> <span style={{ color: energyColor }}>{dy.energy}</span>
+                    </p>
+                    <p className="text-sm font-medium text-[var(--jy-text-primary)]">{dy.theme}</p>
+                    <p className="mt-2 text-xs text-[var(--jy-text-secondary)] leading-relaxed">{dy.strategy}</p>
+                    {dy.keyYears.length > 0 && (
+                      <ul className="mt-3 space-y-1 text-xs text-[var(--jy-text-tertiary)]">
+                        {dy.keyYears.map((ky, i) => (
+                          <li key={i}>· {ky.year}({ky.ganZhi}):{ky.note}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        <GoldDivider className="my-12" />
+
+        {/* 命盤一覽(natalOverview)— Codex P1 修(v5.10.216) */}
+        {data.natalOverview && (
+          <section className="mb-16">
+            <Eyebrow align="left">🪐 命盤一覽</Eyebrow>
+            <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+              <Card className="p-6" interactive={false}>
+                <h3 className="font-semibold text-[var(--jy-text-primary)] mb-3">紫微 12 宮主星</h3>
+                <ul className="space-y-2">
+                  {data.natalOverview.ziwei12palaces.map((p, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <span className={`min-w-[3rem] font-medium ${p.bigFour ? 'text-[var(--jy-text-gold)]' : 'text-[var(--jy-text-tertiary)]'}`}>
+                        {p.palace}
+                      </span>
+                      <span className="text-[var(--jy-text-secondary)]">{p.stars.join(' / ')}</span>
+                      <span className="ml-auto text-xs text-[var(--jy-text-muted)]">{p.ganzhi}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+              <Card className="p-6" interactive={false}>
+                <h3 className="font-semibold text-[var(--jy-text-primary)] mb-3">📅 今日指引</h3>
+                <p className="text-sm text-[var(--jy-text-tertiary)] mb-2">日期:{data.natalOverview.daily.date}</p>
+                <p className="text-sm text-[var(--jy-text-tertiary)] mb-3">五行:{data.natalOverview.daily.element}</p>
+                <KeyTakeaway title="本日宜">
+                  {data.natalOverview.daily.tip}
+                </KeyTakeaway>
+              </Card>
+            </div>
+          </section>
+        )}
+
+        <GoldDivider className="my-12" />
+
+        {/* 14 系統共識矩陣(consensusMatrix)— Codex P1 修(v5.10.216) */}
+        {data.consensusMatrix.dimensions.length > 0 && (
+          <section className="mb-16">
+            <Eyebrow align="left">🌐 14 系統共識矩陣</Eyebrow>
+            <Card className="mt-8 p-6 overflow-x-auto" interactive={false}>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[var(--jy-border-soft)]">
+                    <th className="text-left py-2 px-2 sticky left-0 bg-[var(--jy-bg-card)] text-[var(--jy-text-muted)]">面向 / 系統</th>
+                    {data.consensusMatrix.systems.map((sys) => (
+                      <th key={sys} className="text-center py-2 px-1 text-[var(--jy-text-gold)] whitespace-nowrap">{sys}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.consensusMatrix.dimensions.map((dim, di) => (
+                    <tr key={dim} className="border-b border-[var(--jy-border-hairline)]">
+                      <td className="py-2 px-2 sticky left-0 bg-[var(--jy-bg-card)] text-[var(--jy-text-secondary)] whitespace-nowrap">{dim}</td>
+                      {data.consensusMatrix.grid[di]?.map((stars, si) => (
+                        <td key={si} className="text-center py-2 px-1 tabular-nums" style={{ color: stars >= 4 ? 'var(--jy-text-gold)' : (stars <= 1 ? 'var(--jy-text-muted)' : 'var(--jy-text-secondary)') }}>
+                          {'★'.repeat(stars) + '☆'.repeat(5 - stars)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-4 flex items-center gap-4 text-xs text-[var(--jy-text-tertiary)]">
+                <span>共識度:</span>
+                {data.consensusMatrix.consensus.map((c, i) => {
+                  const COLOR = { high: 'var(--jy-semantic-flow)', mid: 'var(--jy-semantic-balance)', low: 'var(--jy-semantic-adjust)' }
+                  return (
+                    <span key={i} className="inline-flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: COLOR[c.level] }} aria-hidden />
+                      {c.level === 'high' ? '🟢 高' : c.level === 'mid' ? '🟡 中' : '🟠 低'}({c.pct}%)
+                    </span>
+                  )
+                })}
+              </div>
+            </Card>
+          </section>
+        )}
+
+        <GoldDivider className="my-12" />
+
         {/* 12 月份能量(YearEnergyMonths)— v5.10.214 */}
         {data.yearEnergy12.length > 0 && (
           <section className="mb-16">
