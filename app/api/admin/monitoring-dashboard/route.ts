@@ -74,17 +74,21 @@ export async function GET(req: NextRequest) {
       .order('provider', { ascending: true }),
 
     // 2. 今日報告（paid_reports 無 updated_at 欄位，改用 created_at 排序與計時）
+    // v5.10.287 soft delete filter
     supabase
       .from('paid_reports')
       .select('id, client_name, plan_code, status, created_at, error_message, generation_progress, amount_usd')
-      .gte('created_at', todayStart.toISOString()),
+      .gte('created_at', todayStart.toISOString())
+      .is('deleted_at', null),
 
     // 3. 卡住 > 20 分的 generating
+    // v5.10.287 soft delete filter:軟刪 stuck 報告不該 alert
     supabase
       .from('paid_reports')
       .select('id, client_name, plan_code, status, created_at, generation_progress')
       .eq('status', 'generating')
       .lt('created_at', twentyMinAgo.toISOString())
+      .is('deleted_at', null)
       .order('created_at', { ascending: true })
       .limit(20),
 

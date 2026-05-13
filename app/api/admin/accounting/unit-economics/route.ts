@@ -69,11 +69,13 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabase()
 
   // 1. 抓期間內的已完成報告
+  // v5.10.287:soft delete filter — accounting 不算軟刪、對齊 v_revenue_metrics
   const { data: reportsData, error: repErr } = await supabase
     .from('paid_reports')
     .select('id, client_name, plan_code, amount_usd, stripe_session_id, status, created_at')
     .gte('created_at', range.start)
     .lt('created_at', range.end)
+    .is('deleted_at', null)
     .limit(10000)
 
   if (repErr) return NextResponse.json({ error: repErr.message }, { status: 500 })

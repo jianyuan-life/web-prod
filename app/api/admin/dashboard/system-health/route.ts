@@ -63,10 +63,11 @@ export async function GET(req: NextRequest) {
         } finally { clearTimeout(timeout) }
       }),
       // Supabase
+      // v5.10.287:soft delete filter — system-health 報告數應對齊 active(不含軟刪)
       ping('Supabase', async () => {
-        const { count, error } = await supabase.from('paid_reports').select('id', { count: 'exact', head: true })
+        const { count, error } = await supabase.from('paid_reports').select('id', { count: 'exact', head: true }).is('deleted_at', null)
         if (error) throw new Error(error.message)
-        return { message: `連線正常（paid_reports: ${count ?? 0} 筆）`, detail: { total_reports: count ?? 0 } }
+        return { message: `連線正常（paid_reports active: ${count ?? 0} 筆）`, detail: { total_reports: count ?? 0 } }
       }),
       // Stripe
       ping('Stripe', async () => {

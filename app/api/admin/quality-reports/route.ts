@@ -225,12 +225,14 @@ export async function GET(req: NextRequest) {
   for (const r of (reportsData as ReportRow[] | null) || []) byId.set(r.id, r)
 
   // needs_review filter：status = needs_human_review 的（從 paid_reports 額外補上）
+  // v5.10.287:soft delete filter — 軟刪報告不該出現在 QA 待修清單
   let needsReviewExtra: Array<AggRow & { avg: number }> = []
   if (filter === 'needs_review' || filter === 'all') {
     const { data: pending } = await supabase
       .from('paid_reports')
       .select('id, plan_code, client_name, customer_email, status, created_at, error_message')
       .eq('status', 'needs_human_review')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(50)
 

@@ -52,7 +52,8 @@ export async function GET(req: NextRequest) {
     // 訪客聚合（overview / top_page / country / device + bot 分桶）
     supabase.rpc('admin_visitor_stats', { start_date: sinceISO, end_date: endISO }),
     // 付費報告（只選統計需要的欄位，不拉 report_result 大 JSON）
-    supabase.from('paid_reports').select('id, plan_code, amount_usd, status, created_at, customer_email, client_name, stripe_session_id').gte('created_at', sinceISO).order('created_at', { ascending: false }),
+    // v5.10.287:soft delete filter — admin overview 統計不算軟刪
+    supabase.from('paid_reports').select('id, plan_code, amount_usd, status, created_at, customer_email, client_name, stripe_session_id').gte('created_at', sinceISO).is('deleted_at', null).order('created_at', { ascending: false }),
     // 免費工具使用
     supabase.from('free_tool_usage').select('*', { count: 'exact', head: true }).gte('created_at', sinceISO),
   ])

@@ -33,9 +33,10 @@ export async function GET(req: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_URL || '',
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
       )
-      const { count, error } = await supabase.from('paid_reports').select('id', { count: 'exact', head: true })
+      // v5.10.287:soft delete filter
+      const { count, error } = await supabase.from('paid_reports').select('id', { count: 'exact', head: true }).is('deleted_at', null)
       if (error) throw new Error(error.message)
-      return `連線正常，共 ${count ?? 0} 筆報告`
+      return `連線正常，共 ${count ?? 0} 筆 active 報告`
     }),
 
     // Python API (Fly.io)

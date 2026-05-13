@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
   const offset = parseInt(url.searchParams.get('offset') || '0')
 
   const supabase = getSupabase()
+  // v5.10.287:soft delete filter — 軟刪報告不該出現在 timezone backfill 清單
   const { data, error, count } = await supabase
     .from('paid_reports')
     .select(
@@ -41,6 +42,7 @@ export async function GET(req: NextRequest) {
       { count: 'exact' },
     )
     .is('timezone', null)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 

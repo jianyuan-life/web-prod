@@ -28,10 +28,12 @@ export async function GET(req: NextRequest) {
   const status = req.nextUrl.searchParams.get('status') || 'all'
   const supabase = getSupabase()
 
+  // v5.10.287:soft delete filter — refunds 列表不顯示軟刪報告
   let query = supabase
     .from('paid_reports')
     .select('id, client_name, customer_email, plan_code, amount_usd, status, created_at, refunded_at, refunded_amount_usd, refund_reason, stripe_refund_id, stripe_session_id, error_message')
     .gt('amount_usd', 0)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(500)
 

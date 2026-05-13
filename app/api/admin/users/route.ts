@@ -34,9 +34,11 @@ export async function GET(req: NextRequest) {
     const users = usersData?.users || []
 
     // 取得所有付費報告（用 customer_email 關聯用戶，因為 paid_reports 沒有 user_id 欄位）
+    // v5.10.287:soft delete filter — admin/users 不算軟刪
     const { data: reports } = await getSupabase()
       .from('paid_reports')
       .select('id, client_name, customer_email, plan_code, amount_usd, status, created_at')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
 
     // 按 customer_email 分組報告

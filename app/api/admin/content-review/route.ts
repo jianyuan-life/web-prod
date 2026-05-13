@@ -203,10 +203,12 @@ export async function POST(req: NextRequest) {
   if (action === 'regenerate') {
     // 1. 把報告狀態拉回 pending
     if (logRow.report_id) {
+      // v5.10.287:soft delete filter — 軟刪報告不該被 content-review regenerate 救活
       const { error: reportErr } = await supabase
         .from('paid_reports')
         .update({ status: 'pending', error_message: null })
         .eq('id', logRow.report_id)
+        .is('deleted_at', null)
       if (reportErr) {
         console.error('[content-review] 更新報告狀態失敗:', reportErr)
       }

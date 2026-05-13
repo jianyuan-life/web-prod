@@ -63,11 +63,13 @@ export async function checkCapacity(planCode: string): Promise<CapacityDecision>
     const supabase = createClient(url, key)
     const since = new Date(Date.now() - CAPACITY_WINDOW_MIN * 60 * 1000).toISOString()
 
+    // v5.10.287:soft delete filter — capacity 不算軟刪生成中報告(避免假性 burst alert)
     const { count, error } = await supabase
       .from('paid_reports')
       .select('id', { count: 'exact', head: true })
       .in('status', ['pending', 'generating'])
       .gte('created_at', since)
+      .is('deleted_at', null)
 
     if (error) {
       // 查詢失敗則放行（不以監控機制反過來阻塞正常流量）
