@@ -11,6 +11,7 @@ import { ReportSeal } from '@/components/report/shared/ReportSeal'
 import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
 import { LuckyParams } from '@/components/report/shared/LuckyParams'
 import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
+import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import type { FamilyBlueprintReport as FamilyData } from '@/types/report-schemas'
 
 interface FamilyBlueprintReportProps {
@@ -402,6 +403,11 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         </section>
 
         <GoldDivider className="my-12" />
+
+        {/* PDF download — v5.10.235 wire */}
+        <section className="mb-12 flex justify-center">
+          <PDFDownloadButton reportType="family-blueprint" reportId={data.meta.id} />
+        </section>
 
         {/* Footer */}
         <section className="space-y-6">

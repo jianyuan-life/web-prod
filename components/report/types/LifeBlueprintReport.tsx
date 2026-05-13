@@ -491,6 +491,11 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         <GoldDivider className="my-12" />
 
+        {/* PDF download — v5.10.235 wire */}
+        <section className="mb-12 flex justify-center">
+          <PDFDownloadButton reportType="life-blueprint" reportId={data.meta.id} />
+        </section>
+
         {/* 報告印章 + 危機求助 Footer */}
         <section className="space-y-6">
           <ReportSeal

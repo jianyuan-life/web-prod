@@ -11,6 +11,7 @@ import { ReportSeal } from '@/components/report/shared/ReportSeal'
 import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
 import { BaziPillars } from '@/components/report/shared/BaziPillars'
 import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
+import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import type { CompatibilityReport as CompatibilityData } from '@/types/report-schemas'
 
 interface CompatibilityReportProps {
@@ -404,6 +405,11 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         </section>
 
         <GoldDivider className="my-12" />
+
+        {/* PDF download — v5.10.235 wire */}
+        <section className="mb-12 flex justify-center">
+          <PDFDownloadButton reportType="compatibility" reportId={data.meta.id} />
+        </section>
 
         {/* Footer */}
         <section className="space-y-6">
