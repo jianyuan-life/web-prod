@@ -370,6 +370,44 @@ main h3 {
   letter-spacing: -0.005em;
 }
 
+/* v5.10.323 Gemini polish #1 墨跡擴散 hover(editorial 紙張交互真實感):
+   - 對 a / button 加 ink-bleed 效果(hover 時 underline 從中心擴散)
+   - 對 .btn-ink class 加 ::after 偽元素 ink dot 擴散
+   - prefers-reduced-motion 自動關閉 */
+@media (prefers-reduced-motion: no-preference) {
+  /* a 標籤底線從中心擴散(墨跡感、editorial)*/
+  main a:not(.no-ink):not([role="button"]) {
+    background-image: linear-gradient(to right, var(--jy-text-gold), var(--jy-text-gold));
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 1px;
+    transition: background-size 380ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  main a:not(.no-ink):not([role="button"]):hover,
+  main a:not(.no-ink):not([role="button"]):focus-visible {
+    background-size: 100% 1px;
+  }
+
+  /* btn-ink class 加可選 ink dot 擴散效果(button 用、不影響既有按鈕 hover) */
+  .btn-ink {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-ink::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(201, 168, 76, 0.18) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 380ms cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+  .btn-ink:hover::after,
+  .btn-ink:focus-visible::after {
+    opacity: 1;
+  }
+}
+
 /* 標題用宋體/襯線體 */
 h1, h2, h3 {
   font-family: var(--font-sans);
