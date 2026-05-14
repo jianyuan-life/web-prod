@@ -276,7 +276,8 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/csp-report' ||
     pathname === '/api/web-vitals' ||
     pathname.startsWith('/api/admin/honeypot') ||
-    pathname.startsWith('/api/workflows/') // Workflow internal callbacks
+    pathname.startsWith('/api/workflows/') || // Workflow internal callbacks
+    pathname === '/api/generate-report' // v5.10.349 hotfix:cron retry fallback、x-internal-secret 已驗、無需 CSRF
 
   // v5.10.342 (Codex round 2 P1 #2 修):敏感 endpoint 用 strict mode
   // /api/admin/*、/api/points/*、/api/referral/* → strict(必有 valid Origin、Referer 也驗)
