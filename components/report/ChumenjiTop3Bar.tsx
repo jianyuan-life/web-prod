@@ -144,8 +144,12 @@ export default function ChumenjiTop3Bar({
           })}
         </div>
 
-        <div className="mt-5 pt-4 border-t border-gold/10 text-[11px] text-text-muted">
-          <span className="text-gold/80">💡 解讀:</span> 分數愈高代表該時辰盤面能量愈強、奇門遁甲 25 層評分(三吉門 / 三奇 / 八神 / 九星旺衰 / 天地盤干 / 28 格局)綜合判定。建議優先選第一名、若無法配合再選第二、第三。
+        {/* v5.10.303 editorial:砍 💡、改 small caps eyebrow + hairline */}
+        <div className="mt-5 pt-4 border-t border-gold/10 text-[11px] text-text-muted leading-relaxed">
+          <p className="text-[10px] tracking-[0.2em] text-gold/70 mb-2" style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>
+            解  讀  說  明
+          </p>
+          分數愈高代表該時辰盤面能量愈強、奇門遁甲 25 層評分(三吉門 / 三奇 / 八神 / 九星旺衰 / 天地盤干 / 28 格局)綜合判定。建議優先選第一名、若無法配合再選第二、第三。
         </div>
       </div>
     </section>
