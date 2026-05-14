@@ -8,6 +8,7 @@
 // 未來可升級 Upstash Redis 做跨區共享。
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getClientIp } from '@/lib/security/get-client-ip'
 
 const ADMIN_LIMIT_PER_MIN = 10
 const WINDOW_MS = 60_000
@@ -18,14 +19,8 @@ const FAILED_ATTEMPTS_LIMIT = 5
 const LOCKOUT_MS = 30 * 60_000
 const failedAttempts = new Map<string, { count: number; lockedUntil: number }>()
 
-function getClientIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-real-ip') ||
-    req.headers.get('cf-connecting-ip') ||
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    'unknown'
-  )
-}
+// v5.10.326:消「getClientIp 在 admin-rate-limit + middleware + 各 API route」3 處重複
+// 改 import 共用 lib/security/get-client-ip(SSOT、防 drift)
 
 /**
  * 檢查 admin API 的速率限制。超過回 429 NextResponse，通過回 null。
