@@ -1,0 +1,38 @@
+{
+  "_README": "Vercel Edge Config seed data — copy to https://vercel.com/dashboard/stores/{id}/items after creating Edge Config and attaching to jianyuan-life project. v5.10.344 (Sprint 6 收尾)",
+  "_lastUpdated": "2026-05-14",
+  "_version": "v5.10.344",
+  "items": {
+    "blocked_ips": {
+      "_description": "已知惡意 IP / range — 加入規則:server logs 看到單 IP 1 hr > 1000 次 4xx/5xx 即加。每月 review。",
+      "value": []
+    },
+    "allowed_ips": {
+      "_description": "信任 IP(Stripe webhook 等)— 已 hardcode 在 lib/security/ip-blocklist.ts、Edge Config 加項目可動態擴展",
+      "value": [
+        "3.18.12.63",
+        "3.130.192.231",
+        "13.235.14.237",
+        "13.235.122.149",
+        "18.211.135.69",
+        "35.154.171.200",
+        "52.15.339.38",
+        "54.88.130.119",
+        "54.88.130.237",
+        "54.187.174.169",
+        "54.187.205.235",
+        "54.187.216.72"
+      ]
+    },
+    "blocked_countries": {
+      "_description": "geo block 國家(ISO-3166-1 alpha-2、e.g. KP/IR)— 預設空、需要時加",
+      "value": []
+    }
+  },
+  "_setup_steps": [
+    "1. Vercel Dashboard → Storage → Create Edge Config → name: jianyuan-blocklist",
+    "2. Attach to jianyuan-life project(自動注入 EDGE_CONFIG env)",
+    "3. 進 Edge Config items 介面、加 3 個 key(blocked_ips / allowed_ips / blocked_countries)、value 從本檔複製",
+    "4. 之後改 IP 直接在 Edge Config UI 改、邊緣秒級全球同步、不需 deploy"
+  ]
+}
