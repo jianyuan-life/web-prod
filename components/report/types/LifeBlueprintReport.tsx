@@ -207,13 +207,13 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
             <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <h3 className="font-medium text-[var(--jy-semantic-flow)]">✓ 天賦 Top 3</h3>
+                <h3 className="font-medium text-[var(--jy-semantic-flow)]">天賦 Top 3</h3>
                 <ul className="mt-3 space-y-2 text-[var(--jy-text-secondary)]">
                   {data.card5.talentsTop3.map((t, i) => <li key={i}>· {t}</li>)}
                 </ul>
               </div>
               <div>
-                <h3 className="font-medium text-[var(--jy-semantic-adjust)]">⚠ 課題 Top 3</h3>
+                <h3 className="font-medium text-[var(--jy-semantic-adjust)]">課題 Top 3</h3>
                 <ul className="mt-3 space-y-2 text-[var(--jy-text-secondary)]">
                   {data.card5.challengesTop3.map((c, i) => <li key={i}>· {c}</li>)}
                 </ul>
@@ -247,7 +247,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
                 tags={data.insight3steps.step2.tags}
               />
               {data.insight3steps.step2.trapWarning && (
-                <KeyTakeaway title="⚠ 陷阱預警">
+                <KeyTakeaway title="陷阱預警">
                   {data.insight3steps.step2.trapWarning}
                 </KeyTakeaway>
               )}
@@ -283,7 +283,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
                 <h4 className="text-sm font-medium text-[var(--jy-semantic-flow)] mb-2">成功指標</h4>
                 <ul className="space-y-1.5">
                   {data.insight3steps.step3.successMetrics.map((m, i) => (
-                    <li key={i} className="text-sm text-[var(--jy-text-secondary)]">✓ {m}</li>
+                    <li key={i} className="text-sm text-[var(--jy-text-secondary)]">{m}</li>
                   ))}
                 </ul>
               </div>
@@ -688,7 +688,7 @@ function SkeletonView({ id }: { id: string }) {
         </p>
         <GoldDivider className="my-8" />
         <Card className="p-8">
-          <p className="text-[var(--jy-text-secondary)]">⚠️ 找不到此 ID 對應的 demo 資料</p>
+          <p className="text-[var(--jy-text-secondary)]">找不到此 ID 對應的 demo 資料</p>
           <p className="mt-3 text-sm text-[var(--jy-text-tertiary)]">
             Sprint 1 demo 路徑:<code>/r/life-blueprint/he-yu-zhun</code>
           </p>

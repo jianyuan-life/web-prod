@@ -434,7 +434,7 @@ function SkeletonView({ id }: { id: string }) {
         <p className="mt-4 text-[var(--jy-text-tertiary)]">報告 ID:<span className="font-mono">{id}</span></p>
         <GoldDivider className="my-8" />
         <Card className="p-8">
-          <p className="text-[var(--jy-text-secondary)]">⚠️ 找不到此 ID 對應的 demo 資料</p>
+          <p className="text-[var(--jy-text-secondary)]">找不到此 ID 對應的 demo 資料</p>
           <p className="mt-3 text-sm text-[var(--jy-text-tertiary)]">Sprint 1 demo 路徑:<code>/r/compatibility/lin-yuan-lin-x-he-xuan-yi</code></p>
         </Card>
       </div>

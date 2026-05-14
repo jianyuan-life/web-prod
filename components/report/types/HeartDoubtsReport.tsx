@@ -179,7 +179,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
                       <h5 className="font-semibold text-[var(--jy-text-gold)] mb-2">{stage.title}</h5>
                       <ul className="space-y-1.5">
                         {stage.actions.map((a, j) => (
-                          <li key={j} className="text-sm text-[var(--jy-text-secondary)]">→ {a}</li>
+                          <li key={j} className="text-sm text-[var(--jy-text-secondary)]">{a}</li>
                         ))}
                       </ul>
                     </Card>
@@ -201,7 +201,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
                 <ul className="space-y-3">
                   {data.chapters.risks.map((r, i) => (
                     <li key={i}>
-                      <h5 className="font-medium text-[var(--jy-semantic-danger)]">⚠ {r.title}</h5>
+                      <h5 className="font-medium text-[var(--jy-semantic-danger)]">{r.title}</h5>
                       <p className="mt-1 text-sm text-[var(--jy-text-secondary)]">{r.detail}</p>
                     </li>
                   ))}
@@ -250,7 +250,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
             {/* Caveats */}
             {data.caveats.length > 0 && (
               <Card className="p-8" interactive={false}>
-                <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">⚠ 需要注意的地方({data.caveats.length} 條)</h3>
+                <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">需要注意的地方({data.caveats.length} 條)</h3>
                 <ul className="space-y-4">
                   {data.caveats.map((c, i) => (
                     <li key={i} className="border-l-4 pl-4 py-2" style={{ borderLeftColor: 'var(--jy-semantic-balance)' }}>
@@ -378,7 +378,7 @@ function SkeletonView({ id }: { id: string }) {
         <p className="mt-4 text-[var(--jy-text-tertiary)]">報告 ID:<span className="font-mono">{id}</span></p>
         <GoldDivider className="my-8" />
         <Card className="p-8">
-          <p className="text-[var(--jy-text-secondary)]">⚠️ 找不到此 ID 對應的 demo 資料</p>
+          <p className="text-[var(--jy-text-secondary)]">找不到此 ID 對應的 demo 資料</p>
           <p className="mt-3 text-sm text-[var(--jy-text-tertiary)]">Sprint 1 demo 路徑:<code>/r/heart-doubts/he-xuan-yi</code></p>
         </Card>
       </div>
