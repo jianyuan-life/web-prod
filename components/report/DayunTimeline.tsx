@@ -171,11 +171,19 @@ export default function DayunTimeline({
                   能量 {s.energy}
                 </div>
 
-                {/* 主題(若有) */}
+                {/* 主題(若有)— v5.10.295 line-clamp-2 → 3、防大運主題重點被截 */}
                 {s.theme && (
                   <div
-                    className="text-[9px] text-text-muted/70 line-clamp-2 leading-tight px-0.5"
+                    className="text-[9px] text-text-muted/70 leading-tight px-0.5"
                     title={s.theme}
+                    style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      wordBreak: 'keep-all',
+                      overflowWrap: 'break-word',
+                    }}
                   >
                     {s.theme}
                   </div>

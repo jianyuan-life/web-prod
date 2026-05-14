@@ -78,11 +78,15 @@ export default function ChumenjiTop3Bar({
 
                 {/* 主內容 */}
                 <div className="flex-1 min-w-0">
-                  {/* 標題 + 方位 */}
-                  <div className="flex items-baseline gap-3 mb-1.5">
+                  {/* 標題 + 方位 — v5.10.295 砍 truncate(出門訣標題重點) */}
+                  <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">
                     <div
-                      className="text-sm font-bold text-cream truncate"
-                      style={{ fontFamily: 'var(--font-sans)' }}
+                      className="text-sm font-bold text-cream leading-snug"
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        wordBreak: 'keep-all',
+                        overflowWrap: 'break-word',
+                      }}
                     >
                       {t.title || `時機 ${idx + 1}`}
                     </div>

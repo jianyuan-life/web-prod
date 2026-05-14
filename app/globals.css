@@ -311,6 +311,33 @@ body {
   color: var(--color-text);
   min-height: 100vh;
   font-family: var(--font-body);
+  /* v5.10.295 CJK-friendly typography 全局規則:
+     - word-break:keep-all = 中文按詞不斷字、保語意完整(防「進入重點截到字」)
+     - overflow-wrap:break-word = 英文/長 URL 才 break、混排不爆框
+     - line-break:strict = 中文標點/連字符正確處理
+     - hanging-punctuation:first allow-end = 標點懸掛、editorial 美觀(現代 Safari)
+     - text-rendering:optimizeLegibility = 啟用 ligature + kerning */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-break: strict;
+  hanging-punctuation: first allow-end;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* v5.10.295 標題加 text-wrap:balance(現代瀏覽器、自動找最佳斷行點、避免 widow/orphan)*/
+h1, h2, h3, h4 {
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* v5.10.295 段落 text-wrap:pretty(避免最後一行 widow、editorial 細節) */
+p, li, dd {
+  text-wrap: pretty;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 標題用宋體/襯線體 */

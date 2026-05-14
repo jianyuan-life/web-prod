@@ -84,18 +84,24 @@ export function ChapterSection({
             'data-[state=open]:bg-[var(--jy-bg-mist)]/30',
           )}
         >
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
             {emoji ? (
-              <span className="flex-shrink-0 text-2xl" aria-hidden>{emoji}</span>
+              <span className="flex-shrink-0 text-2xl pt-0.5" aria-hidden>{emoji}</span>
             ) : null}
             {number != null ? (
-              <span className="flex-shrink-0 text-sm font-medium text-[var(--jy-text-gold)] tabular-nums">
+              <span className="flex-shrink-0 text-sm font-medium text-[var(--jy-text-gold)] tabular-nums pt-1">
                 {typeof number === 'number' ? `${number}.` : number}
               </span>
             ) : null}
+            {/* v5.10.295 修字截斷:砍 truncate(會把章節標題重點截掉)、改 multi-line wrap with CJK-safe break */}
             <h3
-              className="font-semibold text-[var(--jy-text-primary)] truncate"
-              style={{ fontFamily: 'var(--jy-font-display)' }}
+              className="font-semibold text-[var(--jy-text-primary)] leading-snug"
+              style={{
+                fontFamily: 'var(--jy-font-display)',
+                wordBreak: 'keep-all',         // CJK 不斷字
+                overflowWrap: 'break-word',    // 英文 / 長字才 break
+                textWrap: 'pretty' as 'pretty',// 避免 widow(現代瀏覽器)
+              }}
             >
               {title}
             </h3>

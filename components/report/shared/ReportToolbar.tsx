@@ -67,6 +67,7 @@ export function ReportToolbar({
             <span
               className="text-sm font-medium text-[var(--jy-text-primary)] truncate"
               style={{ fontFamily: 'var(--jy-font-display)' }}
+              title={reportTitle}  /* v5.10.295:hover 顯示完整 title 防 truncate 截到重點看不到 */
             >
               {reportTitle}
             </span>

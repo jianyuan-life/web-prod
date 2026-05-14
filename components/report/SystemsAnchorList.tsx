@@ -83,15 +83,33 @@ export default function SystemsAnchorList({ analyses = [] }: Props) {
               }}
               aria-label={`${a.system} 評分 ${a.score} 分、${bm.label}、點擊查看詳解`}
             >
-              <div className="flex items-baseline justify-between mb-1">
-                <span className="text-cream font-semibold text-[13px] truncate flex-1 mr-2">{a.system}</span>
-                <span className="font-extrabold text-base" style={{ color: bm.color, fontFamily: 'var(--font-mono, monospace)' }}>
+              {/* v5.10.295 修字截斷:system name 砍 truncate(系統名稱重要、不可截)、insight 改 line-clamp-2 留空間 */}
+              <div className="flex items-baseline justify-between gap-2 mb-1">
+                <span
+                  className="text-cream font-semibold text-[13px] flex-1 leading-snug"
+                  style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                >
+                  {a.system}
+                </span>
+                <span className="font-extrabold text-base flex-shrink-0" style={{ color: bm.color, fontFamily: 'var(--font-mono, monospace)' }}>
                   {a.score}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="text-text-muted/65 truncate flex-1 mr-1">{insight}</span>
-                <span className="font-semibold flex-shrink-0" style={{ color: bm.color }}>
+              <div className="flex items-start justify-between gap-1.5 text-[10px]">
+                <span
+                  className="text-text-muted/65 flex-1 leading-snug"
+                  style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    wordBreak: 'keep-all',
+                    overflowWrap: 'break-word',
+                  }}
+                >
+                  {insight}
+                </span>
+                <span className="font-semibold flex-shrink-0 pt-0.5" style={{ color: bm.color }}>
                   {bm.label}
                 </span>
               </div>
