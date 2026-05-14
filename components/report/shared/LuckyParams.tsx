@@ -44,9 +44,15 @@ export function LuckyParams({ data, className = '' }: LuckyParamsProps) {
                 'bg-[var(--jy-bg-card)]/40',
               )}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <span aria-hidden>{icon}</span>
-                <h4 className="text-sm font-medium" style={{ color: accent }}>{label}</h4>
+              {/* v5.10.297 editorial:砍 emoji icon、改 hairline accent line + serif label */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="h-px w-4" style={{ background: accent, opacity: 0.5 }} aria-hidden />
+                <h4
+                  className="text-[11px] tracking-[0.18em] font-medium"
+                  style={{ color: accent, fontFamily: 'var(--jy-font-mono), monospace' }}
+                >
+                  {label.split('').join(' ')}
+                </h4>
               </div>
               <div className="flex flex-wrap gap-2">
                 {(items as Array<string | number>).map((item, i) => (

@@ -20,10 +20,11 @@ export interface ActionPlanStagesProps {
   className?: string
 }
 
+// v5.10.297 editorial:砍 emoji icons、改 chapter ordinal(I/II/III roman numerals editorial 慣例)
 const STAGE_META = [
-  { key: 'immediate', label: '立刻可做', icon: '🚀', color: 'var(--jy-semantic-flow)', bg: 'rgba(74, 222, 128, 0.08)' },
-  { key: 'short', label: '短期(1-3 月)', icon: '🎯', color: 'var(--jy-semantic-balance)', bg: 'rgba(251, 191, 36, 0.08)' },
-  { key: 'long', label: '長期(>3 月)', icon: '✨', color: '#A78BFA', bg: 'rgba(167, 139, 250, 0.08)' },
+  { key: 'immediate', label: '立刻可做', ordinal: 'I', color: 'var(--jy-semantic-flow)', bg: 'rgba(74, 222, 128, 0.08)' },
+  { key: 'short', label: '短期(1-3 月)', ordinal: 'II', color: 'var(--jy-semantic-balance)', bg: 'rgba(251, 191, 36, 0.08)' },
+  { key: 'long', label: '長期(>3 月)', ordinal: 'III', color: '#A78BFA', bg: 'rgba(167, 139, 250, 0.08)' },
 ] as const
 
 export function ActionPlanStages({ immediate, short, long, className = '' }: ActionPlanStagesProps) {
@@ -42,9 +43,19 @@ export function ActionPlanStages({ immediate, short, long, className = '' }: Act
             )}
             style={{ backgroundColor: meta.bg }}
           >
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl" aria-hidden>{meta.icon}</span>
-              <h4 className="font-semibold text-sm tracking-wide" style={{ color: meta.color }}>
+            {/* v5.10.297 editorial:emoji icon → roman numeral chapter style */}
+            <div className="flex items-baseline gap-3 mb-4">
+              <span
+                className="font-mono text-[11px] tracking-[0.2em]"
+                style={{ color: meta.color, fontFamily: 'var(--jy-font-mono), monospace', opacity: 0.7 }}
+              >
+                {meta.ordinal}
+              </span>
+              <span className="h-px flex-1 max-w-8" style={{ background: meta.color, opacity: 0.3 }} aria-hidden />
+              <h4
+                className="font-semibold text-sm tracking-wide"
+                style={{ color: meta.color, wordBreak: 'keep-all' }}
+              >
                 {meta.label}
               </h4>
             </div>
