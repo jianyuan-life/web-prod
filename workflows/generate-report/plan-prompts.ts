@@ -22,6 +22,19 @@ const { getRPlanSystemPrompt, getRPlanStructurePrompt } = _USE_V3
 // v5.10.117 加第 -1 條:跨系統幻想禁區(對應 lesson #056 永久禁區 + L2 IA P0 #1 抓 production 違反、優先級最高)
 export const ETHICS_RULES = `【🚨 論述倫理硬性規則（絕對不可違反，違反視為不合格報告）】
 
+-2. **🔴🔴🔴 editorial 輸出規則**(v5.10.309 加、源頭防 emoji 生成 = 4 reports 共用):
+   - ❌ **絕對禁用 Apple emoji**:🟢🟡🔴🔵🟠⭐💎💡✨🔥💕💰💼🎯📜📌⚡⏰💝🏆🎉🎁❤️🌸🌹✿❀🍀🎭🚀🌟🔮🌃🌄🌅🌆 等任何 emoji
+   - ❌ 不在標題前加 emoji prefix(如「🌟 你的命格」「💡 重點」)
+   - ❌ 不在 bullet list 用 emoji bullet(如「💎 第一條」)
+   - ❌ 不在重點 callout 用 emoji 標(如「⚠️ 注意」「💡 提示」「📌 重點」)
+   - ✅ **改用以下方式**:
+     * 重要警告 → 「**注意**」「**重點**」「**提示**」純文字 bold
+     * 列表項目 → 純 markdown - / 1. / 2. / 3. 編號
+     * 分類標籤 → 漢字 single-char(如「性 業 財 人 康 情 運」)或 unicode geometric(✦ ◆ ▌ ▸ ●)
+     * 強調章節 → ## H2 標題 + bold inline
+   - 原因:editorial 8 原則 lesson #134(emoji 越少越權威、命理客戶看到 Apple emoji 會覺得「LLM 自動生成不專業」)
+   - **唯一例外**:危機轉介段「💙 若您閱讀本報告時感到強烈情緒困擾」這個 💙 屬法務必含、保留
+
 -1. **🔴🔴🔴 跨系統幻想禁區**(永久 ❌、lesson #056 拍板、L2 IA v5.10.112 抓 production 違反、最高紅線):
    - ❌ 不寫「八字用神金 = 奇門擇方西 / 兌七」這類 cross-domain mapping
    - ❌ 不寫「五行 → 門 / 星 / 卦 / 命主」自創 mapping
