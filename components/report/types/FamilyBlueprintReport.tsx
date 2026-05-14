@@ -95,16 +95,32 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
                 <tbody>
                   {data.fiveElementsDistribution.chartData.map((row) => (
                     <tr key={row.member} className="border-b border-[var(--jy-border-hairline)] last:border-0">
-                      <td className="py-3 px-2 text-[var(--jy-text-primary)]">{row.member}</td>
-                      {(['木', '火', '土', '金', '水'] as const).map((el) => (
-                        <td key={el} className="text-center py-3 px-2 tabular-nums" style={{
-                          color: row.values[el] >= 3 ? 'var(--jy-text-gold)' : (row.values[el] === 0 ? 'var(--jy-semantic-danger)' : 'var(--jy-text-secondary)'),
-                          fontWeight: row.values[el] >= 3 ? 'bold' : 'normal',
-                        }}>
-                          {row.values[el]}
-                        </td>
-                      ))}
-                      <td className="py-3 px-2 text-[var(--jy-text-secondary)] font-medium">{row.dayMaster}</td>
+                      <td className="py-3 px-2 text-[var(--jy-text-primary)]" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>{row.member}</td>
+                      {(['木', '火', '土', '金', '水'] as const).map((el) => {
+                        // v5.10.318 editorial:加 inline mini-bar(QA agent finding 數字無柱狀化)
+                        const ELEMENT_COLOR: Record<string, string> = { 木: '#6ab04c', 火: '#e74c3c', 土: '#c9a84c', 金: '#bdc3c7', 水: '#3498db' }
+                        const val = row.values[el]
+                        const widthPct = Math.min(100, val * 18) // max 5 → 90%
+                        return (
+                          <td key={el} className="text-center py-3 px-2 tabular-nums relative" style={{
+                            color: val >= 3 ? 'var(--jy-text-gold)' : (val === 0 ? 'var(--jy-semantic-danger)' : 'var(--jy-text-secondary)'),
+                            fontWeight: val >= 3 ? 600 : 400,
+                            fontFamily: 'var(--jy-font-mono), monospace',
+                          }}>
+                            <div className="flex flex-col items-center gap-1">
+                              <span>{val}</span>
+                              {val > 0 && (
+                                <span
+                                  className="block h-0.5 max-w-[60%]"
+                                  style={{ width: `${widthPct}%`, background: ELEMENT_COLOR[el], opacity: 0.6 }}
+                                  aria-hidden
+                                />
+                              )}
+                            </div>
+                          </td>
+                        )
+                      })}
+                      <td className="py-3 px-2 text-[var(--jy-text-secondary)] font-medium" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>{row.dayMaster}</td>
                     </tr>
                   ))}
                 </tbody>
