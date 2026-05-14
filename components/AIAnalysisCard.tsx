@@ -2,23 +2,24 @@
 import { useMemo } from 'react'
 import * as OpenCC from 'opencc-js'
 
-// 類別 icon 對應（根據標題關鍵字）
+// v5.10.300 editorial:emoji icon → 漢字 single-char editorial label(降 AI 感、文化匹配)
+// 從 西方 emoji 改成漢字偏旁、保留 visual 分類 + editorial 感
 const CATEGORY_ICONS: Record<string, string> = {
-  個性: '🧭', 性格: '🧭', 特質: '🧭',
-  事業: '💼', 財運: '💰', 工作: '💼',
-  人際: '🤝', 關係: '🤝', 朋友: '👥',
-  健康: '💊', 身體: '💊', 脾胃: '💊',
-  感情: '💕', 婚姻: '💕', 愛情: '💕',
-  流年: '📅', 運勢: '📅', 年度: '📅',
-  生活: '🌱', 態度: '🌱', 能量: '🌱',
-  建議: '✨', 提醒: '⚠️', 總結: '📌',
+  個性: '性', 性格: '性', 特質: '性',
+  事業: '業', 財運: '財', 工作: '業',
+  人際: '人', 關係: '人', 朋友: '人',
+  健康: '康', 身體: '康', 脾胃: '康',
+  感情: '情', 婚姻: '情', 愛情: '情',
+  流年: '運', 運勢: '運', 年度: '運',
+  生活: '生', 態度: '生', 能量: '生',
+  建議: '議', 提醒: '注', 總結: '總',
 }
 
 function pickIcon(title: string): string {
   for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
     if (title.includes(key)) return icon
   }
-  return '✦'
+  return '·'
 }
 
 type Block = {

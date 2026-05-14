@@ -29,10 +29,11 @@ export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
           boxShadow: '0 8px 32px rgba(201,168,76,0.12)',
         }}
       >
-      <div className="flex items-center gap-2 mb-3">
-        <span style={{ fontSize: '1.2rem' }}>☀</span>
+      {/* v5.10.300 editorial:☀ → hairline accent */}
+      <div className="flex items-center gap-3 mb-3">
+        <span className="h-px w-4 bg-gold/60" aria-hidden />
         <span className="text-[11px] tracking-[3px]" style={{ color: 'rgba(201,168,76,0.8)' }}>
-          下一步，走出去實踐
+          下 一 步，走 出 去 實 踐
         </span>
       </div>
 
