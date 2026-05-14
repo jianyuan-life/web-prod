@@ -1,6 +1,6 @@
 {
   "name": "fortune-reports",
-  "version": "5.10.329",
+  "version": "5.10.330",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -28,6 +28,7 @@
     "@types/react": "^19.2.14",
     "@types/sanitize-html": "^2.16.1",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/edge-config": "^1.4.3",
     "@vercel/speed-insights": "^2.0.0",
     "@workflow/next": "^4.0.1",
     "canvas-confetti": "^1.9.4",
