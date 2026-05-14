@@ -217,6 +217,8 @@
   --jy-font-body: "Noto Sans TC", "Inter var", sans-serif;
   --jy-font-mono: "JetBrains Mono", "IBM Plex Mono", monospace;
   --jy-font-numeric: "Inter var", "SF Pro Display";
+  /* v5.10.294 editorial redesign:加 serif body font 給報告 italic / blockquote 用 */
+  --jy-font-serif: "Noto Serif TC", "Source Han Serif TC", "Noto Serif CJK TC", Georgia, serif;
 }
 
 /* 簡體中文字體切換（v5.3.44：與繁中命名規則一致）*/

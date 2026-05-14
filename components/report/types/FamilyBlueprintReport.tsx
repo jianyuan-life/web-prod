@@ -15,9 +15,7 @@ import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import { ReportToolbar } from '@/components/report/shared/ReportToolbar'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
-import { MouseGlow } from '@/components/effects/MouseGlow'
 import { BackToTop } from '@/components/effects/BackToTop'
-import { Starfield } from '@/components/effects/Starfield'
 import type { FamilyBlueprintReport as FamilyData } from '@/types/report-schemas'
 
 interface FamilyBlueprintReportProps {
@@ -36,8 +34,6 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         onDownloadPDF={() => { window.location.href = `/api/r/family-blueprint/${data.meta.id}/pdf` }}
       />
       <main className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
-        <Starfield className="opacity-40" starCount={30} />
-        <MouseGlow size={500} intensity={0.05} />
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
         {/* HERO 家族圈 — v5.10.258 wire dead component #4:HeroBlock family variant
@@ -54,7 +50,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         {/* 五行分佈對比 */}
         <section className="mb-12">
-          <Eyebrow align="left">🔥 全家五行分佈</Eyebrow>
+          <Eyebrow align="left">全家五行分佈</Eyebrow>
           <div className="mt-8 space-y-6">
             <Card className="p-8" interactive={false}>
               <p
@@ -105,7 +101,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         {/* 三人八字 */}
         <section className="mb-12">
-          <Eyebrow align="left">📜 各成員八字</Eyebrow>
+          <Eyebrow align="left">各成員八字</Eyebrow>
           <div className="mt-8 space-y-6">
             {data.members.map((m) => (
               <div key={m.name}>
@@ -156,7 +152,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
               {Object.entries(data.pairAnalysis).map(([key, pair]) => {
                 if (!pair) return null
                 return (
-                  <ChapterSection key={key} emoji="👥" title={pair.pair}>
+                  <ChapterSection key={key} emoji="" title={pair.pair}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <PairItem label="八字合盤" verdict={pair.baziSynastry.verdict} text={pair.baziSynastry.summary} />
                       <PairItem label="紫微互參" verdict={pair.ziweiInterplay.verdict} text={pair.ziweiInterplay.summary} />
@@ -295,9 +291,9 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
           <Card className="mt-6 p-6" interactive={false}>
             <h4 className="font-medium text-[var(--jy-text-gold)] mb-3">5 年總覽</h4>
             <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
-              <li>🌟 黃金年:{data.fiveYearOverview.goldenYear}</li>
+              <li>黃金年:{data.fiveYearOverview.goldenYear}</li>
               <li>🔄 修整年:{data.fiveYearOverview.repairYear}</li>
-              <li>🎯 重大決策窗口:{data.fiveYearOverview.decisionWindows.join(' / ')}</li>
+              <li>重大決策窗口:{data.fiveYearOverview.decisionWindows.join(' / ')}</li>
               <li>⚠ 最大挑戰:{data.fiveYearOverview.biggestChallenge}</li>
             </ul>
           </Card>

@@ -17,9 +17,7 @@ import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import { ReportToolbar } from '@/components/report/shared/ReportToolbar'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
-import { MouseGlow } from '@/components/effects/MouseGlow'
 import { BackToTop } from '@/components/effects/BackToTop'
-import { Starfield } from '@/components/effects/Starfield'
 import type { HeartDoubtsReport as HeartDoubtsData } from '@/types/report-schemas'
 
 interface HeartDoubtsReportProps {
@@ -41,8 +39,6 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
         className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden"
         style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
       >
-        <Starfield className="opacity-40" starCount={30} />
-        <MouseGlow size={500} intensity={0.05} />
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
         {/* HERO 評分卡 — v5.10.259 wire HeroBlock 'score' variant(DRY refactor、跟原 inline 邏輯一致) */}
@@ -95,7 +91,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
 
         {/* 八字 + 命盤佐證 */}
         <section className="mb-12 space-y-6">
-          <Eyebrow align="left">📜 命盤一覽</Eyebrow>
+          <Eyebrow align="left">命盤一覽</Eyebrow>
           <BaziPillars data={{ year: data.bazi.year, month: data.bazi.month, day: data.bazi.day, hour: data.bazi.hour, dayMaster: data.bazi.dayMaster }} highlightDayMaster />
           <Card className="p-5" interactive={false}>
             <p className="text-sm text-[var(--jy-text-secondary)] leading-relaxed">
@@ -109,7 +105,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
 
         {/* 你的答案 */}
         <section className="mb-12">
-          <Eyebrow align="left">✨ 你的答案</Eyebrow>
+          <Eyebrow align="left">你的答案</Eyebrow>
           <div className="mt-8 space-y-6">
             <Card className="p-8" interactive={false}>
               <h3
@@ -141,31 +137,31 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
 
         {/* 起承轉合 */}
         <section className="mb-12">
-          <Eyebrow align="left">📜 起承轉合</Eyebrow>
+          <Eyebrow align="left">起承轉合</Eyebrow>
           <div className="mt-8">
             <ChapterGroup type="multiple">
-              <ChapterSection emoji="✨" title="深入解析:命格怎麼看這件事">
+              <ChapterSection emoji="" title="深入解析:命格怎麼看這件事">
                 <QuickSummary bullets={[data.chapters.one_deep.quickSummary]} />
                 {data.chapters.one_deep.body.map((p, i) => (
                   <p key={i} className="text-[var(--jy-text-secondary)] leading-relaxed">{p}</p>
                 ))}
               </ChapterSection>
 
-              <ChapterSection emoji="📜" title="命格與此事的直接關聯">
+              <ChapterSection emoji="" title="命格與此事的直接關聯">
                 <QuickSummary bullets={[data.chapters.bond.quickSummary]} />
                 {data.chapters.bond.body.map((p, i) => (
                   <p key={i} className="text-[var(--jy-text-secondary)] leading-relaxed">{p}</p>
                 ))}
               </ChapterSection>
 
-              <ChapterSection emoji="🎯" title="今年的流年能量">
+              <ChapterSection emoji="" title="今年的流年能量">
                 <QuickSummary bullets={[data.chapters.flowYear.quickSummary]} />
                 {data.chapters.flowYear.body.map((p, i) => (
                   <p key={i} className="text-[var(--jy-text-secondary)] leading-relaxed">{p}</p>
                 ))}
               </ChapterSection>
 
-              <ChapterSection emoji="⚡" title="最佳行動方案(短/中/長)">
+              <ChapterSection emoji="" title="最佳行動方案(短/中/長)">
                 <div className="space-y-4">
                   {[data.chapters.bestPlan.short, data.chapters.bestPlan.mid, data.chapters.bestPlan.long].map((stage, i) => (
                     <Card key={i} className="p-4" interactive={false}>
@@ -180,7 +176,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
                 </div>
               </ChapterSection>
 
-              <ChapterSection emoji="📅" title="最佳時機表">
+              <ChapterSection emoji="" title="最佳時機表">
                 <MonthlyDecisionTable rows={data.chapters.timing.map(t => ({
                   period: t.period,
                   action: t.action,
@@ -190,7 +186,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
                 }))} title="" />
               </ChapterSection>
 
-              <ChapterSection emoji="⚡" title={`最大風險(${data.chapters.risks.length} 條)`}>
+              <ChapterSection emoji="" title={`最大風險(${data.chapters.risks.length} 條)`}>
                 <ul className="space-y-3">
                   {data.chapters.risks.map((r, i) => (
                     <li key={i}>
@@ -201,7 +197,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
                 </ul>
               </ChapterSection>
 
-              <ChapterSection emoji="✿" title="刻意練習">
+              <ChapterSection emoji="" title="刻意練習">
                 <div className="space-y-4">
                   {data.chapters.practice.map((p, i) => (
                     <PracticeCard
@@ -223,7 +219,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
 
         {/* 轉篇 - root + caveats(Codex P1 修、v5.10.217) */}
         <section className="mb-12">
-          <Eyebrow align="left">🎯 轉篇:根源剖析 + 注意事項</Eyebrow>
+          <Eyebrow align="left">轉篇:根源剖析 + 注意事項</Eyebrow>
           <div className="mt-8 space-y-6">
             {/* Root */}
             <Card className="p-8" interactive={false}>
@@ -307,7 +303,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
                         <p className="text-[var(--jy-semantic-danger)]">不做會:{imp.ifNot}</p>
                         <p className="text-[var(--jy-semantic-flow)]">做了會:{imp.ifDo}</p>
                       </div>
-                      <p className="mt-2 text-xs text-[var(--jy-text-muted)]">⏰ 最佳時機:{imp.bestTime}</p>
+                      <p className="mt-2 text-xs text-[var(--jy-text-muted)]">最佳時機:{imp.bestTime}</p>
                     </li>
                   ))}
                 </ul>

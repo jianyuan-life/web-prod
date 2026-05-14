@@ -24,9 +24,7 @@ import { TermTooltip } from '@/components/report/shared/TermTooltip'
 import { TermAuto } from '@/components/report/shared/TermAuto'
 import { getTerm } from '@/lib/term-dictionary'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
-import { MouseGlow } from '@/components/effects/MouseGlow'
 import { BackToTop } from '@/components/effects/BackToTop'
-import { Starfield } from '@/components/effects/Starfield'
 import { Stagger, StaggerItem } from '@/components/effects/Stagger'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
@@ -59,41 +57,66 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden"
         style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
       >
-        <Starfield className="opacity-40" starCount={30} />
-        <MouseGlow size={500} intensity={0.05} />
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
         {/* HERO */}
         <Stagger>
         <StaggerItem>
-        <section className="mb-16 text-center">
-          <Eyebrow>{`LIFE BLUEPRINT · ${data.meta.name}`}</Eyebrow>
+        {/* HERO — v5.10.294 editorial redesign:砍 shimmer gradient、改 solid serif、加 issue date / subtitle 分層 */}
+        <section className="mb-20 text-center">
+          {/* Eyebrow:砍英文混排、純中文 + 系列分類 */}
+          <p className="text-[10px] tracking-[0.3em] text-[var(--jy-text-muted)] mb-2">
+            鑒  源  個  人  命  理  分  析
+          </p>
+          <p className="text-[12px] tracking-[0.18em] text-[var(--jy-text-gold)]">
+            人 生 藍 圖 · Vol. I
+          </p>
+
+          {/* Title:solid gold serif、不再 shimmer / gradient */}
           <h1
-            className="mt-8 font-bold"
+            className="mt-10 font-normal"
             style={{
-              fontFamily: 'var(--jy-font-display)',
-              fontSize: 'clamp(48px, 6vw, 88px)',
-              lineHeight: 1.05,
-              letterSpacing: '-0.04em',
-              background: 'var(--jy-gold-shimmer)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              fontFamily: 'var(--jy-font-serif, "Noto Serif TC", Georgia), serif',
+              fontSize: 'clamp(40px, 5vw, 72px)',
+              lineHeight: 1.1,
+              letterSpacing: '-0.02em',
+              color: 'var(--jy-text-gold)',
             }}
           >
             {data.hero.title}
           </h1>
+
+          {/* Subtitle:editorial italic、generous line-height */}
           <p
-            className="mt-6 text-[var(--jy-text-secondary)]"
-            style={{ fontSize: 'clamp(18px, 2vw, 24px)', lineHeight: 1.5 }}
+            className="mt-8 mx-auto max-w-2xl italic text-[var(--jy-text-secondary)]"
+            style={{
+              fontFamily: 'var(--jy-font-serif, "Noto Serif TC", Georgia), serif',
+              fontSize: 'clamp(17px, 1.6vw, 21px)',
+              lineHeight: 1.7,
+            }}
           >
             {data.hero.subtitle}
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {data.hero.keyword.map((kw) => (
-              <span
-                key={kw}
-                className="rounded-full border border-[var(--jy-border-gold)] px-4 py-1.5 text-sm text-[var(--jy-text-gold)]"
-              >
-                {kw}
+
+          {/* Issue line:像 magazine「Issue No. / 委託人 / 簽發日」 */}
+          <div className="mt-10 inline-flex items-center gap-6 text-[10px] tracking-[0.18em] text-[var(--jy-text-muted)]">
+            <span>委 託 人  ·  {data.meta.name}</span>
+            <span className="h-2 w-px bg-[var(--jy-text-muted)]/30" aria-hidden />
+            <span>系 列  ·  人 生 藍 圖</span>
+            <span className="h-2 w-px bg-[var(--jy-text-muted)]/30" aria-hidden />
+            <span>{new Date(data.meta.reportDate || Date.now()).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long' })}</span>
+          </div>
+
+          {/* Keywords:hairline tag、不再 pill / rounded full */}
+          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-2">
+            {data.hero.keyword.map((kw, i) => (
+              <span key={kw} className="inline-flex items-center gap-3">
+                {i > 0 && <span className="h-1 w-1 rounded-full bg-[var(--jy-text-gold)]/40" aria-hidden />}
+                <span
+                  className="text-[14px] tracking-[0.1em] text-[var(--jy-text-gold)]/85"
+                  style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}
+                >
+                  {kw}
+                </span>
               </span>
             ))}
           </div>
@@ -103,17 +126,17 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         {/* 2026 行動建議 */}
         <section className="mb-16">
-          <Eyebrow align="left">🎯 2026 行動建議</Eyebrow>
+          <Eyebrow align="left">2026 行動建議</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <ActionCard label={data.actions2026.q1q2.label} text={data.actions2026.q1q2.text} accent="green" icon="✨" />
-            <ActionCard label={data.actions2026.fullYear.label} text={data.actions2026.fullYear.text} accent="amber" icon="⚠️" />
-            <ActionCard label={data.actions2026.q3q4.label} text={data.actions2026.q3q4.text} accent="violet" icon="🎯" />
+            <ActionCard label={data.actions2026.q1q2.label} text={data.actions2026.q1q2.text} accent="green" icon="" />
+            <ActionCard label={data.actions2026.fullYear.label} text={data.actions2026.fullYear.text} accent="amber" icon="" />
+            <ActionCard label={data.actions2026.q3q4.label} text={data.actions2026.q3q4.text} accent="violet" icon="" />
           </div>
         </section>
 
         {/* 命格名片 5 件套 */}
         <section className="mb-16">
-          <Eyebrow align="left">📜 命格名片 5 件套</Eyebrow>
+          <Eyebrow align="left">命格名片 5 件套</Eyebrow>
           <Card className="mt-8 p-8">
             <h2
               className="font-semibold text-[var(--jy-text-primary)]"
@@ -154,7 +177,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         {/* 命格 3 層洞察 — Step 2 dashboard 三軸 */}
         <section className="mb-16">
-          <Eyebrow align="left">🎯 命格 3 層洞察</Eyebrow>
+          <Eyebrow align="left">命格 3 層洞察</Eyebrow>
 
           <div className="mt-8 space-y-8">
             {/* Step 1:核心性格 */}
@@ -186,7 +209,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
             {/* Step 3:行動時間軸 */}
             <Card className="p-8" interactive={false}>
               <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">
-                ⏰ 優先行動清單
+                優先行動清單
               </h3>
               <ol className="space-y-3">
                 {data.insight3steps.step3.priorityActions.map((action, i) => (
@@ -208,7 +231,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
                 ))}
               </ol>
               <div className="mt-6 pt-6 border-t border-[var(--jy-border-hairline)]">
-                <h4 className="text-sm font-medium text-[var(--jy-semantic-flow)] mb-2">📊 成功指標</h4>
+                <h4 className="text-sm font-medium text-[var(--jy-semantic-flow)] mb-2">成功指標</h4>
                 <ul className="space-y-1.5">
                   {data.insight3steps.step3.successMetrics.map((m, i) => (
                     <li key={i} className="text-sm text-[var(--jy-text-secondary)]">✓ {m}</li>
@@ -224,7 +247,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         {/* 命格 5 大核心洞察 */}
         {data.insight5cards.length > 0 && (
           <section className="mb-16">
-            <Eyebrow align="left">⚡ 命格 5 大核心洞察</Eyebrow>
+            <Eyebrow align="left">命格 5 大核心洞察</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {data.insight5cards.map((card, i) => (
                 <Card key={i} className="p-6">
@@ -240,7 +263,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         {/* 八字四柱(從 card5.bazi 重新展示、加十神)*/}
         <section className="mb-16">
-          <Eyebrow align="left">📜 八字四柱詳細</Eyebrow>
+          <Eyebrow align="left">八字四柱詳細</Eyebrow>
           <div className="mt-8">
             <BaziPillars data={data.card5.bazi} highlightDayMaster />
           </div>
@@ -277,7 +300,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         {/* 大運時間軸(daYun)— Codex P1 修(v5.10.216) */}
         {data.daYun.length > 0 && (
           <section className="mb-16">
-            <Eyebrow align="left">⏱ 大運起伏時間軸</Eyebrow>
+            <Eyebrow align="left">大運起伏時間軸</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {data.daYun.map((dy) => {
                 const energyColor = dy.energy >= 75 ? 'var(--jy-text-gold)' : dy.energy >= 50 ? 'var(--jy-semantic-balance)' : 'var(--jy-semantic-adjust)'
@@ -314,7 +337,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         {/* 命盤一覽(natalOverview)— Codex P1 修(v5.10.216) */}
         {data.natalOverview && (
           <section className="mb-16">
-            <Eyebrow align="left">🪐 命盤一覽</Eyebrow>
+            <Eyebrow align="left">命盤一覽</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
               <Card className="p-6 flex justify-center" interactive={false}>
                 <ZiweiNatalChart
@@ -456,7 +479,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
                       <ChapterSection
                         key={i}
                         number={i + 1}
-                        emoji="📜"
+                        emoji=""
                         title={sys.system}
                       >
                         {systemDef ? (

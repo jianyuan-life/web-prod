@@ -15,9 +15,7 @@ import { FeedbackForm } from '@/components/report/shared/FeedbackForm'
 import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import { ReportToolbar } from '@/components/report/shared/ReportToolbar'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
-import { MouseGlow } from '@/components/effects/MouseGlow'
 import { BackToTop } from '@/components/effects/BackToTop'
-import { Starfield } from '@/components/effects/Starfield'
 import type { CompatibilityReport as CompatibilityData } from '@/types/report-schemas'
 
 interface CompatibilityReportProps {
@@ -36,8 +34,6 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         onDownloadPDF={() => { window.location.href = `/api/r/compatibility/${data.meta.id}/pdf` }}
       />
       <main className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
-        <Starfield className="opacity-40" starCount={30} />
-        <MouseGlow size={500} intensity={0.05} />
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
         {/* HERO 雙人 × 判定徽章 — v5.10.259 wire HeroBlock 'verdict' variant(DRY refactor) */}
@@ -85,7 +81,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         {/* 你們的答案 */}
         <section className="mb-12">
-          <Eyebrow align="left">✨ 你們的答案</Eyebrow>
+          <Eyebrow align="left">你們的答案</Eyebrow>
           <Card className="mt-8 p-8" interactive={false}>
             <QuickSummary bullets={[data.answerChapter.quickSummary]} />
             <div className="mt-6 space-y-3 text-[var(--jy-text-secondary)] leading-relaxed">
@@ -100,15 +96,15 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         {/* 七大系統合盤(摺疊章節) */}
         <section className="mb-12">
-          <Eyebrow align="left">📜 七大系統合盤</Eyebrow>
+          <Eyebrow align="left">七大系統合盤</Eyebrow>
           <div className="mt-8">
             <ChapterGroup type="multiple">
-              <ChapterSection emoji="🔥" title="化學反應(總章)">
+              <ChapterSection emoji="" title="化學反應(總章)">
                 <p className="italic text-[var(--jy-text-gold)] mb-3">{data.chemistry.metaphor}</p>
                 <p className="text-[var(--jy-text-secondary)]">{data.chemistry.quickSummary}</p>
               </ChapterSection>
 
-              <ChapterSection emoji="☯" title={`八字合盤 → ${data.baziSynastry.verdict}`}>
+              <ChapterSection emoji="" title={`八字合盤 → ${data.baziSynastry.verdict}`}>
                 <SystemCardBody summary={data.baziSynastry.summary} rows={[
                   { label: '日干關係', value: data.baziSynastry.dayMasterRelation },
                   { label: '年支日支', value: data.baziSynastry.yearBranchRelation },
@@ -117,7 +113,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
                 ]} />
               </ChapterSection>
 
-              <ChapterSection emoji="✦" title={`紫微互參 → ${data.ziweiSynastry.verdict}`}>
+              <ChapterSection emoji="" title={`紫微互參 → ${data.ziweiSynastry.verdict}`}>
                 <SystemCardBody summary={data.ziweiSynastry.summary} rows={[
                   { label: `${data.pair.a.name} 命宮`, value: data.ziweiSynastry.aCommandPalace },
                   { label: `${data.pair.b.name} 命宮`, value: data.ziweiSynastry.bCommandPalace },
@@ -127,7 +123,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
                 ]} />
               </ChapterSection>
 
-              <ChapterSection emoji="♈" title={`西占 Synastry → ${data.westernSynastry.verdict}`}>
+              <ChapterSection emoji="" title={`西占 Synastry → ${data.westernSynastry.verdict}`}>
                 <p className="text-sm text-[var(--jy-text-tertiary)] mb-3">{data.westernSynastry.selfCheck}</p>
                 <p className="text-xs text-[var(--jy-text-muted)] mb-3">盤類:{data.westernSynastry.sectDay}</p>
                 <ul className="space-y-2">
@@ -142,7 +138,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
                 </ul>
               </ChapterSection>
 
-              <ChapterSection emoji="🕉" title={`吠陀 Kuta → ${data.vedicKuta.verdict}`}>
+              <ChapterSection emoji="" title={`吠陀 Kuta → ${data.vedicKuta.verdict}`}>
                 <SystemCardBody summary="" rows={[
                   { label: 'Graha Maitri', value: data.vedicKuta.grahaMaitri },
                   { label: 'Tara', value: data.vedicKuta.tara },
@@ -150,7 +146,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
                 ]} />
               </ChapterSection>
 
-              <ChapterSection emoji="⬡" title={`人類圖配對 → ${data.hdPair.verdict}`}>
+              <ChapterSection emoji="" title={`人類圖配對 → ${data.hdPair.verdict}`}>
                 <SystemCardBody summary="" rows={[
                   { label: '類型', value: data.hdPair.typeMatch },
                   { label: 'Profile', value: data.hdPair.profileMatch },
@@ -158,19 +154,19 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
                 ]} />
               </ChapterSection>
 
-              <ChapterSection emoji="#️⃣" title={`數字命理 → ${data.numerologyPair.verdict}`}>
+              <ChapterSection emoji="" title={`數字命理 → ${data.numerologyPair.verdict}`}>
                 <SystemCardBody summary={`配對:${data.numerologyPair.pair}`} rows={[
                   { label: '雙方都缺', value: data.numerologyPair.missingShared.join(', ') },
                 ]} />
               </ChapterSection>
 
-              <ChapterSection emoji="⚊⚋" title={`易經 → ${data.ichingPair.verdict}`}>
+              <ChapterSection emoji="" title={`易經 → ${data.ichingPair.verdict}`}>
                 <p className="text-[var(--jy-text-gold)] font-medium">{data.ichingPair.hexagram}</p>
                 <p className="mt-2 text-[var(--jy-text-secondary)]">{data.ichingPair.interpretation}</p>
                 <p className="mt-2 text-[var(--jy-semantic-balance)] text-sm">⚠ {data.ichingPair.warning}</p>
               </ChapterSection>
 
-              <ChapterSection emoji="🐉" title={`生肖 → ${data.zodiacPair.verdict}`}>
+              <ChapterSection emoji="" title={`生肖 → ${data.zodiacPair.verdict}`}>
                 <p className="text-[var(--jy-text-secondary)]">
                   {data.pair.a.name}({data.zodiacPair.a}) × {data.pair.b.name}({data.zodiacPair.b})
                   {' = '}
@@ -248,9 +244,9 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
           <Card className="mt-6 p-6" interactive={false}>
             <h4 className="font-medium text-[var(--jy-text-gold)] mb-2">三年總覽</h4>
             <ul className="text-sm text-[var(--jy-text-secondary)] space-y-1.5">
-              <li>🌟 最佳年:{data.threeYearOverview.best}</li>
+              <li>最佳年:{data.threeYearOverview.best}</li>
               <li>⚠ 最艱難:{data.threeYearOverview.toughest}</li>
-              <li>🎯 重大決策窗口:{data.threeYearOverview.decisionWindows.join(' / ')}</li>
+              <li>重大決策窗口:{data.threeYearOverview.decisionWindows.join(' / ')}</li>
             </ul>
           </Card>
         </section>
@@ -300,7 +296,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         {/* 起篇 questionChapter + practices(本 session 漏) */}
         <section className="mb-12">
-          <Eyebrow align="left">🎯 你們的問題(深度解析)</Eyebrow>
+          <Eyebrow align="left">你們的問題(深度解析)</Eyebrow>
           <Card className="mt-8 p-8" interactive={false}>
             <QuickSummary bullets={[data.questionChapter.quickSummary]} />
           </Card>
