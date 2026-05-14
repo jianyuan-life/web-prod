@@ -208,9 +208,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </>
         )}
-        {/* v5.10.324：DevTools 警告 + 報告頁右鍵禁用搬到外部 .js 檔（P0 #4 CSP 強化第一步）
-            原本 inline 寫法強迫 CSP 必須允許 'unsafe-inline'、Sprint 2 改 nonce 後可移除 unsafe-inline */}
-        <Script src="/scripts/devtools-warning.js" strategy="afterInteractive" />
+        {/* v5.10.330（Sprint 5 Gemini #1 SRI）：加 sha384 integrity 雜湊 + crossOrigin
+            自家 script 安全（不會自動更新）;Stripe.js 因官方禁 SRI、不加（v3 自動更新防詐欺）*/}
+        <Script
+          src="/scripts/devtools-warning.js"
+          strategy="afterInteractive"
+          integrity="sha384-hgWUa8k2HeySWRM7yHSOg8IhOXYJL7C+T/qI5j6MI7rkNtBiFb3o2LQId4Cv0fFx"
+          crossOrigin="anonymous"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
