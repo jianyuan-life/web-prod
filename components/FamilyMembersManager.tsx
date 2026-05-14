@@ -137,12 +137,25 @@ export default function FamilyMembersManager() {
                     {m.name[0]}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-cream truncate">{m.name}</h3>
+                    {/* v5.10.297:成員姓名 + 城市重要、加 title hover + CJK keep-all */}
+                    <h3
+                      className="font-semibold text-cream truncate"
+                      title={m.name}
+                      style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                    >
+                      {m.name}
+                    </h3>
                     <p className="text-xs text-text-muted mt-0.5">
                       {m.gender === 'M' ? '男' : '女'} | {m.calendar_type === 'lunar' ? '農曆' : ''}{m.year}年{m.month}月{m.day}日 | {formatTime(m)}
                     </p>
                     {m.birth_city && (
-                      <p className="text-xs text-text-muted/60 mt-0.5 truncate">{m.birth_city}</p>
+                      <p
+                        className="text-xs text-text-muted/60 mt-0.5 truncate"
+                        title={m.birth_city}
+                        style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                      >
+                        {m.birth_city}
+                      </p>
                     )}
                   </div>
                 </div>

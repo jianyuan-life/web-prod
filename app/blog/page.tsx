@@ -52,7 +52,18 @@ export default function BlogListPage() {
               <h2 className="text-lg md:text-xl font-semibold text-cream group-hover:text-gold transition-colors mb-2" style={{ fontFamily: 'var(--font-sans)' }}>
                 {post.title}
               </h2>
-              <p className="text-sm text-text-muted leading-relaxed line-clamp-2">
+              {/* v5.10.297:line-clamp-2 → 3、blog description 別 2 行斷重點、加 CJK keep-all */}
+              <p
+                className="text-sm text-text-muted leading-relaxed"
+                style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  wordBreak: 'keep-all',
+                  overflowWrap: 'break-word',
+                }}
+              >
                 {post.description}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">

@@ -562,7 +562,13 @@ function DashboardContent() {
                       {(r.client_name && r.client_name.length > 0) ? r.client_name[0] : '?'}
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-cream truncate">{r.client_name}</h3>
+                      {/* v5.10.297:砍 truncate(客戶名重要、不可截)、加 CJK keep-all */}
+                      <h3
+                        className="font-semibold text-cream leading-snug"
+                        style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                      >
+                        {r.client_name}
+                      </h3>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted mt-1">
                         <span>{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</span>
                         <span>
@@ -652,7 +658,20 @@ function DashboardContent() {
                       <div className="flex items-center gap-2">
                         <div className="text-right">
                           <span className="text-xs text-red-400 block">生成失敗</span>
-                          <span className="text-[10px] text-text-muted/50 max-w-[200px] truncate block">
+                          {/* v5.10.297:error message 加 title fallback、不再純 truncate */}
+                          <span
+                            className="text-[10px] text-text-muted/50 block"
+                            style={{
+                              maxWidth: '200px',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              wordBreak: 'keep-all',
+                              overflowWrap: 'break-word',
+                            }}
+                            title={r.error_message || '未知錯誤'}
+                          >
                             {r.error_message || '未知錯誤'}
                           </span>
                         </div>

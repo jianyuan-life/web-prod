@@ -233,7 +233,7 @@ function CheckoutForm() {
 
             {/* v5.10.269 GDPR/個資法 第三方授權 disclaimer(對應 Gemini L4 P0 audit) */}
             <p className="text-xs text-text-muted/70 text-center leading-relaxed border-t border-gold/5 pt-3 mt-2">
-              📜 您確認已獲所選家庭成員同意、代為使用其報告資料進行家族藍圖分析。
+              您確認已獲所選家庭成員同意、代為使用其報告資料進行家族藍圖分析。
               <br />
               本服務遵守 <Link href="/privacy" className="text-gold/80 underline hover:text-gold">隱私政策</Link> 與 GDPR/個資法。
             </p>
@@ -289,7 +289,7 @@ function CheckoutForm() {
 
             {/* v5.10.269 GDPR/個資法 第三方授權 disclaimer(對應 Gemini L4 P0 audit) */}
             <p className="text-xs text-text-muted/70 text-center leading-relaxed border-t border-gold/5 pt-3 mt-2">
-              📜 您確認已獲所有家庭成員同意、代為提供其姓名與出生資料用於命理分析。
+              您確認已獲所有家庭成員同意、代為提供其姓名與出生資料用於命理分析。
               <br />
               本服務遵守 <Link href="/privacy" className="text-gold/80 underline hover:text-gold">隱私政策</Link> 與 GDPR/個資法。
             </p>

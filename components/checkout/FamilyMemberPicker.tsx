@@ -87,7 +87,14 @@ export default function FamilyMemberPicker({ onSelect }: FamilyMemberPickerProps
                   {m.name[0]}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-cream font-medium truncate">{m.name}</p>
+                  {/* v5.10.297:家庭成員姓名重要、加 title hover + CJK keep-all */}
+                  <p
+                    className="text-sm text-cream font-medium truncate"
+                    title={m.name}
+                    style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                  >
+                    {m.name}
+                  </p>
                   <p className="text-xs text-text-muted/60">{formatMemberInfo(m)}</p>
                 </div>
               </div>

@@ -45,7 +45,14 @@ export default function ReportBreadcrumb({ planName }: { planName: string }) {
       <span className="text-gold/40">/</span>
       <span className="text-gold/65">{planName}</span>
       <span className="text-gold/40">/</span>
-      <span className="text-cream/90 font-medium truncate" style={{ maxWidth: '200px' }}>{currentChapter}</span>
+      {/* v5.10.297:章節名稱重要、加 title hover 完整 */}
+      <span
+        className="text-cream/90 font-medium truncate"
+        style={{ maxWidth: '200px', wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+        title={currentChapter}
+      >
+        {currentChapter}
+      </span>
     </nav>
   )
 }

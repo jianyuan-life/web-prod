@@ -111,8 +111,21 @@ export default function FreemiumPaywall({ systemName, clientName, checkoutQuery 
             <div className="flex items-start gap-2 mb-1">
               <span className="text-xl">{m.icon}</span>
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-white truncate">{m.title}</h4>
-                <p className="text-[10px] text-text-muted/70 truncate">{m.hint}</p>
+                {/* v5.10.297:paywall card title + hint 加 title hover + CJK */}
+                <h4
+                  className="text-xs font-bold text-white truncate"
+                  title={m.title}
+                  style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                >
+                  {m.title}
+                </h4>
+                <p
+                  className="text-[10px] text-text-muted/70 truncate"
+                  title={m.hint}
+                  style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                >
+                  {m.hint}
+                </p>
               </div>
             </div>
             <div className="flex items-center justify-between mt-2">

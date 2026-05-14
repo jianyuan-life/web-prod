@@ -216,7 +216,7 @@ export default function SinglePersonForm({
                 return <option key={v} value={v}>{v} (週{weekday}、{days} 天後)</option>
               })}
             </select>
-            <p className="text-[10px] text-text-muted/60 mt-1">💡 為保證排盤品質與前置補運時間、事件日需 7-30 天內。系統會從明天開始為您找 Top 3 最佳吉時</p>
+            <p className="text-[10px] text-text-muted/60 mt-1">為保證排盤品質與前置補運時間、事件日需 7-30 天內。系統會從明天開始為您找 Top 3 最佳吉時</p>
           </div>
 
           {/* v5.3.22：yes 模式下要求填事件確切時辰 */}

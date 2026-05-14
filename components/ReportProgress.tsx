@@ -376,7 +376,14 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
       {/* 進度條 */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs gap-2">
-          <span className="text-gold/90 font-medium truncate">{progressDesc}</span>
+          {/* v5.10.297:報告生成進度敘述重要、加 title fallback */}
+          <span
+            className="text-gold/90 font-medium truncate"
+            title={progressDesc}
+            style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+          >
+            {progressDesc}
+          </span>
           <span className="text-gold tabular-nums font-semibold flex-shrink-0">{pct}%</span>
         </div>
         <div className="h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5">

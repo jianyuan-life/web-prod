@@ -258,9 +258,20 @@ function PalaceCell({
           <div className="text-[11px] sm:text-xs text-text-muted/60 italic">無主星（借對宮）</div>
         )}
 
-        {/* 輔星（縮小顯示） */}
+        {/* 輔星（縮小顯示） — v5.10.297 line-clamp-2 → 3、紫微輔星別斷重點 */}
         {minorStarsStr && (
-          <div className="text-[10px] sm:text-[11px] text-text-muted/70 leading-snug mt-1 line-clamp-2">
+          <div
+            className="text-[10px] sm:text-[11px] text-text-muted/70 leading-snug mt-1"
+            title={minorStarsStr}
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'keep-all',
+              overflowWrap: 'break-word',
+            }}
+          >
             {minorStarsStr}
           </div>
         )}
