@@ -20,6 +20,7 @@ import { checkCsrf } from '@/lib/security/csrf'
 import { getFingerprint, shouldBlockByFingerprint } from '@/lib/security/fingerprint'
 import { validateAccessToken } from '@/lib/security/token-validator'
 import { checkTokenRateLimit } from '@/lib/security/token-rate-limit'
+import { logAuditEvent, makeAuditEvent } from '@/lib/security/audit-event'
 
 // 每分鐘速率限制
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
@@ -181,11 +182,17 @@ export async function middleware(request: NextRequest) {
       const token = decodeURIComponent(tokenMatch[1])
       const tokenCheck = validateAccessToken(token)
       if (!tokenCheck.valid) {
-        console.warn('[REPORT-INVALID-TOKEN-MW]', JSON.stringify({
-          ts: new Date().toISOString(),
-          tokenLength: token?.length || 0,
+        logAuditEvent(makeAuditEvent('token-invalid', {
+          ip,
+          country,
+          pathname,
+          userAgent: ua || undefined,
           reason: tokenCheck.reason,
-          entropy: tokenCheck.entropy,
+          severity: 'warn',
+          details: {
+            tokenLength: token?.length || 0,
+            entropy: tokenCheck.entropy,
+          },
         }))
         // 直接 404、不洩漏「token format check」存在
         return new NextResponse(null, {
@@ -200,11 +207,17 @@ export async function middleware(request: NextRequest) {
 
       const rateResult = checkTokenRateLimit(token, ip)
       if (!rateResult.allowed) {
-        console.warn('[REPORT-TOKEN-RATE-LIMIT-MW]', JSON.stringify({
-          ts: new Date().toISOString(),
-          tokenPrefix: token.slice(0, 8) + '...',
-          count: rateResult.count,
-          uniqueIps: rateResult.uniqueIps,
+        logAuditEvent(makeAuditEvent('rate-limit-exceeded', {
+          ip,
+          country,
+          pathname,
+          severity: rateResult.uniqueIps >= 8 ? 'error' : 'warn',
+          details: {
+            scope: 'token',
+            tokenPrefix: token.slice(0, 8) + '...',
+            count: rateResult.count,
+            uniqueIps: rateResult.uniqueIps,
+          },
         }))
         return new NextResponse(null, {
           status: 404, // 不回 429 避免洩 token 存在
@@ -278,14 +291,19 @@ export async function middleware(request: NextRequest) {
   if (isStateChange && !isCsrfExempt) {
     const csrfResult = checkCsrf(request, isSensitive)
     if (!csrfResult.valid) {
-      console.warn('[CSRF-BLOCK]', JSON.stringify({
-        ts: new Date().toISOString(),
+      logAuditEvent(makeAuditEvent('csrf-block', {
         ip,
+        country,
         pathname,
         method: request.method,
+        userAgent: ua || undefined,
         reason: csrfResult.reason,
-        origin: csrfResult.origin,
-        referer: csrfResult.referer,
+        severity: isSensitive ? 'error' : 'warn',
+        details: {
+          origin: csrfResult.origin,
+          referer: csrfResult.referer,
+          strict: isSensitive,
+        },
       }))
       return new NextResponse(
         JSON.stringify({ error: 'CSRF check failed', reason: csrfResult.reason }),
