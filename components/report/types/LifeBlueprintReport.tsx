@@ -26,7 +26,27 @@ import { getTerm } from '@/lib/term-dictionary'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
 import { BackToTop } from '@/components/effects/BackToTop'
 import { Stagger, StaggerItem } from '@/components/effects/Stagger'
+// v5.10.310 sticky TOC scrollspy(QA P0 #1 + Gemini Substack pattern)
+import { StickyTOC, type TOCItem } from '@/components/report/shared/StickyTOC'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
+
+// v5.10.310 C 報告 12 章節 TOC items
+const C_TOC_ITEMS: TOCItem[] = [
+  { id: 'sec-hero', label: '人生藍圖 · 序章', level: 1 },
+  { id: 'sec-actions-2026', label: '2026 行動建議', level: 1 },
+  { id: 'sec-card5', label: '命格名片 5 件套', level: 1 },
+  { id: 'sec-insight3', label: '核心洞察 3 段', level: 1 },
+  { id: 'sec-insight5', label: '5 大切片視角', level: 1 },
+  { id: 'sec-natal', label: '命盤總覽 · 紫微 12 宮', level: 1 },
+  { id: 'sec-yearenergy', label: '12 月份能量', level: 1 },
+  { id: 'sec-dayun', label: '大運走勢', level: 1 },
+  { id: 'sec-consensus', label: '14 系統共識矩陣', level: 1 },
+  { id: 'sec-talents', label: 'TOP 5 天賦', level: 1 },
+  { id: 'sec-actionplan', label: '三階段行動計畫', level: 1 },
+  { id: 'sec-lucky', label: '幸運參數', level: 1 },
+  { id: 'sec-practice', label: '命格處方箋', level: 1 },
+  { id: 'sec-appendix', label: '14 系統交叉發現', level: 1 },
+]
 
 interface LifeBlueprintReportProps {
   id: string
@@ -57,12 +77,16 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden"
         style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
       >
-        <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
+        {/* v5.10.310 grid:xl 1440+ 加 240px sticky TOC 左欄、editorial magazine 慣例 */}
+        <div className="mx-auto max-w-[1440px] px-4 py-20 sm:px-6 lg:px-8 relative z-10 xl:grid xl:grid-cols-[240px_1fr] xl:gap-12">
+        <StickyTOC items={C_TOC_ITEMS} />
+        <div>
         {/* HERO */}
         <Stagger>
         <StaggerItem>
-        {/* HERO — v5.10.294 editorial redesign:砍 shimmer gradient、改 solid serif、加 issue date / subtitle 分層 */}
-        <section className="mb-20 text-center">
+        {/* HERO — v5.10.294 editorial redesign:砍 shimmer gradient、改 solid serif、加 issue date / subtitle 分層
+            v5.10.310 加 id="sec-hero" for sticky TOC scrollspy */}
+        <section id="sec-hero" className="mb-20 text-center">
           {/* Eyebrow:砍英文混排、純中文 + 系列分類 */}
           <p className="text-[10px] tracking-[0.3em] text-[var(--jy-text-muted)] mb-2">
             鑒  源  個  人  命  理  分  析
@@ -125,7 +149,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         <GoldDivider className="my-12" />
 
         {/* 2026 行動建議 */}
-        <section className="mb-16">
+        <section id="sec-actions-2026" className="mb-16">
           <Eyebrow align="left">2026 行動建議</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <ActionCard label={data.actions2026.q1q2.label} text={data.actions2026.q1q2.text} accent="green" icon="" />
@@ -135,7 +159,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         </section>
 
         {/* 命格名片 5 件套 */}
-        <section className="mb-16">
+        <section id="sec-card5" className="mb-16">
           <Eyebrow align="left">命格名片 5 件套</Eyebrow>
           <Card className="mt-8 p-8">
             <h2
@@ -274,7 +298,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         <GoldDivider className="my-12" />
 
         {/* Top 5 天賦 + 風險 */}
-        <section className="mb-16 grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <section id="sec-talents" className="mb-16 grid grid-cols-1 gap-8 lg:grid-cols-2">
           <TopList5
             items={data.talentsTop5.map((t) => ({
               title: t.title,
@@ -423,7 +447,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         <GoldDivider className="my-12" />
 
         {/* 三階段行動計畫 */}
-        <section className="mb-16">
+        <section id="sec-actionplan" className="mb-16">
           <Eyebrow align="left">三階段行動計畫</Eyebrow>
           <div className="mt-8">
             <ActionPlanStages
@@ -437,7 +461,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         <GoldDivider className="my-12" />
 
         {/* 幸運參數 */}
-        <section className="mb-16">
+        <section id="sec-lucky" className="mb-16">
           <Eyebrow align="left">幸運參數</Eyebrow>
           <div className="mt-8">
             <LuckyParams data={data.luckyParams} />
@@ -571,7 +595,8 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           />
           <CrisisFooter />
         </section>
-        </div>
+        </div>{/* /content column */}
+        </div>{/* /xl grid */}
         <BackToTop />
       </main>
     </>
