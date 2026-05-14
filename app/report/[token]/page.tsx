@@ -2160,17 +2160,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             : []
           const yongshenSimple = String(calcResult?.yongshen || baziRaw.yongshen || '')
 
-          // emoji 推導(對齊既有邏輯)
+          // v5.10.302 editorial:命格 icon 全 unicode geometric / 古文字 (砍 Apple emoji 💧🌲⛰💨)
           const titleEmoji = (() => {
             const t = personalityCard.title || ''
-            if (/太陽|火|烈|炎/.test(t)) return '☀'
-            if (/雨露|水|霖|江/.test(t)) return '💧'
-            if (/月|柔|靜/.test(t)) return '☽'
-            if (/木|林|森|樹/.test(t)) return '🌲'
-            if (/金|鋼|鐵|劍|鋒/.test(t)) return '⚔'
-            if (/土|山|岳|穩/.test(t)) return '⛰'
-            if (/風|動|飛/.test(t)) return '💨'
-            return '☯'
+            if (/太陽|火|烈|炎/.test(t)) return '☀'      // 太陽符
+            if (/雨露|水|霖|江/.test(t)) return '☵'      // 八卦坎(水)
+            if (/月|柔|靜/.test(t)) return '☽'          // 月牙
+            if (/木|林|森|樹/.test(t)) return '☴'       // 八卦巽(木)
+            if (/金|鋼|鐵|劍|鋒/.test(t)) return '☱'    // 八卦兌(金)
+            if (/土|山|岳|穩/.test(t)) return '☶'      // 八卦艮(土)
+            if (/風|動|飛/.test(t)) return '☴'        // 八卦巽(風)
+            return '☯'                              // 太極
           })()
 
           return (
