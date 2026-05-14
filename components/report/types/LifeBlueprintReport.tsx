@@ -412,46 +412,85 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         <GoldDivider className="my-12" />
 
-        {/* 14 系統共識矩陣(consensusMatrix)— Codex P1 修(v5.10.216) */}
+        {/* 14 系統共識矩陣 — v5.10.313 editorial Heatmap(QA agent P0 #2、dataviz 65→82)
+            ★★★☆☆ BBS 字符 → bg-alpha 漸變 + 數字、editorial dataviz like FT/Bloomberg infographic */}
         {data.consensusMatrix.dimensions.length > 0 && (
-          <section className="mb-16">
+          <section id="sec-consensus" className="mb-16">
             <Eyebrow align="left">14 系統共識矩陣</Eyebrow>
-            <Card className="mt-8 p-6 overflow-x-auto" interactive={false}>
-              <table className="w-full text-xs">
+            <p className="mt-2 text-xs text-[var(--jy-text-tertiary)] italic" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
+              色塊深淺 = 該命理系統對該面向的共識強度(0-5 分)。深金 = 高共識、淺灰 = 低共識
+            </p>
+            <Card className="mt-6 p-0 overflow-x-auto" interactive={false}>
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--jy-border-soft)]">
-                    <th className="text-left py-2 px-2 sticky left-0 bg-[var(--jy-bg-card)] text-[var(--jy-text-muted)]">面向 / 系統</th>
+                    <th className="text-left py-3 px-4 sticky left-0 bg-[var(--jy-bg-card)] text-[10px] tracking-[0.18em] text-[var(--jy-text-muted)]" style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>
+                      面 向  /  系 統
+                    </th>
                     {data.consensusMatrix.systems.map((sys) => (
-                      <th key={sys} className="text-center py-2 px-1 text-[var(--jy-text-gold)] whitespace-nowrap">{sys}</th>
+                      <th
+                        key={sys}
+                        className="text-center py-3 px-2 text-[var(--jy-text-gold)] whitespace-nowrap text-[11px]"
+                        style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif', fontWeight: 500 }}
+                      >
+                        {sys}
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {data.consensusMatrix.dimensions.map((dim, di) => (
                     <tr key={dim} className="border-b border-[var(--jy-border-hairline)]">
-                      <td className="py-2 px-2 sticky left-0 bg-[var(--jy-bg-card)] text-[var(--jy-text-secondary)] whitespace-nowrap">{dim}</td>
-                      {data.consensusMatrix.grid[di]?.map((stars, si) => (
-                        <td key={si} className="text-center py-2 px-1 tabular-nums" style={{ color: stars >= 4 ? 'var(--jy-text-gold)' : (stars <= 1 ? 'var(--jy-text-muted)' : 'var(--jy-text-secondary)') }}>
-                          {'★'.repeat(stars) + '☆'.repeat(5 - stars)}
-                        </td>
-                      ))}
+                      <td
+                        className="py-2.5 px-4 sticky left-0 bg-[var(--jy-bg-card)] text-[var(--jy-text-secondary)] whitespace-nowrap text-[12px]"
+                        style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}
+                      >
+                        {dim}
+                      </td>
+                      {data.consensusMatrix.grid[di]?.map((stars, si) => {
+                        // editorial heatmap:0-5 對應 alpha 0/0.08/0.16/0.28/0.42/0.6
+                        const ALPHA_MAP = [0, 0.08, 0.16, 0.28, 0.42, 0.6]
+                        const alpha = ALPHA_MAP[stars] ?? 0
+                        return (
+                          <td
+                            key={si}
+                            className="text-center py-2.5 px-2 tabular-nums relative"
+                            style={{
+                              backgroundColor: `rgba(201, 168, 76, ${alpha})`,
+                              color: stars >= 4 ? 'var(--jy-text-primary)' : stars >= 2 ? 'var(--jy-text-secondary)' : 'var(--jy-text-muted)',
+                              fontWeight: stars >= 4 ? 600 : 400,
+                              fontFamily: 'var(--jy-font-mono), monospace',
+                              fontSize: '12px',
+                            }}
+                            aria-label={`${dim} × ${data.consensusMatrix.systems[si]}:${stars}/5 分`}
+                          >
+                            {stars > 0 ? stars : '·'}
+                          </td>
+                        )
+                      })}
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <div className="mt-4 flex items-center gap-4 text-xs text-[var(--jy-text-tertiary)]">
-                <span>共識度:</span>
-                {data.consensusMatrix.consensus.map((c, i) => {
-                  const COLOR = { high: 'var(--jy-semantic-flow)', mid: 'var(--jy-semantic-balance)', low: 'var(--jy-semantic-adjust)' }
-                  return (
-                    <span key={i} className="inline-flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: COLOR[c.level] }} aria-hidden />
-                      {c.level === 'high' ? '高' : c.level === 'mid' ? '中' : '低'}({c.pct}%)
-                    </span>
-                  )
-                })}
-              </div>
             </Card>
+
+            {/* 共識度 footer — editorial summary chart */}
+            <div className="mt-4 flex items-center gap-x-6 gap-y-2 flex-wrap text-xs text-[var(--jy-text-tertiary)] px-1">
+              <span className="text-[10px] tracking-[0.18em] text-[var(--jy-text-muted)]" style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>
+                整 體 共 識 度
+              </span>
+              {data.consensusMatrix.consensus.map((c, i) => {
+                const COLOR = { high: 'var(--jy-semantic-flow)', mid: 'var(--jy-semantic-balance)', low: 'var(--jy-semantic-adjust)' }
+                return (
+                  <span key={i} className="inline-flex items-center gap-2">
+                    <span className="inline-block w-2 h-2" style={{ backgroundColor: COLOR[c.level] }} aria-hidden />
+                    <span style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
+                      {c.level === 'high' ? '高' : c.level === 'mid' ? '中' : '低'} {c.pct}%
+                    </span>
+                  </span>
+                )
+              })}
+            </div>
           </section>
         )}
 
