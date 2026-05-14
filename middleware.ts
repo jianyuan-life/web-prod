@@ -16,6 +16,8 @@ import { getClientIp, getClientContext } from '@/lib/security/get-client-ip'
 import { classifyUserAgent } from '@/lib/security/bot-detect'
 import { classifyTraffic } from '@/lib/security/ip-blocklist'
 import { isEdgeBlockedIp, isEdgeAllowedIp, isBlockedCountry } from '@/lib/security/edge-blocklist'
+import { checkCsrf } from '@/lib/security/csrf'
+import { getFingerprint, shouldBlockByFingerprint } from '@/lib/security/fingerprint'
 
 // 每分鐘速率限制
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
@@ -92,6 +94,26 @@ export async function middleware(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'X-IP-Block': 'hardcode',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
+  // ────────────────────────────────────────────────────────
+  // STAGE 0.5(v5.10.336 IA #2 修):Bot fingerprint(Cloudflare/Vercel header)
+  //   - Cloudflare cf-bot-score < 30 + 非 verified bot → 403
+  //   - x-vercel-bot-score < 30 → 403
+  //   - 沒設這些 header(無邊緣 fingerprint)→ 略過、走 STAGE 1 UA 檢查
+  // ────────────────────────────────────────────────────────
+  const fingerprint = getFingerprint(request)
+  if (shouldBlockByFingerprint(fingerprint)) {
+    return new NextResponse(JSON.stringify({ error: 'Access denied (bot)' }), {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bot-Block': 'fingerprint',
+        'X-Bot-Score-CF': String(fingerprint.cfBotScore ?? ''),
+        'X-Bot-Score-Vercel': String(fingerprint.vercelBotScore ?? ''),
         'Cache-Control': 'no-store',
       },
     })
@@ -177,6 +199,46 @@ export async function middleware(request: NextRequest) {
   // ────────────────────────────────────────────────────────
   if (!pathname.startsWith('/api/')) {
     return NextResponse.next()
+  }
+
+  // ────────────────────────────────────────────────────────
+  // STAGE 4.5(v5.10.336 IA #3 修):CSRF protection for state-change methods
+  //   - POST/PUT/DELETE/PATCH 必驗 Origin/Referer
+  //   - Whitelist:webhook(Stripe 等)+ cron(Vercel 內部)+ csp-report + web-vitals(beacon API 可能無 Origin)
+  // ────────────────────────────────────────────────────────
+  const isStateChange = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)
+  const isCsrfExempt =
+    pathname.startsWith('/api/webhook/') ||
+    pathname.startsWith('/api/cron/') ||
+    pathname === '/api/csp-report' ||
+    pathname === '/api/web-vitals' ||
+    pathname.startsWith('/api/admin/honeypot') ||
+    pathname.startsWith('/api/workflows/') // Workflow internal callbacks
+
+  if (isStateChange && !isCsrfExempt) {
+    const csrfResult = checkCsrf(request, false)
+    if (!csrfResult.valid) {
+      console.warn('[CSRF-BLOCK]', JSON.stringify({
+        ts: new Date().toISOString(),
+        ip,
+        pathname,
+        method: request.method,
+        reason: csrfResult.reason,
+        origin: csrfResult.origin,
+        referer: csrfResult.referer,
+      }))
+      return new NextResponse(
+        JSON.stringify({ error: 'CSRF check failed', reason: csrfResult.reason }),
+        {
+          status: 403,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Block': csrfResult.reason || '1',
+            'Cache-Control': 'no-store',
+          },
+        },
+      )
+    }
   }
 
   // ────────────────────────────────────────────────────────
