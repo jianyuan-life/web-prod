@@ -28,6 +28,8 @@ import { BackToTop } from '@/components/effects/BackToTop'
 import { Stagger, StaggerItem } from '@/components/effects/Stagger'
 // v5.10.310 sticky TOC scrollspy(QA P0 #1 + Gemini Substack pattern)
 import { StickyTOC, type TOCItem } from '@/components/report/shared/StickyTOC'
+// v5.10.312 editorial 3 component(Gemini market research finding):DropCap / PullQuote / ExecutiveSummary
+import { PullQuote, ExecutiveSummary } from '@/components/report/shared/DropCap'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 // v5.10.310 C 報告 12 章節 TOC items
@@ -147,6 +149,27 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         </section>
 
         <GoldDivider className="my-12" />
+
+        {/* v5.10.312 ExecutiveSummary「一分鐘看懂」box(McKinsey pattern、結論先行、Gemini market research) */}
+        <ExecutiveSummary
+          title="一分鐘看懂"
+          bullets={[
+            data.hero.title ? `命格定位:${data.hero.title}` : '14 套命理系統交叉、東西方並列驗證',
+            data.actions2026?.q1q2?.text
+              ? `2026 上半年:${data.actions2026.q1q2.text.slice(0, 60)}${data.actions2026.q1q2.text.length > 60 ? '…' : ''}`
+              : '2026 行動方向:啟動 → 留意 → 整合三階段',
+            data.actions2026?.fullYear?.text
+              ? `全年主軸:${data.actions2026.fullYear.text.slice(0, 60)}${data.actions2026.fullYear.text.length > 60 ? '…' : ''}`
+              : '全年主軸:14 系統共識指向核心方向',
+          ]}
+        />
+
+        {/* v5.10.312 PullQuote 引言(報告核心一句、editorial magazine pattern) */}
+        {data.hero.subtitle && (
+          <PullQuote attribution="鑒 源 命 理 整 合 分 析">
+            {data.hero.subtitle}
+          </PullQuote>
+        )}
 
         {/* 2026 行動建議 */}
         <section id="sec-actions-2026" className="mb-16">
