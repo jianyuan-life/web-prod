@@ -96,7 +96,15 @@ const nextConfig: NextConfig = {
               "manifest-src 'self'",
               "worker-src 'self' blob:",
               'upgrade-insecure-requests',
+              // v5.10.325(P0 #4 第二步):violation 報告自動 POST 到 /api/csp-report
+              "report-uri /api/csp-report",
+              "report-to csp-endpoint",
             ].join('; '),
+          },
+          // v5.10.325:Reporting-Endpoints(現代瀏覽器、配合 CSP report-to)
+          {
+            key: 'Reporting-Endpoints',
+            value: 'csp-endpoint="/api/csp-report"',
           },
         ],
       },

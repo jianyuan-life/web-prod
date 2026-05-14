@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import WebVitalsReporter from '@/components/WebVitalsReporter'
 import Navbar from '@/components/Navbar'
 import LocaleContent from '@/components/LocaleContent'
 import Tracker from '@/components/Tracker'
@@ -268,6 +269,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             註:免費 tier 月 25K 事件、jianyuan.life 月流量遠低於此額度 */}
         <Analytics />
         <SpeedInsights />
+        <WebVitalsReporter />
       </body>
     </html>
   )
