@@ -4,21 +4,35 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本：** v5.10.187(2026-05-11 終局、19 commits 累積、4/4 文本 + UI Vision 雙審 PASS、mobile 6/6 全 100、Codex 2 P0 修;**5/12 後本機 hold v5.10.188+189**:Codex L3 抓 lesson #112「永久層」regex 字元類別 dead code、待老闆審 push)
+**網站版本：** **v5.10.347**(2026-05-14 Sprint 1-6 全方面安全 + 效能 + Bot 防禦完成、24 commits ship、production 全 verified、Codex L3 三輪 + IA L2 + Gemini grounding + QA agent 全跑、17 finding 全修、Multi-Model Dispatch evidence 100% commit message 帶。詳:`SECURITY.md` 9 段防線總覽 + `Claude-鑑源/tasks/lessons.md` #141 v1-v5 + `~/.claude/projects/.../memory/project_jianyuan_v5_10_security_2026-05-14.md`)
 
-**v5.10.187 終局摘要(2026-05-11)**:
-- 4/4 LLM audit PASS:C Gemini PASS+Qwen 87 / D Gemini 96+Qwen 94 卓越 / G15 Gemini 98.25+Qwen 97.8 / R Gemini 98.625(SQL POSTFIX)
-- UI Vision desktop 平均 97.5、mobile 6/6 全 100 🏆
-- v5.10.181 ETHICS_RULES 西占 SELF-CHECK + v5.10.182 R per-member post-process(實際 dead code、5/12 修)
-- v5.10.184 WCAG AA / v5.10.186 Codex 2 P0 修(GDPR + !important)/ v5.10.187 mobile Cookie
+**v5.10.347 摘要(2026-05-14、Sprint 1-6 完成)**:
+- ✅ Bot 防禦:21 AI 訓練 bot 拒、攻擊 scanner 17 regex、Cloudflare/Vercel fingerprint 整合、honeypot 7 path
+- ✅ Rate Limit:全站 240/min + per-route 2-120/min + per-token 60/min + share detection + brute-force 鎖
+- ✅ CSRF / IDOR / SSRF:Origin 雙保險 + 敏感 strict mode、token entropy + share detection、host allowlist
+- ✅ 安全 Headers:HSTS 2y、COOP same-origin、CORP same-site、CSP w/ report-uri、Permissions-Policy 13 ban、Reporting-Endpoints
+- ✅ 監控:Vercel Analytics + Speed Insights + 客製 web-vitals + CSP report + health-check + admin security-status
+- ✅ Edge Config 動態 IP/country blacklist + stale-while-error fallback
+- ✅ Turnstile production fail-CLOSED stub、Sentry/OTel instrumentation hook stub
+- ✅ React Compiler enabled、Speculation Rules + preconnect/dns-prefetch 8 origins
+- ✅ RFC 9116 security.txt + RFC 8615 change-password redirect
 
-**5/12 本機 hold(老闆審 push)**:
+**Sprint 7 待續**(下個 session、`tasks/next_session_handoff_2026-05-14.md`):
+- middleware refactor 拆 9 STAGE 為 helper(IA L2 P0 #1、4h、純清理)
+- IDOR step 3-4 Cookie auth + signed JWT(8h、大重構)
+- Sentry / Turnstile / Edge Config / Upstash 啟用(等老闆 dashboard 設定)
+- middleware → proxy.ts rename(Next.js 16 deprecation cleanup、30min)
+
+**5/12 本機 hold(已 push 到 main)**:
 - web-prod 86711761 v5.10.188:steps.ts:625 regex 字元類別 → name alternation 真因修
-- working tree v5.10.189:Codex re-review P2 deg 保留修
-- v5.10.190 sanitize wired 6 處 page.tsx + v5.10.191 SSOT + v5.10.192 dead helpers 清(lesson #113 #4)
-- **v5.10.193 lib/sanitize.ts ALLOWED_ATTR 補 role + aria-***(lesson #114、L3 Codex pre-push final review 抓 P2 accessibility regression、card-stack table 3+ col 失去 region/list 語意)
-- jianyuan-hq f86e81d:lessons #111 + #112 寫
-- 詳:`tasks/lessons.md` #111 #112 #113 #114
+- v5.10.189 Codex re-review P2 deg 保留修
+- v5.10.190 sanitize wired + v5.10.191 SSOT + v5.10.192 dead helpers 清
+- v5.10.193 lib/sanitize.ts ALLOWED_ATTR 補 role + aria-* (lesson #114)
+- 詳:`Claude-鑑源/tasks/lessons.md` #111 #112 #113 #114
+
+**v5.10.187 終局歷史(2026-05-11)**:
+- 4/4 LLM audit PASS:C Gemini PASS+Qwen 87 / D Gemini 96+Qwen 94 / G15 Gemini 98.25+Qwen 97.8 / R Gemini 98.625
+- UI Vision desktop 平均 97.5、mobile 6/6 全 100
 
 歷史:
 
