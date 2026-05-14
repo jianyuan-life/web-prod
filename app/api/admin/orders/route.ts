@@ -18,15 +18,26 @@ export async function GET(req: NextRequest) {
   const authFail = checkAdminAuth(req)
   if (authFail) return authFail
 
+  // v5.10.293:加 user_id select 供 audit log 比對
   const { data, error } = await getSupabase()
     .from('paid_reports')
-    .select('id, client_name, customer_email, plan_code, amount_usd, status, created_at, error_message, retry_count, access_token, birth_data')
+    .select('id, client_name, customer_email, plan_code, amount_usd, status, created_at, error_message, retry_count, access_token, birth_data, user_id')
     .order('created_at', { ascending: false })
     .limit(500)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // v5.10.293 audit log:admin 訪問也記、matched_via='service_role'
+  // 不阻塞 response、failure silent;用 sample(隨機 5 筆)避免 admin 查 500 筆寫 500 INSERT
+  try {
+    const { logAccessMatch } = await import('@/lib/auth-helper-server')
+    const sample = (data || []).slice(0, 5) // sample 防 INSERT 爆量
+    for (const r of sample) {
+      void logAccessMatch(r.id, 'service_role', { email: 'admin' })
+    }
+  } catch { /* silent */ }
 
   return NextResponse.json({
     orders: (data || []).map(r => ({

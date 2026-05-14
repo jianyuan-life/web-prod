@@ -82,9 +82,10 @@ export async function GET(req: NextRequest) {
 
   // JWT / Supabase admin auth 走原 dashboard 邏輯(50 筆 + 完整欄位)
   // v5.10.272:filter deleted_at IS NULL(對應 soft delete migration、客戶刪除後不再顯示)
+  // v5.10.293:select user_id 給 audit log 比對 + access path 分類
   const { data, error } = await supabase
     .from('paid_reports')
-    .select('id, plan_code, status, created_at, access_token, customer_email, report_result, pdf_url, retry_count, error_message, client_name, amount_usd, generation_progress, timezone, birth_city, self_update_count')
+    .select('id, plan_code, status, created_at, access_token, customer_email, report_result, pdf_url, retry_count, error_message, client_name, amount_usd, generation_progress, timezone, birth_city, self_update_count, user_id')
     .ilike('customer_email', queryEmail)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
@@ -97,6 +98,16 @@ export async function GET(req: NextRequest) {
 
   // 診斷：記錄查到幾筆
   console.info(`[reports] email=${queryEmail} source=${querySource} found=${(data || []).length}`)
+
+  // v5.10.293 audit log:每筆 result 寫 access log、追蹤 email_fallback vs user_id 比例
+  // 不阻塞 response、failure silent
+  try {
+    const { logAccessMatch } = await import('@/lib/auth-helper-server')
+    for (const r of (data || [])) {
+      const matchedVia = (r.user_id && querySource === 'jwt') ? 'user_id' : 'email_fallback'
+      void logAccessMatch(r.id, matchedVia, { email: queryEmail })
+    }
+  } catch { /* silent */ }
 
   return NextResponse.json({
     reports: data || [],

@@ -41,9 +41,10 @@ export async function GET(req: NextRequest) {
     if (email) {
       // 精確搜尋：取得該 email 下所有已完成的 C 方案報告
       // v5.10.283 soft delete filter:已軟刪報告不應出現在 G15 家族藍圖選單
+      // v5.10.293:select user_id 供 audit log 比對
       const { data, error } = await supabase
         .from('paid_reports')
-        .select('id, client_name, plan_code, status, created_at')
+        .select('id, client_name, plan_code, status, created_at, user_id')
         .eq('customer_email', email)
         .eq('plan_code', 'C')
         .eq('status', 'completed')
@@ -55,6 +56,14 @@ export async function GET(req: NextRequest) {
         console.error('search-reports DB error:', error)
         return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
       }
+
+      // v5.10.293 audit log:G15 家族成員查詢 = email_fallback 路徑
+      try {
+        const { logAccessMatch } = await import('@/lib/auth-helper-server')
+        for (const r of (data || [])) {
+          void logAccessMatch(r.id, 'email_fallback', { email })
+        }
+      } catch { /* silent */ }
 
       return NextResponse.json({
         reports: (data || []).map(r => ({

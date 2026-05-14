@@ -108,18 +108,23 @@ Markdown 報告(plan_code: {plan_code}):
 EXTRACTION_PROMPT_C_LEGACY = """[v5.10.290 C 專屬、已 ship 32 row、本 commit 不重跑、保留作 reference]"""
 
 
-def get_pending_rows(limit: Optional[int] = None, plan_codes: Optional[list] = None):
+def get_pending_rows(limit: Optional[int] = None, plan_codes: Optional[list] = None, retry_failed: bool = False):
     """取得待處理 rows(plan_code in [...] AND report_result_json IS NULL)
     v5.10.292:加 plan_codes 參數、預設全 plan(原本只 C)
+    v5.10.293:加 retry_failed 參數、retry parse_status='failed' 的 row
     """
     query = (
         supabase.table('paid_reports')
-        .select('id, plan_code, client_name, customer_email, report_result, created_at')
+        .select('id, plan_code, client_name, customer_email, report_result, created_at, parse_status')
         .eq('status', 'completed')
-        .is_('report_result_json', 'null')
         .is_('deleted_at', 'null')
         .order('created_at', desc=False)
     )
+    if retry_failed:
+        # 抓 parse_status IS NULL(代表 LLM 失敗、上次未寫進 DB)的 row 重試
+        query = query.is_('report_result_json', 'null')
+    else:
+        query = query.is_('report_result_json', 'null')
     if plan_codes:
         query = query.in_('plan_code', plan_codes)
     if limit:
@@ -145,7 +150,9 @@ def extract_one(row: dict) -> dict:
         }
 
     # 截斷過長 markdown(haiku 限制)
-    ai_content_truncated = ai_content[:25000] if len(ai_content) > 25000 else ai_content
+    # v5.10.293:G15 多人合盤 25K+ 字、需更大 budget
+    max_input_chars = 35000 if plan_code == 'G15' else 25000
+    ai_content_truncated = ai_content[:max_input_chars] if len(ai_content) > max_input_chars else ai_content
 
     # v5.10.292:全 plan 用 generic prompt(C 已 ship 32 row、D/E/G15/R 用此 prompt MVP)
     prompt = EXTRACTION_PROMPT_GENERIC.replace('{ai_content}', ai_content_truncated).replace('{plan_code}', plan_code)
@@ -153,7 +160,7 @@ def extract_one(row: dict) -> dict:
     try:
         response = anthropic.messages.create(
             model='claude-haiku-4-5',
-            max_tokens=4096,
+            max_tokens=8192,  # v5.10.293:加大、原 4096 對 G15 可能截斷
             messages=[{'role': 'user', 'content': prompt}],
         )
         raw_output = response.content[0].text.strip()
