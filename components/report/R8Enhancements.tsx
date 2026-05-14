@@ -147,19 +147,20 @@ export function ViewModeToggle() {
 // ============================================================
 // #11 Onboarding Modal:首次進入 3 步引導
 // ============================================================
+// v5.10.299 editorial:onboarding modal 砍 emoji icon、改 roman ordinal(I/II/III)
 const ONBOARDING_STEPS = [
   {
-    icon: '📜',
+    ordinal: 'I',
     title: '命格名片',
     desc: '從 14 套系統交叉提取的命格定位、5 大核心洞察一眼看懂',
   },
   {
-    icon: '⚡',
+    ordinal: 'II',
     title: '核心洞察',
     desc: '結論一句 + 精準預告、點開跳詳解、不必滾動找重點',
   },
   {
-    icon: '🎯',
+    ordinal: 'III',
     title: '行動建議',
     desc: '基於最強天賦 + 主要課題、給 2-3 條具體可執行的下一步',
   },
@@ -229,8 +230,17 @@ export function OnboardingModal() {
           </button>
         </div>
         <div className="text-center py-6">
-          <div className="text-5xl mb-4" aria-hidden>{cur.icon}</div>
-          <h2 id="onboarding-title" className="text-cream text-xl font-bold mb-2">
+          {/* v5.10.299 editorial:5xl emoji → mono roman ordinal + hairline divider */}
+          <div
+            className="text-3xl mb-3 font-mono tracking-[0.15em] text-gold/70"
+            style={{ fontFamily: 'var(--jy-font-mono), monospace' }}
+            aria-hidden
+          >
+            {cur.ordinal}
+          </div>
+          <div className="h-px w-12 bg-gold/40 mx-auto mb-4" aria-hidden />
+          <h2 id="onboarding-title" className="text-cream text-xl font-normal mb-2"
+            style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
             {cur.title}
           </h2>
           <p className="text-text-muted text-sm leading-relaxed">{cur.desc}</p>
