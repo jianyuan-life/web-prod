@@ -15,8 +15,11 @@ const nextConfig: NextConfig = {
   compress: true,
   reactStrictMode: true,
   poweredByHeader: false,
-  // v5.10.329 註解保留:Server Taint API(`experimental.taint`)在 Next.js 16.2.6 行為待 Vercel
-  // 官方驗證、暫不啟用、Sprint 5 重新測試後再加。Gemini grounding #3 改善項保留 todo。
+  // v5.10.331 (Sprint 5 Gemini #4):React Compiler — 自動 memo/useMemo、報告頁(章節折疊重複 render)INP 大幅改善
+  // Next.js 16+ reactCompiler 從 experimental 移到頂層
+  // 風險:已 useMemo/memo 的 component 編譯器自動略過、不會 break;非純函數加 'use no memo' directive
+  // 預估 INP 改善 50-100ms(/report/[token] LongTask 集中、最受惠)
+  reactCompiler: true,
   // 舊路由 301 重導
   async redirects() {
     return [
