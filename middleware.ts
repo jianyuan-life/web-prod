@@ -18,6 +18,8 @@ import { classifyTraffic } from '@/lib/security/ip-blocklist'
 import { isEdgeBlockedIp, isEdgeAllowedIp, isBlockedCountry } from '@/lib/security/edge-blocklist'
 import { checkCsrf } from '@/lib/security/csrf'
 import { getFingerprint, shouldBlockByFingerprint } from '@/lib/security/fingerprint'
+import { validateAccessToken } from '@/lib/security/token-validator'
+import { checkTokenRateLimit } from '@/lib/security/token-rate-limit'
 
 // 每分鐘速率限制
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
@@ -166,6 +168,54 @@ export async function middleware(request: NextRequest) {
     globalEntry.count++
   } else {
     globalLimit.set(globalKey, { count: 1, resetTime: now + 60_000 })
+  }
+
+  // ────────────────────────────────────────────────────────
+  // STAGE 2.5(v5.10.340 真修):/report/[token] token 驗證 + rate limit
+  //   原因:在 page.tsx 用 notFound() Next.js streaming SSR 仍回 200(headers 已送)
+  //   修補:middleware 直接 return 404 NextResponse、無 streaming 問題
+  // ────────────────────────────────────────────────────────
+  if (pathname.startsWith('/report/')) {
+    const tokenMatch = pathname.match(/^\/report\/([^\/]+)/)
+    if (tokenMatch) {
+      const token = decodeURIComponent(tokenMatch[1])
+      const tokenCheck = validateAccessToken(token)
+      if (!tokenCheck.valid) {
+        console.warn('[REPORT-INVALID-TOKEN-MW]', JSON.stringify({
+          ts: new Date().toISOString(),
+          tokenLength: token?.length || 0,
+          reason: tokenCheck.reason,
+          entropy: tokenCheck.entropy,
+        }))
+        // 直接 404、不洩漏「token format check」存在
+        return new NextResponse(null, {
+          status: 404,
+          headers: {
+            'Content-Type': 'text/html',
+            'Cache-Control': 'no-store',
+            'X-Token-Reject': tokenCheck.reason || '1',
+          },
+        })
+      }
+
+      const rateResult = checkTokenRateLimit(token, ip)
+      if (!rateResult.allowed) {
+        console.warn('[REPORT-TOKEN-RATE-LIMIT-MW]', JSON.stringify({
+          ts: new Date().toISOString(),
+          tokenPrefix: token.slice(0, 8) + '...',
+          count: rateResult.count,
+          uniqueIps: rateResult.uniqueIps,
+        }))
+        return new NextResponse(null, {
+          status: 404, // 不回 429 避免洩 token 存在
+          headers: {
+            'Content-Type': 'text/html',
+            'Cache-Control': 'no-store',
+            'X-Token-Reject': 'rate-limit',
+          },
+        })
+      }
+    }
   }
 
   // ────────────────────────────────────────────────────────
