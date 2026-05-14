@@ -227,7 +227,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
                 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4"
                 style={{ fontFamily: 'var(--jy-font-display)' }}
               >
-                🔍 根源剖析
+                根源剖析
               </h3>
               <QuickSummary bullets={[data.root.quickSummary]} />
               <div className="mt-4 space-y-2">
@@ -258,12 +258,12 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
 
         {/* 合篇 - way + goods + improvements(Codex P1 修、v5.10.217) */}
         <section className="mb-12">
-          <Eyebrow align="left">✦ 合篇:你的路 + 好的地方 + 改善建議</Eyebrow>
+          <Eyebrow align="left">合篇:你的路 + 好的地方 + 改善建議</Eyebrow>
           <div className="mt-8 space-y-6">
             {/* Way */}
             <Card className="p-8" interactive={false}>
               <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4" style={{ fontFamily: 'var(--jy-font-display)' }}>
-                🛤 你的路 — 怎麼走出來
+                你的路 — 怎麼走出來
               </h3>
               <QuickSummary bullets={[data.way.quickSummary]} />
               <div className="mt-4 space-y-2">
@@ -275,7 +275,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
             {/* Goods */}
             {data.goods.length > 0 && (
               <Card className="p-8" interactive={false}>
-                <h3 className="text-xl font-semibold text-[var(--jy-semantic-flow)] mb-4">✦ 你好的地方({data.goods.length} 條)</h3>
+                <h3 className="text-xl font-semibold text-[var(--jy-semantic-flow)] mb-4">你好的地方({data.goods.length} 條)</h3>
                 <ul className="space-y-4">
                   {data.goods.map((g, i) => (
                     <li key={i}>
@@ -290,7 +290,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
             {/* Improvements */}
             {data.improvements.length > 0 && (
               <Card className="p-8" interactive={false}>
-                <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">✿ 改善建議({data.improvements.length} 條)</h3>
+                <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">改善建議({data.improvements.length} 條)</h3>
                 <ul className="space-y-6">
                   {data.improvements.map((imp, i) => (
                     <li key={i} className="border-l-4 pl-4 py-2" style={{ borderLeftColor: 'var(--jy-text-gold)' }}>

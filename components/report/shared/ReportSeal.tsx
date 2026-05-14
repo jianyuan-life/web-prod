@@ -18,12 +18,12 @@ export interface ReportSealProps {
   references?: string[]
 }
 
+// v5.10.298 Gemini L4 P0 修:預設 references 改 generic、避免跟客戶實際系統不符
+// 各方案應從 props 傳入專屬古籍清單(C 用八字+紫微+占星;E 出門訣用奇門系列;R 用合婚系列)
 const DEFAULT_REFERENCES = [
-  '《淵海子平》宋·徐子平',
-  '《紫微斗數全書》明·羅洪先',
-  '《奇門遁甲秘笈》清·古本',
-  '《吠陀星宗》梵語經典',
-  '《葡 Cardano 占星全書》文藝復興時期',
+  '東西方十四套命理系統交叉考據',
+  '正統古籍源流 · 不同系統獨立佐證',
+  '專業命理師審查 · 算法版本可追溯',
 ]
 
 export function ReportSeal({

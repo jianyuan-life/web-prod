@@ -54,15 +54,16 @@ export function LuckyParams({ data, className = '' }: LuckyParamsProps) {
                   {label.split('').join(' ')}
                 </h4>
               </div>
-              <div className="flex flex-wrap gap-2">
+              {/* v5.10.298 editorial:rounded-full pill → hairline rect chip(QA L5 finding) */}
+              <div className="flex flex-wrap gap-x-3 gap-y-2 mt-2">
                 {(items as Array<string | number>).map((item, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs"
+                    className="inline-flex items-center text-xs border-l pl-2"
                     style={{
-                      backgroundColor: 'rgba(229, 185, 92, 0.10)',
+                      borderLeftColor: 'var(--jy-text-gold)',
                       color: 'var(--jy-text-secondary)',
-                      border: '1px solid var(--jy-border-hairline)',
+                      fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
                     }}
                   >
                     {item}
@@ -83,19 +84,22 @@ export function LuckyParams({ data, className = '' }: LuckyParamsProps) {
             backgroundColor: 'rgba(239, 68, 68, 0.06)',
           }}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <span aria-hidden>⚠️</span>
-            <h4 className="text-sm font-medium text-[var(--jy-semantic-danger)]">避忌</h4>
+          {/* v5.10.298 editorial:砍 ⚠️、改 hairline + 避忌 chip 同 hairline */}
+          <div className="flex items-center gap-3 mb-3">
+            <span className="h-px w-4 bg-[var(--jy-semantic-danger)]/60" aria-hidden />
+            <h4 className="text-[11px] tracking-[0.18em] font-medium text-[var(--jy-semantic-danger)]" style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>
+              避 忌
+            </h4>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-x-3 gap-y-2">
             {data.avoid.map((item, i) => (
               <span
                 key={i}
-                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs"
+                className="inline-flex items-center text-xs border-l pl-2"
                 style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.10)',
+                  borderLeftColor: 'var(--jy-semantic-danger)',
                   color: '#FCA5A5',
-                  border: '1px solid rgba(239, 68, 68, 0.30)',
+                  fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
                 }}
               >
                 {item}

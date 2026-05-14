@@ -119,7 +119,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         {/* 三角動力圖 */}
         {data.triangleDynamics && (
           <section className="mb-12">
-            <Eyebrow align="left">🔺 三角動力</Eyebrow>
+            <Eyebrow align="left">三角動力</Eyebrow>
             <Card className="mt-8 p-8" interactive={false}>
               <ul className="space-y-2 mb-6">
                 {data.triangleDynamics.edges.map((e, i) => (
@@ -177,7 +177,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         {/* goods + cautions + communicationModel + parenting(Codex P1 修、v5.10.219) */}
         {data.goods.length > 0 && (
           <section className="mb-12">
-            <Eyebrow align="left">✦ 家族好的地方({data.goods.length} 條)</Eyebrow>
+            <Eyebrow align="left">家族好的地方({data.goods.length} 條)</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               {data.goods.map((g, i) => (
                 <Card key={i} className="p-5" interactive={false}>
@@ -226,7 +226,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         </section>
 
         <section className="mb-12">
-          <Eyebrow align="left">👨‍👩‍👦 親子教養方向</Eyebrow>
+          <Eyebrow align="left">親子教養方向</Eyebrow>
           <Card className="mt-8 p-8" interactive={false}>
             <p className="italic text-[var(--jy-text-gold)] text-lg leading-relaxed mb-6">
               「{data.parenting.childTalent}」
@@ -261,7 +261,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         {/* 5 年流年 */}
         <section className="mb-12">
-          <Eyebrow align="left">📅 家族 5 年流年</Eyebrow>
+          <Eyebrow align="left">家族 5 年流年</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
             {data.yearly5.map((y) => (
               <Card key={y.year} className="p-5" interactive={false}>
@@ -292,7 +292,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
             <h4 className="font-medium text-[var(--jy-text-gold)] mb-3">5 年總覽</h4>
             <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
               <li>黃金年:{data.fiveYearOverview.goldenYear}</li>
-              <li>🔄 修整年:{data.fiveYearOverview.repairYear}</li>
+              <li>修整年:{data.fiveYearOverview.repairYear}</li>
               <li>重大決策窗口:{data.fiveYearOverview.decisionWindows.join(' / ')}</li>
               <li>⚠ 最大挑戰:{data.fiveYearOverview.biggestChallenge}</li>
             </ul>
@@ -303,7 +303,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         {/* 改善處方箋 8 條 */}
         <section className="mb-12">
-          <Eyebrow align="left">✿ 改善建議——家族處方箋({data.prescriptions.length} 條)</Eyebrow>
+          <Eyebrow align="left">改善建議——家族處方箋({data.prescriptions.length} 條)</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
             {data.prescriptions.map((p, i) => (
               <PracticeCard
@@ -320,7 +320,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         {/* 行動指南 + 幸運元素 */}
         <section className="mb-12">
-          <Eyebrow align="left">🍀 家族行動指南 + 幸運元素</Eyebrow>
+          <Eyebrow align="left">家族行動指南 + 幸運元素</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
             <Card className="p-5" interactive={false}>
               <h4 className="font-medium text-[var(--jy-semantic-flow)] mb-3">每日</h4>

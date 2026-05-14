@@ -35,14 +35,13 @@ export function PracticeCard({
         className,
       )}
     >
-      {/* 上方藥單線條(裝飾)*/}
+      {/* 上方藥單線條(裝飾)— v5.10.298 砍 shimmer、改 solid hairline gold(QA L5 finding) */}
       <div
-        className="absolute top-0 left-0 right-0 h-1.5"
-        style={{ background: 'var(--jy-gold-shimmer)' }}
+        className="absolute top-0 left-0 right-0 h-px bg-[var(--jy-text-gold)]/40"
         aria-hidden
       />
 
-      {/* v5.10.297 editorial:砍 ✿ + ⏱ emoji、改 hairline accent + 純文字 duration */}
+      {/* v5.10.297 editorial:砍 + ⏱ emoji、改 hairline accent + 純文字 duration */}
       <header className="mb-4">
         {/* small caps PRESCRIPTION eyebrow */}
         <p
@@ -148,9 +147,9 @@ function Section({ label, content }: { label: string; content: ReactNode }) {
 
 function DifficultyChip({ level, text }: { level: 'easy' | 'mid' | 'hard'; text: string }) {
   const META = {
-    easy: { color: 'var(--jy-semantic-flow)', icon: '🟢' },
-    mid: { color: 'var(--jy-semantic-balance)', icon: '🟡' },
-    hard: { color: 'var(--jy-semantic-danger)', icon: '🔴' },
+    easy: { color: 'var(--jy-semantic-flow)', icon: '' },
+    mid: { color: 'var(--jy-semantic-balance)', icon: '' },
+    hard: { color: 'var(--jy-semantic-danger)', icon: '' },
   }
   const meta = META[level]
   return (

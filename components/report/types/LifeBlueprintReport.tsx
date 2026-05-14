@@ -350,7 +350,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
                 />
               </Card>
               <Card className="p-6" interactive={false}>
-                <h3 className="font-semibold text-[var(--jy-text-primary)] mb-3">📅 今日指引</h3>
+                <h3 className="font-semibold text-[var(--jy-text-primary)] mb-3">今日指引</h3>
                 <p className="text-sm text-[var(--jy-text-tertiary)] mb-2">日期:{data.natalOverview.daily.date}</p>
                 <p className="text-sm text-[var(--jy-text-tertiary)] mb-3">五行:{data.natalOverview.daily.element}</p>
                 <KeyTakeaway title="本日宜">
@@ -366,7 +366,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         {/* 14 系統共識矩陣(consensusMatrix)— Codex P1 修(v5.10.216) */}
         {data.consensusMatrix.dimensions.length > 0 && (
           <section className="mb-16">
-            <Eyebrow align="left">🌐 14 系統共識矩陣</Eyebrow>
+            <Eyebrow align="left">14 系統共識矩陣</Eyebrow>
             <Card className="mt-8 p-6 overflow-x-auto" interactive={false}>
               <table className="w-full text-xs">
                 <thead>
@@ -397,7 +397,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
                   return (
                     <span key={i} className="inline-flex items-center gap-1">
                       <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: COLOR[c.level] }} aria-hidden />
-                      {c.level === 'high' ? '🟢 高' : c.level === 'mid' ? '🟡 中' : '🟠 低'}({c.pct}%)
+                      {c.level === 'high' ? '高' : c.level === 'mid' ? '中' : '低'}({c.pct}%)
                     </span>
                   )
                 })}
@@ -411,7 +411,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         {/* 12 月份能量(YearEnergyMonths)— v5.10.214 */}
         {data.yearEnergy12.length > 0 && (
           <section className="mb-16">
-            <Eyebrow align="left">📅 2026 12 月份能量</Eyebrow>
+            <Eyebrow align="left">2026 12 月份能量</Eyebrow>
             <Card className="mt-8 p-6" interactive={false}>
               <YearEnergyMonths data={data.yearEnergy12} title="" />
             </Card>
@@ -422,7 +422,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         {/* 三階段行動計畫 */}
         <section className="mb-16">
-          <Eyebrow align="left">🚀 三階段行動計畫</Eyebrow>
+          <Eyebrow align="left">三階段行動計畫</Eyebrow>
           <div className="mt-8">
             <ActionPlanStages
               immediate={data.planStages.immediate}
@@ -436,7 +436,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         {/* 幸運參數 */}
         <section className="mb-16">
-          <Eyebrow align="left">🍀 幸運參數</Eyebrow>
+          <Eyebrow align="left">幸運參數</Eyebrow>
           <div className="mt-8">
             <LuckyParams data={data.luckyParams} />
           </div>
@@ -447,7 +447,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           <>
             <GoldDivider className="my-12" />
             <section className="mb-16">
-              <Eyebrow align="left">✿ 命格處方箋</Eyebrow>
+              <Eyebrow align="left">命格處方箋</Eyebrow>
               <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {data.practices5.map((p, i) => (
                   <PracticeCard
@@ -469,7 +469,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           <>
             <GoldDivider className="my-12" />
             <section className="mb-16">
-              <Eyebrow align="left">📚 14 系統交叉發現</Eyebrow>
+              <Eyebrow align="left">14 系統交叉發現</Eyebrow>
               <div className="mt-8">
                 <ChapterGroup type="multiple">
                   {data.appendix14Systems.map((sys, i) => {

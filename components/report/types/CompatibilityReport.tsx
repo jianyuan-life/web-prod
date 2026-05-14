@@ -196,13 +196,13 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
-                <h4 className="font-medium text-[var(--jy-semantic-flow)] mb-2">🟢 好的地方</h4>
+                <h4 className="font-medium text-[var(--jy-semantic-flow)] mb-2">好的地方</h4>
                 <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
                   {data.finalJudge.pros.map((p, i) => <li key={i}>· {p}</li>)}
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium text-[var(--jy-semantic-balance)] mb-2">🟡 需要注意</h4>
+                <h4 className="font-medium text-[var(--jy-semantic-balance)] mb-2">需要注意</h4>
                 <ul className="space-y-2 text-sm">
                   {data.finalJudge.cautions.map((c, i) => (
                     <li key={i} className="text-[var(--jy-text-secondary)]">
@@ -213,7 +213,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium text-[var(--jy-text-gold)] mb-2">🔵 改善建議</h4>
+                <h4 className="font-medium text-[var(--jy-text-gold)] mb-2">改善建議</h4>
                 <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
                   {data.finalJudge.suggestions.map((s, i) => <li key={i}>· {s}</li>)}
                 </ul>
@@ -224,7 +224,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         {/* 三年流年 */}
         <section className="mb-12">
-          <Eyebrow align="left">📅 三年流年</Eyebrow>
+          <Eyebrow align="left">三年流年</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
             {data.yearly.map((y) => (
               <Card key={y.year} className="p-5" interactive={false}>
@@ -256,11 +256,11 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         {/* 轉篇:bestPoints + cautions + relationFlow(Codex P1 修、v5.10.218) */}
         {data.bestPoints.length > 0 && (
           <section className="mb-12">
-            <Eyebrow align="left">✦ 你們最好的地方({data.bestPoints.length} 條)</Eyebrow>
+            <Eyebrow align="left">你們最好的地方({data.bestPoints.length} 條)</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
               {data.bestPoints.map((bp, i) => (
                 <Card key={i} className="p-5" interactive={false}>
-                  <h4 className="font-semibold text-[var(--jy-semantic-flow)]">✦ {bp.title}</h4>
+                  <h4 className="font-semibold text-[var(--jy-semantic-flow)]">{bp.title}</h4>
                   <p className="mt-2 text-xs text-[var(--jy-text-tertiary)]">支持:{bp.support.join(' / ')}</p>
                   <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">{bp.guide}</p>
                 </Card>
@@ -288,7 +288,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         <section className="mb-12">
           <Card className="p-8" interactive={false}>
             <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-3" style={{ fontFamily: 'var(--jy-font-display)' }}>
-              💞 你們的關係流年總覽
+              你們的關係流年總覽
             </h3>
             <p className="text-[var(--jy-text-secondary)] leading-relaxed">{data.relationFlow.summary}</p>
           </Card>
@@ -304,7 +304,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         {data.practices.length > 0 && (
           <section className="mb-12">
-            <Eyebrow align="left">✿ 刻意練習({data.practices.length} 條)</Eyebrow>
+            <Eyebrow align="left">刻意練習({data.practices.length} 條)</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
               {data.practices.map((p, i) => (
                 <PracticeCard
@@ -323,7 +323,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         {/* 處方箋 */}
         <section className="mb-12">
-          <Eyebrow align="left">✿ 改善建議——關係處方箋</Eyebrow>
+          <Eyebrow align="left">改善建議——關係處方箋</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
             {data.prescriptions.map((p, i) => (
               <PracticeCard
@@ -340,7 +340,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         {/* 雙人 letter */}
         <section className="mb-12">
-          <Eyebrow align="left">💌 寫給你們的話</Eyebrow>
+          <Eyebrow align="left">寫給你們的話</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
             <Card className="p-8" interactive={false}>
               <h4 className="font-medium text-[var(--jy-text-gold)] mb-4">給 {data.pair.a.name}</h4>
