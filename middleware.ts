@@ -12,7 +12,7 @@
 //   - Stripe webhook 白名單(120/min)
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getClientIp } from '@/lib/security/get-client-ip'
+import { getClientIp, getClientContext } from '@/lib/security/get-client-ip'
 import { classifyUserAgent } from '@/lib/security/bot-detect'
 import { classifyTraffic } from '@/lib/security/ip-blocklist'
 import { isEdgeBlockedIp, isEdgeAllowedIp, isBlockedCountry } from '@/lib/security/edge-blocklist'
@@ -34,10 +34,22 @@ const REFERRAL_BRUTEFORCE_BLOCK_MS = 60 * 60 * 1000 // 1 小時
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
-  const ua = request.headers.get('user-agent')
-  const ip = getClientIp(request)
-  const country = request.headers.get('x-vercel-ip-country') || request.headers.get('cf-ipcountry')
+  // v5.10.334(IA L2 半解修):用 getClientContext 統一過 trust filter、不再直接讀 cf-ipcountry / x-vercel-ip-country
+  // 原問題:cf-ipcountry 沒驗 cf-ray 同存、attacker 可塞繞 geo block
+  const { ip, country, userAgent: uaFromContext, trusted } = getClientContext(request)
+  const ua = uaFromContext || request.headers.get('user-agent')
   const now = Date.now()
+
+  // v5.10.334:unknown / untrusted IP(無任何 verified header)→ 不放行任何防線
+  if (!trusted) {
+    // 非生產環境、給 dev 方便、log 但放行
+    if (process.env.VERCEL_ENV !== 'production') {
+      console.warn('[middleware] untrusted request (no verified IP header) — allowing in non-prod')
+    } else {
+      // production:無 IP = 高度可疑、記 log 後仍放行(避免 false positive、但記錄供事後 audit)
+      console.warn('[middleware] PROD untrusted request — no verified IP header from Vercel/CF/proxy')
+    }
+  }
 
   // ────────────────────────────────────────────────────────
   // STAGE -1:Edge Config 動態黑名單(Sprint 5、優先於 hardcode)

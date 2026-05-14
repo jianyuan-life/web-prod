@@ -31,11 +31,25 @@ const nextConfig: NextConfig = {
   },
 
   // Python API 代理
+  // v5.10.334(IA L2 SSRF 修):只代理 jianyuan-life Fly.io API、不允許任意 destination
+  // env NEXT_PUBLIC_API_URL 必須是 https://*.fly.dev 或 http://localhost:8080(dev)
+  // production env 改動需 review、防止被誤設成攻擊者控制的 URL
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+    // SSRF allowlist 驗證(build time + 啟動 time)
+    const isAllowed =
+      apiUrl.startsWith('http://localhost:') ||
+      apiUrl.startsWith('http://127.0.0.1:') ||
+      /^https:\/\/[a-z0-9-]+\.fly\.dev(\/.*)?$/.test(apiUrl)
+    if (!isAllowed && process.env.NODE_ENV === 'production') {
+      throw new Error(
+        `[next.config.ts SSRF] NEXT_PUBLIC_API_URL "${apiUrl}" 不在 allowlist 內(只允許 *.fly.dev / localhost)`,
+      )
+    }
     return [
       {
         source: '/api/engine/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/:path*`,
+        destination: `${apiUrl}/api/:path*`,
       },
     ]
   },
