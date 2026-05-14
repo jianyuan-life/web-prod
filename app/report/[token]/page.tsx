@@ -47,6 +47,7 @@ import {
   buildCalendarDescription,
 } from '@/lib/qimen-plain-text'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
+import { validateAccessToken } from '@/lib/security/token-validator'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -1250,6 +1251,20 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 
 export default async function ReportPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
+
+  // v5.10.337 (Sprint 6 IA L2 IDOR mitigation step 1):token entropy 驗證、攔暴力枚舉
+  // 不合法 token 直接 404、不打 Supabase(節省 quota + 防 SQL injection / log spam)
+  const tokenCheck = validateAccessToken(token)
+  if (!tokenCheck.valid) {
+    // log 進 Vercel 後可後續分析攻擊 pattern
+    console.warn('[REPORT-INVALID-TOKEN]', JSON.stringify({
+      ts: new Date().toISOString(),
+      tokenLength: token?.length || 0,
+      reason: tokenCheck.reason,
+      entropy: tokenCheck.entropy,
+    }))
+    return notFound()
+  }
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
