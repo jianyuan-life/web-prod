@@ -7,7 +7,8 @@ import { BaziPillars } from '@/components/report/shared/BaziPillars'
 import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
 import { QuickSummary } from '@/components/report/shared/QuickSummary'
 // v5.10.314 editorial(McKinsey + magazine pattern):結論先行
-import { ExecutiveSummary } from '@/components/report/shared/DropCap'
+// v5.10.322 加 PullQuote 進「全家五行分佈」metaphor(magazine pull quote)
+import { PullQuote, ExecutiveSummary } from '@/components/report/shared/DropCap'
 // v5.10.319 序向動畫(Gemini #4 開箱儀式感、4 reports 統一)
 import { Stagger, StaggerItem } from '@/components/effects/Stagger'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
@@ -73,11 +74,13 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         <section className="mb-12">
           <Eyebrow align="left">全家五行分佈</Eyebrow>
           <div className="mt-8 space-y-6">
+            {/* v5.10.322 metaphor 改 PullQuote(magazine pattern、家族五行詩意一句拉到 hero 級) */}
+            <PullQuote attribution="家 族 五 行 整 合 視 角">
+              {data.fiveElementsDistribution.metaphor}
+            </PullQuote>
+
             <Card className="p-8" interactive="subtle">
-              <p
-                className="italic text-[var(--jy-text-gold)] leading-relaxed mb-6"
-                style={{ fontSize: 'clamp(16px, 2vw, 20px)' }}
-              >
+              <p className="hidden">
                 {data.fiveElementsDistribution.metaphor}
               </p>
               <KeyTakeaway title="關鍵發現">
