@@ -42,19 +42,31 @@ export function PracticeCard({
         aria-hidden
       />
 
-      <header className="flex items-start gap-3 mb-4">
-        <span className="flex-shrink-0 text-2xl" aria-hidden>✿</span>
-        <div className="flex-1 min-w-0">
-          <h4
-            className="font-semibold text-[var(--jy-text-gold)]"
-            style={{ fontFamily: 'var(--jy-font-display)' }}
-          >
-            {title}
-          </h4>
-          {duration && (
-            <p className="mt-0.5 text-xs text-[var(--jy-text-tertiary)]">⏱ {duration}</p>
-          )}
-        </div>
+      {/* v5.10.297 editorial:砍 ✿ + ⏱ emoji、改 hairline accent + 純文字 duration */}
+      <header className="mb-4">
+        {/* small caps PRESCRIPTION eyebrow */}
+        <p
+          className="text-[10px] tracking-[0.25em] text-[var(--jy-text-muted)] mb-2"
+          style={{ fontFamily: 'var(--jy-font-mono, ui-monospace), monospace' }}
+        >
+          P  R  A  C  T  I  C  E
+        </p>
+        <h4
+          className="font-normal text-[var(--jy-text-gold)] leading-snug"
+          style={{
+            fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
+            fontSize: '20px',
+            wordBreak: 'keep-all',
+            overflowWrap: 'break-word',
+          }}
+        >
+          {title}
+        </h4>
+        {duration && (
+          <p className="mt-1 text-[11px] tracking-[0.1em] text-[var(--jy-text-tertiary)]">
+            建議時長 · {duration}
+          </p>
+        )}
       </header>
 
       <div className="space-y-3 text-sm">

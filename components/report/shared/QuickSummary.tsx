@@ -19,10 +19,14 @@ export function QuickSummary({ bullets, title = '章首速覽', className = '' }
       }}
       aria-label={title}
     >
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-lg" aria-hidden>✨</span>
-        <h4 className="font-medium text-[var(--jy-text-gold)] text-sm tracking-wide">
-          {title}
+      {/* v5.10.297 editorial:砍 ✨ emoji、改 small caps eyebrow */}
+      <div className="flex items-center gap-3 mb-5">
+        <span className="h-px w-6 bg-[var(--jy-text-gold)]/40" aria-hidden />
+        <h4
+          className="text-[11px] tracking-[0.18em] text-[var(--jy-text-gold)]"
+          style={{ fontFamily: 'var(--jy-font-mono, ui-monospace), monospace' }}
+        >
+          {title.split('').join(' ').toUpperCase()}
         </h4>
       </div>
       <ol className="space-y-3">
