@@ -292,7 +292,7 @@ export default function PricingPage() {
             <p className="text-center text-xs text-cream/80 mb-4 font-semibold">真實客戶的選擇</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
-                <div className="text-xl font-bold text-gold mb-1">⭐ 4.8/5</div>
+                <div className="text-xl font-bold text-gold mb-1">4.8 / 5.0</div>
                 <div className="text-[10px] text-text-muted">客戶滿意度</div>
               </div>
               <div>
