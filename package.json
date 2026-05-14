@@ -1,6 +1,6 @@
 {
   "name": "fortune-reports",
-  "version": "5.10.326",
+  "version": "5.10.327",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -11,6 +11,7 @@
     "pre-deploy": "npm run type-check && npm run build"
   },
   "dependencies": {
+    "@next/bundle-analyzer": "^16.2.6",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-tabs": "^1.1.13",

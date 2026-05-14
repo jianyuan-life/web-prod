@@ -1,5 +1,12 @@
 import { withWorkflow } from 'workflow/next'
+import bundleAnalyzer from '@next/bundle-analyzer'
 import type { NextConfig } from 'next'
+
+// v5.10.327:bundle 分析(用 ANALYZE=true npm run build 觸發、不影響日常 build)
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+  openAnalyzer: false, // CI 環境不開瀏覽器
+})
 
 const nextConfig: NextConfig = {
   // 生產環境不暴露 Source Maps(防止原始碼被查看)
@@ -127,4 +134,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withWorkflow(nextConfig)
+export default withWorkflow(withBundleAnalyzer(nextConfig))
