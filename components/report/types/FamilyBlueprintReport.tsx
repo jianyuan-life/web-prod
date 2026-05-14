@@ -8,6 +8,8 @@ import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
 import { QuickSummary } from '@/components/report/shared/QuickSummary'
 // v5.10.314 editorial(McKinsey + magazine pattern):結論先行
 import { ExecutiveSummary } from '@/components/report/shared/DropCap'
+// v5.10.319 序向動畫(Gemini #4 開箱儀式感、4 reports 統一)
+import { Stagger, StaggerItem } from '@/components/effects/Stagger'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import { PracticeCard } from '@/components/report/shared/PracticeCard'
 import { ReportSeal } from '@/components/report/shared/ReportSeal'
@@ -38,6 +40,9 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
       <main className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
+        {/* v5.10.319 序向動畫(Gemini 開箱儀式感)*/}
+        <Stagger>
+        <StaggerItem>
         {/* HERO 家族圈 — v5.10.258 wire dead component #4:HeroBlock family variant
             原 inline hero 跟 HeroBlock 內邏輯一致(同設計師輸出)、改用 HeroBlock 是 DRY 重構 */}
         <HeroBlock
@@ -430,6 +435,9 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
           />
           <CrisisFooter />
         </section>
+
+        </StaggerItem>
+        </Stagger>
         </div>
         <BackToTop />
       </main>

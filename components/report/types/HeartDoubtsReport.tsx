@@ -20,6 +20,8 @@ import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import { ReportToolbar } from '@/components/report/shared/ReportToolbar'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
 import { BackToTop } from '@/components/effects/BackToTop'
+// v5.10.319 序向動畫(Gemini #4 開箱儀式感、4 reports 統一)
+import { Stagger, StaggerItem } from '@/components/effects/Stagger'
 import type { HeartDoubtsReport as HeartDoubtsData } from '@/types/report-schemas'
 
 interface HeartDoubtsReportProps {
@@ -43,6 +45,9 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
       >
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
+        {/* v5.10.319 序向動畫(Gemini 開箱儀式感)*/}
+        <Stagger>
+        <StaggerItem>
         {/* HERO 評分卡 — v5.10.259 wire HeroBlock 'score' variant(DRY refactor、跟原 inline 邏輯一致) */}
         <HeroBlock
           variant="score"
@@ -362,6 +367,9 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
           />
           <CrisisFooter />
         </section>
+
+        </StaggerItem>
+        </Stagger>
         </div>
         <BackToTop />
       </main>

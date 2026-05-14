@@ -18,6 +18,8 @@ import { PDFDownloadButton } from '@/components/report/shared/PDFDownloadButton'
 import { ReportToolbar } from '@/components/report/shared/ReportToolbar'
 import { ScrollProgress } from '@/components/effects/ScrollProgress'
 import { BackToTop } from '@/components/effects/BackToTop'
+// v5.10.319 序向動畫(Gemini #4 開箱儀式感、4 reports 統一)
+import { Stagger, StaggerItem } from '@/components/effects/Stagger'
 import type { CompatibilityReport as CompatibilityData } from '@/types/report-schemas'
 
 interface CompatibilityReportProps {
@@ -38,6 +40,9 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
       <main className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
+        {/* v5.10.319 序向動畫(Gemini 開箱儀式感)*/}
+        <Stagger>
+        <StaggerItem>
         {/* HERO 雙人 × 判定徽章 — v5.10.259 wire HeroBlock 'verdict' variant(DRY refactor) */}
         <HeroBlock
           variant="verdict"
@@ -393,6 +398,9 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
           />
           <CrisisFooter />
         </section>
+
+        </StaggerItem>
+        </Stagger>
         </div>
         <BackToTop />
       </main>
