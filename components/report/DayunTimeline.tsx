@@ -91,10 +91,21 @@ export default function DayunTimeline({
         </div>
       </div>
 
-      <div className="glass rounded-2xl p-4 md:p-6 border border-gold/15">
+      <div className="glass rounded-2xl p-4 md:p-6 border border-gold/15 relative">
+        {/* v5.10.317 editorial:加 currentAge horizontal ribbon track(QA P0 #2 補)
+            像 timeline ribbon、虛線 baseline 跨整 chart、視覺化「當下時間軸」 */}
+        <div
+          className="absolute left-4 right-4 md:left-6 md:right-6 top-12 h-px pointer-events-none"
+          style={{
+            background:
+              'linear-gradient(to right, transparent 0%, rgba(201,168,76,0.15) 10%, rgba(201,168,76,0.25) 50%, rgba(201,168,76,0.15) 90%, transparent 100%)',
+          }}
+          aria-hidden
+        />
+
         {/* 時間軸 grid */}
         <div
-          className="grid gap-2"
+          className="grid gap-2 relative"
           style={{
             gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))`,
           }}
