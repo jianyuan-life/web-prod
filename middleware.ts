@@ -15,6 +15,7 @@ import type { NextRequest } from 'next/server'
 import { getClientIp } from '@/lib/security/get-client-ip'
 import { classifyUserAgent } from '@/lib/security/bot-detect'
 import { classifyTraffic } from '@/lib/security/ip-blocklist'
+import { isEdgeBlockedIp, isEdgeAllowedIp, isBlockedCountry } from '@/lib/security/edge-blocklist'
 
 // 每分鐘速率限制
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
@@ -31,14 +32,45 @@ const referralValidateFails = new Map<string, { fails: number; blockUntil: numbe
 const REFERRAL_BRUTEFORCE_THRESHOLD = 5
 const REFERRAL_BRUTEFORCE_BLOCK_MS = 60 * 60 * 1000 // 1 小時
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const ua = request.headers.get('user-agent')
   const ip = getClientIp(request)
+  const country = request.headers.get('x-vercel-ip-country') || request.headers.get('cf-ipcountry')
   const now = Date.now()
 
   // ────────────────────────────────────────────────────────
-  // STAGE 0:IP 黑/白名單(優先級最高、繞過 / 阻擋全部後續邏輯)
+  // STAGE -1:Edge Config 動態黑名單(Sprint 5、優先於 hardcode)
+  //   - 國家層 geo block(Vercel x-vercel-ip-country header)
+  //   - IP 層 Edge Config(秒級同步、無需 deploy)
+  //   - Edge Config env 沒設 / 失敗 → 自動 fallback 到 STAGE 0 hardcode
+  // ────────────────────────────────────────────────────────
+  if (await isBlockedCountry(country)) {
+    return new NextResponse(JSON.stringify({ error: 'Access denied (geo)' }), {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Geo-Block': country || 'unknown',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+  if (await isEdgeBlockedIp(ip)) {
+    return new NextResponse(JSON.stringify({ error: 'Access denied' }), {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-IP-Block': 'edge-config',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+  if (await isEdgeAllowedIp(ip)) {
+    return NextResponse.next()
+  }
+
+  // ────────────────────────────────────────────────────────
+  // STAGE 0:IP 黑/白名單 hardcode fallback(已被 STAGE -1 包進、保留作 defense in depth)
   // ────────────────────────────────────────────────────────
   const trafficClass = classifyTraffic(ip, ua)
   if (trafficClass === 'block') {
@@ -46,7 +78,7 @@ export function middleware(request: NextRequest) {
       status: 403,
       headers: {
         'Content-Type': 'application/json',
-        'X-IP-Block': '1',
+        'X-IP-Block': 'hardcode',
         'Cache-Control': 'no-store',
       },
     })
