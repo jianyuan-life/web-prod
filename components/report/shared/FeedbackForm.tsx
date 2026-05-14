@@ -96,8 +96,18 @@ export function FeedbackForm({
           borderColor: 'var(--jy-semantic-flow)',
         }}
       >
-        <div className="text-4xl mb-3" aria-hidden>🎉</div>
-        <h3 className="text-xl font-semibold text-[var(--jy-semantic-flow)] mb-2">感謝您的回饋!</h3>
+        {/* v5.10.297 editorial:砍 🎉 emoji、改 SVG checkmark + serif typography */}
+        <div className="mb-4 mx-auto w-12 h-12 rounded-full border-2 flex items-center justify-center" style={{ borderColor: 'var(--jy-semantic-flow)' }} aria-hidden>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--jy-semantic-flow)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <h3
+          className="text-xl font-normal text-[var(--jy-semantic-flow)] mb-2"
+          style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}
+        >
+          感謝您的回饋
+        </h3>
         <p className="text-sm text-[var(--jy-text-secondary)]">您的意見會幫助我們持續改善鑒源命理。</p>
       </section>
     )

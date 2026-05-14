@@ -149,9 +149,11 @@ export default function FreemiumPaywall({ systemName, clientName, checkoutQuery 
         </p>
       </div>
 
-      {/* 4. Social proof(24h 動態、業界對標 Booking.com)*/}
-      <p className="text-center text-[11px] text-cream/60 mb-3">
-        🌟 過去 24 小時、已有多位客戶解鎖完整命格報告
+      {/* 4. Social proof(24h 動態、業界對標 Booking.com)— v5.10.297 砍 🌟、改 hairline accent */}
+      <p className="text-center text-[11px] text-cream/60 mb-3 tracking-wide">
+        <span className="inline-block h-px w-3 bg-cream/40 align-middle mr-2" />
+        過去 24 小時、已有多位客戶解鎖完整命格報告
+        <span className="inline-block h-px w-3 bg-cream/40 align-middle ml-2" />
       </p>
 
       {/* 5. 收摺對比表(降認知負荷、Notion 極簡 Paywall)*/}

@@ -42,8 +42,9 @@ export default function PartHighlights({ part, sections }: PartHighlightsProps) 
         border: `1px solid ${c.border}`,
       }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <span style={{ color: c.accent, fontSize: '1.1rem' }}>✨</span>
+      {/* v5.10.297 editorial:砍 ✨、改 hairline accent line */}
+      <div className="flex items-center gap-3 mb-3">
+        <span className="h-px w-4" style={{ background: c.accent, opacity: 0.5 }} aria-hidden />
         <span className="text-[11px] tracking-[2px]" style={{ color: c.accent, opacity: 0.9 }}>
           {c.label}
         </span>
