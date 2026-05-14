@@ -2190,7 +2190,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               {/* 卡片標題 */}
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-gold/20">
                 <div className="text-gold/75 text-[11px] tracking-[3px] font-semibold flex items-center gap-2">
-                  <span>📜 命格名片 · 5 件套速覽</span>
+                  <span>命格名片 · 5 件套速覽</span>
                 </div>
                 <div className="text-text-muted/55 text-[9px] tracking-wide hidden sm:block">
                   下方有完整詳述
@@ -2232,7 +2232,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {pillars.length >= 3 && (
                     <div className="col-span-2 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.30)', border: '1px solid rgba(197,150,58,0.22)' }}>
                       <div className="flex items-center justify-between mb-1.5">
-                        <div className="text-gold/55 text-[9px] tracking-[2px] font-semibold">📜 八字四柱</div>
+                        <div className="text-gold/55 text-[9px] tracking-[2px] font-semibold">八字四柱</div>
                         <div className="flex items-center gap-2">
                           {hourUnknown && <div className="text-orange-400/75 text-[9px]">時辰未明</div>}
                           {dayMaster && <div className="text-green-400/65 text-[9px]">日主 <span className="text-green-400 font-bold">{dayMaster}</span></div>}
@@ -2269,7 +2269,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {/* 件 3:紫微命宮 */}
                   {mingGong && (
                     <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(155,89,182,0.10)', border: '1px solid rgba(155,89,182,0.30)' }}>
-                      <div className="text-purple-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">🔮 紫微命宮</div>
+                      <div className="text-purple-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">紫微命宮</div>
                       <div className="text-cream font-bold text-sm leading-tight">{mingZhu ? `${mingZhu}` : '—'}</div>
                       <div className="text-purple-300/70 text-[10px] mt-0.5">在 {mingGong} 宮</div>
                     </div>

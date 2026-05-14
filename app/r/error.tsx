@@ -40,8 +40,9 @@ export default function ReportError({
       aria-live="assertive"
     >
       <div className="text-center max-w-lg">
-        <div className="text-6xl mb-4" aria-hidden>📜</div>
-        <h1 className="text-2xl font-bold text-[var(--jy-text-primary)] mb-3" style={{ fontFamily: 'var(--jy-font-display)' }}>
+        {/* v5.10.304 editorial:6xl 📜 → hairline divider + serif heading */}
+        <div className="h-px w-16 bg-[var(--jy-text-gold)]/40 mx-auto mb-6" aria-hidden />
+        <h1 className="text-2xl font-normal text-[var(--jy-text-primary)] mb-3" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
           報告載入失敗
         </h1>
         <p className="text-[var(--jy-text-secondary)] mb-6 leading-relaxed">
