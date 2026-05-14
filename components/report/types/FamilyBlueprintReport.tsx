@@ -6,6 +6,8 @@ import { GoldDivider } from '@/components/effects/GoldDivider'
 import { BaziPillars } from '@/components/report/shared/BaziPillars'
 import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
 import { QuickSummary } from '@/components/report/shared/QuickSummary'
+// v5.10.314 editorial(McKinsey + magazine pattern):結論先行
+import { ExecutiveSummary } from '@/components/report/shared/DropCap'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import { PracticeCard } from '@/components/report/shared/PracticeCard'
 import { ReportSeal } from '@/components/report/shared/ReportSeal'
@@ -47,6 +49,20 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         />
 
         <GoldDivider className="my-12" />
+
+        {/* v5.10.314 ExecutiveSummary「一分鐘看懂」(G15 報告結論先行) */}
+        <ExecutiveSummary
+          title="一分鐘看懂"
+          bullets={[
+            `家族成員:${data.members.length} 人合盤(${data.members.map((m) => m.name).join(' / ')})`,
+            data.fiveElementsDistribution?.keyFinding
+              ? `關鍵發現:${data.fiveElementsDistribution.keyFinding.slice(0, 60)}${data.fiveElementsDistribution.keyFinding.length > 60 ? '…' : ''}`
+              : '五行分佈已完成跨代分析',
+            data.triangleDynamics?.dangerousMode
+              ? `三角動力:${data.triangleDynamics.dangerousMode.slice(0, 60)}${data.triangleDynamics.dangerousMode.length > 60 ? '…' : ''}`
+              : '家族系統動力已解析',
+          ]}
+        />
 
         {/* 五行分佈對比 */}
         <section className="mb-12">

@@ -7,6 +7,8 @@ import { HeroBlock } from '@/components/report/shared/HeroBlock'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
 import { QuickSummary } from '@/components/report/shared/QuickSummary'
+// v5.10.314 editorial(McKinsey + magazine pattern):結論先行
+import { ExecutiveSummary } from '@/components/report/shared/DropCap'
 import { PracticeCard } from '@/components/report/shared/PracticeCard'
 import { ReportSeal } from '@/components/report/shared/ReportSeal'
 import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
@@ -46,6 +48,16 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
           durations={{ short: data.meta.durationShort, full: data.meta.durationFull }}
           verdict={data.verdict}
           verdictSubtitle={data.verdictMeta.subtitle}
+        />
+
+        {/* v5.10.314 ExecutiveSummary「一分鐘看懂」(R 報告結論先行) */}
+        <ExecutiveSummary
+          title="一分鐘看懂"
+          bullets={[
+            `合盤判定:${data.verdict}`,
+            data.verdictMeta?.subtitle ? `關係定位:${data.verdictMeta.subtitle}` : '雙方命格交叉、互動模式已解析',
+            data.scenario ? `情境主題:${data.scenario}` : '本次合盤鎖定核心關係議題',
+          ]}
         />
 
         {/* 你們的問題 */}

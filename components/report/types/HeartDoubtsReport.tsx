@@ -8,6 +8,8 @@ import { BaziPillars } from '@/components/report/shared/BaziPillars'
 import { EvidenceList } from '@/components/report/shared/EvidenceList'
 import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
 import { QuickSummary } from '@/components/report/shared/QuickSummary'
+// v5.10.314 editorial(McKinsey + magazine pattern):結論先行 + pull quote
+import { ExecutiveSummary } from '@/components/report/shared/DropCap'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import { MonthlyDecisionTable } from '@/components/report/shared/MonthlyDecisionTable'
 import { PracticeCard } from '@/components/report/shared/PracticeCard'
@@ -56,6 +58,18 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
         />
 
         <GoldDivider className="my-12" />
+
+        {/* v5.10.314 ExecutiveSummary「一分鐘看懂」(McKinsey pattern、D 報告結論先行) */}
+        <ExecutiveSummary
+          title="一分鐘看懂"
+          bullets={[
+            data.question?.topic ? `提問主題:${data.question.topic}` : '針對個人深層困惑、5-8 套相關系統交叉直斷',
+            data.score?.grade ? `整體評等:${data.score.grade} 級(同級 ${data.score.percentile ?? '—'}% 以內)` : '整體評等已結合命格深度評估',
+            data.question?.raw
+              ? `提問內容:${data.question.raw.slice(0, 60)}${data.question.raw.length > 60 ? '…' : ''}`
+              : '核心結論:見下方 5 系統共識深度分析',
+          ]}
+        />
 
         {/* 你的問題 */}
         <section className="mb-12">
