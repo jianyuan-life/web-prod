@@ -767,13 +767,14 @@ function renderInlineMarkdown(text: string): string {
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
     // 行內程式碼
     .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:0.9em">$1</code>')
-    .replace(/✅/g, '<span style="color:#6ab04c">✅</span>')
-    .replace(/⚠️/g, '<span style="color:#e0963a">⚠️</span>')
-    .replace(/🔧/g, '<span style="color:#c9a84c">🔧</span>')
-    .replace(/🟢/g, '<span style="color:#6ab04c">🟢</span>')
-    .replace(/🟡/g, '<span style="color:#e0963a">🟡</span>')
-    .replace(/🔵/g, '<span style="color:#5b9bd5">🔵</span>')
-    .replace(/📌/g, '<span style="color:#c9a84c">📌</span>')
+    // v5.10.301 editorial:emoji → hairline color dot(降 AI 感、保留語意分類)
+    .replace(/✅/g, '<span style="color:#6ab04c;font-weight:600">✓</span>')
+    .replace(/⚠️/g, '<span style="color:#e0963a;font-weight:600">!</span>')
+    .replace(/🔧/g, '<span style="color:#c9a84c;font-weight:600">▸</span>')
+    .replace(/🟢/g, '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#6ab04c;margin-right:4px;vertical-align:middle"></span>')
+    .replace(/🟡/g, '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#e0963a;margin-right:4px;vertical-align:middle"></span>')
+    .replace(/🔵/g, '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#5b9bd5;margin-right:4px;vertical-align:middle"></span>')
+    .replace(/📌/g, '<span style="color:#c9a84c;font-weight:600">▌</span>')
     // 引用古籍標註：[出處：《XXX》]、（出處：《XXX》卷Y）—— 灰底金邊小徽章
     .replace(/[\[［]\s*出處[：:]\s*([^\]］\n]+?)\s*[\]］]/g, '<span style="display:inline-block;margin:0 2px;padding:1px 8px;font-size:0.72rem;background:rgba(245,240,232,0.08);border:1px solid rgba(201,168,76,0.35);border-radius:10px;color:#c9a84c;letter-spacing:0.5px;vertical-align:0.1em;">典據：$1</span>')
     .replace(/[（(]\s*出處[：:]\s*([^）)\n]+?)\s*[）)]/g, '<span style="display:inline-block;margin:0 2px;padding:1px 8px;font-size:0.72rem;background:rgba(245,240,232,0.08);border:1px solid rgba(201,168,76,0.35);border-radius:10px;color:#c9a84c;letter-spacing:0.5px;vertical-align:0.1em;">典據：$1</span>')
@@ -784,8 +785,8 @@ function renderInlineMarkdown(text: string): string {
     })
     // 引言框（> 開頭）→ 金色左邊框 callout
     .replace(/^&gt;\s*(.+)$/gm, '<blockquote style="border-left:3px solid rgba(197,150,58,0.6);padding:8px 16px;margin:12px 0;background:rgba(197,150,58,0.06);border-radius:0 8px 8px 0;font-style:normal;color:var(--color-gold);">$1</blockquote>')
-    // 📌 本章重點 → 特殊樣式
-    .replace(/^📌\s*(.+)$/gm, '<div style="background:rgba(197,150,58,0.08);border:1px solid rgba(197,150,58,0.2);border-radius:8px;padding:10px 14px;margin:10px 0;font-weight:600;color:var(--color-gold);font-size:0.85rem;">📌 $1</div>')
+    // 本章重點 → editorial 強調 block(v5.10.301 砍 📌 emoji、改 hairline left border)
+    .replace(/^📌\s*(.+)$/gm, '<div style="border-left:3px solid rgba(197,150,58,0.7);padding:10px 16px;margin:10px 0;font-weight:600;color:var(--color-gold);font-size:0.9rem;font-family:var(--jy-font-serif, \'Noto Serif TC\'), serif">$1</div>')
     // → 善用指南 → 醒目金色框
     .replace(/^→\s*善用指南[：:]\s*(.+)$/gm, '<div style="padding:12px 16px;border-left:3px solid rgba(201,168,76,0.7);background:rgba(201,168,76,0.08);border-radius:0 10px 10px 0;margin:10px 0;font-size:0.88rem;color:var(--color-gold)"><strong style="color:#c9a84c">&#9733; 善用指南：</strong><br/>$1</div>')
     // → 其他行動建議 → 綠色左邊框
