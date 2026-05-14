@@ -16,49 +16,78 @@ export interface TopList5Props {
   className?: string
 }
 
+// v5.10.305 editorial:砍 ✓⚠ icon、editorial label
 const VARIANT_META = {
-  talent: { icon: '✓', accent: 'var(--jy-semantic-flow)', label: '天賦' },
-  risk: { icon: '⚠', accent: 'var(--jy-semantic-adjust)', label: '風險' },
+  talent: { accent: 'var(--jy-semantic-flow)', label: '天賦' },
+  risk: { accent: 'var(--jy-semantic-adjust)', label: '風險' },
 } as const
 
 export function TopList5({ items, variant = 'talent', title, className = '' }: TopList5Props) {
   const meta = VARIANT_META[variant]
-  const headerTitle = title || `${meta.icon} Top ${items.length} ${meta.label}`
+  const headerTitle = title || `Top ${items.length} ${meta.label}`
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <h3 className="font-semibold text-lg" style={{ color: meta.accent }}>{headerTitle}</h3>
-      <ol className="space-y-3">
+    <div className={cn('space-y-5', className)}>
+      {/* v5.10.305 editorial:editorial section header(small caps + hairline + serif title) */}
+      <div className="flex items-baseline gap-3">
+        <span className="h-px w-6" style={{ background: meta.accent, opacity: 0.5 }} aria-hidden />
+        <h3
+          className="font-medium text-lg"
+          style={{
+            color: meta.accent,
+            fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
+          }}
+        >
+          {headerTitle}
+        </h3>
+      </div>
+      <ol className="space-y-4">
         {items.map((item, i) => (
           <li
             key={i}
-            className="rounded-xl p-4 border border-[var(--jy-border-soft)] bg-[var(--jy-bg-card)]/40"
+            className="border-l-2 pl-5 py-2"
+            style={{ borderLeftColor: `${meta.accent}40` }}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-baseline gap-4">
+              {/* v5.10.305 editorial:rounded-full numbered avatar → mono ordinal chapter style */}
               <span
-                className="flex-shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold tabular-nums"
+                className="flex-shrink-0 text-xs tabular-nums tracking-[0.15em]"
                 style={{
-                  backgroundColor: `${meta.accent}20`,
                   color: meta.accent,
+                  fontFamily: 'var(--jy-font-mono), monospace',
+                  opacity: 0.7,
                 }}
               >
-                {i + 1}
+                {String(i + 1).padStart(2, '0')}
               </span>
               <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-[var(--jy-text-primary)]">{item.title}</h4>
+                {/* v5.10.305 editorial:title 改 serif normal、字級放大、wordBreak */}
+                <h4
+                  className="font-medium text-[var(--jy-text-primary)] leading-snug"
+                  style={{
+                    fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
+                    fontSize: '17px',
+                    wordBreak: 'keep-all',
+                    overflowWrap: 'break-word',
+                  }}
+                >
+                  {item.title}
+                </h4>
 
-                {/* 信心度 dots */}
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="text-xs text-[var(--jy-text-muted)]">信心度:</span>
-                  <span aria-label={`信心度 ${item.confidence}/5`} className="text-xs">
+                {/* 信心度 — v5.10.305 editorial:小型 mono dots、不再 gap-2 跟 SaaS 感 */}
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-[10px] tracking-[0.18em] text-[var(--jy-text-muted)]" style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>
+                    CONFIDENCE
+                  </span>
+                  <span aria-label={`信心度 ${item.confidence}/5`} className="inline-flex items-center gap-1">
                     {Array.from({ length: 5 }).map((_, dotI) => (
                       <span
                         key={dotI}
-                        className="inline-block w-2 h-2 rounded-full mr-0.5"
+                        className="inline-block w-1.5 h-1.5"
                         style={{
                           backgroundColor: dotI < item.confidence
                             ? meta.accent
-                            : 'rgba(255,255,255,0.10)',
+                            : 'rgba(255,255,255,0.08)',
                         }}
                         aria-hidden
                       />
