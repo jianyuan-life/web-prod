@@ -77,37 +77,43 @@ export function ChapterSection({
       <Accordion.Header>
         <Accordion.Trigger
           className={cn(
-            'group flex w-full items-center justify-between gap-3 px-5 py-4',
+            // v5.10.302 Gemini #1:加寬鬆留白(px-5 py-4 → px-7 py-6、editorial 呼吸感)
+            'group flex w-full items-start justify-between gap-4 px-7 py-6',
             'text-left transition-colors',
             'hover:bg-[var(--jy-bg-mist)]/40',
             'focus-visible:outline-2 focus-visible:outline-[var(--jy-text-gold)] focus-visible:outline-offset-2',
             'data-[state=open]:bg-[var(--jy-bg-mist)]/30',
           )}
         >
-          <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="flex items-start gap-4 min-w-0 flex-1">
             {emoji ? (
               <span className="flex-shrink-0 text-2xl pt-0.5" aria-hidden>{emoji}</span>
             ) : null}
             {number != null ? (
-              <span className="flex-shrink-0 text-sm font-medium text-[var(--jy-text-gold)] tabular-nums pt-1">
-                {typeof number === 'number' ? `${number}.` : number}
+              <span
+                className="flex-shrink-0 text-xs tracking-[0.18em] text-[var(--jy-text-gold)]/70 tabular-nums pt-1.5"
+                style={{ fontFamily: 'var(--jy-font-mono), monospace' }}
+              >
+                {typeof number === 'number' ? String(number).padStart(2, '0') : number}
               </span>
             ) : null}
-            {/* v5.10.295 修字截斷:砍 truncate(會把章節標題重點截掉)、改 multi-line wrap with CJK-safe break */}
+            {/* v5.10.295 修字截斷 + v5.10.302 Gemini #3 字階優化:serif + variable weight */}
             <h3
-              className="font-semibold text-[var(--jy-text-primary)] leading-snug"
+              className="font-medium text-[var(--jy-text-primary)] leading-snug"
               style={{
-                fontFamily: 'var(--jy-font-display)',
-                wordBreak: 'keep-all',         // CJK 不斷字
-                overflowWrap: 'break-word',    // 英文 / 長字才 break
-                textWrap: 'pretty' as 'pretty',// 避免 widow(現代瀏覽器)
+                fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
+                fontSize: 'clamp(15px, 1.4vw, 18px)',
+                fontVariationSettings: '"wght" 500',
+                wordBreak: 'keep-all',
+                overflowWrap: 'break-word',
+                textWrap: 'pretty' as 'pretty',
               }}
             >
               {title}
             </h3>
           </div>
           <ChevronDown
-            className="flex-shrink-0 h-5 w-5 text-[var(--jy-text-muted)] transition-transform duration-200 group-data-[state=open]:rotate-180"
+            className="flex-shrink-0 h-5 w-5 text-[var(--jy-text-muted)] transition-transform duration-200 group-data-[state=open]:rotate-180 mt-1"
             aria-hidden
           />
         </Accordion.Trigger>
@@ -120,7 +126,8 @@ export function ChapterSection({
           'data-[state=closed]:animate-accordion-up',
         )}
       >
-        <div className="px-5 py-5 space-y-4 border-t border-[var(--jy-border-hairline)]">
+        {/* v5.10.302 Gemini #1:內容留白 px-5 py-5 → px-7 py-7、editorial reading rhythm */}
+        <div className="px-7 py-7 space-y-5 border-t border-[var(--jy-border-hairline)]">
           {children}
         </div>
       </Accordion.Content>

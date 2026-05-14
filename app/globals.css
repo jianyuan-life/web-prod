@@ -300,7 +300,17 @@ html {
 }
 
 body {
+  /* v5.10.302 Gemini L4 finding #2:加極微弱紙張紋理 + 暖色調混合(中和數位生硬、回應命理「古籍」典藏感)
+     - 紙張紋理:極低 alpha noise(SVG inline)、僅 fade 視覺、不影響 readability
+     - 暖色融入:warm gradient overlay(深沉但有溫度、不再冷藍紫一片)
+     - 保留原 nebula gradient + 深藍底、editorial atmosphere */
   background:
+    /* 紙張紋理層(2.5% alpha noise)*/
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.78 0 0 0 0 0.66 0 0 0 0 0.30 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    /* 暖金 vignette(4 角微暖)*/
+    radial-gradient(ellipse at 0% 0%, rgba(201, 168, 76, 0.04) 0%, transparent 40%),
+    radial-gradient(ellipse at 100% 100%, rgba(201, 168, 76, 0.04) 0%, transparent 40%),
+    /* 原 nebula 保留 */
     radial-gradient(ellipse at 20% 50%, rgba(75, 0, 130, 0.14) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 20%, rgba(30, 60, 160, 0.10) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 80%, rgba(60, 30, 120, 0.08) 0%, transparent 50%),
