@@ -4,7 +4,12 @@
   "framework": "nextjs",
   "functions": {
     "app/api/admin/recalculate-report/route.ts": { "maxDuration": 800 },
-    "app/api/generate-report/route.ts": { "maxDuration": 800 }
+    "app/api/generate-report/route.ts": { "maxDuration": 800 },
+    "app/api/free-bazi/route.ts": { "maxDuration": 30 },
+    "app/api/free-ziwei/route.ts": { "maxDuration": 30 },
+    "app/api/free-qimen/route.ts": { "maxDuration": 30 },
+    "app/api/free-purple/route.ts": { "maxDuration": 30 },
+    "app/api/free-astro/route.ts": { "maxDuration": 30 }
   },
   "crons": [
     {

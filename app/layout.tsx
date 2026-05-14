@@ -3,6 +3,9 @@ import pkg from '../package.json'
 import { Noto_Serif_TC, Noto_Sans_TC, Noto_Serif_SC, Noto_Sans_SC, Cinzel } from 'next/font/google'
 import Link from 'next/link'
 import Image from 'next/image'
+import Script from 'next/script'
+import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import Navbar from '@/components/Navbar'
 import LocaleContent from '@/components/LocaleContent'
 import Tracker from '@/components/Tracker'
@@ -156,26 +159,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </>
         )}
-        {/* 原始碼保護：DevTools 版權警告 + 禁止右鍵 */}
-        {/* 修正（2026-04-19）：原本 var w='...','...' 是非法 JS 語法（SyntaxError: Unexpected string），
-            會導致全站每頁 console 報錯、後續 contextmenu 監聽根本沒註冊。改為 var w=..., css=..., m=...; 三個變數 */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function(){
-                // DevTools 開啟時顯示版權警告
-                var w='%c⚠️ 鑒源 JianYuan — 版權所有';
-                var css='color:#c9a84c;font-size:16px;font-weight:bold';
-                var m='本網站所有原始碼、演算法、命理規則引擎均受智慧財產權保護。\\n未經授權複製、修改或散佈將依法追究。\\n\\n© 2026 鑒源 JianYuan. All rights reserved.\\nhttps://jianyuan.life';
-                console.log(w,css,m);
-                // 禁止右鍵選單（報告頁）
-                document.addEventListener('contextmenu',function(e){
-                  if(e.target&&e.target.closest&&e.target.closest('main')){e.preventDefault()}
-                });
-              })();
-            `,
-          }}
-        />
+        {/* v5.10.324：DevTools 警告 + 報告頁右鍵禁用搬到外部 .js 檔（P0 #4 CSP 強化第一步）
+            原本 inline 寫法強迫 CSP 必須允許 'unsafe-inline'、Sprint 2 改 nonce 後可移除 unsafe-inline */}
+        <Script src="/scripts/devtools-warning.js" strategy="afterInteractive" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -276,6 +262,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </footer>
         </LocaleContent>
         </GlobalToastProvider>
+        {/* v5.10.324:Vercel Analytics + Speed Insights(P0 #1 監控對齊)
+            - Analytics:即時 page-view + traffic source、不需 cookie consent(IP 匿名化)
+            - SpeedInsights:RUM Web Vitals(LCP/FID/CLS/INP/TTFB)
+            註:免費 tier 月 25K 事件、jianyuan.life 月流量遠低於此額度 */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
