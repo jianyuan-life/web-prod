@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getClientIp } from '@/lib/security/get-client-ip'
 import { classifyUserAgent } from '@/lib/security/bot-detect'
+import { classifyTraffic } from '@/lib/security/ip-blocklist'
 
 // 每分鐘速率限制
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
@@ -35,6 +36,25 @@ export function middleware(request: NextRequest) {
   const ua = request.headers.get('user-agent')
   const ip = getClientIp(request)
   const now = Date.now()
+
+  // ────────────────────────────────────────────────────────
+  // STAGE 0:IP 黑/白名單(優先級最高、繞過 / 阻擋全部後續邏輯)
+  // ────────────────────────────────────────────────────────
+  const trafficClass = classifyTraffic(ip, ua)
+  if (trafficClass === 'block') {
+    return new NextResponse(JSON.stringify({ error: 'Access denied' }), {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-IP-Block': '1',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+  if (trafficClass === 'allow') {
+    // 信任源(Stripe webhook / Vercel cron)— 全部繞過 rate limit + bot classifier
+    return NextResponse.next()
+  }
 
   // ────────────────────────────────────────────────────────
   // STAGE 1:Bot UA classifier(全路徑、不分 api/page)
