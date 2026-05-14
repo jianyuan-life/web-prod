@@ -65,9 +65,10 @@ export async function middleware(request: NextRequest) {
       },
     })
   }
-  if (await isEdgeAllowedIp(ip)) {
-    return NextResponse.next()
-  }
+  // v5.10.333(Codex L3 P0 #2 修):白名單只繞 rate limit、不繞 bot classifier / noindex / 安全 header
+  // 原邏輯:`if (allowed) return next()` → Stripe IP 也跳過 bot 檢查、若有 IP spoofing 攻擊就完蛋
+  // 新邏輯:設 flag、繼續走完所有 STAGE、只在 STAGE 5 rate limit 階段 skip
+  const isWhitelisted = (await isEdgeAllowedIp(ip)) || classifyTraffic(ip, ua) === 'allow'
 
   // ────────────────────────────────────────────────────────
   // STAGE 0:IP 黑/白名單 hardcode fallback(已被 STAGE -1 包進、保留作 defense in depth)
@@ -82,10 +83,6 @@ export async function middleware(request: NextRequest) {
         'Cache-Control': 'no-store',
       },
     })
-  }
-  if (trafficClass === 'allow') {
-    // 信任源(Stripe webhook / Vercel cron)— 全部繞過 rate limit + bot classifier
-    return NextResponse.next()
   }
 
   // ────────────────────────────────────────────────────────
@@ -215,6 +212,13 @@ export async function middleware(request: NextRequest) {
         },
       )
     }
+  }
+
+  // v5.10.333(Codex P0 #2 修):白名單 IP 在這裡才 skip rate limit、其他 STAGE 仍跑
+  if (isWhitelisted) {
+    const response = NextResponse.next()
+    response.headers.set('X-RateLimit-Bypass', 'whitelist')
+    return response
   }
 
   // 每分鐘速率檢查

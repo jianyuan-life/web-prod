@@ -69,12 +69,42 @@ export function isAllowedIp(ip: string): boolean {
 }
 
 /**
- * 檢查 UA 是否屬可信內部服務(Vercel cron 等)
+ * v5.10.333 (Codex P1 #1 修):
+ * 原問題:只看 UA 字串、attacker 可塞 'vercel-cron/1.0' UA 繞所有防線
+ * 修補:UA 字串 + Vercel cron secret header 雙因子驗證
+ * Vercel cron 自動帶 x-vercel-cron-secret(只有 Vercel 邊緣 platform 知道)
+ *
+ * @deprecated 改用 isTrustedInternalRequest(req) 驗 secret + UA
  */
 export function isTrustedInternalUa(ua: string | null | undefined): boolean {
   if (!ua) return false
   const trusted = ['vercel-cron/1.0', 'vercel-internal']
   return trusted.some((t) => ua.toLowerCase().includes(t))
+}
+
+/**
+ * v5.10.333:用 request 同時驗 cron secret + UA 雙因子(防 UA 偽造)
+ * Vercel cron 自動帶 Authorization: Bearer <CRON_SECRET>(env CRON_SECRET 設後生效)
+ */
+export function isTrustedInternalRequest(req: {
+  headers: { get(name: string): string | null }
+}): boolean {
+  const ua = req.headers.get('user-agent')
+  // 必先 UA 命中、再驗 secret(雙因子)
+  if (!isTrustedInternalUa(ua)) return false
+
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) return false // 沒設 env、保守拒絕
+
+  const auth = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim()
+  if (!auth || auth.length !== cronSecret.length) return false
+
+  // timing-safe 比對(防 timing attack)
+  let mismatch = 0
+  for (let i = 0; i < auth.length; i++) {
+    mismatch |= auth.charCodeAt(i) ^ cronSecret.charCodeAt(i)
+  }
+  return mismatch === 0
 }
 
 /**
