@@ -90,8 +90,23 @@ async function fetchBlocklist(): Promise<CachedBlocklist> {
     }
     return cache
   } catch (err) {
-    // Edge Config 連線失敗(env 沒設 / 服務 down)→ 回 EMPTY、上層走 hardcode
-    if (!cache) cache = EMPTY
+    // v5.10.343 (Codex round 2 P2 #1 修):Edge Config 失敗時保留 stale cache、不直接空化
+    // 原問題:fail open = 動態封鎖被「空化」、attacker 能繞所有 Edge Config 黑名單
+    // 修補:
+    //   - 若有舊 cache → 延長使用(stale-while-error)、log warning
+    //   - 若無 cache → 才回 EMPTY 走 hardcode fallback
+    if (cache) {
+      console.warn('[edge-blocklist] fetch failed but using stale cache', {
+        cacheAge: Date.now() - cache.fetchedAt,
+        ageMins: Math.floor((Date.now() - cache.fetchedAt) / 60_000),
+      })
+      // 延長 cache resetAt 一段時間(再撐 5 分鐘)避免持續 retry
+      cache.fetchedAt = now - CACHE_TTL_MS + 5 * 60_000
+      return cache
+    }
+    // 真的沒 cache 才走 EMPTY、Vercel logs 應觸發告警
+    console.error('[edge-blocklist] fetch failed AND no stale cache — falling back to hardcode')
+    cache = EMPTY
     return EMPTY
   }
 }

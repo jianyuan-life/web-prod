@@ -12,13 +12,13 @@ import type { NextRequest } from 'next/server'
 /**
  * 從 proxy header 取得真實 client IP(優先序:reliability + 反 spoofing)
  *
- * 部署平台 trust matrix:
- * - Vercel:x-vercel-forwarded-for(邊緣強制覆寫、不可偽造)
- * - Cloudflare:cf-connecting-ip(必有 cf-ray 才信)
- * - 其他:x-real-ip(原樣、信任 proxy 已正確設定)
- * - 通用 fallback:x-forwarded-for(取最右、最內層 proxy 添加的;client 偽造的會被覆蓋)
+ * 部署平台 trust matrix(v5.10.343 加 fingerprint 收緊、Codex round 2 P1 #1 修):
+ * - Vercel:x-vercel-forwarded-for(邊緣強制覆寫、不可偽造、最高信任)
+ * - Cloudflare:cf-connecting-ip(必同時有 cf-ray + cf-ipcountry、才證明真經 CF)
+ * - 其他:x-real-ip(必同時有 x-forwarded-host + 主機名為 jianyuan.life、才信)
+ * - 通用 fallback:x-forwarded-for 取最右(最內層 proxy)
  *
- * 不再信任「最左 x-forwarded-for」(client 可塞任意值)
+ * 不再信任「最左 x-forwarded-for」、單獨「cf-ray」(可被 hop-by-hop attacker 添加)
  */
 export function getClientIp(request: NextRequest | Request): string {
   const headers =
@@ -34,16 +34,19 @@ export function getClientIp(request: NextRequest | Request): string {
     if (ip && ip !== 'unknown') return ip
   }
 
-  // 2. Cloudflare 驗證(cf-connecting-ip + cf-ray 同時存在才信)
+  // 2. Cloudflare 驗證(v5.10.343 收緊:必同時有 cf-ray + cf-ipcountry、才證明真經 CF)
+  // 原問題:單獨 cf-ray 可被 hop-by-hop attacker 添加、不夠安全
   const cfRay = headers.get('cf-ray')
-  if (cfRay) {
+  const cfCountry = headers.get('cf-ipcountry')
+  if (cfRay && cfCountry) {
     const cfIp = headers.get('cf-connecting-ip')
     if (cfIp && cfIp.trim()) return cfIp.trim()
   }
 
-  // 3. x-real-ip 配 x-forwarded-host 才信(證明過 reverse proxy)
-  const fwdHost = headers.get('x-forwarded-host')
-  if (fwdHost) {
+  // 3. x-real-ip 配 x-forwarded-host 才信(必為 jianyuan.life 才放行)
+  // v5.10.343 收緊:host 必為 jianyuan.life / *.jianyuan.life、防內網 host header 攻擊
+  const fwdHost = headers.get('x-forwarded-host')?.trim().toLowerCase()
+  if (fwdHost && (fwdHost === 'jianyuan.life' || fwdHost.endsWith('.jianyuan.life'))) {
     const realIp = headers.get('x-real-ip')
     if (realIp && realIp.trim()) return realIp.trim()
   }
