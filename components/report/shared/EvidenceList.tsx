@@ -51,10 +51,22 @@ export function EvidenceList({
               'focus-visible:outline-2 focus-visible:outline-[var(--jy-text-gold)] focus-visible:outline-offset-2',
             )}
           >
+            {/* v5.10.297 editorial:⟐ unicode 保留(geometric、editorial-friendly)、加 small caps eyebrow */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <span className="flex-shrink-0 text-xl text-[var(--jy-text-gold)]" aria-hidden>⟐</span>
+              <span className="flex-shrink-0 text-xl text-[var(--jy-text-gold)]/70" aria-hidden>⟐</span>
               <div className="min-w-0 flex-1">
-                <h4 className="font-semibold text-[var(--jy-text-primary)]">{headerTitle}</h4>
+                <p
+                  className="text-[10px] tracking-[0.2em] text-[var(--jy-text-muted)] mb-0.5"
+                  style={{ fontFamily: 'var(--jy-font-mono), monospace' }}
+                >
+                  E V I D E N C E
+                </p>
+                <h4
+                  className="font-semibold text-[var(--jy-text-primary)] leading-snug"
+                  style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                >
+                  {headerTitle}
+                </h4>
                 <p className="mt-1 text-xs text-[var(--jy-text-tertiary)]">
                   點開查看本報告引用的具體命盤欄位
                 </p>
@@ -77,16 +89,21 @@ export function EvidenceList({
                   key={i}
                   className="flex items-start gap-3 rounded-lg p-3 bg-[var(--jy-bg-space)]/40 border border-[var(--jy-border-hairline)] hover:border-[var(--jy-border-gold)] transition-colors"
                 >
+                  {/* v5.10.297 editorial:rounded-full pill → hairline rect editorial chip */}
                   <span
-                    className="flex-shrink-0 inline-flex h-6 px-2 items-center justify-center rounded-full text-xs font-medium"
+                    className="flex-shrink-0 inline-flex items-center font-medium border-l-2 pl-2 text-[11px] tracking-[0.1em]"
                     style={{
-                      backgroundColor: 'rgba(229, 185, 92, 0.15)',
+                      borderLeftColor: 'var(--jy-text-gold)',
                       color: 'var(--jy-text-gold)',
+                      fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
                     }}
                   >
                     {item.system}
                   </span>
-                  <span className="flex-1 text-sm leading-relaxed text-[var(--jy-text-secondary)]">
+                  <span
+                    className="flex-1 text-sm leading-relaxed text-[var(--jy-text-secondary)]"
+                    style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+                  >
                     {item.finding}
                   </span>
                 </li>
