@@ -288,15 +288,36 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 速率限制回應標頭
-  const response = NextResponse.next()
+  // v5.10.332 (Sprint 5 Gemini #5):CSP nonce stage 1 — 每請求 base64 nonce、set X-Nonce header
+  // layout.tsx 透過 headers() 讀取、Sprint 5 stage 2 注入到所有 inline script 後可移 unsafe-inline
+  const nonce = generateNonce()
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-nonce', nonce)
+
+  // 速率限制回應標頭 + nonce 透傳
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  })
   response.headers.set('X-RateLimit-Limit', String(maxPerMinute))
   response.headers.set('X-RateLimit-Remaining', String(Math.max(maxPerMinute - currentCount, 0)))
   response.headers.set('X-RateLimit-Reset', String(Math.ceil(resetTime / 1000)))
+  response.headers.set('x-nonce', nonce)
   if (botMatch.category === 'seo') {
     response.headers.set('X-Bot-Category', 'seo')
   }
   return response
+}
+
+// v5.10.332:base64 URL-safe nonce(16 byte → 22 char)、CSP spec 推薦最小強度
+function generateNonce(): string {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  // base64 URL-safe(無 +/= 字元、避免 HTML entity 轉義)
+  let str = ''
+  for (let i = 0; i < bytes.length; i++) {
+    str += String.fromCharCode(bytes[i])
+  }
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
 export const config = {
