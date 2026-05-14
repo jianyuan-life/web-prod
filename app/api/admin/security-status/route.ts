@@ -11,6 +11,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { isTurnstileEnabled } from '@/lib/security/turnstile'
+import { getBlocklistDiagnostic } from '@/lib/security/edge-blocklist'
+import { getTokenStatsSize } from '@/lib/security/token-rate-limit'
 import pkg from '../../../../package.json'
 
 export const runtime = 'nodejs'
@@ -45,6 +47,9 @@ export async function GET(req: NextRequest) {
       robots_txt_ai_block: 'enabled', // app/robots.ts disallow 21 AI bots
       vercel_bot_filter: process.env.VERCEL_BOT_FILTER_ENABLED === 'true' ? 'enabled' : 'manual',
       turnstile: isTurnstileEnabled() ? 'enabled' : 'stub',
+      fingerprint: 'enabled', // v5.10.336 lib/security/fingerprint.ts middleware STAGE 0.5
+      cf_bot_score_check: 'enabled-conditional', // 只在 CF Pro tier 提供 cf-bot-score 時生效
+      vercel_bot_id: process.env.VERCEL_BOT_FILTER_ENABLED === 'true' ? 'enabled' : 'beta-not-attached',
     },
     rate_limiting: {
       in_memory_per_route: 'enabled', // middleware.ts STAGE 5
@@ -54,6 +59,35 @@ export async function GET(req: NextRequest) {
       ip_blocklist: 'enabled', // lib/security/ip-blocklist.ts wired STAGE 0
       stripe_webhook_allowlist: 'enabled', // 12 IPs
       brute_force_lockout: 'enabled', // admin-rate-limit.ts (5 fails → 30 min lock)
+      edge_config_dynamic: getBlocklistDiagnostic(), // v5.10.330 動態 IP/country blocklist
+      token_rate_limit: 'enabled', // v5.10.338 per-token 60/min + share detection
+      token_stats_size: getTokenStatsSize(),
+    },
+    csrf_protection: {
+      origin_referer_check: 'enabled', // v5.10.336 middleware STAGE 4.5
+      whitelisted_paths: [
+        '/api/webhook/*', // Stripe (signature verification)
+        '/api/cron/*', // Vercel cron (internal)
+        '/api/csp-report', // browser auto-POST
+        '/api/web-vitals', // sendBeacon
+        '/api/admin/honeypot', // attacker hits, no Origin expected
+        '/api/workflows/*', // internal callbacks
+      ],
+    },
+    idor_mitigation: {
+      token_entropy_check: 'enabled', // v5.10.337 lib/security/token-validator.ts
+      token_per_token_rate_limit: 'enabled', // v5.10.338 60/min/token
+      token_share_detection: 'enabled', // 8+ IP/min same token = alert
+      cookie_session_auth: 'pending-sprint-7', // 改 short-lived JWT
+      single_use_token_rotation: 'pending-sprint-7',
+    },
+    ssrf_mitigation: {
+      api_engine_allowlist: 'enabled', // v5.10.334 next.config.ts rewrite check
+      allowed_destinations: ['*.fly.dev', 'localhost (dev)'],
+    },
+    honeypot: {
+      enabled: 'enabled', // v5.10.332 7 path traps
+      paths: ['/wp-admin', '/wp-login.php', '/phpmyadmin', '/admin.php', '/administrator', '/.env', '/.git/config'],
     },
     monitoring: {
       vercel_analytics: 'enabled',
@@ -78,12 +112,16 @@ export async function GET(req: NextRequest) {
         report_uri: '/api/csp-report',
       },
     },
-    deferred_sprint5: [
-      'CSP nonce(移除 unsafe-inline)',
-      'Upstash Redis sliding window 跨區同步',
-      'Sentry npm install + DSN 注入',
-      'Cookie-based /report/[token] auth(目前 token in URL)',
-      'Cloudflare Turnstile 前端 widget + 表單整合',
+    deferred_sprint7_plus: [
+      'Cookie-based /report/[token] auth + signed JWT(取代 URL token、~8h)',
+      'Single-use token rotation(每次 read 後生成新 token、~6h)',
+      'Supabase RLS policy(token + cookie session 雙因子、~4h)',
+      'CSP nonce stage 2(per-page edge runtime injection、~4h)',
+      'Upstash Redis sliding window 跨區同步(~4h、需 Vercel Marketplace)',
+      'Sentry npm install + DSN(~1.5h、待 sentry.io 註冊)',
+      'Edge Config attach(dashboard 操作)+ items(blocked_ips/allowed_ips/blocked_countries)',
+      'Cloudflare Turnstile site key + React widget 表單整合(~2h)',
+      'middleware.ts → proxy.ts rename(Next.js 16 deprecation cleanup、~30 min)',
     ],
     runtime: {
       env: process.env.VERCEL_ENV || 'unknown',
