@@ -214,11 +214,13 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
               <ol className="space-y-3">
                 {data.insight3steps.step3.priorityActions.map((action, i) => (
                   <li key={i} className="flex items-start gap-4">
+                    {/* v5.10.299 editorial:date pill → mono date label hairline */}
                     <span
-                      className="flex-shrink-0 inline-flex h-7 px-3 items-center rounded-full text-xs font-medium"
+                      className="flex-shrink-0 inline-flex items-center text-[11px] tracking-[0.1em] border-l pl-2 pt-0.5"
                       style={{
-                        backgroundColor: 'rgba(229, 185, 92, 0.15)',
+                        borderLeftColor: 'var(--jy-text-gold)',
                         color: 'var(--jy-text-gold)',
+                        fontFamily: 'var(--jy-font-mono), monospace',
                       }}
                     >
                       {action.date}

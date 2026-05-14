@@ -66,16 +66,16 @@ export function TopList5({ items, variant = 'talent', title, className = '' }: T
                   </span>
                 </div>
 
-                {/* 支持系統 chips */}
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                {/* 支持系統 chips — v5.10.299 editorial:rounded-full pill → hairline serif chip */}
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
                   {item.supportSystems.map((sys) => (
                     <span
                       key={sys}
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px]"
+                      className="inline-flex items-center text-[11px] border-l pl-2"
                       style={{
-                        backgroundColor: 'rgba(229, 185, 92, 0.10)',
+                        borderLeftColor: 'var(--jy-text-gold)',
                         color: 'var(--jy-text-gold)',
-                        border: '1px solid var(--jy-border-hairline)',
+                        fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
                       }}
                     >
                       {sys}

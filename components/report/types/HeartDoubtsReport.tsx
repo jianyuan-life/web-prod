@@ -67,15 +67,12 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
             <p className="text-xs uppercase tracking-widest text-[var(--jy-text-muted)] mb-3">
               你的問題
             </p>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl" aria-hidden>{data.question.icon}</span>
+            {/* v5.10.299 editorial:rounded-full pill → hairline editorial topic chip(QA L5 finding 跨 D 報告補) */}
+            <div className="flex items-center gap-3 mb-4">
+              <span className="h-px w-6 bg-[var(--jy-text-gold)]/40" aria-hidden />
               <span
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm"
-                style={{
-                  backgroundColor: 'rgba(229, 185, 92, 0.12)',
-                  color: 'var(--jy-text-gold)',
-                  border: '1px solid var(--jy-border-hairline)',
-                }}
+                className="text-[11px] tracking-[0.18em] text-[var(--jy-text-gold)]"
+                style={{ fontFamily: 'var(--jy-font-mono), monospace' }}
               >
                 {data.question.topic}
               </span>

@@ -109,13 +109,13 @@ export function BaziPillars({ data, highlightDayMaster = true, className = '' }:
               {diZhi}
             </div>
 
-            {/* 十神 chip */}
+            {/* 十神 chip — v5.10.299 editorial:rounded-full pill → hairline + serif */}
             {tenGods[i] && (
-              <div className="mt-3 inline-flex items-center px-2 py-0.5 rounded-full text-[11px]"
+              <div className="mt-3 inline-flex items-center text-[11px] border-l pl-2"
                 style={{
-                  backgroundColor: 'rgba(229, 185, 92, 0.12)',
+                  borderLeftColor: 'var(--jy-text-gold)',
                   color: 'var(--jy-text-gold)',
-                  border: '1px solid var(--jy-border-hairline)',
+                  fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif',
                 }}
               >
                 {tenGods[i]}

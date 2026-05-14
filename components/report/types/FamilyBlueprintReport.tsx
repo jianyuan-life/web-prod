@@ -274,9 +274,11 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
                   <p className="text-sm text-[var(--jy-text-secondary)] mt-1">{y.nickname}</p>
                 </div>
                 <p className="text-xs text-[var(--jy-text-secondary)] mb-3">{y.overallEnergy}</p>
-                <div className="flex flex-wrap gap-1 mb-3">
+                {/* v5.10.299 editorial:rounded-full pill → hairline serif keyword(QA L5 finding 跨 G15 補) */}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
                   {y.keywords.map((kw) => (
-                    <span key={kw} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: 'rgba(229,185,92,0.10)', color: 'var(--jy-text-gold)' }}>
+                    <span key={kw} className="inline-flex items-center text-[11px] border-l pl-2"
+                      style={{ borderLeftColor: 'var(--jy-text-gold)', color: 'var(--jy-text-gold)', fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
                       {kw}
                     </span>
                   ))}
