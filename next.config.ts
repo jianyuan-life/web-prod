@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
   compress: true,
   reactStrictMode: true,
   poweredByHeader: false,
+  // v5.10.329 註解保留:Server Taint API(`experimental.taint`)在 Next.js 16.2.6 行為待 Vercel
+  // 官方驗證、暫不啟用、Sprint 5 重新測試後再加。Gemini grounding #3 改善項保留 todo。
   // 舊路由 301 重導
   async redirects() {
     return [

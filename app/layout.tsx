@@ -80,6 +80,44 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://js.stripe.com" />
         <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
         <link rel="dns-prefetch" href="https://vitals.vercel-insights.com" />
+        {/* v5.10.329 (Sprint 5 Gemini #2):Speculation Rules API — 邊緣預渲染熱門頁
+            預期 LCP 改善 200-500ms(/pricing /about /blog /faq 為熱門 entry point)
+            參考:https://developer.chrome.com/docs/web-platform/prerender-pages */}
+        <script
+          type="speculationrules"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              prerender: [
+                {
+                  source: 'list',
+                  urls: ['/pricing', '/about', '/faq', '/blog', '/whitepaper'],
+                },
+                {
+                  source: 'document',
+                  where: {
+                    and: [
+                      { href_matches: '/*' },
+                      { not: { href_matches: '/api/*' } },
+                      { not: { href_matches: '/jamie/*' } },
+                      { not: { href_matches: '/dashboard*' } },
+                      { not: { href_matches: '/auth/*' } },
+                      { not: { href_matches: '/report/*' } },
+                      { not: { href_matches: '/checkout*' } },
+                    ],
+                  },
+                  eagerness: 'moderate', // hover/touchstart 才預渲染、不浪費 bandwidth
+                },
+              ],
+              prefetch: [
+                {
+                  source: 'document',
+                  where: { href_matches: '/*' },
+                  eagerness: 'conservative', // 只在 link 進 viewport 才 prefetch
+                },
+              ],
+            }),
+          }}
+        />
         {/* Meta Pixel (Facebook Pixel) — 只在設定環境變數時載入 */}
         {process.env.NEXT_PUBLIC_META_PIXEL_ID && (
           <>
