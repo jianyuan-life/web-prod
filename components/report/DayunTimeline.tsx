@@ -220,23 +220,23 @@ export default function DayunTimeline({
           </div>
         )}
 
-        {/* 圖例 */}
+        {/* 圖例 — v5.10.306 editorial:rounded-full dot → square hairline marker(magazine legend pattern) */}
         <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-gold/10 text-[10px]">
-          <div className="flex items-center gap-1.5 text-text-muted">
-            <span className="w-2 h-2 rounded-full" style={{ background: '#6ab04c' }} />
-            高峰期 75+
+          <div className="flex items-center gap-2 text-text-muted">
+            <span className="w-2 h-2" style={{ background: '#6ab04c' }} aria-hidden />
+            <span style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>高 峰  75+</span>
           </div>
-          <div className="flex items-center gap-1.5 text-text-muted">
-            <span className="w-2 h-2 rounded-full" style={{ background: '#c9a84c' }} />
-            穩定期 50-75
+          <div className="flex items-center gap-2 text-text-muted">
+            <span className="w-2 h-2" style={{ background: '#c9a84c' }} aria-hidden />
+            <span style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>穩 定  50-75</span>
           </div>
-          <div className="flex items-center gap-1.5 text-text-muted">
-            <span className="w-2 h-2 rounded-full" style={{ background: '#e74c3c' }} />
-            轉折期 25-50
+          <div className="flex items-center gap-2 text-text-muted">
+            <span className="w-2 h-2" style={{ background: '#e74c3c' }} aria-hidden />
+            <span style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>轉 折  25-50</span>
           </div>
-          <div className="flex items-center gap-1.5 text-text-muted">
-            <span className="w-2 h-2 rounded-full" style={{ background: '#bdc3c7' }} />
-            蟄伏期 0-25
+          <div className="flex items-center gap-2 text-text-muted">
+            <span className="w-2 h-2" style={{ background: '#bdc3c7' }} aria-hidden />
+            <span style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>蟄 伏  0-25</span>
           </div>
         </div>
       </div>
