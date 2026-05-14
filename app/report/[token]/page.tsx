@@ -48,6 +48,8 @@ import {
 } from '@/lib/qimen-plain-text'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { validateAccessToken } from '@/lib/security/token-validator'
+import { checkTokenRateLimit } from '@/lib/security/token-rate-limit'
+import { headers as getRequestHeaders } from 'next/headers'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -1264,6 +1266,33 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       entropy: tokenCheck.entropy,
     }))
     return notFound()
+  }
+
+  // v5.10.338 (Sprint 6 IA L2 IDOR mitigation step 2):per-token rate limit + share abuse detection
+  // 60 reads/min/token、超過 → 404(避免洩露「token 存在」訊息給攻擊者)
+  // 同 token 1 分鐘內 8+ unique IP → log alert(token 可能被 share / leak)
+  // ⚠️ 此 page.tsx 是 Server Component、可用 headers() 拿 IP(中介層已處理 trust filter)
+  try {
+    const reqHeaders = await getRequestHeaders()
+    const clientIp =
+      reqHeaders.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ||
+      reqHeaders.get('cf-connecting-ip') ||
+      reqHeaders.get('x-real-ip') ||
+      'unknown'
+    const rateResult = checkTokenRateLimit(token, clientIp)
+    if (!rateResult.allowed) {
+      console.warn('[REPORT-TOKEN-RATE-LIMIT]', JSON.stringify({
+        ts: new Date().toISOString(),
+        tokenPrefix: token.slice(0, 8) + '...',
+        count: rateResult.count,
+        uniqueIps: rateResult.uniqueIps,
+        retryAfter: rateResult.retryAfter,
+      }))
+      return notFound() // 不回 429、回 404 避免洩露 token 存在
+    }
+  } catch (e) {
+    // rate limit 失敗不阻塞 read path、log 後繼續
+    console.warn('[REPORT-TOKEN-RATE-LIMIT-ERROR]', e instanceof Error ? e.message : String(e))
   }
 
   const supabase = createClient(
