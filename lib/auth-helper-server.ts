@@ -67,6 +67,50 @@ export async function getServerComponentUserEmail(): Promise<string | null> {
 }
 
 /**
+ * v5.10.292 — Server Component 拿 user_id + email + auth_uid(audit log 用)
+ * Returns: { userId, email, authUid } or null
+ */
+export async function getServerComponentUser(): Promise<{ userId: string; email: string | null } | null> {
+  const token = await extractTokenFromCookies()
+  if (!token) return null
+  try {
+    const supabase = getServiceSupabase()
+    const { data, error } = await supabase.auth.getUser(token)
+    if (error || !data?.user?.id) return null
+    return { userId: data.user.id, email: data.user.email?.toLowerCase() || null }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * v5.10.292 — paid_reports 訪問 audit log 寫入(對應 paid_reports_access_log table)
+ * 不阻塞 read path、失敗不丟錯
+ *
+ * @param reportId 訪問的 report id
+ * @param matchedVia 匹配方式:'user_id' | 'email_fallback' | 'service_role' | 'anonymous'
+ * @param userInfo optional auth user info(若 logged in)
+ */
+export async function logAccessMatch(
+  reportId: string,
+  matchedVia: 'user_id' | 'email_fallback' | 'service_role' | 'anonymous',
+  userInfo?: { userId?: string | null; email?: string | null },
+): Promise<void> {
+  try {
+    const supabase = getServiceSupabase()
+    await supabase.from('paid_reports_access_log').insert({
+      report_id: reportId,
+      matched_via: matchedVia,
+      auth_uid: userInfo?.userId || null,
+      auth_email: userInfo?.email || null,
+    })
+  } catch (e) {
+    // 不丟錯、audit log 不該阻塞 read path
+    console.warn('[logAccessMatch] insert failed (non-blocking):', (e as Error).message)
+  }
+}
+
+/**
  * Beta tester whitelist check
  *
  * env var: BETA_TESTER_EMAILS=jamie@example.com,beta1@example.com

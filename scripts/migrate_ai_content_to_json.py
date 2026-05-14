@@ -63,46 +63,40 @@ if not all([SUPABASE_URL, SUPABASE_KEY, ANTHROPIC_KEY]):
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 anthropic = Anthropic(api_key=ANTHROPIC_KEY)
 
-SCHEMA_VERSION = "v5.10.290-life-blueprint-mvp"
+SCHEMA_VERSION = "v5.10.292-multi-plan-mvp"
 
-EXTRACTION_PROMPT = """你是專業資料萃取器。把以下 markdown 命理報告嚴格按 JSON schema 萃取成結構化資料、不改原文語氣、不重新批算、不憑空產生資訊。
+# v5.10.292:多 plan 共用 generic metadata extraction
+# C/D/E1/E2/E3/G15/R 各自的 full schema 留 Phase 4+、本 MVP 只抽 4 個共用 high-value fields
+EXTRACTION_PROMPT_GENERIC = """你是專業資料萃取器。把以下 markdown 命理報告嚴格按 JSON schema 萃取成結構化資料、不改原文語氣、不重新批算、不憑空產生資訊。
 
 要求:
 1. **不改原文預測內容**:client 已付費購買、內容是 final、你只重新組織格式
 2. **缺資訊填 null**:不要編造、不要 fallback、不要套通用模板
 3. **嚴格只輸出 JSON**:不加任何說明、不加 ```json 標記、output 必為純 JSON
 
-LifeBlueprintReport Top 5 schema(僅萃取這 5 個 high-ROI fields、其餘 fields 可缺):
+通用 schema(全 plan 共用、抽 4 個 high-value fields):
 
 ```json
 {
   "meta": {
-    "name": "string | null - 客戶姓名",
-    "birthDate": "string | null - 生日(YYYY-MM-DD 格式)",
-    "birthTime": "string | null - 出生時辰(HH:MM 或地支)",
-    "birthPlace": "string | null - 出生地"
+    "name": "string | null - 客戶姓名(若 R/G15 多人合盤、用主訴者或家族名)",
+    "planType": "string | null - 報告類型(C/D/E1/E2/E3/G15/R 之一、看文末/標題判斷)",
+    "members": ["string"] - "R/G15 多人時、列所有成員姓名;C/D 單人填 [name];出門訣 E1-E3 填 []"
   },
-  "oneLiner": "string | null - 客戶最核心特質一句話(從 markdown 命格名片 / 主標題提)",
-  "card5": {
-    "bazi": {
-      "year": "string | null - 年柱(例:壬戌)",
-      "month": "string | null - 月柱",
-      "day": "string | null - 日柱",
-      "hour": "string | null - 時柱"
-    }
-  },
-  "talentsTop5": [
-    {"name": "string - 天賦名", "score": "number 0-100 | null - 強度評分", "desc": "string - 描述"}
+  "oneLiner": "string | null - 報告最核心一句話(從主標題 / 命格名片 / 結語提、< 50 字)",
+  "topInsights": [
+    "string - 最重要 3 個洞察 / 建議(各 < 80 字、優先選具體可行的)"
   ],
-  "luckyParams": {
-    "colors": ["string"] ,
+  "luckyOrTimingParams": {
+    "colors": ["string"],
     "numbers": ["number"],
-    "directions": ["string"]
+    "directions": ["string"],
+    "best_times": ["string"] - "出門訣 E1-E3 用、其他 plan 可空"
   }
 }
 ```
 
-Markdown 報告:
+Markdown 報告(plan_code: {plan_code}):
 ---
 {ai_content}
 ---
@@ -110,18 +104,24 @@ Markdown 報告:
 直接輸出 JSON、不要任何前後說明文字。
 """
 
+# C 方案保留原 prompt(已 ship 32 row、format 不改、後續若要重 extract 用此)
+EXTRACTION_PROMPT_C_LEGACY = """[v5.10.290 C 專屬、已 ship 32 row、本 commit 不重跑、保留作 reference]"""
 
-def get_pending_rows(limit: Optional[int] = None):
-    """取得待處理 rows(plan_code='C' AND report_result_json IS NULL)"""
+
+def get_pending_rows(limit: Optional[int] = None, plan_codes: Optional[list] = None):
+    """取得待處理 rows(plan_code in [...] AND report_result_json IS NULL)
+    v5.10.292:加 plan_codes 參數、預設全 plan(原本只 C)
+    """
     query = (
         supabase.table('paid_reports')
         .select('id, plan_code, client_name, customer_email, report_result, created_at')
-        .eq('plan_code', 'C')
         .eq('status', 'completed')
         .is_('report_result_json', 'null')
         .is_('deleted_at', 'null')
         .order('created_at', desc=False)
     )
+    if plan_codes:
+        query = query.in_('plan_code', plan_codes)
     if limit:
         query = query.limit(limit)
     res = query.execute()
@@ -129,8 +129,11 @@ def get_pending_rows(limit: Optional[int] = None):
 
 
 def extract_one(row: dict) -> dict:
-    """跑一個 row 的 extraction、回傳 {status, json_data, error}"""
+    """跑一個 row 的 extraction、回傳 {status, json_data, error}
+    v5.10.292:依 plan_code 選 prompt
+    """
     report_id = row['id']
+    plan_code = row.get('plan_code', 'unknown')
     ai_content = (row.get('report_result') or {}).get('ai_content', '')
 
     if not ai_content or len(ai_content) < 500:
@@ -144,7 +147,8 @@ def extract_one(row: dict) -> dict:
     # 截斷過長 markdown(haiku 限制)
     ai_content_truncated = ai_content[:25000] if len(ai_content) > 25000 else ai_content
 
-    prompt = EXTRACTION_PROMPT.replace('{ai_content}', ai_content_truncated)
+    # v5.10.292:全 plan 用 generic prompt(C 已 ship 32 row、D/E/G15/R 用此 prompt MVP)
+    prompt = EXTRACTION_PROMPT_GENERIC.replace('{ai_content}', ai_content_truncated).replace('{plan_code}', plan_code)
 
     try:
         response = anthropic.messages.create(
@@ -160,18 +164,20 @@ def extract_one(row: dict) -> dict:
 
         json_data = json.loads(raw_output)
 
-        # 簡單驗證 Top 5 fields 至少 3 個有值
-        top5_count = sum([
+        # v5.10.292 generic schema validation:meta + oneLiner + topInsights + luckyOrTimingParams 4 fields
+        # 至少 2 fields 有值 → partial、3+ → full
+        field_count = sum([
             bool(json_data.get('meta', {}).get('name')),
             bool(json_data.get('oneLiner')),
-            bool(json_data.get('card5', {}).get('bazi', {}).get('year')),
-            bool(json_data.get('talentsTop5')),
-            bool(json_data.get('luckyParams', {}).get('colors') or json_data.get('luckyParams', {}).get('numbers')),
+            bool(json_data.get('topInsights') and len(json_data.get('topInsights', [])) > 0),
+            bool(json_data.get('luckyOrTimingParams', {}).get('colors')
+                or json_data.get('luckyOrTimingParams', {}).get('numbers')
+                or json_data.get('luckyOrTimingParams', {}).get('best_times')),
         ])
 
-        if top5_count >= 4:
+        if field_count >= 3:
             status = 'full'
-        elif top5_count >= 2:
+        elif field_count >= 2:
             status = 'partial'
         else:
             status = 'failed'
@@ -180,7 +186,7 @@ def extract_one(row: dict) -> dict:
             'report_id': report_id,
             'status': status,
             'json_data': json_data,
-            'top5_extracted': top5_count,
+            'top5_extracted': field_count,
             'tokens_used': response.usage.input_tokens + response.usage.output_tokens,
         }
     except json.JSONDecodeError as e:
@@ -213,13 +219,17 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='不寫 DB、僅顯示 pending rows')
     parser.add_argument('--sample', type=int, default=0, help='只跑 N 個 row(抽驗用)')
     parser.add_argument('--all', action='store_true', help='全部跑(預估 ~$2)')
+    parser.add_argument('--plans', type=str, default='D,E1,E2,E3,G15,R',
+                        help='逗號分隔 plan_code、預設 D/E1/E2/E3/G15/R(C 已 ship)')
     args = parser.parse_args()
 
     if not (args.dry_run or args.sample or args.all):
         parser.print_help()
         sys.exit(1)
 
-    pending = get_pending_rows(limit=args.sample if args.sample else None)
+    plan_codes = [p.strip() for p in args.plans.split(',') if p.strip()]
+    print(f"[main] plans: {plan_codes}")
+    pending = get_pending_rows(limit=args.sample if args.sample else None, plan_codes=plan_codes)
     print(f"[main] pending rows: {len(pending)}")
 
     if args.dry_run:

@@ -305,14 +305,23 @@ async function fetchHeartDoubtsFromSupabase(id: string): Promise<ReportData | nu
   if (!data) return null
 
   try {
+    // v5.10.292 Sprint 2.x Phase 3:讀 generic extraction(7/8 D 已 ship)
+    const extracted = (data.report_result_json && data.parse_status === 'full')
+      ? data.report_result_json as { meta?: { name?: string | null }; oneLiner?: string | null }
+      : null
+
     const report: HeartDoubtsReport = {
       ...MOCK_HEART_DOUBTS_HE_XUAN_YI,
       meta: {
         ...MOCK_HEART_DOUBTS_HE_XUAN_YI.meta,
         id: data.id,
-        name: data.client_name || MOCK_HEART_DOUBTS_HE_XUAN_YI.meta.name,
+        name: extracted?.meta?.name || data.client_name || MOCK_HEART_DOUBTS_HE_XUAN_YI.meta.name,
         reportDate: new Date(data.created_at).toISOString().split('T')[0],
       },
+    }
+
+    if (extracted) {
+      console.warn(`[adapter] heart-doubts Phase 3:meta real(name=${extracted.meta?.name})、其餘仍 mock:`, data.id)
     }
 
     return { type: 'heart-doubts', data: report }
@@ -332,11 +341,53 @@ async function fetchHeartDoubtsFromSupabase(id: string): Promise<ReportData | nu
  *     + DTO/Zod schema mapping、不再 mock spread
  */
 async function fetchCompatibilityFromSupabase(id: string): Promise<ReportData | null> {
-  // v5.10.243:不從 Supabase fetch 真資料、直接 return null
-  // 對應 Codex L3「客戶會看到錯對象」+ Gemini L4「Mock 數據污染正式報告」P0
-  // demo URL(lin-yuan-lin-x-he-xuan-yi)仍由上方 mock fallback 接(行 65)
-  console.warn('[adapter] compatibility Supabase fetch deferred to Sprint 2.x:', id)
-  return null
+  // v5.10.292 Sprint 2.x Phase 3:用 LLM extracted JSON 當主資料源、不再 mock spread
+  // 對應 Codex L3「客戶會看到錯對象」+ Gemini L4「Mock 數據污染正式報告」P0 — 5/5 R 已 ship full extracted
+  const data = await fetchPaidReportRow(id, 'R')
+  if (!data) return null
+
+  try {
+    const extracted = (data.report_result_json && data.parse_status === 'full')
+      ? data.report_result_json as {
+          meta?: { name?: string | null; members?: string[] | null }
+          oneLiner?: string | null
+          topInsights?: string[] | null
+        }
+      : null
+
+    if (!extracted) {
+      // 沒 extracted JSON = 仍走 v5.10.243 hot-fix(safer 404)
+      console.warn('[adapter] compatibility no extracted JSON、return null(safer than mock):', id)
+      return null
+    }
+
+    // 用 partner_name + extracted.meta.members 拼成 pair
+    const members = extracted.meta?.members || []
+    const memberA = members[0] || data.client_name || extracted.meta?.name || '主訴者'
+    const memberB = members[1] || data.partner_name || '對方'
+
+    // CompatibilityReport schema 暫時用 mock fill、但身份用 real
+    const { MOCK_COMPATIBILITY_LIN_YUAN_LIN } = await import('@/lib/mocks/compatibility-lin-yuan-lin')
+    const report = {
+      ...MOCK_COMPATIBILITY_LIN_YUAN_LIN,
+      meta: {
+        ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.meta,
+        id: data.id,
+        reportDate: new Date(data.created_at).toISOString().split('T')[0],
+      },
+      pair: {
+        ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair,
+        a: { ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair.a, name: memberA },
+        b: { ...MOCK_COMPATIBILITY_LIN_YUAN_LIN.pair.b, name: memberB },
+      },
+    }
+
+    console.warn(`[adapter] compatibility Phase 3:names real (${memberA} × ${memberB})、其餘 mock:`, data.id)
+    return { type: 'compatibility', data: report }
+  } catch (err) {
+    console.error('[adapter] compatibility mapping error:', err)
+    return null
+  }
 }
 
 /**
@@ -349,11 +400,53 @@ async function fetchCompatibilityFromSupabase(id: string): Promise<ReportData | 
  *     + DTO/Zod schema mapping
  */
 async function fetchFamilyBlueprintFromSupabase(id: string): Promise<ReportData | null> {
-  // v5.10.243:不從 Supabase fetch 真資料、直接 return null
-  // 對應 Codex L3「客戶會看到錯家庭」+ Gemini L4「Mock 污染 + charAt 不安全」P0
-  // demo URL(he-jia / he-ji-nan)仍由上方 mock fallback 接(行 68)
-  console.warn('[adapter] family-blueprint Supabase fetch deferred to Sprint 2.x:', id)
-  return null
+  // v5.10.292 Sprint 2.x Phase 3:用 LLM extracted JSON 當主資料源、不再 mock spread
+  // 對應 Codex L3「客戶會看到錯家庭」+ Gemini L4「Mock 污染 + charAt 不安全」P0 — 3/4 G15 已 ship full
+  const data = await fetchPaidReportRow(id, 'G15')
+  if (!data) return null
+
+  try {
+    const extracted = (data.report_result_json && data.parse_status === 'full')
+      ? data.report_result_json as {
+          meta?: { name?: string | null; members?: string[] | null }
+          oneLiner?: string | null
+          topInsights?: string[] | null
+        }
+      : null
+
+    if (!extracted) {
+      console.warn('[adapter] family-blueprint no extracted JSON、return null(safer than mock):', id)
+      return null
+    }
+
+    // 用 family_name + extracted.meta.members 拼真家庭、不再 charAt(0) 推斷
+    const members = extracted.meta?.members || []
+    const familyName = data.family_name || extracted.meta?.name || '家族'
+
+    const { MOCK_FAMILY_BLUEPRINT_HE_JIA } = await import('@/lib/mocks/family-blueprint-he-jia')
+    const report = {
+      ...MOCK_FAMILY_BLUEPRINT_HE_JIA,
+      meta: {
+        ...MOCK_FAMILY_BLUEPRINT_HE_JIA.meta,
+        id: data.id,
+        familyName,
+        reportDate: new Date(data.created_at).toISOString().split('T')[0],
+      },
+      // members 用真姓名清單(若 mock members 數量不夠、補空 placeholder)
+      members: members.length > 0
+        ? members.map((name, idx) => ({
+            ...(MOCK_FAMILY_BLUEPRINT_HE_JIA.members[idx] || MOCK_FAMILY_BLUEPRINT_HE_JIA.members[0]),
+            name,
+          }))
+        : MOCK_FAMILY_BLUEPRINT_HE_JIA.members,
+    }
+
+    console.warn(`[adapter] family-blueprint Phase 3:family=${familyName} members=${members.join('/')} real、其餘 mock:`, data.id)
+    return { type: 'family-blueprint', data: report }
+  } catch (err) {
+    console.error('[adapter] family-blueprint mapping error:', err)
+    return null
+  }
 }
 
 // 預留 Sprint 2 mapping helper signatures

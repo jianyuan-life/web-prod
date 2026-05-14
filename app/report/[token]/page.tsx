@@ -135,6 +135,7 @@ interface ReportData {
   }
   status: string
   created_at: string
+  user_id?: string | null  // v5.10.292:audit log + Sprint 2.5 user 綁定
 }
 
 
@@ -1269,6 +1270,26 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   if (error || !data) return notFound()
 
   const report = data as ReportData
+
+  // v5.10.292 audit log:訪問追蹤 — token-based access 屬「anonymous」(非 auth.uid 也非 email_fallback)
+  // 不阻塞 read path、失敗 silent
+  try {
+    const { logAccessMatch, getServerComponentUser } = await import('@/lib/auth-helper-server')
+    const userInfo = await getServerComponentUser()
+    // 若有 logged-in user 且 user_id match → 'user_id' strict match
+    // 若有 logged-in user 但 user_id NOT match → 可能 email_fallback 或非本人(token share)
+    let matchedVia: 'user_id' | 'email_fallback' | 'anonymous' = 'anonymous'
+    if (userInfo?.userId) {
+      if (report.user_id && userInfo.userId === report.user_id) {
+        matchedVia = 'user_id'
+      } else if (report.customer_email && userInfo.email === report.customer_email.toLowerCase()) {
+        matchedVia = 'email_fallback'
+      }
+    }
+    void logAccessMatch(report.id, matchedVia, { userId: userInfo?.userId, email: userInfo?.email })
+  } catch {
+    // audit log 失敗不阻塞客戶閱讀
+  }
 
   // 報告生成中（status 不是 completed，或 completed 但 report_result / ai_content 為 null / 空字串）
   const aiContentReady = !!report.report_result?.ai_content
