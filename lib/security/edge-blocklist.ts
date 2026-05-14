@@ -47,10 +47,13 @@ async function fetchBlocklist(): Promise<CachedBlocklist> {
   }
 
   try {
+    // v5.10.347(Codex round 3 P2 #1 真修):移除 per-key catch、讓任一失敗觸發 outer stale-while-error
+    // 原問題:.catch(() => null) 把 EC 失敗(throw)轉 null、跟「key 不存在」混淆、stale-while-error 永遠不觸發
+    // 真修:Promise.all 任一失敗 → outer catch → stale cache 接管
     const [blocked, allowed, countries] = await Promise.all([
-      get<string[]>('blocked_ips').catch(() => null),
-      get<string[]>('allowed_ips').catch(() => null),
-      get<string[]>('blocked_countries').catch(() => null),
+      get<string[]>('blocked_ips'),
+      get<string[]>('allowed_ips'),
+      get<string[]>('blocked_countries'),
     ])
 
     const blockedIps = new Set<string>()

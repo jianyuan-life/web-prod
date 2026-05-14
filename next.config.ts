@@ -31,23 +31,30 @@ const nextConfig: NextConfig = {
   },
 
   // Python API 代理
-  // v5.10.334(IA L2 SSRF 修):只代理 jianyuan-life Fly.io API
-  // v5.10.342(Codex round 2 P1 #3 收斂):production 限定 jianyuan-life-* 子域、不再 *.fly.dev 萬用
+  // v5.10.347(Codex round 3 P1 #3 真修):換成「具體 app 名 allowlist」
+  // 原 regex 過寬:`(jianyuan|fortune)[-a-z0-9]*\.fly\.dev` 仍 match `jianyuanevil.fly.dev`
+  // fly.dev 是 shared domain、任何人能建 jianyuan-anything.fly.dev、必須具體 host 名
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
     const isProd = process.env.NODE_ENV === 'production'
-    // 嚴格 allowlist:
-    //   - dev: localhost / 127.0.0.1(任意 port)
-    //   - prod: 必須是 jianyuan-* / fortune-reports-* / fortune-* 的 *.fly.dev(收斂自 Codex P1 #3)
-    const allowedProd =
-      /^https:\/\/(jianyuan|fortune-reports|fortune)-?[a-z0-9-]*\.fly\.dev(\/.*)?$/.test(apiUrl)
+    // 嚴格 allowlist(production 已知 app 名稱、不允許 prefix 通配):
+    const ALLOWED_PROD_HOSTS = [
+      'jianyuan-life.fly.dev',
+      'fortune-reports-api.fly.dev',
+      'jianyuan-research.fly.dev',
+    ]
+    const allowedProd = ALLOWED_PROD_HOSTS.some(
+      (host) =>
+        apiUrl === `https://${host}` ||
+        apiUrl.startsWith(`https://${host}/`),
+    )
     const allowedDev =
       apiUrl.startsWith('http://localhost:') ||
       apiUrl.startsWith('http://127.0.0.1:')
     const isAllowed = isProd ? allowedProd : (allowedProd || allowedDev)
 
     if (!isAllowed) {
-      const msg = `[next.config.ts SSRF] NEXT_PUBLIC_API_URL "${apiUrl}" 不在 allowlist 內(prod 限 jianyuan-life-*.fly.dev、dev 加 localhost)`
+      const msg = `[next.config.ts SSRF] NEXT_PUBLIC_API_URL "${apiUrl}" 不在 allowlist 內。production 允許清單:${ALLOWED_PROD_HOSTS.join(', ')}`
       if (isProd) throw new Error(msg)
       console.warn(msg)
     }
