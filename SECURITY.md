@@ -92,14 +92,31 @@
 8. **CSP nonce-based**(移 unsafe-inline、6h)
 9. **Cookie auth /report/[token]**(改 short-lived signed JWT、8h)
 
-## 8. 漏洞通報
+## 8. Honeypot 陷阱端點(v5.10.332)
+
+| 假端點 | 實際 route | 用途 |
+|:---|:---|:---|
+| `/wp-admin` | `/api/admin/honeypot?trap=wp-admin` | WordPress scanner |
+| `/wp-login.php` | 同上 | WordPress login brute |
+| `/phpmyadmin` | 同上 | DB scanner |
+| `/admin.php` | 同上 | PHP admin scanner |
+| `/administrator` | 同上 | Joomla scanner |
+| `/.env` | 同上 | Env file leak scanner |
+| `/.git/config` | 同上 | Git repo expose scanner |
+
+回 fake login HTML 200、寫進 logs(suggest_block when count >= 3)、X-Honeypot: 1 header。
+
+## 9. 漏洞通報
 
 見 `/.well-known/security.txt`(RFC 9116):
 - 聯絡:support@jianyuan.life
 - 回覆 SLA:72 小時
 - Safe harbor:善意研究人員
 
+密碼變更(RFC 8615):`/.well-known/change-password` → 自動 redirect 到 `/auth/update-password`
+
 ---
 
-**最後更新**:2026-05-14(v5.10.328 Sprint 4 完成)
-**負責人**:Claude(基於 Multi-LLM dispatch + L4 Gemini grounding 93/100)
+**最後更新**:2026-05-14(v5.10.333 Sprint 5 + Codex L3 修補完成)
+**負責人**:Claude(基於 Multi-LLM dispatch、L1 QA Agent + L3 Codex review + L4 Gemini grounding 93/100)
+**版本**:對齊 `package.json` SSOT
