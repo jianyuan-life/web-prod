@@ -5,6 +5,55 @@
 
 ---
 
+### 2026-05-15 | web-prod:main | v5.10.350 | 45808494
+
+- 動作:UI 對齊 v5.10.348 凶一律剔 + 25 吉 + 真太陽時(3 LLM 整合派 C)
+- 改動範圍:3 檔(pricing.tsx + PurchaseNoticeModal.tsx + package.json)
+- 為什麼:Jamie 拍板「UI 跟 v5.10.348 新邏輯對齊、3 LLM 溝通看怎麼改」、L3 Codex 工程結構 + L4 Gemini 品牌包裝整合派 C 混合
+- type-check:✅
+- Vercel deploy:⏳ 等中
+- production verify:待 Jamie 從瀏覽器驗 E1/E2/E3/E4 文案 + Modal 跨月延伸聲明 + Footer 5.10.350
+- 老闆驗收:⏳
+
+---
+
+### 2026-05-15 | web-prod:main | v5.10.349 | 5dbdcc56
+
+- 動作:CSRF whitelist 加 /api/generate-report、解 cron retry 403 block
+- 改動範圍:2 檔(middleware.ts + package.json、3 insertions / 2 deletions)
+- 為什麼:何宣逸 E3 重生成失敗 3 次「人工介入」、根因 = v5.10.345-347 Sprint 6 新加 CSRF 防護攔 cron retry fallback 打的舊 endpoint
+- type-check:✅
+- Vercel deploy:✅ 觸發
+- 老闆驗收:⏳
+
+---
+
+### 2026-05-15 | web-prod:main | v5.10.348 | 8bb9fb49
+
+- 動作:plan-prompts ETHICS_RULES_QIMEN -2 凶一律剔 + 32 凶清單、package.json 5.10.347 → 5.10.348
+- 改動範圍:2 檔(plan-prompts.ts + package.json、9 insertions / 1 deletion)
+- 為什麼:對齊命理研究部門 v5.10.348(32 VETO + 25 BOOST + 真太陽時整合)、加 V031 門迫 + V032 截路空亡到 prompt
+- type-check:✅
+- Vercel deploy:⏳ 等中(自動觸發)
+- production verify:⏳ Jamie 從瀏覽器自驗(sandbox curl 0 status)
+- 老闆驗收:⏳
+
+---
+
+### 2026-05-15 | fortune-research:main | v5.10.348 | c92ec75
+
+- 動作:奇門出門訣全面改造(32 VETO + 25 BOOST + 真太陽時 + V031/V032)
+- 改動範圍:10 檔、2625 行 insertions / 45 deletions(qimen_rules.py / qimen_rules_check.py / qimen_screening.py 新建)
+- 為什麼:解 5/29 何則興盤雙忌方推給客戶 bug、Jamie 拍板凶一律剔 + 大吉必用 + 最長遠規劃(lesson #142)
+- pytest:✅ 43/43 PASS
+- 4 客戶 × 12 月跨年:✅ 48/48 PASS、雙忌方違反 0
+- 100 random regression:✅ 0 violations
+- 4 LLM 平均 99.5(L1=98 / L2=100 / L3=100 / L4=100)
+- Fly.io deploy:⏳ 等中(自動觸發)
+- 老闆驗收:⏳
+
+---
+
 ### 2026-05-08 | jianyuan-life/web-prod:main | v5.10.71 | 872792aa
 - 動作:[第二件/真 bug 修/G15 本章重點重複 + 潘達敏度白名單]修 V Gemini Vision + Phase 3 跨輪共識 G15 兩條 P0
 - 改動範圍:3 檔、51+ 2-
