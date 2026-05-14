@@ -8,7 +8,8 @@ import { ChapterGroup, ChapterSection } from '@/components/report/shared/Chapter
 import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
 import { QuickSummary } from '@/components/report/shared/QuickSummary'
 // v5.10.314 editorial(McKinsey + magazine pattern):結論先行
-import { ExecutiveSummary } from '@/components/report/shared/DropCap'
+// v5.10.321 加 DropCap 進「你們的答案」章節首段(The New Yorker)
+import { DropCap, ExecutiveSummary } from '@/components/report/shared/DropCap'
 import { PracticeCard } from '@/components/report/shared/PracticeCard'
 import { ReportSeal } from '@/components/report/shared/ReportSeal'
 import { CrisisFooter } from '@/components/report/shared/CrisisFooter'
@@ -101,8 +102,12 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
           <Eyebrow align="left">你們的答案</Eyebrow>
           <Card className="mt-8 p-8" interactive="subtle">
             <QuickSummary bullets={[data.answerChapter.quickSummary]} />
-            <div className="mt-6 space-y-3 text-[var(--jy-text-secondary)] leading-relaxed">
-              {data.answerChapter.body.map((p, i) => (
+            {/* v5.10.321 第一段用 DropCap、其餘段落維持普通 p */}
+            {data.answerChapter.body.length > 0 && (
+              <DropCap>{data.answerChapter.body[0]}</DropCap>
+            )}
+            <div className="mt-4 space-y-3 text-[var(--jy-text-secondary)] leading-relaxed" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
+              {data.answerChapter.body.slice(1).map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
             </div>
