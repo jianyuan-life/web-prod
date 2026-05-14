@@ -9,7 +9,8 @@ import { EvidenceList } from '@/components/report/shared/EvidenceList'
 import { KeyTakeaway } from '@/components/report/shared/KeyTakeaway'
 import { QuickSummary } from '@/components/report/shared/QuickSummary'
 // v5.10.314 editorial(McKinsey + magazine pattern):結論先行 + pull quote
-import { ExecutiveSummary } from '@/components/report/shared/DropCap'
+// v5.10.320 加 DropCap 進「你的答案」章節首段(The New Yorker pattern)
+import { DropCap, ExecutiveSummary } from '@/components/report/shared/DropCap'
 import { ChapterGroup, ChapterSection } from '@/components/report/shared/ChapterSection'
 import { MonthlyDecisionTable } from '@/components/report/shared/MonthlyDecisionTable'
 import { PracticeCard } from '@/components/report/shared/PracticeCard'
@@ -125,14 +126,15 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
           <div className="mt-8 space-y-6">
             <Card className="p-8" interactive="subtle">
               <h3
-                className="text-2xl font-semibold text-[var(--jy-text-primary)] mb-4"
-                style={{ fontFamily: 'var(--jy-font-display)' }}
+                className="text-2xl font-medium text-[var(--jy-text-primary)] mb-4"
+                style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}
               >
                 結論
               </h3>
-              <p className="text-lg text-[var(--jy-text-secondary)] leading-relaxed mb-4">
+              {/* v5.10.320 DropCap 首字下沉(The New Yorker editorial pattern) */}
+              <DropCap>
                 {data.answer.conclusion}
-              </p>
+              </DropCap>
               <KeyTakeaway title="前提條件">
                 {data.answer.condition}
               </KeyTakeaway>
