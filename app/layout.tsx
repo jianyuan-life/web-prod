@@ -66,6 +66,8 @@ export const metadata: Metadata = {
   },
 }
 
+// v5.10.335 註解:CSP nonce stage 2 嘗試 async + headers() 讓全站變 dynamic、SSG 全失
+// 已 revert、保留 middleware 端 nonce 生成、Sprint 6 改用 per-page dynamic + edge runtime 方案再上
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable} ${cinzel.variable}`} suppressHydrationWarning>
@@ -122,7 +124,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {process.env.NEXT_PUBLIC_META_PIXEL_ID && (
           <>
             <script
-              dangerouslySetInnerHTML={{
+                  dangerouslySetInnerHTML={{
                 __html: `
                   !function(f,b,e,v,n,t,s)
                   {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -164,7 +166,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <>
             {/* Consent Mode v2 預設 denied、等用戶點 banner 才升級為 granted */}
             <script
-              dangerouslySetInnerHTML={{
+                  dangerouslySetInnerHTML={{
                 __html: `
                   window.dataLayer = window.dataLayer || [];
                   function gtag(){dataLayer.push(arguments);}
@@ -204,7 +206,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
             <script
               async
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
+                  src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
             />
           </>
         )}
