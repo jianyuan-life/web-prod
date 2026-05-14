@@ -41,10 +41,11 @@ function deriveActions(talents: string[], challenges: string[], yearTheme: strin
   const talentKw = talents.length > 0 ? extractKeywords(talents[0])[0] || '' : ''
   const challengeKw = challenges.length > 0 ? extractKeywords(challenges[0])[0] || '' : ''
 
+  // v5.10.297 editorial:emoji icon → roman ordinal(I/II/III)
   // 行動 #1:善用最強天賦
   if (talentKw) {
     actions.push({
-      icon: '✨',
+      icon: 'I',
       badge: '2026 上半年 · 啟動',
       badgeColor: '#6ab04c',
       bgColor: 'rgba(106,176,76,0.10)',
@@ -57,7 +58,7 @@ function deriveActions(talents: string[], challenges: string[], yearTheme: strin
   // 行動 #2:化解主要課題
   if (challengeKw) {
     actions.push({
-      icon: '⚠',
+      icon: 'II',
       badge: '持續 · 留意覺察',
       badgeColor: '#e0963a',
       bgColor: 'rgba(224,150,58,0.10)',
@@ -71,7 +72,7 @@ function deriveActions(talents: string[], challenges: string[], yearTheme: strin
   if (yearTheme && yearTheme.length > 5) {
     const cleaned = yearTheme.replace(/^[*\-•◆▪]\s*/, '').slice(0, 50)
     actions.push({
-      icon: '🎯',
+      icon: 'III',
       badge: '2026 全年 · 北極星',
       badgeColor: '#bb8fce',
       bgColor: 'rgba(155,89,182,0.10)',
@@ -82,7 +83,7 @@ function deriveActions(talents: string[], challenges: string[], yearTheme: strin
   } else if (talentKw && challengeKw) {
     // 若無 yearTheme、合成「天賦 × 課題」整合行動
     actions.push({
-      icon: '🎯',
+      icon: 'III',
       badge: '2026 下半年 · 整合',
       badgeColor: '#bb8fce',
       bgColor: 'rgba(155,89,182,0.10)',
@@ -109,9 +110,10 @@ export default function ActionRecommendations({ talents = [], challenges = [], y
       role="region"
       aria-label="2026 年度行動建議"
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-gold/75 text-[11px] tracking-[3px] font-semibold flex items-center gap-2">
-          <span>🎯</span>
+      {/* v5.10.297 editorial:砍 🎯 emoji、改 hairline accent + small caps eyebrow */}
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+        <div className="text-gold/75 text-[11px] tracking-[3px] font-semibold flex items-center gap-3">
+          <span className="h-px w-4 bg-gold/40" aria-hidden />
           <span>2026 行動建議 · {actions.length} 條具體下一步</span>
         </div>
         <span className="text-text-muted/45 text-[9px]">基於最強天賦 + 主要課題綜合推算</span>
@@ -120,10 +122,17 @@ export default function ActionRecommendations({ talents = [], challenges = [], y
         {actions.map((a, i) => (
           <div
             key={i}
-            className="px-4 py-3 rounded-xl flex items-start gap-3"
+            className="px-4 py-3 rounded-xl flex items-start gap-4"
             style={{ background: a.bgColor, border: `1px solid ${a.borderColor}` }}
           >
-            <div className="text-2xl flex-shrink-0 mt-0.5" aria-hidden>{a.icon}</div>
+            {/* v5.10.297 editorial:emoji icon → roman ordinal mono badge */}
+            <div
+              className="font-mono text-sm font-bold tracking-[0.1em] flex-shrink-0 mt-0.5"
+              style={{ color: a.badgeColor, fontFamily: 'var(--jy-font-mono), monospace', minWidth: '24px' }}
+              aria-hidden
+            >
+              {a.icon}
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span
