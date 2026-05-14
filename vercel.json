@@ -11,6 +11,22 @@
     "app/api/free-purple/route.ts": { "maxDuration": 30 },
     "app/api/free-astro/route.ts": { "maxDuration": 30 }
   },
+  "rewrites": [
+    { "source": "/wp-admin", "destination": "/api/admin/honeypot?trap=wp-admin" },
+    { "source": "/wp-login.php", "destination": "/api/admin/honeypot?trap=wp-login" },
+    { "source": "/phpmyadmin", "destination": "/api/admin/honeypot?trap=phpmyadmin" },
+    { "source": "/admin.php", "destination": "/api/admin/honeypot?trap=admin-php" },
+    { "source": "/administrator", "destination": "/api/admin/honeypot?trap=administrator" },
+    { "source": "/.env", "destination": "/api/admin/honeypot?trap=env" },
+    { "source": "/.git/config", "destination": "/api/admin/honeypot?trap=git-config" }
+  ],
+  "redirects": [
+    {
+      "source": "/.well-known/change-password",
+      "destination": "/auth/update-password",
+      "permanent": false
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/retry-pending",
