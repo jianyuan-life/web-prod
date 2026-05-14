@@ -70,6 +70,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable} ${cinzel.variable}`} suppressHydrationWarning>
       <head>
+        {/* v5.10.326 perf:預連線關鍵第三方來源 — 縮短 TLS handshake / DNS 解析時間
+            節省 LCP 100-300ms(尤其 mobile 3G/4G、handshake 高延遲)*/}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+        <link rel="dns-prefetch" href="https://connect.facebook.net" />
+        <link rel="dns-prefetch" href="https://js.stripe.com" />
+        <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
+        <link rel="dns-prefetch" href="https://vitals.vercel-insights.com" />
         {/* Meta Pixel (Facebook Pixel) — 只在設定環境變數時載入 */}
         {process.env.NEXT_PUBLIC_META_PIXEL_ID && (
           <>
