@@ -31,20 +31,25 @@ const nextConfig: NextConfig = {
   },
 
   // Python API 代理
-  // v5.10.334(IA L2 SSRF 修):只代理 jianyuan-life Fly.io API、不允許任意 destination
-  // env NEXT_PUBLIC_API_URL 必須是 https://*.fly.dev 或 http://localhost:8080(dev)
-  // production env 改動需 review、防止被誤設成攻擊者控制的 URL
+  // v5.10.334(IA L2 SSRF 修):只代理 jianyuan-life Fly.io API
+  // v5.10.342(Codex round 2 P1 #3 收斂):production 限定 jianyuan-life-* 子域、不再 *.fly.dev 萬用
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
-    // SSRF allowlist 驗證(build time + 啟動 time)
-    const isAllowed =
+    const isProd = process.env.NODE_ENV === 'production'
+    // 嚴格 allowlist:
+    //   - dev: localhost / 127.0.0.1(任意 port)
+    //   - prod: 必須是 jianyuan-* / fortune-reports-* / fortune-* 的 *.fly.dev(收斂自 Codex P1 #3)
+    const allowedProd =
+      /^https:\/\/(jianyuan|fortune-reports|fortune)-?[a-z0-9-]*\.fly\.dev(\/.*)?$/.test(apiUrl)
+    const allowedDev =
       apiUrl.startsWith('http://localhost:') ||
-      apiUrl.startsWith('http://127.0.0.1:') ||
-      /^https:\/\/[a-z0-9-]+\.fly\.dev(\/.*)?$/.test(apiUrl)
-    if (!isAllowed && process.env.NODE_ENV === 'production') {
-      throw new Error(
-        `[next.config.ts SSRF] NEXT_PUBLIC_API_URL "${apiUrl}" 不在 allowlist 內(只允許 *.fly.dev / localhost)`,
-      )
+      apiUrl.startsWith('http://127.0.0.1:')
+    const isAllowed = isProd ? allowedProd : (allowedProd || allowedDev)
+
+    if (!isAllowed) {
+      const msg = `[next.config.ts SSRF] NEXT_PUBLIC_API_URL "${apiUrl}" 不在 allowlist 內(prod 限 jianyuan-life-*.fly.dev、dev 加 localhost)`
+      if (isProd) throw new Error(msg)
+      console.warn(msg)
     }
     return [
       {

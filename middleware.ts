@@ -265,8 +265,18 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/admin/honeypot') ||
     pathname.startsWith('/api/workflows/') // Workflow internal callbacks
 
+  // v5.10.342 (Codex round 2 P1 #2 修):敏感 endpoint 用 strict mode
+  // /api/admin/*、/api/points/*、/api/referral/* → strict(必有 valid Origin、Referer 也驗)
+  // 一般 API → 寬鬆(任一 valid 就 pass)
+  const isSensitive =
+    pathname.startsWith('/api/admin/') ||
+    pathname.startsWith('/api/points/') ||
+    pathname.startsWith('/api/referral/') ||
+    pathname.startsWith('/api/family-members') ||
+    pathname.startsWith('/api/checkout')
+
   if (isStateChange && !isCsrfExempt) {
-    const csrfResult = checkCsrf(request, false)
+    const csrfResult = checkCsrf(request, isSensitive)
     if (!csrfResult.valid) {
       console.warn('[CSRF-BLOCK]', JSON.stringify({
         ts: new Date().toISOString(),
