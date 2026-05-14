@@ -300,17 +300,20 @@ html {
 }
 
 body {
-  /* v5.10.302 Gemini L4 finding #2:加極微弱紙張紋理 + 暖色調混合(中和數位生硬、回應命理「古籍」典藏感)
-     - 紙張紋理:極低 alpha noise(SVG inline)、僅 fade 視覺、不影響 readability
-     - 暖色融入:warm gradient overlay(深沉但有溫度、不再冷藍紫一片)
-     - 保留原 nebula gradient + 深藍底、editorial atmosphere */
+  /* v5.10.302 紙張紋理 + 暖色 + v5.10.308 Gemini #2 加天干地支浮水印層(命理深度感)
+     - Layer 0: 天干地支 SVG watermark(極低 alpha 0.012、120 px tile)— 古籍卷軸感
+     - Layer 1: noise 紙張紋理(2.5% alpha)
+     - Layer 2: 暖金 vignette(4 角微暖)
+     - Layer 3: 原 nebula gradient + 深藍底 */
   background:
-    /* 紙張紋理層(2.5% alpha noise)*/
+    /* Layer 0:天干地支浮水印(甲乙丙丁戊己庚辛壬癸 + 子丑寅卯辰巳午未申酉戌亥)*/
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Cstyle%3E.t%7Bfill:%23c9a84c;font-family:serif;opacity:0.012;font-size:18px%7D%3C/style%3E%3Ctext class='t' x='10' y='30'%3E甲%3C/text%3E%3Ctext class='t' x='90' y='60' transform='rotate(15 90 60)'%3E子%3C/text%3E%3Ctext class='t' x='180' y='40'%3E乙%3C/text%3E%3Ctext class='t' x='40' y='110' transform='rotate(-10 40 110)'%3E丙%3C/text%3E%3Ctext class='t' x='130' y='130'%3E丑%3C/text%3E%3Ctext class='t' x='210' y='100' transform='rotate(20 210 100)'%3E丁%3C/text%3E%3Ctext class='t' x='20' y='170'%3E寅%3C/text%3E%3Ctext class='t' x='110' y='195' transform='rotate(-15 110 195)'%3E戊%3C/text%3E%3Ctext class='t' x='180' y='190'%3E己%3C/text%3E%3Ctext class='t' x='60' y='220'%3E庚%3C/text%3E%3Ctext class='t' x='150' y='220' transform='rotate(8 150 220)'%3E辛%3C/text%3E%3C/svg%3E"),
+    /* Layer 1:紙張紋理 noise(2.5% alpha)*/
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.78 0 0 0 0 0.66 0 0 0 0 0.30 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    /* 暖金 vignette(4 角微暖)*/
+    /* Layer 2:暖金 vignette(4 角微暖)*/
     radial-gradient(ellipse at 0% 0%, rgba(201, 168, 76, 0.04) 0%, transparent 40%),
     radial-gradient(ellipse at 100% 100%, rgba(201, 168, 76, 0.04) 0%, transparent 40%),
-    /* 原 nebula 保留 */
+    /* Layer 3:原 nebula 保留 */
     radial-gradient(ellipse at 20% 50%, rgba(75, 0, 130, 0.14) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 20%, rgba(30, 60, 160, 0.10) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 80%, rgba(60, 30, 120, 0.08) 0%, transparent 50%),
@@ -333,11 +336,20 @@ body {
 }
 
 /* v5.10.295 標題加 text-wrap:balance(現代瀏覽器、自動找最佳斷行點、避免 widow/orphan)
-   v5.10.298:keep-all 限定標題、防段落破版(Gemini L4 P1 finding) */
+   v5.10.298:keep-all 限定標題、防段落破版(Gemini L4 P1 finding)
+   v5.10.308 Gemini #3:活字印刷字距微調(letter-spacing 微負、邊緣柔化)*/
 h1, h2, h3, h4 {
   text-wrap: balance;
   word-break: keep-all;
   overflow-wrap: break-word;
+  /* 活字印刷模擬:極微負字距(像鉛字壓印自然張力)*/
+  letter-spacing: -0.005em;
+  /* 邊緣柔化(模擬油墨輕度暈染、防數位過度銳利) */
+  text-shadow: 0 0 0.5px currentColor;
+}
+
+h1 {
+  letter-spacing: -0.012em; /* 大標題字距更緊、editorial 慣例 */
 }
 
 /* v5.10.295 段落 text-wrap:pretty(避免最後一行 widow、editorial 細節)
