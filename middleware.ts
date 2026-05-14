@@ -84,12 +84,12 @@ export async function middleware(request: NextRequest) {
   // v5.10.333(Codex L3 P0 #2 修):白名單只繞 rate limit、不繞 bot classifier / noindex / 安全 header
   // 原邏輯:`if (allowed) return next()` → Stripe IP 也跳過 bot 檢查、若有 IP spoofing 攻擊就完蛋
   // 新邏輯:設 flag、繼續走完所有 STAGE、只在 STAGE 5 rate limit 階段 skip
-  const isWhitelisted = (await isEdgeAllowedIp(ip)) || classifyTraffic(ip, ua) === 'allow'
+  const isWhitelisted = (await isEdgeAllowedIp(ip)) || classifyTraffic(ip, request) === 'allow'
 
   // ────────────────────────────────────────────────────────
   // STAGE 0:IP 黑/白名單 hardcode fallback(已被 STAGE -1 包進、保留作 defense in depth)
   // ────────────────────────────────────────────────────────
-  const trafficClass = classifyTraffic(ip, ua)
+  const trafficClass = classifyTraffic(ip, request)
   if (trafficClass === 'block') {
     return new NextResponse(JSON.stringify({ error: 'Access denied' }), {
       status: 403,

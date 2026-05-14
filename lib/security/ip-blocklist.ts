@@ -108,14 +108,32 @@ export function isTrustedInternalRequest(req: {
 }
 
 /**
- * 統一檢查:回 'block' / 'allow' / 'normal'
- * middleware 用、依此決定是否提早 return
+ * v5.10.341(Codex round 2 P0 #1 修):統一檢查、雙因子驗證 cron secret
+ * 原問題:isTrustedInternalUa() 只看 UA、attacker 塞 'vercel-cron/1.0' 可繞 STAGE 5 rate limit
+ * 修補:用 isTrustedInternalRequest(req) 雙因子(UA + CRON_SECRET timing-safe)
+ *
+ * @param ip client IP(已過 trust matrix)
+ * @param req full request(用於讀 Authorization header for CRON_SECRET 驗證)
  */
 export function classifyTraffic(
+  ip: string,
+  req: { headers: { get(name: string): string | null } },
+): 'block' | 'allow' | 'normal' {
+  if (isBlockedIp(ip)) return 'block'
+  if (isAllowedIp(ip) || isTrustedInternalRequest(req)) return 'allow'
+  return 'normal'
+}
+
+/**
+ * @deprecated v5.10.341 用 classifyTraffic(ip, req) 取代
+ * 原 UA-only 簽名暫保留向後相容、但內部只走 ip 黑名單檢查
+ */
+export function classifyTrafficLegacy(
   ip: string,
   ua: string | null | undefined,
 ): 'block' | 'allow' | 'normal' {
   if (isBlockedIp(ip)) return 'block'
-  if (isAllowedIp(ip) || isTrustedInternalUa(ua)) return 'allow'
+  // 不再信 UA-only allow(已是漏洞)、保守回 normal
+  if (isAllowedIp(ip)) return 'allow'
   return 'normal'
 }

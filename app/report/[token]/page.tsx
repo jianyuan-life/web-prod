@@ -48,8 +48,6 @@ import {
 } from '@/lib/qimen-plain-text'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { validateAccessToken } from '@/lib/security/token-validator'
-import { checkTokenRateLimit } from '@/lib/security/token-rate-limit'
-import { headers as getRequestHeaders } from 'next/headers'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -1254,45 +1252,19 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 export default async function ReportPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
-  // v5.10.337 (Sprint 6 IA L2 IDOR mitigation step 1):token entropy 驗證、攔暴力枚舉
-  // 不合法 token 直接 404、不打 Supabase(節省 quota + 防 SQL injection / log spam)
+  // v5.10.341 (Codex round 2 P0 #2 修):token validate + rate limit 改在 middleware 完成(STAGE 2.5)
+  // 原問題:page.tsx 直接讀 cf-connecting-ip / x-real-ip 無 trust matrix → IP spoof 繞 60/min + 8-IP share detection
+  // 真修:middleware.ts 用 getClientIp() trust matrix、page.tsx 不再 redundant 檢查
+  // 此處保留 server-side defense in depth、但用統一 helper(已過 trust filter)
   const tokenCheck = validateAccessToken(token)
   if (!tokenCheck.valid) {
-    // log 進 Vercel 後可後續分析攻擊 pattern
-    console.warn('[REPORT-INVALID-TOKEN]', JSON.stringify({
+    // 一般情況 middleware 已攔住、若到此 = middleware 漏洞 / 直接內部呼叫
+    console.warn('[REPORT-INVALID-TOKEN-page-fallback]', JSON.stringify({
       ts: new Date().toISOString(),
       tokenLength: token?.length || 0,
       reason: tokenCheck.reason,
-      entropy: tokenCheck.entropy,
     }))
     return notFound()
-  }
-
-  // v5.10.338 (Sprint 6 IA L2 IDOR mitigation step 2):per-token rate limit + share abuse detection
-  // 60 reads/min/token、超過 → 404(避免洩露「token 存在」訊息給攻擊者)
-  // 同 token 1 分鐘內 8+ unique IP → log alert(token 可能被 share / leak)
-  // ⚠️ 此 page.tsx 是 Server Component、可用 headers() 拿 IP(中介層已處理 trust filter)
-  try {
-    const reqHeaders = await getRequestHeaders()
-    const clientIp =
-      reqHeaders.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ||
-      reqHeaders.get('cf-connecting-ip') ||
-      reqHeaders.get('x-real-ip') ||
-      'unknown'
-    const rateResult = checkTokenRateLimit(token, clientIp)
-    if (!rateResult.allowed) {
-      console.warn('[REPORT-TOKEN-RATE-LIMIT]', JSON.stringify({
-        ts: new Date().toISOString(),
-        tokenPrefix: token.slice(0, 8) + '...',
-        count: rateResult.count,
-        uniqueIps: rateResult.uniqueIps,
-        retryAfter: rateResult.retryAfter,
-      }))
-      return notFound() // 不回 429、回 404 避免洩露 token 存在
-    }
-  } catch (e) {
-    // rate limit 失敗不阻塞 read path、log 後繼續
-    console.warn('[REPORT-TOKEN-RATE-LIMIT-ERROR]', e instanceof Error ? e.message : String(e))
   }
 
   const supabase = createClient(

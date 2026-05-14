@@ -34,15 +34,18 @@ export async function verifyTurnstileToken(
 ): Promise<TurnstileVerifyResult> {
   const secret = process.env.TURNSTILE_SECRET_KEY
 
-  // Stub mode:沒設 secret 直接放行(開發環境 / Sprint 5 前)
-  // v5.10.333(Codex P2 #1 修):production 環境若沒設 secret、log warning(避免假安全感)
+  // v5.10.341(Codex round 2 P0 #3 修):production fail-CLOSED、不再 fail-OPEN
+  // 原漏洞:沒設 TURNSTILE_SECRET_KEY 直接 success → bot 防禦完全失效
+  // 修補:production 環境必有 secret、否則拒絕(fail-closed);dev 仍 stub OK
   if (!secret) {
     if (process.env.VERCEL_ENV === 'production') {
-      console.warn(
-        '[turnstile] PRODUCTION running in STUB mode (TURNSTILE_SECRET_KEY not set). ' +
-          'CAPTCHA verification is disabled — set the env var to enable real defense.',
+      console.error(
+        '[turnstile] PRODUCTION fail-CLOSED: TURNSTILE_SECRET_KEY not set. ' +
+          'All Turnstile checks will REJECT until env var is configured.',
       )
+      return { success: false, errorCodes: ['production-no-secret-configured'] }
     }
+    // dev / preview 環境保持 stub mode 方便開發
     return { success: true, stub: true }
   }
 

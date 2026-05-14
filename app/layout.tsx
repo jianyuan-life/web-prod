@@ -110,10 +110,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   eagerness: 'moderate', // hover/touchstart 才預渲染、不浪費 bandwidth
                 },
               ],
+              // v5.10.341(Codex round 2 P2 #2 修):prefetch 也排除私密路徑、防資源洩露
               prefetch: [
                 {
                   source: 'document',
-                  where: { href_matches: '/*' },
+                  where: {
+                    and: [
+                      { href_matches: '/*' },
+                      { not: { href_matches: '/api/*' } },
+                      { not: { href_matches: '/jamie/*' } },
+                      { not: { href_matches: '/dashboard*' } },
+                      { not: { href_matches: '/auth/*' } },
+                      { not: { href_matches: '/report/*' } },
+                      { not: { href_matches: '/checkout*' } },
+                    ],
+                  },
                   eagerness: 'conservative', // 只在 link 進 viewport 才 prefetch
                 },
               ],
