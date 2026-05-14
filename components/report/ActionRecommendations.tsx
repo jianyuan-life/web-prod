@@ -134,18 +134,19 @@ export default function ActionRecommendations({ talents = [], challenges = [], y
               {a.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              {/* v5.10.299 editorial:badge pill → hairline mono badge */}
+              <div className="flex items-center gap-3 mb-1.5 flex-wrap">
                 <span
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide"
+                  className="text-[10px] font-bold tracking-wide border-l pl-2"
                   style={{
-                    background: `${a.borderColor.replace('0.30', '0.18')}`,
+                    borderLeftColor: a.badgeColor,
                     color: a.badgeColor,
-                    border: `1px solid ${a.borderColor}`,
+                    fontFamily: 'var(--jy-font-mono), monospace',
                   }}
                 >
                   {a.badge}
                 </span>
-                <span className="text-text-muted/55 text-[10px]">時段:{a.timing}</span>
+                <span className="text-text-muted/55 text-[10px]">時段 · {a.timing}</span>
               </div>
               {/* v5.10.58 P0 修(老闆「逐頁看」截圖抓):text-cream 在 [data-theme=light] 被 globals.css L629 覆蓋成 #1a2340 深藍、文字 + 深底 = 完全不可見、客戶看不到 3 條行動建議 */}
               <p

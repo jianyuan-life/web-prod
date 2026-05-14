@@ -184,7 +184,8 @@ export default function SystemsRadar({
           background: 'linear-gradient(90deg, rgba(106,176,76,0.10), rgba(197,150,58,0.06))',
           border: '1px solid rgba(106,176,76,0.25)',
         }}>
-          <span className="text-green-400 font-bold flex-shrink-0">💡</span>
+          {/* v5.10.299 editorial:砍 💡、改 hairline accent */}
+          <span className="h-px w-4 bg-green-400/60 mt-2 flex-shrink-0" aria-hidden />
           <div className="flex-1">
             <span className="text-green-400/85 text-[10px] tracking-[2px] font-semibold mr-2">INSIGHT</span>
             <span className="text-cream text-sm leading-relaxed font-semibold">{insight}</span>

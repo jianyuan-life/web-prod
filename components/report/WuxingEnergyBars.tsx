@@ -12,12 +12,14 @@ type WuxingValue = {
   hint?: string
 }
 
-const ELEMENT_META: Record<string, { color: string; bg: string; emoji: string; desc: string }> = {
-  木: { color: '#6ab04c', bg: 'rgba(106, 176, 76, 0.18)', emoji: '🌿', desc: '生長、創新、人際' },
-  火: { color: '#e74c3c', bg: 'rgba(231, 76, 60, 0.18)', emoji: '🔥', desc: '熱情、表達、行動' },
-  土: { color: '#c9a84c', bg: 'rgba(201, 168, 76, 0.20)', emoji: '🌍', desc: '穩定、信任、責任' },
-  金: { color: '#bdc3c7', bg: 'rgba(189, 195, 199, 0.18)', emoji: '⚜', desc: '決斷、紀律、銳利' },
-  水: { color: '#3498db', bg: 'rgba(52, 152, 219, 0.18)', emoji: '💧', desc: '智慧、流動、深思' },
+// v5.10.299 editorial:砍西方 emoji(🌿🔥🌍⚜💧)、改漢字 + 色塊已足夠
+// 五行漢字本身就是 2000 年文化 icon、加 emoji 反而西化 + AI 感
+const ELEMENT_META: Record<string, { color: string; bg: string; desc: string }> = {
+  木: { color: '#6ab04c', bg: 'rgba(106, 176, 76, 0.18)', desc: '生長、創新、人際' },
+  火: { color: '#e74c3c', bg: 'rgba(231, 76, 60, 0.18)', desc: '熱情、表達、行動' },
+  土: { color: '#c9a84c', bg: 'rgba(201, 168, 76, 0.20)', desc: '穩定、信任、責任' },
+  金: { color: '#bdc3c7', bg: 'rgba(189, 195, 199, 0.18)', desc: '決斷、紀律、銳利' },
+  水: { color: '#3498db', bg: 'rgba(52, 152, 219, 0.18)', desc: '智慧、流動、深思' },
 }
 
 export default function WuxingEnergyBars({
@@ -75,14 +77,16 @@ export default function WuxingEnergyBars({
             const widthPct = mounted ? d.percent : 0
             return (
               <div key={d.element} className="flex items-center gap-3">
-                {/* 五行 label + emoji */}
-                <div className="w-20 flex items-center gap-2 shrink-0">
-                  <span className="text-lg" aria-hidden="true">
-                    {meta.emoji}
-                  </span>
+                {/* v5.10.299 editorial:砍 emoji、漢字本身已足、加 hairline color accent */}
+                <div className="w-20 flex items-center gap-3 shrink-0">
                   <span
-                    className="text-sm font-bold"
-                    style={{ color: meta.color, fontFamily: 'var(--font-sans)' }}
+                    className="h-px w-3 shrink-0"
+                    style={{ background: meta.color }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="text-base font-bold"
+                    style={{ color: meta.color, fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}
                   >
                     {d.element}
                   </span>
