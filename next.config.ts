@@ -110,6 +110,27 @@ const nextConfig: NextConfig = {
               "report-to csp-endpoint",
             ].join('; '),
           },
+          // v5.10.330(Sprint 5):Content-Security-Policy-Report-Only — 嚴格版 CSP 試跑
+          // 這條不會 enforce、只蒐集 violation 進 /api/csp-report
+          // 觀察 1-2 週後若無大量真實流量誤報、把這條規則升 enforced + 移現有 unsafe-inline
+          {
+            key: 'Content-Security-Policy-Report-Only',
+            value: [
+              "default-src 'self'",
+              // 嚴格版:只允許 hash 的 inline + 外部 SRI script、移 unsafe-inline 試跑
+              "script-src 'self' 'strict-dynamic' https: https://www.googletagmanager.com https://connect.facebook.net https://va.vercel-scripts.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' https://fonts.gstatic.com data:",
+              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://*.fly.dev https://www.google-analytics.com https://www.googletagmanager.com https://www.facebook.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://vercel.live",
+              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self' https://checkout.stripe.com",
+              "object-src 'none'",
+              "report-uri /api/csp-report",
+            ].join('; '),
+          },
           // v5.10.325:Reporting-Endpoints(現代瀏覽器、配合 CSP report-to)
           {
             key: 'Reporting-Endpoints',
