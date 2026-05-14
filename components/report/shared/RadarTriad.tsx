@@ -16,10 +16,11 @@ export interface RadarTriadProps {
   className?: string
 }
 
+// v5.10.304 editorial:砍 emoji icon、改 Roman numeral chapter style
 const AXES = [
-  { key: 'personality', label: '個性', icon: '👤', color: 'var(--jy-semantic-water)' },
-  { key: 'action', label: '行動', icon: '🚀', color: 'var(--jy-semantic-fire)' },
-  { key: 'cultivation', label: '修行', icon: '🧘', color: 'var(--jy-text-gold)' },
+  { key: 'personality', label: '個性', ordinal: 'I', color: 'var(--jy-semantic-water)' },
+  { key: 'action', label: '行動', ordinal: 'II', color: 'var(--jy-semantic-fire)' },
+  { key: 'cultivation', label: '修行', ordinal: 'III', color: 'var(--jy-text-gold)' },
 ] as const
 
 export function RadarTriad({ data, tags, className = '' }: RadarTriadProps) {
@@ -34,9 +35,17 @@ export function RadarTriad({ data, tags, className = '' }: RadarTriadProps) {
             key={axis.key}
             className="rounded-xl p-5 border border-[var(--jy-border-soft)] bg-[var(--jy-bg-card)]/40"
           >
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl" aria-hidden>{axis.icon}</span>
-              <h4 className="text-sm text-[var(--jy-text-tertiary)] uppercase tracking-wider">
+            {/* v5.10.304 editorial:砍 emoji icon、改 mono ordinal + serif label */}
+            <div className="flex items-baseline gap-3 mb-3">
+              <span
+                className="text-xs tracking-[0.2em] font-mono"
+                style={{ color: axis.color, opacity: 0.7, fontFamily: 'var(--jy-font-mono), monospace' }}
+                aria-hidden
+              >
+                {axis.ordinal}
+              </span>
+              <span className="h-px w-4" style={{ background: axis.color, opacity: 0.4 }} aria-hidden />
+              <h4 className="text-sm text-[var(--jy-text-secondary)] tracking-wide font-medium" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
                 {axis.label}
               </h4>
             </div>

@@ -19,21 +19,22 @@ export interface LuckyParamsProps {
   className?: string
 }
 
+// v5.10.304 editorial:砍 dead data icon(已改 hairline、icon 不 render、清理)
 const PARAMS = [
-  { key: 'colors', label: '幸運色', icon: '🎨', accent: 'var(--jy-text-gold)' },
-  { key: 'numbers', label: '幸運數字', icon: '🔢', accent: 'var(--jy-semantic-water)' },
-  { key: 'directions', label: '幸運方位', icon: '🧭', accent: 'var(--jy-semantic-wood)' },
-  { key: 'hours', label: '幸運時段', icon: '⏰', accent: 'var(--jy-semantic-balance)' },
-  { key: 'plants', label: '幸運植物', icon: '🌿', accent: 'var(--jy-semantic-flow)' },
-  { key: 'protectStars', label: '守護星耀', icon: '✨', accent: 'var(--jy-text-gold)' },
-  { key: 'talents', label: '加分才藝', icon: '🎭', accent: '#A78BFA' },
+  { key: 'colors', label: '幸運色', accent: 'var(--jy-text-gold)' },
+  { key: 'numbers', label: '幸運數字', accent: 'var(--jy-semantic-water)' },
+  { key: 'directions', label: '幸運方位', accent: 'var(--jy-semantic-wood)' },
+  { key: 'hours', label: '幸運時段', accent: 'var(--jy-semantic-balance)' },
+  { key: 'plants', label: '幸運植物', accent: 'var(--jy-semantic-flow)' },
+  { key: 'protectStars', label: '守護星耀', accent: 'var(--jy-text-gold)' },
+  { key: 'talents', label: '加分才藝', accent: '#A78BFA' },
 ] as const
 
 export function LuckyParams({ data, className = '' }: LuckyParamsProps) {
   return (
     <div className={cn('space-y-4', className)}>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {PARAMS.map(({ key, label, icon, accent }) => {
+        {PARAMS.map(({ key, label, accent }) => {
           const items = data[key as keyof LuckyParamsData]
           if (!items || items.length === 0) return null
           return (

@@ -48,7 +48,7 @@ export default function ZiweiPalaceWheel({ mingGong, mingZhu }: { mingGong?: str
             {mingZhu && ` · 主星 ${mingZhu}`} · 4 大主宮(命/官/財/夫)金邊強調
           </p>
           <p className="text-[10px] text-text-muted mt-1 italic">
-            💡 hover 看宮位作用、click 高亮「三方四正」(本宮+對宮+三合)
+            ▸ hover 看宮位作用、click 高亮「三方四正」(本宮+對宮+三合)
           </p>
         </div>
       </div>

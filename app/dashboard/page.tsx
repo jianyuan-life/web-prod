@@ -493,10 +493,11 @@ function DashboardContent() {
           <div className="glass rounded-2xl p-5 mb-6 border border-gold/15" aria-labelledby="daily-section-title">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-base">🌅</span>
-                  <h2 id="daily-section-title" className="text-base font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
-                    您的今日能量(Daily Dashboard)
+                {/* v5.10.304 editorial:🌅 → hairline accent + 純中文標題 */}
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="h-px w-4 bg-gold/60" aria-hidden />
+                  <h2 id="daily-section-title" className="text-base font-medium text-cream" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
+                    您的今日能量
                   </h2>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gold/15 text-gold font-bold">即將推出</span>
                 </div>

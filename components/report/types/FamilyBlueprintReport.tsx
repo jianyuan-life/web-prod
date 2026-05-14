@@ -146,7 +146,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         {/* 對偶分析(摺疊) */}
         <section className="mb-12">
-          <Eyebrow align="left">👥 三組對偶分析</Eyebrow>
+          <Eyebrow align="left">三組對偶分析</Eyebrow>
           <div className="mt-8">
             <ChapterGroup type="multiple">
               {Object.entries(data.pairAnalysis).map(([key, pair]) => {

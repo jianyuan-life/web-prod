@@ -79,7 +79,7 @@ export function ActionPlanStages({ immediate, short, long, className = '' }: Act
                   )}
                   {item.deadline && (
                     <p className="mt-1 text-xs" style={{ color: meta.color }}>
-                      ⏰ {item.deadline}
+                      截止 · {item.deadline}
                     </p>
                   )}
                 </li>
