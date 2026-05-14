@@ -62,7 +62,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
 
         {/* 你們的問題 */}
         <section className="mb-12">
-          <Card className="p-8 text-center" interactive={false}>
+          <Card className="p-8 text-center" interactive="subtle">
             <p className="text-xs uppercase tracking-widest text-[var(--jy-text-muted)] mb-3">
               你們的問題
             </p>
@@ -94,7 +94,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         {/* 你們的答案 */}
         <section className="mb-12">
           <Eyebrow align="left">你們的答案</Eyebrow>
-          <Card className="mt-8 p-8" interactive={false}>
+          <Card className="mt-8 p-8" interactive="subtle">
             <QuickSummary bullets={[data.answerChapter.quickSummary]} />
             <div className="mt-6 space-y-3 text-[var(--jy-text-secondary)] leading-relaxed">
               {data.answerChapter.body.map((p, i) => (
@@ -197,7 +197,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         {/* 綜合判定 */}
         <section className="mb-12">
           <Eyebrow align="left">★ 綜合判定</Eyebrow>
-          <Card className="mt-8 p-8" interactive={false}>
+          <Card className="mt-8 p-8" interactive="subtle">
             <p className="text-[var(--jy-text-secondary)] leading-relaxed mb-6">{data.finalJudge.summary}</p>
 
             <div className="grid grid-cols-3 gap-4 mb-6">
@@ -239,7 +239,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
           <Eyebrow align="left">三年流年</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
             {data.yearly.map((y) => (
-              <Card key={y.year} className="p-5" interactive={false}>
+              <Card key={y.year} className="p-5" interactive="subtle">
                 <h4 className="text-2xl font-bold text-[var(--jy-text-gold)]" style={{ fontFamily: 'var(--jy-font-display)' }}>
                   {y.year} <span className="text-base text-[var(--jy-text-tertiary)]">{y.ganzhi}</span>
                 </h4>
@@ -253,7 +253,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
               </Card>
             ))}
           </div>
-          <Card className="mt-6 p-6" interactive={false}>
+          <Card className="mt-6 p-6" interactive="subtle">
             <h4 className="font-medium text-[var(--jy-text-gold)] mb-2">三年總覽</h4>
             <ul className="text-sm text-[var(--jy-text-secondary)] space-y-1.5">
               <li>最佳年:{data.threeYearOverview.best}</li>
@@ -271,7 +271,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
             <Eyebrow align="left">你們最好的地方({data.bestPoints.length} 條)</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
               {data.bestPoints.map((bp, i) => (
-                <Card key={i} className="p-5" interactive={false}>
+                <Card key={i} className="p-5" interactive="subtle">
                   <h4 className="font-semibold text-[var(--jy-semantic-flow)]">{bp.title}</h4>
                   <p className="mt-2 text-xs text-[var(--jy-text-tertiary)]">支持:{bp.support.join(' / ')}</p>
                   <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">{bp.guide}</p>
@@ -286,7 +286,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
             <Eyebrow align="left">⚠ 你們需要注意的地方({data.cautions.length} 條)</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
               {data.cautions.map((c, i) => (
-                <Card key={i} className="p-5 border-l-4" style={{ borderLeftColor: 'var(--jy-semantic-balance)' }} interactive={false}>
+                <Card key={i} className="p-5 border-l-4" style={{ borderLeftColor: 'var(--jy-semantic-balance)' }} interactive="subtle">
                   <h4 className="font-semibold text-[var(--jy-semantic-balance)]">⚠ {c.title}</h4>
                   <p className="mt-2 text-xs text-[var(--jy-text-tertiary)]">支持:{c.support.join(' / ')}</p>
                   <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">觸發:{c.trigger}</p>
@@ -298,7 +298,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         )}
 
         <section className="mb-12">
-          <Card className="p-8" interactive={false}>
+          <Card className="p-8" interactive="subtle">
             <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-3" style={{ fontFamily: 'var(--jy-font-display)' }}>
               你們的關係流年總覽
             </h3>
@@ -309,7 +309,7 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         {/* 起篇 questionChapter + practices(本 session 漏) */}
         <section className="mb-12">
           <Eyebrow align="left">你們的問題(深度解析)</Eyebrow>
-          <Card className="mt-8 p-8" interactive={false}>
+          <Card className="mt-8 p-8" interactive="subtle">
             <QuickSummary bullets={[data.questionChapter.quickSummary]} />
           </Card>
         </section>
@@ -354,15 +354,15 @@ export function CompatibilityReport({ id, data }: CompatibilityReportProps) {
         <section className="mb-12">
           <Eyebrow align="left">寫給你們的話</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h4 className="font-medium text-[var(--jy-text-gold)] mb-4">給 {data.pair.a.name}</h4>
               <p className="text-[var(--jy-text-secondary)] leading-relaxed">{data.letter.a}</p>
             </Card>
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h4 className="font-medium text-[var(--jy-text-gold)] mb-4">給 {data.pair.b.name}</h4>
               <p className="text-[var(--jy-text-secondary)] leading-relaxed">{data.letter.b}</p>
             </Card>
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h4 className="font-medium text-[var(--jy-text-gold)] mb-4">給你們倆</h4>
               <p className="text-[var(--jy-text-secondary)] leading-relaxed italic">{data.letter.together}</p>
             </Card>

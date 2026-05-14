@@ -76,7 +76,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
           <Card
             className="p-8 border-l-4"
             style={{ borderLeftColor: 'var(--jy-text-gold)' }}
-            interactive={false}
+            interactive="subtle"
           >
             <p className="text-xs uppercase tracking-widest text-[var(--jy-text-muted)] mb-3">
               你的問題
@@ -104,7 +104,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
         <section className="mb-12 space-y-6">
           <Eyebrow align="left">命盤一覽</Eyebrow>
           <BaziPillars data={{ year: data.bazi.year, month: data.bazi.month, day: data.bazi.day, hour: data.bazi.hour, dayMaster: data.bazi.dayMaster }} highlightDayMaster />
-          <Card className="p-5" interactive={false}>
+          <Card className="p-5" interactive="subtle">
             <p className="text-sm text-[var(--jy-text-secondary)] leading-relaxed">
               <span className="text-[var(--jy-text-gold)] font-medium">五行解讀:</span>{data.bazi.insight}
             </p>
@@ -118,7 +118,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
         <section className="mb-12">
           <Eyebrow align="left">你的答案</Eyebrow>
           <div className="mt-8 space-y-6">
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h3
                 className="text-2xl font-semibold text-[var(--jy-text-primary)] mb-4"
                 style={{ fontFamily: 'var(--jy-font-display)' }}
@@ -133,7 +133,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
               </KeyTakeaway>
             </Card>
 
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h4 className="text-sm uppercase tracking-wider text-[var(--jy-text-muted)] mb-4">
                 論述展開
               </h4>
@@ -175,7 +175,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
               <ChapterSection emoji="" title="最佳行動方案(短/中/長)">
                 <div className="space-y-4">
                   {[data.chapters.bestPlan.short, data.chapters.bestPlan.mid, data.chapters.bestPlan.long].map((stage, i) => (
-                    <Card key={i} className="p-4" interactive={false}>
+                    <Card key={i} className="p-4" interactive="subtle">
                       <h5 className="font-semibold text-[var(--jy-text-gold)] mb-2">{stage.title}</h5>
                       <ul className="space-y-1.5">
                         {stage.actions.map((a, j) => (
@@ -233,7 +233,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
           <Eyebrow align="left">轉篇:根源剖析 + 注意事項</Eyebrow>
           <div className="mt-8 space-y-6">
             {/* Root */}
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h3
                 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4"
                 style={{ fontFamily: 'var(--jy-font-display)' }}
@@ -249,7 +249,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
             </Card>
             {/* Caveats */}
             {data.caveats.length > 0 && (
-              <Card className="p-8" interactive={false}>
+              <Card className="p-8" interactive="subtle">
                 <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">需要注意的地方({data.caveats.length} 條)</h3>
                 <ul className="space-y-4">
                   {data.caveats.map((c, i) => (
@@ -272,7 +272,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
           <Eyebrow align="left">合篇:你的路 + 好的地方 + 改善建議</Eyebrow>
           <div className="mt-8 space-y-6">
             {/* Way */}
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4" style={{ fontFamily: 'var(--jy-font-display)' }}>
                 你的路 — 怎麼走出來
               </h3>
@@ -285,7 +285,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
             </Card>
             {/* Goods */}
             {data.goods.length > 0 && (
-              <Card className="p-8" interactive={false}>
+              <Card className="p-8" interactive="subtle">
                 <h3 className="text-xl font-semibold text-[var(--jy-semantic-flow)] mb-4">你好的地方({data.goods.length} 條)</h3>
                 <ul className="space-y-4">
                   {data.goods.map((g, i) => (
@@ -300,7 +300,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
             )}
             {/* Improvements */}
             {data.improvements.length > 0 && (
-              <Card className="p-8" interactive={false}>
+              <Card className="p-8" interactive="subtle">
                 <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">改善建議({data.improvements.length} 條)</h3>
                 <ul className="space-y-6">
                   {data.improvements.map((imp, i) => (
@@ -327,7 +327,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
 
         {/* 寫給你的話 */}
         <section className="mb-12">
-          <Card className="p-10" interactive={false}>
+          <Card className="p-10" interactive="subtle">
             <h3
               className="text-2xl font-semibold text-[var(--jy-text-gold)] mb-6 text-center"
               style={{ fontFamily: 'var(--jy-font-display)' }}

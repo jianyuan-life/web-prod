@@ -22,10 +22,21 @@ const INTERACTIVE_CARD = `
   hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_rgba(0,0,0,0.45)]
 `
 
+// v5.10.316 Card subtle hover variant(QA agent #6 finding):介於 false 與 true 之間
+//   - 不上移(避免報告 dataviz card 跳動)
+//   - 加 hairline gold ring 1px(editorial 暗示「可互動」)
+//   - 不加大陰影(維持 editorial 平面感)
+const SUBTLE_CARD = `
+  transition-colors duration-[240ms] ease-[cubic-bezier(0.4,0,0.2,1)]
+  hover:border-[rgba(201,168,76,0.35)]
+  hover:shadow-[inset_0_1px_0_rgba(201,168,76,0.08),0_16px_40px_rgba(0,0,0,0.40)]
+`
+
 // Polymorphic type — caller 傳 as='article' 時 props 自動切換到 HTMLAttributes<HTMLElement>
+// v5.10.316:interactive 從 boolean → 'subtle' | true | false 三態
 type CardOwnProps<E extends ElementType = 'div'> = {
   as?: E
-  interactive?: boolean
+  interactive?: boolean | 'subtle'
   children?: ReactNode
   className?: string
 }
@@ -42,7 +53,9 @@ export function Card<E extends ElementType = 'div'>({
   ...rest
 }: CardProps<E>) {
   const Component = (as || 'div') as ElementType
-  const interactiveClass = interactive ? INTERACTIVE_CARD : ''
+  // v5.10.316 三態:'subtle' | true | false
+  const interactiveClass =
+    interactive === 'subtle' ? SUBTLE_CARD : interactive === true ? INTERACTIVE_CARD : ''
   return (
     <Component className={`${BASE_CARD} ${interactiveClass} ${className}`} {...rest}>
       {children}

@@ -359,6 +359,17 @@ p, li, dd {
   overflow-wrap: break-word;
 }
 
+/* v5.10.316 H3 全套 serif(QA #4 typography hierarchy 82→88、editorial 全棧一致):
+   - 4 reports 的 H3 章節標題自動套 serif(報告内的所有 <h3> 不必逐個 inline 改)
+   - font-weight 500(editorial medium、不是 SaaS bold 700)
+   - letter-spacing -0.005em(微負字距)
+   - 不套 H1/H2(各 component 已有自己 inline style 控制) */
+main h3 {
+  font-family: var(--jy-font-serif, "Noto Serif TC", Georgia), serif;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
 /* 標題用宋體/襯線體 */
 h1, h2, h3 {
   font-family: var(--font-sans);

@@ -68,7 +68,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         <section className="mb-12">
           <Eyebrow align="left">全家五行分佈</Eyebrow>
           <div className="mt-8 space-y-6">
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <p
                 className="italic text-[var(--jy-text-gold)] leading-relaxed mb-6"
                 style={{ fontSize: 'clamp(16px, 2vw, 20px)' }}
@@ -81,7 +81,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
             </Card>
 
             {/* 三人五行表 */}
-            <Card className="p-6" interactive={false}>
+            <Card className="p-6" interactive="subtle">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--jy-border-soft)]">
@@ -136,7 +136,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         {data.triangleDynamics && (
           <section className="mb-12">
             <Eyebrow align="left">三角動力</Eyebrow>
-            <Card className="mt-8 p-8" interactive={false}>
+            <Card className="mt-8 p-8" interactive="subtle">
               <ul className="space-y-2 mb-6">
                 {data.triangleDynamics.edges.map((e, i) => (
                   <li key={i} className="text-[var(--jy-text-secondary)]">
@@ -196,7 +196,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
             <Eyebrow align="left">家族好的地方({data.goods.length} 條)</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               {data.goods.map((g, i) => (
-                <Card key={i} className="p-5" interactive={false}>
+                <Card key={i} className="p-5" interactive="subtle">
                   <div className="text-2xl mb-2" aria-hidden>{g.element}</div>
                   <h4 className="font-semibold text-[var(--jy-semantic-flow)]">{g.title}</h4>
                   <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">{g.content}</p>
@@ -212,7 +212,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
             <Eyebrow align="left">⚠ 家族需要注意的地方({data.cautions.length} 條)</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {data.cautions.map((c, i) => (
-                <Card key={i} className="p-5 border-l-4" style={{ borderLeftColor: 'var(--jy-semantic-balance)' }} interactive={false}>
+                <Card key={i} className="p-5 border-l-4" style={{ borderLeftColor: 'var(--jy-semantic-balance)' }} interactive="subtle">
                   <h4 className="font-semibold text-[var(--jy-semantic-balance)]">⚠ {c.title}</h4>
                   <p className="mt-2 text-sm text-[var(--jy-text-secondary)]">{c.detail}</p>
                   <p className="mt-2 text-xs text-[var(--jy-text-gold)]">應對:{c.response}</p>
@@ -224,7 +224,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         <section className="mb-12">
           <Eyebrow align="left">💬 家族溝通模式</Eyebrow>
-          <Card className="mt-8 p-8" interactive={false}>
+          <Card className="mt-8 p-8" interactive="subtle">
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-6">
               <RoleChip label="決策者" name={data.communicationModel.roles.decisionMaker} />
               <RoleChip label="協調者" name={data.communicationModel.roles.coordinator} />
@@ -243,16 +243,16 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         <section className="mb-12">
           <Eyebrow align="left">親子教養方向</Eyebrow>
-          <Card className="mt-8 p-8" interactive={false}>
+          <Card className="mt-8 p-8" interactive="subtle">
             <p className="italic text-[var(--jy-text-gold)] text-lg leading-relaxed mb-6">
               「{data.parenting.childTalent}」
             </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mb-6">
-              <Card className="p-5" interactive={false}>
+              <Card className="p-5" interactive="subtle">
                 <h4 className="font-medium text-[var(--jy-semantic-water)] mb-2">父適合當什麼</h4>
                 <p className="text-sm text-[var(--jy-text-secondary)]">{data.parenting.fatherRole}</p>
               </Card>
-              <Card className="p-5" interactive={false}>
+              <Card className="p-5" interactive="subtle">
                 <h4 className="font-medium text-[var(--jy-semantic-fire)] mb-2">母適合當什麼</h4>
                 <p className="text-sm text-[var(--jy-text-secondary)]">{data.parenting.motherRole}</p>
               </Card>
@@ -280,7 +280,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
           <Eyebrow align="left">家族 5 年流年</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
             {data.yearly5.map((y) => (
-              <Card key={y.year} className="p-5" interactive={false}>
+              <Card key={y.year} className="p-5" interactive="subtle">
                 <div className="text-center mb-3">
                   <div className="text-2xl mb-1" aria-hidden>{y.icon}</div>
                   <h4 className="text-xl font-bold text-[var(--jy-text-gold)]" style={{ fontFamily: 'var(--jy-font-display)' }}>
@@ -306,7 +306,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
               </Card>
             ))}
           </div>
-          <Card className="mt-6 p-6" interactive={false}>
+          <Card className="mt-6 p-6" interactive="subtle">
             <h4 className="font-medium text-[var(--jy-text-gold)] mb-3">5 年總覽</h4>
             <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
               <li>黃金年:{data.fiveYearOverview.goldenYear}</li>
@@ -340,19 +340,19 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         <section className="mb-12">
           <Eyebrow align="left">家族行動指南 + 幸運元素</Eyebrow>
           <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-            <Card className="p-5" interactive={false}>
+            <Card className="p-5" interactive="subtle">
               <h4 className="font-medium text-[var(--jy-semantic-flow)] mb-3">每日</h4>
               <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
                 {data.actionGuide.daily.map((a, i) => <li key={i}>· {a}</li>)}
               </ul>
             </Card>
-            <Card className="p-5" interactive={false}>
+            <Card className="p-5" interactive="subtle">
               <h4 className="font-medium text-[var(--jy-semantic-balance)] mb-3">每月</h4>
               <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
                 {data.actionGuide.monthly.map((a, i) => <li key={i}>· {a}</li>)}
               </ul>
             </Card>
-            <Card className="p-5" interactive={false}>
+            <Card className="p-5" interactive="subtle">
               <h4 className="font-medium text-[var(--jy-text-gold)] mb-3">每年</h4>
               <ul className="space-y-1.5 text-sm text-[var(--jy-text-secondary)]">
                 {data.actionGuide.yearly.map((a, i) => <li key={i}>· {a}</li>)}
@@ -376,7 +376,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
 
         {/* 寫給家的話 */}
         <section className="mb-12">
-          <Card className="p-10" interactive={false}>
+          <Card className="p-10" interactive="subtle">
             <h3
               className="text-2xl font-semibold text-[var(--jy-text-gold)] mb-6 text-center"
               style={{ fontFamily: 'var(--jy-font-display)' }}

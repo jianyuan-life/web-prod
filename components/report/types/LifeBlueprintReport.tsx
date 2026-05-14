@@ -228,7 +228,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
           <div className="mt-8 space-y-8">
             {/* Step 1:核心性格 */}
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h3
                 className="text-2xl font-semibold text-[var(--jy-text-primary)] mb-3"
                 style={{ fontFamily: 'var(--jy-font-display)' }}
@@ -254,7 +254,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
             </div>
 
             {/* Step 3:行動時間軸 */}
-            <Card className="p-8" interactive={false}>
+            <Card className="p-8" interactive="subtle">
               <h3 className="text-xl font-semibold text-[var(--jy-text-primary)] mb-4">
                 優先行動清單
               </h3>
@@ -354,7 +354,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
               {data.daYun.map((dy) => {
                 const energyColor = dy.energy >= 75 ? 'var(--jy-text-gold)' : dy.energy >= 50 ? 'var(--jy-semantic-balance)' : 'var(--jy-semantic-adjust)'
                 return (
-                  <Card key={dy.seq} className="p-5" interactive={false}>
+                  <Card key={dy.seq} className="p-5" interactive="subtle">
                     <div className="flex items-baseline justify-between mb-3">
                       <h4 className="text-2xl font-bold" style={{ fontFamily: 'var(--jy-font-display)', color: energyColor }}>
                         {dy.ganZhi}
@@ -388,7 +388,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           <section className="mb-16">
             <Eyebrow align="left">命盤一覽</Eyebrow>
             <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Card className="p-6 flex justify-center" interactive={false}>
+              <Card className="p-6 flex justify-center" interactive="subtle">
                 <ZiweiNatalChart
                   palaces={data.natalOverview.ziwei12palaces}
                   centerInfo={{
@@ -398,7 +398,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
                   size={500}
                 />
               </Card>
-              <Card className="p-6" interactive={false}>
+              <Card className="p-6" interactive="subtle">
                 <h3 className="font-semibold text-[var(--jy-text-primary)] mb-3">今日指引</h3>
                 <p className="text-sm text-[var(--jy-text-tertiary)] mb-2">日期:{data.natalOverview.daily.date}</p>
                 <p className="text-sm text-[var(--jy-text-tertiary)] mb-3">五行:{data.natalOverview.daily.element}</p>
@@ -420,7 +420,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
             <p className="mt-2 text-xs text-[var(--jy-text-tertiary)] italic" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
               色塊深淺 = 該命理系統對該面向的共識強度(0-5 分)。深金 = 高共識、淺灰 = 低共識
             </p>
-            <Card className="mt-6 p-0 overflow-x-auto" interactive={false}>
+            <Card className="mt-6 p-0 overflow-x-auto" interactive="subtle">
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--jy-border-soft)]">
@@ -500,7 +500,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         {data.yearEnergy12.length > 0 && (
           <section className="mb-16">
             <Eyebrow align="left">2026 12 月份能量</Eyebrow>
-            <Card className="mt-8 p-6" interactive={false}>
+            <Card className="mt-8 p-6" interactive="subtle">
               <YearEnergyMonths data={data.yearEnergy12} title="" />
             </Card>
           </section>
@@ -607,7 +607,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
 
         {/* 寫給您的話(letterFinal) */}
         <section className="mb-16">
-          <Card className="p-10" interactive={false}>
+          <Card className="p-10" interactive="subtle">
             <h3
               className="text-2xl font-semibold text-[var(--jy-text-gold)] mb-6 text-center"
               style={{ fontFamily: 'var(--jy-font-display)' }}
