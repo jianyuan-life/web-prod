@@ -1,0 +1,8 @@
+# 鑒源 JianYuan — 漏洞揭露政策(舊路徑、保留向後相容)
+# 標準路徑請改 /.well-known/security.txt(RFC 9116)
+
+Contact: mailto:support@jianyuan.life
+Contact: https://jianyuan.life/contact
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: zh-TW, zh-CN, en
+Canonical: https://jianyuan.life/.well-known/security.txt

@@ -1,0 +1,28 @@
+# 鑒源 JianYuan — 漏洞揭露政策(RFC 9116 security.txt v5.10.327)
+# https://www.rfc-editor.org/rfc/rfc9116
+# 若您發現本平台的安全漏洞、請依下列方式聯絡我們、我們會在 72 小時內回覆。
+
+Contact: mailto:support@jianyuan.life
+Contact: https://jianyuan.life/contact
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: zh-TW, zh-CN, en
+Canonical: https://jianyuan.life/.well-known/security.txt
+Policy: https://jianyuan.life/security-policy
+Hiring: https://jianyuan.life/about
+
+# 我們承諾:
+# 1. 收到通報後 72 小時內回覆
+# 2. 不對善意安全研究人員追究法律責任(safe harbor)
+# 3. 漏洞修復後致謝(若您願意公開)
+# 4. 嚴禁:資料外洩 / 客戶帳號操作 / DDoS / 社交工程
+
+# 範圍(In-scope):
+# - jianyuan.life 主網域
+# - api.jianyuan.life(若有)
+# - jianyuan-life Fly.io API endpoints
+
+# 範圍外(Out-of-scope):
+# - 第三方服務(Stripe / Supabase / Resend / Vercel)— 請直接通報原廠
+# - 社交工程 / 物理攻擊 / 釣魚
+# - DoS / DDoS / 大量自動化
+# - 已知 issues(我們追蹤中)
