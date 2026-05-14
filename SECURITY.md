@@ -82,15 +82,7 @@
 ## 7. Sprint 5 待做(L4 Gemini grounding 2026-05-14 verify 93/100)
 
 優先序(高 → 低):
-1. **Subresource Integrity (SRI)** for Stripe / Turnstile inline scripts(OWASP 2025 A03、預估 30 min)
-2. **Speculative Rules API**(LCP 改善 200-500ms、預估 1h)
-3. **Server Taint API(`experimental.taint`)**(防敏感變數誤導出 client、預估 1h)
-4. **Edge Config 動態 IP blacklist**(秒級同步 vs hardcode、預估 2h)
-5. **INP 優化 React Compiler**(預估 INP 改善 50-100ms、預估 4h)
-6. **Upstash Redis sliding window**(跨區同步、需 Vercel Marketplace 設定、預估 4h)
-7. **Sentry 啟用**(npm install + DSN env、待老闆 / 自註冊 sentry.io、預估 30 min 設定 + 1h 整合)
-8. **CSP nonce-based**(移 unsafe-inline、6h)
-9. **Cookie auth /report/[token]**(改 short-lived signed JWT、8h)
+**(本段已搬到 #7「Sprint 5 已完成」上方、保留作 Sprint 5 開始前的 baseline 對照、無需動)**
 
 ## 8. Honeypot 陷阱端點(v5.10.332)
 
