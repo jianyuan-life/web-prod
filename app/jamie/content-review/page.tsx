@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
 import { maskEmail } from '@/lib/privacy-mask'
 import { PLAN_NAMES } from '@/lib/plan-names'
+import { internalGet, internalPost } from '@/lib/api'  // T10b v5.10.381(timeout + 429)
 
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -80,14 +81,14 @@ export default function ContentReviewPage() {
     if (!adminKey) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/content-review?status=${statusFilter}`, {
+      // T10b v5.10.381 — internalGet 統一處理(timeout + 429)
+      const data = await internalGet(`/api/admin/content-review?status=${statusFilter}`, {
         headers: { 'x-admin-key': adminKey },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setItems(data.items || [])
-        setTotalFlagged(data.stats?.total_flagged || 0)
-      }
+      }) as { items?: ModerationItem[]; stats?: { total_flagged?: number } }
+      setItems(data.items || [])
+      setTotalFlagged(data.stats?.total_flagged || 0)
+    } catch {
+      /* silent fail、UI 顯示空 list */
     } finally { setLoading(false) }
   }, [adminKey, statusFilter])
 
@@ -107,19 +108,13 @@ export default function ContentReviewPage() {
     const note = window.prompt('處置備註（可選，會記錄到稽核日誌）') || undefined
     setActionLoading(logId)
     try {
-      const res = await fetch('/api/admin/content-review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
-        body: JSON.stringify({ logId, action, note }),
+      // T10b v5.10.381 — internalPost 統一處理(timeout + 429 + ApiError throw)
+      await internalPost('/api/admin/content-review', { logId, action, note }, {
+        headers: { 'x-admin-key': adminKey },
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: '請求失敗' }))
-        window.alert(`操作失敗：${err.error || res.status}`)
-      } else {
-        await fetchItems()
-      }
+      await fetchItems()
     } catch (e) {
-      window.alert(`網路錯誤：${e instanceof Error ? e.message : String(e)}`)
+      window.alert(`操作失敗:${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setActionLoading(null)
     }

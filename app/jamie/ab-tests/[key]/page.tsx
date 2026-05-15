@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useAdminAuth } from '../../layout'
 import { zTestTwoProportions } from '@/lib/ab-test'
+import { internalGet, internalPatch } from '@/lib/api'  // T10b v5.10.381(timeout + 429 + REST verb)
 
 interface VariantStats {
   variant: string
@@ -44,9 +45,10 @@ export default function ExperimentDetailPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/ab-tests', { headers: { 'x-admin-key': adminKey } })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
+      // T10b v5.10.381 — internalGet 統一處理(timeout + 429 + ApiError)
+      const data = await internalGet('/api/admin/ab-tests', {
+        headers: { 'x-admin-key': adminKey },
+      }) as { experiments?: ExperimentWithStats[] }
       const found = (data.experiments || []).find((e: ExperimentWithStats) => e.key === expKey)
       if (!found) throw new Error('找不到此實驗')
       setExp(found)
@@ -97,12 +99,10 @@ export default function ExperimentDetailPage() {
     }
     setActionLoading(true)
     try {
-      const res = await fetch(`/api/admin/ab-tests?key=${encodeURIComponent(exp.key)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
-        body: JSON.stringify({ status, winner }),
+      // T10b v5.10.381 — internalPatch 統一處理(timeout + 429 + ApiError throw)
+      await internalPatch(`/api/admin/ab-tests?key=${encodeURIComponent(exp.key)}`, { status, winner }, {
+        headers: { 'x-admin-key': adminKey },
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       await load()
     } catch (e) {
       alert(e instanceof Error ? e.message : '操作失敗')

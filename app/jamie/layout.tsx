@@ -3,6 +3,7 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { internalGet, RateLimitError, ApiError } from '@/lib/api'  // T10b v5.10.381(timeout + 429 + ApiError)
 
 // 全域 Admin 認證 Context
 const AdminAuthContext = createContext<{ authed: boolean; adminKey: string; setAuthed: (v: boolean) => void; setAdminKey: (k: string) => void }>({
@@ -58,19 +59,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setLoading(true)
     setLoginError('')
     try {
-      // 用 x-admin-key header 驗證（不再塞到 URL query）
-      const res = await fetch(`/api/admin?range=7d`, {
+      // T10b v5.10.381 — internalGet 統一處理 429 / ApiError(原 raw fetch + 手動 status check)
+      // 用 x-admin-key header 驗證(不再塞到 URL query)
+      await internalGet(`/api/admin?range=7d`, {
         headers: { 'x-admin-key': keyInput },
       })
-      if (res.ok) {
-        setAdminKey(keyInput)
-        setAuthed(true)
-      } else if (res.status === 429) {
-        setLoginError('嘗試次數過多，請稍後再試')
+      setAdminKey(keyInput)
+      setAuthed(true)
+    } catch (e) {
+      if (e instanceof RateLimitError) {
+        setLoginError(`嘗試次數過多、請等 ${e.retryAfter} 秒後再試`)
+      } else if (e instanceof ApiError) {
+        setLoginError(e.status === 401 || e.status === 403 ? '密碼錯誤' : `驗證失敗(HTTP ${e.status})`)
       } else {
-        setLoginError('密碼錯誤')
+        setLoginError('連線失敗')
       }
-    } catch { setLoginError('連線失敗') }
+    }
     finally { setLoading(false) }
   }
 

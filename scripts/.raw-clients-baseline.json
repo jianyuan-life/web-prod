@@ -1,9 +1,9 @@
 {
-  "generated": "2026-05-15T09:40:30.189Z",
+  "generated": "2026-05-15T09:50:37.230Z",
   "summary": {
     "no-raw-fetch": {
-      "fileCount": 45,
-      "totalOccurrences": 89
+      "fileCount": 40,
+      "totalOccurrences": 80
     },
     "no-raw-supabase-service-client": {
       "fileCount": 0,
@@ -111,26 +111,6 @@
       {
         "file": "app/error.tsx",
         "count": 1
-      },
-      {
-        "file": "app/jamie/ab-tests/[key]/page.tsx",
-        "count": 2
-      },
-      {
-        "file": "app/jamie/ab-tests/page.tsx",
-        "count": 2
-      },
-      {
-        "file": "app/jamie/content-review/page.tsx",
-        "count": 2
-      },
-      {
-        "file": "app/jamie/layout.tsx",
-        "count": 1
-      },
-      {
-        "file": "app/jamie/recalculate/page.tsx",
-        "count": 2
       },
       {
         "file": "lib/ab-test.ts",

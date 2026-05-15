@@ -15,6 +15,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAdminAuth } from '../layout'
 import { getAllUniqueTimezones } from '@/lib/cities-with-tz'
 import { maskEmail } from '@/lib/privacy-mask'
+import { internalGet, internalPost } from '@/lib/api'  // T10b v5.10.381(timeout + 429)
 
 interface Row {
   id: string
@@ -49,14 +50,12 @@ export default function RecalculatePage() {
   const fetchList = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/timezone-missing?limit=200', {
+      // T10b v5.10.381 — internalGet 統一處理(timeout + 429)
+      const data = await internalGet('/api/admin/timezone-missing?limit=200', {
         headers: { 'x-admin-key': adminKey },
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setRows(data.reports || [])
-        setTotal(data.total || 0)
-      }
+      }) as { reports?: Row[]; total?: number }
+      setRows(data.reports || [])
+      setTotal(data.total || 0)
     } catch (e) {
       console.error(e)
     } finally {
@@ -85,20 +84,19 @@ export default function RecalculatePage() {
       if (lat != null) body.birth_lat = lat
       if (lng != null) body.birth_lng = lng
       if (city) body.birth_city = city
-      const res = await fetch('/api/admin/recalculate-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
-        body: JSON.stringify(body),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setActionMessage(`✓ 已重算 ${r.client_name || r.id.slice(0, 8)}（${tz}）`)
+      // T10b v5.10.381 — internalPost 統一處理(timeout + 429 + ApiError)
+      try {
+        await internalPost('/api/admin/recalculate-report', body, {
+          headers: { 'x-admin-key': adminKey },
+        })
+        setActionMessage(`✓ 已重算 ${r.client_name || r.id.slice(0, 8)}(${tz})`)
         setRows(prev => prev.filter(x => x.id !== r.id))
-      } else {
-        setActionMessage(`✗ 失敗：${data.error || res.status}`)
+      } catch (apiErr) {
+        const msg = apiErr instanceof Error ? apiErr.message : '未知錯誤'
+        setActionMessage(`✗ 失敗:${msg}`)
       }
     } catch (e) {
-      setActionMessage(`✗ 網路錯誤：${e instanceof Error ? e.message : 'unknown'}`)
+      setActionMessage(`✗ 網路錯誤:${e instanceof Error ? e.message : 'unknown'}`)
     } finally {
       setPending(prev => {
         const next = new Set(prev)

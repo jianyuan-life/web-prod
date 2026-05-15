@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useAdminAuth } from '../layout'
 import { zTestTwoProportions } from '@/lib/ab-test'
+import { internalGet, internalPost } from '@/lib/api'  // T10b v5.10.381(timeout + 429)
 
 interface VariantStats {
   variant: string
@@ -41,9 +42,10 @@ export default function ABTestsPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/ab-tests', { headers: { 'x-admin-key': adminKey } })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
+      // T10b v5.10.381 — internalGet 統一處理(timeout + 429 + ApiError)
+      const data = await internalGet('/api/admin/ab-tests', {
+        headers: { 'x-admin-key': adminKey },
+      }) as { experiments?: ExperimentWithStats[] }
       setExperiments(data.experiments || [])
     } catch (e) {
       setErr(e instanceof Error ? e.message : '載入失敗')
@@ -232,15 +234,10 @@ function CreateModal({
     setSaving(true)
     setErr('')
     try {
-      const res = await fetch('/api/admin/ab-tests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
-        body: JSON.stringify({ key, name, description, variants }),
+      // T10b v5.10.381 — internalPost 統一處理(timeout + 429 + ApiError throw)
+      await internalPost('/api/admin/ab-tests', { key, name, description, variants }, {
+        headers: { 'x-admin-key': adminKey },
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || `HTTP ${res.status}`)
-      }
       onCreated()
     } catch (e) {
       setErr(e instanceof Error ? e.message : '儲存失敗')
