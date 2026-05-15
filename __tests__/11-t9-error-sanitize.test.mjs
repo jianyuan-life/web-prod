@@ -24,6 +24,12 @@ function sanitizeErrorMessage(msg) {
     /\b\d{3}-?\d{2}-?\d{4}\b/,
     /"errors"\s*:\s*\[/,
     /webpack-internal:|\(rsc\)|__next|node_modules/i,
+    // T9 v5.10.355
+    /\b(?:\d{1,3}\.){3}\d{1,3}\b/,
+    /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/,
+    /AKIA[0-9A-Z]{16}/,
+    /[A-Z]:\\[\w\\.-]+/,
+    /(token|jwt|cookie|session)[\s=:]+[A-Za-z0-9._-]{20,}/i,
   ]
   for (const p of dangerousPatterns) {
     if (p.test(trimmed)) return '頁面載入時發生錯誤、請稍後再試。'
@@ -112,4 +118,29 @@ test('T9-17 framework debug-only(Next.js)攔', () => {
   assert.equal(sanitizeErrorMessage('webpack-internal:///./app/page.tsx'), FALLBACK)
   assert.equal(sanitizeErrorMessage('Error in node_modules/foo'), FALLBACK)
   assert.equal(sanitizeErrorMessage('(rsc) compile fail'), FALLBACK)
+})
+
+// T9 v5.10.355 L2+L3 共識補 P1
+test('T9-18 IPv4 PII 攔', () => {
+  assert.equal(sanitizeErrorMessage('Connection failed 192.168.1.1'), FALLBACK)
+})
+
+test('T9-19 JWT leak 攔', () => {
+  assert.equal(
+    sanitizeErrorMessage('Bad eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'),
+    FALLBACK,
+  )
+})
+
+test('T9-20 AWS key 攔', () => {
+  assert.equal(sanitizeErrorMessage('Bad key AKIAIOSFODNN7EXAMPLE'), FALLBACK)
+})
+
+test('T9-21 Windows path 攔', () => {
+  assert.equal(sanitizeErrorMessage('File not found C:\\Users\\Admin\\.env'), FALLBACK)
+})
+
+test('T9-22 generic token-ish 攔', () => {
+  assert.equal(sanitizeErrorMessage('token=abc123def456ghi789jkl0mn'), FALLBACK)
+  assert.equal(sanitizeErrorMessage('cookie: sb-token=eyJabcdefghijklmnopqrstuvwx'), FALLBACK)
 })

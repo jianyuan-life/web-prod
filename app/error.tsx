@@ -37,6 +37,12 @@ function sanitizeErrorMessage(msg: string | undefined): string {
     /\b\d{3}-?\d{2}-?\d{4}\b/,                  // US SSN PII
     /"errors"\s*:\s*\[/,                        // GraphQL error format
     /webpack-internal:|\(rsc\)|__next|node_modules/i, // Next.js / RSC framework debug-only
+    // T9 v5.10.355(L2+L3 共識 P1 補、目標 95 gate):
+    /\b(?:\d{1,3}\.){3}\d{1,3}\b/,              // IPv4 PII
+    /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, // JWT
+    /AKIA[0-9A-Z]{16}/,                          // AWS access key
+    /[A-Z]:\\[\w\\.-]+/,                         // Windows path
+    /(token|jwt|cookie|session)[\s=:]+[A-Za-z0-9._-]{20,}/i, // generic token-ish
   ]
   for (const p of dangerousPatterns) {
     if (p.test(trimmed)) return '頁面載入時發生錯誤、請稍後再試。'
@@ -48,6 +54,14 @@ function sanitizeErrorMessage(msg: string | undefined): string {
 
 export default function Error({ error, reset }: ErrorPageProps) {
   const [cooldown, setCooldown] = useState(0)
+  // T9 v5.10.355(L2/L3 共識 P1 修):指數 backoff + reset persist
+  // 用 sessionStorage 跨 boundary remount(同 session 多次 error)
+  const [retryCount, setRetryCount] = useState(() => {
+    if (typeof window === 'undefined') return 0
+    try {
+      return parseInt(sessionStorage.getItem('jy_error_retry_count') || '0', 10) || 0
+    } catch { return 0 }
+  })
 
   // T9:啟動時自動上報 /api/error-report(client-side)
   useEffect(() => {
@@ -85,7 +99,14 @@ export default function Error({ error, reset }: ErrorPageProps) {
   }, [cooldown])
 
   const handleRetry = () => {
-    setCooldown(3)
+    // T9 v5.10.355:指數 backoff(2^n、cap 60s)、防 cascade + 客戶連按
+    const next = retryCount + 1
+    const wait = Math.min(60, Math.pow(2, next))  // 2, 4, 8, 16, 32, 60, 60...
+    setCooldown(wait)
+    setRetryCount(next)
+    try {
+      sessionStorage.setItem('jy_error_retry_count', String(next))
+    } catch { /* sessionStorage 不可用、persist 失敗 */ }
     reset()
   }
 
