@@ -16,6 +16,7 @@ export type AuditEventType =
   | 'csp-violation' // browser CSP report
   | 'invalid-internal-request' // cron secret fail
   | 'turnstile-fail-closed' // production no secret
+  | 'turnstile-failed' // Phase 5 v5.10.377:client 提交 token 驗證失敗(bot / replay attack)
   | 'client-error' // T9 v5.10.353:client-side error.tsx 自動上報(L1+L4 抓 P1)
   | 'email-send-failed' // T12 v5.10.361:Resend send 失敗 3 次後 dead-letter
 

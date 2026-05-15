@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { internalGet, internalPost } from '@/lib/api'  // T10b v5.10.375(timeout + 429 handling)
+import TurnstileWidget from '@/components/security/TurnstileWidget'  // Phase 5 v5.10.377 老闆按鈕 #5(Turnstile bot 防護)
 
 function SignupForm() {
   const params = useSearchParams()
@@ -16,6 +17,8 @@ function SignupForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  // Phase 5 v5.10.377 — Turnstile token state(老闆灌 NEXT_PUBLIC_TURNSTILE_SITE_KEY 後 widget 自動顯示)
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   // 推薦碼驗證
   useEffect(() => {
@@ -50,6 +53,25 @@ function SignupForm() {
       setError('兩次輸入的密碼不一致')
       setLoading(false)
       return
+    }
+
+    // Phase 5 v5.10.377 — Turnstile bot 防護:有 site key 時必驗(沒設則 stub mode 自動 pass)
+    // dev 模式下 widget 不顯示、token 留空、server 回 stub success(本地測試友好)
+    // production:沒設 secret = fail-closed 拒絕(已在 lib/security/turnstile.ts 處理)
+    const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    if (turnstileSiteKey) {
+      try {
+        const verifyRes = await internalPost('/api/auth/turnstile-verify', { token: turnstileToken }) as { success?: boolean; errorCodes?: string[] }
+        if (!verifyRes.success) {
+          setError('人機驗證失敗、請重新嘗試')
+          setLoading(false)
+          return
+        }
+      } catch {
+        setError('人機驗證系統異常、請稍後再試')
+        setLoading(false)
+        return
+      }
     }
 
     const { data: signUpData, error } = await supabase.auth.signUp({
@@ -206,6 +228,9 @@ function SignupForm() {
           </div>
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
+          {/* Phase 5 v5.10.377 — Cloudflare Turnstile bot 防護(老闆灌 NEXT_PUBLIC_TURNSTILE_SITE_KEY 後自動 render、未設則隱身) */}
+          <TurnstileWidget onVerify={setTurnstileToken} />
 
           <button type="submit" disabled={loading}
             className="w-full py-3 bg-gold text-dark font-bold rounded-xl btn-glow disabled:opacity-50">
