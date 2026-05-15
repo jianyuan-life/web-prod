@@ -5,6 +5,7 @@
 // 對應 5 家 audit 共識 P0「無真實社會證明 / 無風險逆轉 / Stripe 信任徽章缺」
 
 import { useEffect, useState } from 'react'
+import { internalGet } from '@/lib/api'  // T10b v5.10.375(timeout + 429 silent fail)
 
 type Variant = 'pricing' | 'checkout' | 'compact'
 
@@ -12,9 +13,9 @@ export default function TrustBar({ variant = 'pricing' }: { variant?: Variant })
   const [count, setCount] = useState<number | null>(null)
 
   useEffect(() => {
-    fetch('/api/stats')
-      .then((r) => r.json())
-      .then((d) => setCount(typeof d.count === 'number' ? d.count : null))
+    // T10b v5.10.375 — internalGet 統一處理(timeout 30s)
+    internalGet('/api/stats')
+      .then((d) => setCount(typeof (d as { count?: number }).count === 'number' ? (d as { count: number }).count : null))
       .catch(() => {})
   }, [])
 

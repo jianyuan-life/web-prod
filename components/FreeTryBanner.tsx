@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { internalGet } from '@/lib/api'  // T10b v5.10.375(timeout + 429 silent fail)
 
 export default function FreeTryBanner() {
   const [hasPromo, setHasPromo] = useState<boolean | null>(null)
 
   useEffect(() => {
-    fetch('/api/promotions/active')
-      .then(r => r.json())
-      .then(d => setHasPromo(!!d.promotion))
+    // T10b v5.10.375 — internalGet 統一處理(timeout 30s)
+    internalGet('/api/promotions/active')
+      .then((d) => setHasPromo(!!(d as { promotion?: unknown }).promotion))
       .catch(() => setHasPromo(false))
   }, [])
 

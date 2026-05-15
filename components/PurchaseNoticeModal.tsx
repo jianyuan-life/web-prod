@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { reportClientFailure } from '@/lib/security/client-audit'
+import { internalPost } from '@/lib/api'  // T10b v5.10.375(timeout + 429 handling)
 // @ts-expect-error react-dom 型別在 Next.js 15 依賴中由 next 自身帶、外層 TS 無法檢測
 import { createPortal } from 'react-dom'
 
@@ -160,24 +161,25 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
     return () => { document.body.style.overflow = origOverflow }
   }, [])
 
-  // v5.3.66 — E2 專屬：動態抓下個晦日執行時段
+  // v5.3.66 — E2 專屬:動態抓下個晦日執行時段
+  // T10b v5.10.375 — internalPost 統一處理(timeout + 429 silent fail to fallback 靜態文案)
   useEffect(() => {
     if (planCode !== 'E2' || !mounted) return
     setE2Loading(true)
     const nowIso = new Date().toISOString()
-    fetch('/api/engine/v2/lunar/e2-purchase-window', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ datetime_iso: nowIso }),
-    })
-      .then(r => r.json())
-      .then(json => {
-        if (json?.success && json?.data?.target_hui_day) {
-          setE2Window(formatE2Window(json.data))
+    internalPost('/api/engine/v2/lunar/e2-purchase-window', { datetime_iso: nowIso })
+      .then((json) => {
+        const j = json as { success?: boolean; data?: { target_hui_day?: string; target_lunar_month?: number; target_lunar_year_gz?: string } }
+        if (j?.success && j?.data?.target_hui_day && j.data.target_lunar_month !== undefined) {
+          setE2Window(formatE2Window({
+            target_hui_day: j.data.target_hui_day,
+            target_lunar_month: j.data.target_lunar_month,
+            target_lunar_year_gz: j.data.target_lunar_year_gz,
+          }))
         }
       })
       .catch((e) => {
-        // T11 v5.10.360:仍 fallback 靜態文案、但加 audit 上報
+        // T11 v5.10.360:仍 fallback 靜態文案、但加 audit 上報(含 RateLimitError)
         reportClientFailure('e2_purchase_window_fetch', e, { extra: { planCode } })
       })
       .finally(() => setE2Loading(false))

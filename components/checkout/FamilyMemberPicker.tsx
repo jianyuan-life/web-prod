@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { reportClientFailure } from '@/lib/security/client-audit'
+import { internalGet } from '@/lib/api'  // T10b v5.10.375(timeout + 429 handling)
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 
 interface FamilyMemberPickerProps {
@@ -31,15 +32,11 @@ export default function FamilyMemberPicker({ onSelect }: FamilyMemberPickerProps
     if (!authToken) return
     async function fetch_() {
       try {
-        const res = await fetch('/api/family-members', {
-          headers: { 'Authorization': `Bearer ${authToken}` },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setMembers(data.members || [])
-        }
+        // T10b v5.10.375 — internalGet 統一處理(timeout + RateLimitError)
+        const data = await internalGet('/api/family-members', { authToken }) as { members?: SavedFamilyMember[] }
+        setMembers(data.members || [])
       } catch (e) {
-        // T11 v5.10.360
+        // T11 v5.10.360(含 RateLimitError)
         reportClientFailure('family_member_picker_fetch', e)
       }
       setLoading(false)

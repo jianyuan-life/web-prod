@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { searchLocations, searchCities, type LocationSearchResult, type City, type Country } from '@/lib/cities'
 import { SHICHEN } from '@/components/checkout/types'
+import { internalPost, internalPatch, RateLimitError } from '@/lib/api'  // T10b v5.10.375(timeout + 429 + REST verb)
 import type { SavedFamilyMember } from './FamilyMembersManager'
 
 interface FamilyMemberModalProps {
@@ -97,24 +98,19 @@ export default function FamilyMemberModal({ authToken, member, onClose, onSaved 
     }
 
     try {
-      const url = isEdit ? `/api/family-members/${member.id}` : '/api/family-members'
-      const res = await fetch(url, {
-        method: isEdit ? 'PATCH' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (res.ok) {
-        onSaved()
+      // T10b v5.10.375 — internalPatch / internalPost 統一處理(timeout + 429 + ApiError)
+      if (isEdit) {
+        await internalPatch(`/api/family-members/${member.id}`, payload, { authToken })
       } else {
-        const data = await res.json()
-        setError(data.error || '儲存失敗')
+        await internalPost('/api/family-members', payload, { authToken })
       }
-    } catch {
-      setError('網路錯誤，請稍後再試')
+      onSaved()
+    } catch (e) {
+      if (e instanceof RateLimitError) {
+        setError(`儲存過於頻繁、請等 ${e.retryAfter} 秒後重試`)
+      } else {
+        setError(e instanceof Error ? e.message : '網路錯誤、請稍後再試')
+      }
     }
     setSaving(false)
   }

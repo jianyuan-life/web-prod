@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { internalGet, internalPost } from '@/lib/api'  // T10b v5.10.375(timeout + 429 handling)
 
 function SignupForm() {
   const params = useSearchParams()
@@ -21,9 +22,9 @@ function SignupForm() {
     if (!refCode || refCode.length < 5) { setRefValid(null); return }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/referral/validate?code=${encodeURIComponent(refCode)}`)
-        const data = await res.json()
-        setRefValid(data.valid ? data.referrerName : null)
+        // T10b v5.10.375 — internalGet 統一處理(timeout + RateLimitError silent fail)
+        const data = await internalGet(`/api/referral/validate?code=${encodeURIComponent(refCode)}`) as { valid?: boolean; referrerName?: string }
+        setRefValid(data.valid ? (data.referrerName ?? null) : null)
       } catch { setRefValid(null) }
     }, 500)
     return () => clearTimeout(timer)
@@ -70,17 +71,14 @@ function SignupForm() {
       setError(zhMsg)
       setLoading(false)
     } else {
-      // 註冊成功後，寫入推薦關係到 referrals 表
+      // 註冊成功後、寫入推薦關係到 referrals 表
       if (refCode && refValid && signUpData?.user?.id) {
         try {
-          await fetch('/api/referral/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              referralCode: refCode,
-              userId: signUpData.user.id,
-              email: form.email,
-            }),
+          // T10b v5.10.375 — internalPost 統一處理(timeout + RateLimitError 視為成功 fall-through)
+          await internalPost('/api/referral/register', {
+            referralCode: refCode,
+            userId: signUpData.user.id,
+            email: form.email,
           })
         } catch {
           // 推薦碼寫入失敗不影響註冊流程
