@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { reportClientFailure } from '@/lib/security/client-audit'
 // Bug #29：改用全站 singleton，避免 GoTrueClient 多實例衝突
 //   （「Multiple GoTrueClient instances detected」+「Lock was released because another request stole it」）
 import { supabase } from '@/lib/supabase'
@@ -52,8 +53,8 @@ export default function ReportFeedback({ reportId, planCode, customerEmail }: Re
         setWouldRecommend(feedback.would_recommend)
         setSubmitted(true)
       }
-    } catch {
-      // 靜默失敗
+    } catch (e) {
+      reportClientFailure('feedback_load_existing', e, { extra: { reportId } })
     }
   }, [reportId])
 
@@ -77,8 +78,8 @@ export default function ReportFeedback({ reportId, planCode, customerEmail }: Re
           accessToken: session.access_token,
         })
         await loadExistingFeedback(session.access_token)
-      } catch {
-        // 靜默失敗
+      } catch (e) {
+        reportClientFailure('feedback_check_auth', e)
       } finally {
         setLoading(false)
       }
@@ -119,8 +120,9 @@ export default function ReportFeedback({ reportId, planCode, customerEmail }: Re
         setSubmitted(true)
         setIsEditing(false)
       }
-    } catch {
-      // 靜默失敗
+    } catch (e) {
+      // T11 v5.10.360:用戶填了 feedback 失敗、加 audit 上報(無 error UI state、保 silent UX)
+      reportClientFailure('feedback_submit', e, { extra: { reportId, rating }, severity: 'error' })
     } finally {
       setSubmitting(false)
     }

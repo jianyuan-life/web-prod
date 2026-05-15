@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { reportClientFailure } from '@/lib/security/client-audit'
 
 // 處理 Google OAuth 登入後的待處理推薦碼
 // 在 signup 頁面點 Google 登入前，推薦碼已存入 localStorage
@@ -30,8 +31,11 @@ export default function ReferralHandler() {
           // 成功或冪等成功，清除 localStorage
           localStorage.removeItem('pending_referral_code')
         }
-      } catch {
-        // 靜默失敗，下次載入頁面時會重試
+      } catch (e) {
+        // T11 v5.10.360:仍下次重試、加 audit 上報
+        reportClientFailure('referral_register_pending', e, {
+          severity: 'info', // 預期會 retry、降為 info
+        })
       }
     }
 

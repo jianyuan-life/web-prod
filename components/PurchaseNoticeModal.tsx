@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { reportClientFailure } from '@/lib/security/client-audit'
 // @ts-expect-error react-dom 型別在 Next.js 15 依賴中由 next 自身帶、外層 TS 無法檢測
 import { createPortal } from 'react-dom'
 
@@ -175,7 +176,10 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
           setE2Window(formatE2Window(json.data))
         }
       })
-      .catch(() => { /* 靜默失敗、fallback 到靜態 timing 文案 */ })
+      .catch((e) => {
+        // T11 v5.10.360:仍 fallback 靜態文案、但加 audit 上報
+        reportClientFailure('e2_purchase_window_fetch', e, { extra: { planCode } })
+      })
       .finally(() => setE2Loading(false))
   }, [planCode, mounted])
 

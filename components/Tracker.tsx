@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
+import { reportClientFailure } from '@/lib/security/client-audit'
 
 // 自動追蹤每次頁面訪問 + 停留時間
 export default function Tracker() {
@@ -42,7 +43,10 @@ export default function Tracker() {
           event_type: 'pageview',
           referrer: document.referrer || '',
         }),
-      }).catch(() => {}) // 靜默失敗
+      }).catch((e) => {
+        // T11 v5.10.360:tracker 失敗仍 silent UX、加低 severity audit
+        reportClientFailure('tracker_pageview', e, { severity: 'info' })
+      })
     }
 
     // 延遲 100ms 確保 session ID 已生成

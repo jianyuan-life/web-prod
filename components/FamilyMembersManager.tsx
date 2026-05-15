@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { reportClientFailure } from '@/lib/security/client-audit'
 import FamilyMemberModal from './FamilyMemberModal'
 
 export interface SavedFamilyMember {
@@ -58,7 +59,10 @@ export default function FamilyMembersManager() {
         const data = await res.json()
         setMembers(data.members || [])
       }
-    } catch { /* 靜默 */ }
+    } catch (e) {
+      // T11 v5.10.360:取代 catch /* 靜默 */ 改用 client-audit 上報
+      reportClientFailure('family_members_fetch', e)
+    }
     setLoading(false)
   }, [authToken])
 
@@ -76,7 +80,10 @@ export default function FamilyMembersManager() {
       if (res.ok) {
         setMembers(prev => prev.filter(m => m.id !== id))
       }
-    } catch { /* 靜默 */ }
+    } catch (e) {
+      // T11 v5.10.360
+      reportClientFailure('family_members_delete', e, { extra: { memberId: id } })
+    }
     setDeletingId(null)
     setConfirmDeleteId(null)
   }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { reportClientFailure } from '@/lib/security/client-audit'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 
 interface FamilyMemberPickerProps {
@@ -37,7 +38,10 @@ export default function FamilyMemberPicker({ onSelect }: FamilyMemberPickerProps
           const data = await res.json()
           setMembers(data.members || [])
         }
-      } catch { /* 靜默 */ }
+      } catch (e) {
+        // T11 v5.10.360
+        reportClientFailure('family_member_picker_fetch', e)
+      }
       setLoading(false)
     }
     fetch_()
