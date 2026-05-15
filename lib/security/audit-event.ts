@@ -17,6 +17,7 @@ export type AuditEventType =
   | 'invalid-internal-request' // cron secret fail
   | 'turnstile-fail-closed' // production no secret
   | 'client-error' // T9 v5.10.353:client-side error.tsx 自動上報(L1+L4 抓 P1)
+  | 'email-send-failed' // T12 v5.10.361:Resend send 失敗 3 次後 dead-letter
 
 export interface AuditEvent {
   type: AuditEventType
