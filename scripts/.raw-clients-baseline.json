@@ -1,9 +1,9 @@
 {
-  "generated": "2026-05-15T09:10:35.409Z",
+  "generated": "2026-05-15T09:17:52.448Z",
   "summary": {
     "no-raw-fetch": {
-      "fileCount": 51,
-      "totalOccurrences": 96
+      "fileCount": 47,
+      "totalOccurrences": 92
     },
     "no-raw-supabase-service-client": {
       "fileCount": 0,
@@ -138,22 +138,6 @@
       },
       {
         "file": "app/report/[token]/ReportTracker.tsx",
-        "count": 1
-      },
-      {
-        "file": "app/tools/bazi/page.tsx",
-        "count": 1
-      },
-      {
-        "file": "app/tools/name/page.tsx",
-        "count": 1
-      },
-      {
-        "file": "app/tools/qimen/page.tsx",
-        "count": 1
-      },
-      {
-        "file": "app/tools/ziwei/page.tsx",
         "count": 1
       },
       {

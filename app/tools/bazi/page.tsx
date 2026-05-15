@@ -5,6 +5,7 @@ import Link from 'next/link'
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
 import { searchCities, searchLocations, type City, type LocationSearchResult } from '@/lib/cities'
+import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(timeout + 429 handling)
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
@@ -397,34 +398,33 @@ export default function FreeToolPage() {
     }, ANALYSIS_STEPS[Math.min(stepIdx, ANALYSIS_STEPS.length - 1)]?.duration || 600)
 
     try {
-      const res = await fetch('/api/free-bazi', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          year:parseInt(form.year), month:parseInt(form.month), day:parseInt(form.day),
-          hour: form.timeMode==='exact' ? parseInt(form.exactHour) : form.timeMode==='shichen' ? parseInt(form.hour) : 12,
-          minute: form.timeMode==='exact' ? parseInt(form.exactMinute) : 0,
-          time_unknown: form.timeMode==='unknown',
-          gender:form.gender, name:form.name,
-          calendar_type: form.calendarType,
-          latitude: form.cityLat || undefined,
-          longitude: form.cityLng || undefined,
-          timezone_offset: form.cityTz,
-        }),
+      // T10b v5.10.376 — internalPost 統一處理 timeout + 429 + ApiError
+      const resultData = await internalPost('/api/free-bazi', {
+        year: parseInt(form.year), month: parseInt(form.month), day: parseInt(form.day),
+        hour: form.timeMode === 'exact' ? parseInt(form.exactHour) : form.timeMode === 'shichen' ? parseInt(form.hour) : 12,
+        minute: form.timeMode === 'exact' ? parseInt(form.exactMinute) : 0,
+        time_unknown: form.timeMode === 'unknown',
+        gender: form.gender, name: form.name,
+        calendar_type: form.calendarType,
+        latitude: form.cityLat || undefined,
+        longitude: form.cityLng || undefined,
+        timezone_offset: form.cityTz,
       })
       clearInterval(stepInterval)
       setCompletedSteps(ANALYSIS_STEPS.map((_, i) => i))
       setCurrentStep(ANALYSIS_STEPS.length)
 
-      if (!res.ok) throw new Error((await res.json()).detail || '分析失敗')
-
       await new Promise(r => setTimeout(r, 500))
-      const resultData = await res.json()
-      setResult(resultData)
+      setResult(resultData as Result)
       gtag.event('generate_lead', { event_category: 'free_tool', tool: 'bazi' })
       fbpixel.trackEvent('Lead', { content_name: '免費命理速算' })
     } catch (err: unknown) {
       clearInterval(stepInterval)
-      setError(err instanceof Error ? err.message : '分析失敗')
+      if (err instanceof RateLimitError) {
+        setError(`分析過於頻繁、請等 ${err.retryAfter} 秒後重試`)
+      } else {
+        setError(err instanceof Error ? err.message : '分析失敗')
+      }
     } finally { setLoading(false) }
   }
 

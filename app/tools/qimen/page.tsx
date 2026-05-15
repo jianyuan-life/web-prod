@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
+import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(timeout + 429)
 import AIAnalysisCard from '@/components/AIAnalysisCard'
 import LiveCounter from '@/components/LiveCounter'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
@@ -209,29 +210,26 @@ export default function QimenToolPage() {
         hour = parseInt(form.hour); minute = 0
       }
 
-      const res = await fetch('/api/free-qimen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, month, day, hour, minute, pan_type: panType }),
+      // T10b v5.10.376 — internalPost 統一處理 timeout + 429 + ApiError
+      const data = await internalPost('/api/free-qimen', {
+        year, month, day, hour, minute, pan_type: panType,
       })
 
       clearInterval(stepInterval)
       setCompletedSteps(ANALYSIS_STEPS.map((_, i) => i))
       setCurrentStep(ANALYSIS_STEPS.length)
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({ detail: '排盤失敗' }))
-        throw new Error(errData.detail || '排盤失敗')
-      }
-
       await new Promise(r => setTimeout(r, 400))
-      const data = await res.json()
-      setResult(data)
+      setResult(data as QimenResult)
       gtag.event('generate_lead', { event_category: 'free_tool', tool: 'qimen' })
       fbpixel.trackEvent('Lead', { content_name: '免費奇門遁甲排盤' })
     } catch (err: unknown) {
       clearInterval(stepInterval)
-      setError(err instanceof Error ? err.message : '排盤失敗，請稍後再試')
+      if (err instanceof RateLimitError) {
+        setError(`排盤過於頻繁、請等 ${err.retryAfter} 秒後重試`)
+      } else {
+        setError(err instanceof Error ? err.message : '排盤失敗、請稍後再試')
+      }
     } finally { setLoading(false) }
   }
 

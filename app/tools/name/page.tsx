@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { searchCities, searchLocations, type LocationSearchResult } from '@/lib/cities'
+import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(timeout + 429)
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
@@ -187,30 +188,31 @@ export default function NameToolPage() {
     }, ANALYSIS_STEPS[Math.min(stepIdx, ANALYSIS_STEPS.length - 1)]?.duration || 600)
 
     try {
-      const res = await fetch('/api/free-name', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          surname: form.surname, givenName: form.givenName,
-          gender: form.gender,
-          year: parseInt(form.year), month: parseInt(form.month), day: parseInt(form.day),
-          hour: form.timeMode === 'exact' ? parseInt(form.exactHour) : form.timeMode === 'shichen' ? parseInt(form.hour) : 12,
-          minute: form.timeMode === 'exact' ? parseInt(form.exactMinute) : 0,
-          time_unknown: form.timeMode === 'unknown',
-          latitude: form.cityLat || undefined,
-          longitude: form.cityLng || undefined,
-          timezone_offset: form.cityTz,
-        }),
+      // T10b v5.10.376 — internalPost 統一處理 timeout + 429 + ApiError(修原 res.json() 重複消費 bug)
+      const resultData = await internalPost('/api/free-name', {
+        surname: form.surname, givenName: form.givenName,
+        gender: form.gender,
+        year: parseInt(form.year), month: parseInt(form.month), day: parseInt(form.day),
+        hour: form.timeMode === 'exact' ? parseInt(form.exactHour) : form.timeMode === 'shichen' ? parseInt(form.hour) : 12,
+        minute: form.timeMode === 'exact' ? parseInt(form.exactMinute) : 0,
+        time_unknown: form.timeMode === 'unknown',
+        latitude: form.cityLat || undefined,
+        longitude: form.cityLng || undefined,
+        timezone_offset: form.cityTz,
       })
       clearInterval(stepInterval)
       setCompletedSteps(ANALYSIS_STEPS.map((_, i) => i))
       setCurrentStep(ANALYSIS_STEPS.length)
 
-      if (!res.ok) throw new Error((await res.json()).detail || '分析失敗')
       await new Promise(r => setTimeout(r, 500))
-      setResult(await res.json())
+      setResult(resultData as NameResult)
     } catch (err: unknown) {
       clearInterval(stepInterval)
-      setError(err instanceof Error ? err.message : '分析失敗')
+      if (err instanceof RateLimitError) {
+        setError(`分析過於頻繁、請等 ${err.retryAfter} 秒後重試`)
+      } else {
+        setError(err instanceof Error ? err.message : '分析失敗')
+      }
     } finally { setLoading(false) }
   }
 
