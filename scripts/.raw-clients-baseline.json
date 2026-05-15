@@ -1,9 +1,9 @@
 {
-  "generated": "2026-05-15T08:57:54.603Z",
+  "generated": "2026-05-15T09:04:49.059Z",
   "summary": {
     "no-raw-fetch": {
-      "fileCount": 63,
-      "totalOccurrences": 110
+      "fileCount": 58,
+      "totalOccurrences": 104
     },
     "no-raw-supabase-service-client": {
       "fileCount": 0,
@@ -173,31 +173,11 @@
         "count": 1
       },
       {
-        "file": "components/HistoricalFigures.tsx",
-        "count": 1
-      },
-      {
-        "file": "components/LiveCounter.tsx",
-        "count": 1
-      },
-      {
-        "file": "components/PromotionBanner.tsx",
-        "count": 2
-      },
-      {
         "file": "components/PurchaseNoticeModal.tsx",
         "count": 1
       },
       {
         "file": "components/ReferralHandler.tsx",
-        "count": 1
-      },
-      {
-        "file": "components/SocialProof.tsx",
-        "count": 1
-      },
-      {
-        "file": "components/Tracker.tsx",
         "count": 1
       },
       {

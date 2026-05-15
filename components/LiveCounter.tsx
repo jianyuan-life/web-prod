@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { internalGet } from '@/lib/api'  // T10b v5.10.374(timeout)
 
 // v5.4.7 P3:支援 type 參數(all/paid/free)
 // - type='all'(預設、首頁用):免費 + 付費合計
@@ -11,9 +12,9 @@ export default function LiveCounter({ type = 'all' }: { type?: 'all' | 'paid' | 
   const [target, setTarget] = useState(0)
 
   useEffect(() => {
-    fetch(`/api/stats?type=${type}`)
-      .then(r => r.json())
-      .then(d => setTarget(d.count ?? 0))
+    // T10b v5.10.374 — internalGet 統一處理(timeout 30s)
+    internalGet(`/api/stats?type=${type}`)
+      .then((d) => setTarget((d as { count?: number }).count ?? 0))
       .catch(() => setTarget(0))
   }, [type])
 

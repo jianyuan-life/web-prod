@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { internalGet } from '@/lib/api'  // T10b v5.10.374(timeout + 401 ApiError 改 throw 不靜默)
 
 interface Figure {
   name: string
@@ -30,52 +31,50 @@ export default function HistoricalFigures({ onSelect }: HistoricalFiguresProps) 
     if (loaded) return
     setLoaded(true)
     // 先取得用戶 session(含 email + access_token)、再查詢歷史報告
+    // T10b v5.10.374 — internalGet 統一處理 timeout + 401 throw ApiError(原 raw fetch + ?.ok 靜默 → 改 try/catch)
     supabase.auth.getSession().then(({ data }) => {
       const session = data.session
       const email = session?.user?.email
       const token = session?.access_token
-      if (!email || !token) return
-      return fetch(`/api/reports?email=${encodeURIComponent(email)}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        credentials: 'include',
-      })
+      if (!email || !token) return null
+      return internalGet(`/api/reports?email=${encodeURIComponent(email)}`, { authToken: token })
     })
-      .then(r => r?.ok ? r.json() : null)
-      .then(data => {
-        if (!data?.reports?.length) return
+      .then((data) => {
+        const reportsData = data as { reports?: Array<{ birth_data: Record<string, unknown> }> } | null
+        if (!reportsData?.reports?.length) return
         const seen = new Set<string>()
         const people: Figure[] = []
-        for (const r of data.reports) {
-          const bd = r.birth_data
+        for (const r of reportsData.reports) {
+          const bd = r.birth_data as Record<string, unknown> & { members?: Array<Record<string, unknown>> }
           if (!bd?.name) continue
           // 用姓名+生日去重
           const key = `${bd.name}-${bd.year}-${bd.month}-${bd.day}`
           if (seen.has(key)) continue
           seen.add(key)
           people.push({
-            name: bd.name,
+            name: String(bd.name),
             year: String(bd.year || '1990'),
             month: String(bd.month || '1'),
             day: String(bd.day || '1'),
             hour: String(bd.hour || '12'),
             minute: String(bd.minute || '0'),
-            gender: bd.gender || 'M',
+            gender: String(bd.gender || 'M'),
           })
-          // 如果是家族/合盤方案，也提取成員
+          // 如果是家族/合盤方案、也提取成員
           if (bd.members) {
             for (const m of bd.members) {
               if (!m.name) continue
-              const mkey = `${m.name}-${m.year}-${m.month}-${m.day}`
+              const mkey = `${String(m.name)}-${m.year}-${m.month}-${m.day}`
               if (seen.has(mkey)) continue
               seen.add(mkey)
               people.push({
-                name: m.name,
+                name: String(m.name),
                 year: String(m.year || '1990'),
                 month: String(m.month || '1'),
                 day: String(m.day || '1'),
                 hour: String(m.hour || '12'),
                 minute: String(m.minute || '0'),
-                gender: m.gender || 'M',
+                gender: String(m.gender || 'M'),
               })
             }
           }

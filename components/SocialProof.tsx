@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { internalGet } from '@/lib/api'  // T10b v5.10.374(timeout)
 
 export default function SocialProof() {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
-    fetch('/api/stats')
-      .then(r => r.json())
-      .then(d => setCount(d.count ?? 0))
+    // T10b v5.10.374 — internalGet 統一處理(timeout 30s)
+    internalGet('/api/stats')
+      .then((d) => setCount((d as { count?: number }).count ?? 0))
       .catch(() => {})
   }, [])
 

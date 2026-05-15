@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { reportClientFailure } from '@/lib/security/client-audit'
+import { internalPost } from '@/lib/api'  // T10b v5.10.374(timeout)
 
 // 自動追蹤每次頁面訪問 + 停留時間
 export default function Tracker() {
@@ -34,17 +35,14 @@ export default function Tracker() {
         ;(window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'page_view', { page_path: pathname })
       }
 
-      fetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: sessionId.current,
-          page_path: pathname,
-          event_type: 'pageview',
-          referrer: document.referrer || '',
-        }),
+      // T10b v5.10.374 — internalPost 統一處理(timeout 30s、429 silent fail)
+      internalPost('/api/track', {
+        session_id: sessionId.current,
+        page_path: pathname,
+        event_type: 'pageview',
+        referrer: document.referrer || '',
       }).catch((e) => {
-        // T11 v5.10.360:tracker 失敗仍 silent UX、加低 severity audit
+        // T11 v5.10.360:tracker 失敗仍 silent UX、加低 severity audit(含 RateLimitError)
         reportClientFailure('tracker_pageview', e, { severity: 'info' })
       })
     }

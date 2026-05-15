@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { internalGet } from '@/lib/api'  // T10b v5.10.374(timeout + 429 handling)
 
 interface Promotion {
   name: string
@@ -39,7 +40,10 @@ export function PromotionTopBanner() {
   const [promo, setPromo] = useState<Promotion | null>(null)
 
   useEffect(() => {
-    fetch('/api/promotions/active').then(r => r.json()).then(d => setPromo(d.promotion)).catch(() => {})
+    // T10b v5.10.374 — internalGet 統一處理(timeout + RateLimitError silent fail)
+    internalGet('/api/promotions/active')
+      .then((d) => setPromo((d as { promotion?: Promotion }).promotion ?? null))
+      .catch(() => {})
   }, [])
 
   if (!promo) return null
@@ -64,7 +68,10 @@ export function PromotionPrice({ planCode, originalPrice, children }: {
   const [promo, setPromo] = useState<Promotion | null>(null)
 
   useEffect(() => {
-    fetch('/api/promotions/active').then(r => r.json()).then(d => setPromo(d.promotion)).catch(() => {})
+    // T10b v5.10.374 — internalGet 統一處理
+    internalGet('/api/promotions/active')
+      .then((d) => setPromo((d as { promotion?: Promotion }).promotion ?? null))
+      .catch(() => {})
   }, [])
 
   const isApplicable = promo && (!promo.applicablePlans || promo.applicablePlans.includes(planCode))
