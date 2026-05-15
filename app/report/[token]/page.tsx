@@ -48,6 +48,13 @@ import {
 } from '@/lib/qimen-plain-text'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { validateAccessToken } from '@/lib/security/token-validator'
+// T13 v5.10.362(Master Plan Sprint 7、lesson #144 雙渲染器分裂修):
+// 把 Sprint 1 editorial 4 component wire 進 production legacy renderer
+// 原問題:editorial sweep 22 commit 全進 demo /r/[type]/[id]、production /report/[token] 0 受益
+// 本 commit:加 import + ExecutiveSummary 在 hero 開頭(最 obvious 入口、客戶第一眼看到結論先行)
+// 後續 commits(T13b/c/d):add DropCap 首字下沉 + PullQuote 引文 + StickyTOC sidebar
+import { StickyTOC } from '@/components/report/shared/StickyTOC'
+import { DropCap, PullQuote, ExecutiveSummary } from '@/components/report/shared/DropCap'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -2093,6 +2100,28 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             challenges={personalityCard.challenges || []}
             yearTheme={personalityCard.yearTheme || ''}
           />
+        )}
+
+        {/* T13 v5.10.362(lesson #144 雙渲染器分裂修):ExecutiveSummary editorial component
+            McKinsey 「結論先行」原則、客戶第一眼看到 3 條最關鍵 takeaway、不需 scroll
+            從既有 personalityCard.talents/challenges 規則式抽 3 條、無需動 prompt */}
+        {!isChumenji && !isRelationship && !isFamily && personalityCard && (
+          (() => {
+            const talents = personalityCard.talents || []
+            const challenges = personalityCard.challenges || []
+            const bullets: string[] = []
+            if (talents[0]) bullets.push(`你的核心天賦:${String(talents[0]).slice(0, 80)}`)
+            if (challenges[0]) bullets.push(`本年最大課題:${String(challenges[0]).slice(0, 80)}`)
+            if (personalityCard.yearTheme) bullets.push(`2026 主軸:${String(personalityCard.yearTheme).slice(0, 80)}`)
+            if (bullets.length < 2) return null  // 資料不夠就不渲染、避免空白
+            return (
+              <ExecutiveSummary
+                title="一分鐘看懂"
+                bullets={bullets}
+                className="mb-6"
+              />
+            )
+          })()
         )}
 
         {/* v5.10.8 R+5 首屏命格 5 件套精華卡(Claude Haiku 4 輪 72 分共識「首屏只見評分條 / 缺八字紫微 5 件套」修):
