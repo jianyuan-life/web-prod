@@ -16,6 +16,7 @@ export type AuditEventType =
   | 'csp-violation' // browser CSP report
   | 'invalid-internal-request' // cron secret fail
   | 'turnstile-fail-closed' // production no secret
+  | 'client-error' // T9 v5.10.353:client-side error.tsx 自動上報(L1+L4 抓 P1)
 
 export interface AuditEvent {
   type: AuditEventType

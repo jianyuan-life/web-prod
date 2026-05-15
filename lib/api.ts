@@ -4,6 +4,29 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 //   原本無 timeout → 若 Fly.io 死掉整個 fetch 會 hang 住 Next.js serverless 直到平台 kill
 const DEFAULT_TIMEOUT_MS = 30_000
 
+// T10 v5.10.353 (Master Plan Sprint 7):RateLimitError 帶 retryAfter 給 client UI 顯示倒數
+// 使用:catch (e) { if (e instanceof RateLimitError) { setRetryAfter(e.retryAfter) } }
+export class RateLimitError extends Error {
+  retryAfter: number  // 秒數
+  constructor(message: string, retryAfter: number) {
+    super(message)
+    this.name = 'RateLimitError'
+    this.retryAfter = retryAfter
+  }
+}
+
+// T10:其他 HTTP error 也分類、便於 UI 友好顯示
+export class ApiError extends Error {
+  status: number
+  detail: unknown
+  constructor(message: string, status: number, detail?: unknown) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.detail = detail
+  }
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -12,6 +35,43 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
   } finally {
     clearTimeout(timer)
   }
+}
+
+// T10:統一 response 處理(429 → RateLimitError、其他 4xx/5xx → ApiError)
+async function handleResponse(res: Response): Promise<unknown> {
+  if (res.ok) {
+    return res.json()
+  }
+
+  // T10:429 特殊處理、解析 Retry-After header(秒數 or HTTP-date format)
+  if (res.status === 429) {
+    const retryAfterRaw = res.headers.get('Retry-After') || ''
+    let retryAfter = 60  // default 60 秒
+    const parsed = parseInt(retryAfterRaw, 10)
+    if (!isNaN(parsed) && parsed > 0 && parsed < 86400) {
+      retryAfter = parsed
+    } else if (retryAfterRaw) {
+      // HTTP-date format(RFC 7231)— 算秒差
+      const dateMs = Date.parse(retryAfterRaw)
+      if (!isNaN(dateMs)) {
+        retryAfter = Math.max(1, Math.ceil((dateMs - Date.now()) / 1000))
+      }
+    }
+    let errBody: { error?: string; detail?: string } = {}
+    try { errBody = await res.json() } catch { /* 失敗用 default */ }
+    throw new RateLimitError(
+      errBody.error || errBody.detail || `請求過於頻繁、請等 ${retryAfter} 秒後重試`,
+      retryAfter,
+    )
+  }
+
+  // 其他 error
+  const err = await res.json().catch(() => ({ detail: res.statusText }))
+  throw new ApiError(
+    err.detail || err.error || `請求失敗 (HTTP ${res.status})`,
+    res.status,
+    err,
+  )
 }
 
 export async function apiPost(path: string, body: Record<string, unknown>) {
@@ -26,11 +86,7 @@ export async function apiPost(path: string, body: Record<string, unknown>) {
     const msg = err instanceof Error ? err.message : String(err)
     throw new Error(msg.includes('abort') ? `請求逾時 (${DEFAULT_TIMEOUT_MS}ms)` : `網路錯誤：${msg}`)
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || `請求失敗 (HTTP ${res.status})`)
-  }
-  return res.json()
+  return handleResponse(res)
 }
 
 export async function apiGet(path: string) {
@@ -41,6 +97,5 @@ export async function apiGet(path: string) {
     const msg = err instanceof Error ? err.message : String(err)
     throw new Error(msg.includes('abort') ? `請求逾時 (${DEFAULT_TIMEOUT_MS}ms)` : `網路錯誤：${msg}`)
   }
-  if (!res.ok) throw new Error(`請求失敗 (HTTP ${res.status})`)
-  return res.json()
+  return handleResponse(res)
 }

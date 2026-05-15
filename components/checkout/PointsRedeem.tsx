@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRetryCountdown } from '@/components/hooks/useRetryCountdown'
 
 interface PointsRedeemProps {
   planCode: string
@@ -22,6 +23,8 @@ export default function PointsRedeem({
   const [pointsUsed, setPointsUsed] = useState(0)
   const [error, setError] = useState('')
   const [validating, setValidating] = useState(false)
+  // T10 v5.10.353:429 倒數
+  const { secondsLeft, isReady, start: startCountdown } = useRetryCountdown()
 
   const hasCoupon = !!couponApplied
   const maxPoints = Math.min(balance, Math.floor(orderAmount))
@@ -78,6 +81,17 @@ export default function PointsRedeem({
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ pointsToUse: pts, planCode, orderAmount }),
       })
+
+      // T10 v5.10.353(Master Plan Sprint 7):429 讀 Retry-After 倒數
+      if (res.status === 429) {
+        const retryAfterRaw = res.headers.get('Retry-After') || ''
+        const parsed = parseInt(retryAfterRaw, 10)
+        const retryAfter = !isNaN(parsed) && parsed > 0 && parsed < 86400 ? parsed : 60
+        startCountdown(retryAfter)
+        setError(`請求過於頻繁、請等 ${retryAfter} 秒後重試`)
+        return
+      }
+
       const data = await res.json()
       if (data.success) {
         setPointsUsed(data.pointsUsed)
@@ -86,7 +100,7 @@ export default function PointsRedeem({
         setError(data.error || '驗證失敗')
       }
     } catch {
-      setError('網路錯誤，請稍後再試')
+      setError('網路錯誤、請稍後再試')
     } finally {
       setValidating(false)
     }
@@ -126,12 +140,27 @@ export default function PointsRedeem({
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyPoints())}
               className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-4 py-2 text-cream text-sm focus:border-green-500/40 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
-            <button type="button" onClick={applyPoints} disabled={validating || !pointsInput.trim()}
-              className="px-4 py-2 bg-gold/20 border border-gold/30 text-gold text-sm rounded-lg hover:bg-gold/30 disabled:opacity-40 whitespace-nowrap">
-              {validating ? '...' : '折抵'}
+            <button
+              type="button"
+              onClick={applyPoints}
+              disabled={validating || !pointsInput.trim() || !isReady}
+              className="px-4 py-2 bg-gold/20 border border-gold/30 text-gold text-sm rounded-lg hover:bg-gold/30 disabled:opacity-40 whitespace-nowrap"
+              aria-label={!isReady ? `${secondsLeft} 秒後可折抵` : '折抵點數'}
+            >
+              {validating
+                ? '...'
+                : !isReady
+                  ? `等 ${secondsLeft}s`
+                  : '折抵'}
             </button>
           </div>
           {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+          {/* T10 v5.10.353 L1 QA 抓 ux 補:倒數 UI 即時顯示 */}
+          {!isReady && (
+            <p className="text-amber-400/70 text-xs mt-1" role="status" aria-live="polite">
+              請等 {secondsLeft} 秒後再試
+            </p>
+          )}
         </>
       )}
     </div>
