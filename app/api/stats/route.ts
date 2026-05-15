@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 // 只顯示真實數據，不加虛假基數
 const BASE_COUNT = 0
 
 function getServiceSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 // v5.4.7 P3 強化:支援 type=paid 只回付費報告數(free tools 頁 social proof 用)

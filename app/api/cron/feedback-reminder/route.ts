@@ -10,10 +10,10 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(Sprint 8 migration、retry + dead-letter)
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { checkCronAuth } from '@/lib/cron-auth'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 // Vercel Cron 最長執行時間 60 秒
 export const maxDuration = 60
@@ -32,11 +32,8 @@ export async function GET(req: NextRequest) {
   const authFail = checkCronAuth(req)
   if (authFail) return authFail
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
-  const resend = new Resend(process.env.RESEND_API_KEY || '')
+  const supabase = createServiceClient()
+  // T12b v5.10.370 — 不再 new Resend、改用 sendEmailWithRetry 統一 helper
 
   // v5.3.33 放寬 window：只要完成 >= 46 小時且 <= 7 天都納入
   // 真正判斷是否已發過用 generation_progress.feedback_sent flag
@@ -116,12 +113,24 @@ export async function GET(req: NextRequest) {
         customerEmail: report.customer_email,
       })
 
-      await resend.emails.send({
+      // T12b v5.10.370 — sendEmailWithRetry 取代 raw resend.emails.send
+      // retry 3 次(2/5/12s backoff)+ 失敗 dead-letter to email_send_log + audit-event critical
+      const sendResult = await sendEmailWithRetry({
         from,
         to: report.customer_email,
         subject,
         html,
+        emailType: 'feedback_reminder',
+        reportId: report.id,
+        userId: (report as { user_id?: string | null }).user_id ?? null,
+        metadata: { cron: 'feedback-reminder' },
       })
+
+      if (!sendResult.success) {
+        // helper 已寫 dead-letter + audit-event critical、caller 略過標記避免 ghost feedback_sent flag
+        console.error(`❌ 反饋郵件 dead-letter(報告 ${report.id})、attempts=${sendResult.attempts}`)
+        continue
+      }
 
       // 標記 feedback_sent = true（合併既有 generation_progress）
       // v5.10.286 P2 修(Gemini L4 finding):cron race 防衛 — UPDATE 加 deleted_at IS NULL

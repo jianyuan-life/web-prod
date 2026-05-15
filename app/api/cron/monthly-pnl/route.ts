@@ -12,17 +12,14 @@
 //   GET /api/cron/monthly-pnl?force=1&target=2026-03
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { calcPeriodPnL, monthRange } from '@/lib/accounting'
 import { PLAN_NAMES } from '@/lib/plan-names'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export const maxDuration = 60
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 

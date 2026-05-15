@@ -5,16 +5,13 @@
 // 回傳：期間 P&L 總覽 + 累計 + 本月對比 + 警報狀態
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 import { calcPeriodPnL, resolvePeriod, PeriodKey } from '@/lib/accounting'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 export async function GET(req: NextRequest) {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter)
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import {
   getAgeGroup,
@@ -13,6 +12,7 @@ import { validateReportAgainstData } from '@/workflows/generate-report/steps'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
@@ -266,10 +266,7 @@ async function callClaudeStreaming(
 }
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  )
+  return createServiceClient()
 }
 
 // ── 心理陪伴語言框架（融入所有方案 prompt）──
@@ -1406,15 +1403,18 @@ ${analyses.length}套系統排盤完整數據：
 
     if (customerEmail && accessToken) {
       try {
-        const resend = new Resend(process.env.RESEND_API_KEY || '')
+        // T12b v5.10.370 — sendEmailWithRetry 取代 raw new Resend + send
         const emailHighlights = getEmailHighlights(planCode, reportContent, isCN)
         const highlightsHtml = emailHighlights.map(h =>
           `<div style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0 0 8px 0;"><span style="color:#c9a84c;margin-right:6px;">✦</span>${h}</div>`
         ).join('')
 
-        await resend.emails.send({
+        const reportSendResult = await sendEmailWithRetry({
           from: emailText.from,
           to: customerEmail,
+          emailType: 'report_link',
+          reportId,
+          metadata: { plan: planCode, locale: emailLang },
           subject: emailText.subject,
           html: `
 <!DOCTYPE html>
@@ -1470,14 +1470,18 @@ ${analyses.length}套系統排盤完整數據：
 </html>`,
         })
 
-        // 更新 email_sent_at
-        await getSupabase().from('paid_reports')
-          .update({ email_sent_at: new Date().toISOString() })
-          .eq('id', reportId)
-
-        console.info(`✅ Email 已寄送至 ${customerEmail}`)
+        // T12b v5.10.370 — 只在真送成功才標 email_sent_at(避免 dead-letter 後 ghost 標記)
+        if (reportSendResult.success) {
+          await getSupabase().from('paid_reports')
+            .update({ email_sent_at: new Date().toISOString() })
+            .eq('id', reportId)
+          console.info(`✅ Email 已寄送至 ${customerEmail}、attempts=${reportSendResult.attempts}`)
+        } else {
+          // helper 已 dead-letter + audit-event critical
+          console.warn(`[generate-report][report-send] dead-letter:${customerEmail} attempts=${reportSendResult.attempts}`)
+        }
       } catch (emailErr) {
-        console.error('Email 寄送失敗:', emailErr)
+        console.error('Email 寄送 fatal:', emailErr)
         // 不讓 email 失敗影響整體回傳
       }
     }

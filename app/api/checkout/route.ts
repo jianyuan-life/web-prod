@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
 import crypto from 'crypto'
+import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter)
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
-import { recordEmailSend } from '@/lib/email-send-log'
 import { trackFunnelServer } from '@/lib/funnel-tracker'
 import { PLAN_NAMES } from '@/lib/plan-names'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 const PRICE_MAP: Record<string, { amount: number; name: string }> = {
@@ -389,10 +385,14 @@ export async function POST(req: NextRequest) {
           ? `已收到您的訂單 — ${planName}（優惠碼 ${verifiedCouponCode}）`
           : `已收到您的訂單 — ${planName}（積分折抵）`
         try {
-          const resend = new Resend(process.env.RESEND_API_KEY || '')
-          const freeRes = await resend.emails.send({
+          // T12b v5.10.370 — sendEmailWithRetry 取代 raw new Resend + send
+          // helper 自動 record + dead-letter、本處不再手動 recordEmailSend
+          const freeSendResult = await sendEmailWithRetry({
             from: '鑒源命理 <noreply@jianyuan.life>',
             to: customerEmail,
+            emailType: 'checkout_receipt',
+            reportId: reportId || null,
+            metadata: { plan: planCode, free: true, coupon: verifiedCouponCode || null },
             subject: freeSubject,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
@@ -414,26 +414,14 @@ export async function POST(req: NextRequest) {
               </div>
             `,
           })
-          await recordEmailSend({
-            resendId: (freeRes as unknown as { data?: { id?: string } })?.data?.id || null,
-            toEmail: customerEmail,
-            fromEmail: '鑒源命理 <noreply@jianyuan.life>',
-            emailType: 'welcome',
-            subject: freeSubject,
-            reportId: reportId || null,
-            status: 'sent',
-            metadata: { plan: planCode, free: true, coupon: verifiedCouponCode || null },
-          })
+          // T12b v5.10.370 — sendEmailWithRetry 已自動 record + dead-letter
+          // freeSendResult.success / .resendId / .attempts / .error 已寫進 email_send_log
+          if (!freeSendResult.success) {
+            console.warn(`[checkout][free-send] dead-letter:${customerEmail} attempts=${freeSendResult.attempts}`)
+          }
         } catch (freeErr) {
-          await recordEmailSend({
-            toEmail: customerEmail,
-            emailType: 'welcome',
-            subject: freeSubject,
-            reportId: reportId || null,
-            status: 'failed',
-            errorMessage: freeErr instanceof Error ? freeErr.message : String(freeErr),
-            metadata: { plan: planCode, free: true },
-          })
+          // sendEmailWithRetry 內部已 catch + dead-letter、外層 try-catch 只接 import 失敗等 fatal
+          console.error('[checkout][free-send] fatal:', freeErr)
           /* 確認信失敗不影響報告生成 */
         }
       }

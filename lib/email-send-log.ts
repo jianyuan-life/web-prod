@@ -14,6 +14,11 @@ export type EmailType =
   | 'password_reset'
   | 'weekly_digest'
   | 'admin_alert'
+  | 'feedback_reminder'   // T12b v5.10.370 — 反饋提醒 cron
+  | 'followup_email'      // T12b v5.10.370 — 後續推銷 cron
+  | 'checkout_receipt'    // T12b v5.10.370 — 結帳通知
+  | 'stripe_webhook'      // T12b v5.10.370 — Stripe webhook 通知
+  | 'report_link'         // T12b v5.10.370 — 報告連結寄送(generate-report)
   | 'other'
 
 export type EmailLogInput = {

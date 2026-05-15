@@ -11,7 +11,6 @@
 //   - Supabase RLS 啟用前、僅 mock 資料(無真實客戶 leak 風險)
 
 import 'server-only'
-import { createClient } from '@supabase/supabase-js'
 import { getServerComponentUserEmail } from '@/lib/auth-helper-server'
 import type {
   LifeBlueprintReport,
@@ -26,16 +25,14 @@ import { mockHeYuZhunLifeBlueprint } from '@/lib/mocks/he-yu-zhun-life-blueprint
 import { MOCK_HEART_DOUBTS_HE_XUAN_YI } from '@/lib/mocks/heart-doubts-he-xuan-yi'
 import { MOCK_COMPATIBILITY_LIN_YUAN_LIN } from '@/lib/mocks/compatibility-lin-yuan-lin'
 import { MOCK_FAMILY_BLUEPRINT_HE_JIA } from '@/lib/mocks/family-blueprint-he-jia'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 // v5.10.246 加 / v5.10.247 暫不用:parser 留檔備 Sprint 2.x LLM Extraction 後使用
 // import { extractBaziFromMarkdown, extractOneLinerFromMarkdown } from '@/lib/parsers/life-blueprint-md-parser'
 
 // v5.10.240 Sprint 2 starter — Supabase service client(server-only、bypass RLS for adapter)
 // 對應 Codex L3 + Gemini L4 共識:adapter 用 service_role、user-facing path 用 RLS
 function getServiceSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 // plan_code → ReportType mapping(對齊 lib/plan-names.ts SSOT)

@@ -25,6 +25,10 @@ export interface SendEmailParams {
   userId?: string | null
   /** 額外 metadata 寫進 email_send_log */
   metadata?: Record<string, unknown>
+  /** T12b v5.10.370 新增 — Resend headers(List-Unsubscribe / Gmail/Yahoo bulk sender 硬要求) */
+  headers?: Record<string, string>
+  /** T12b v5.10.370 新增 — 單次 attempt timeout(預設 30000ms、避免 Resend hang 拖垮 workflow) */
+  timeoutMs?: number
 }
 
 export interface SendEmailResult {
@@ -60,16 +64,28 @@ function getResend(): Resend {
 export async function sendEmailWithRetry(params: SendEmailParams): Promise<SendEmailResult> {
   const resend = getResend()
   let lastError: string = ''
+  // T12b v5.10.370:單次 attempt timeout(預設 30s、防 Resend hang)
+  const timeoutMs = params.timeoutMs ?? 30000
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const { data, error } = await resend.emails.send({
+      // 包 Promise.race 加 timeout、避免 Resend API 卡住
+      const sendPayload: Parameters<typeof resend.emails.send>[0] = {
         from: params.from,
         to: params.to,
         subject: params.subject,
         html: params.html,
         text: params.text,
-      })
+      }
+      // T12b v5.10.370:傳遞 headers(List-Unsubscribe 用)
+      if (params.headers) {
+        (sendPayload as { headers?: Record<string, string> }).headers = params.headers
+      }
+      const sendPromise = resend.emails.send(sendPayload)
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Resend API 超時(${timeoutMs}ms)`)), timeoutMs),
+      )
+      const { data, error } = await Promise.race([sendPromise, timeoutPromise])
 
       if (error) {
         lastError = `${error.name || 'unknown'}: ${error.message || String(error)}`

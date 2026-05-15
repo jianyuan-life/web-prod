@@ -608,8 +608,8 @@ export const NARRATIVE_FLOW_RULES = `
    - 禁:「值得深入探索」「豐富多元」「需要細細品味」「綜合考量」「整體而言」「一般來說」「如前所述」「不容忽視」
    - 改:用具體場景、具體年份、具體建議
 
-4. **T13d v5.10.368 補:PullQuote 引文 — Atlantic editorial pattern**
-   - 整篇報告必有 **1-2 處 markdown blockquote 引文**(用 `> 引文` 標記)
+4. **T13d v5.10.369 補:PullQuote 引文 — Atlantic editorial pattern**
+   - 整篇報告必有 **1-2 處 markdown blockquote 引文**(用 markdown 大於符號開頭的 quote 區塊標記、即「> 引文文字」)
    - 放最關鍵 insight、客戶最該記住的 1 句話、命格核心結論
    - CSS 自動升級成 PullQuote 樣式(金色左邊框 + 斜體 + 引號裝飾)
    - ❌ 禁:把所有重點都包成 blockquote(失去重點感)

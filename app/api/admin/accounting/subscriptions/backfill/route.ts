@@ -9,17 +9,14 @@
 // - 可選擇是否同步寫 expense_log 首期
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 import { writeAuditLog } from '@/lib/admin-audit-log'
 import { recordExpense, ExpenseCategory } from '@/lib/accounting'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 type BackfillItem = {

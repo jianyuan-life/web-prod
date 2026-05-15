@@ -1,0 +1,299 @@
+{
+  "generated": "2026-05-15T08:45:00.001Z",
+  "summary": {
+    "no-raw-fetch": {
+      "fileCount": 69,
+      "totalOccurrences": 122
+    },
+    "no-raw-supabase-service-client": {
+      "fileCount": 0,
+      "totalOccurrences": 0
+    },
+    "no-raw-resend": {
+      "fileCount": 0,
+      "totalOccurrences": 0
+    }
+  },
+  "details": {
+    "no-raw-fetch": [
+      {
+        "file": "app/api/admin/ai-balance/route.ts",
+        "count": 8
+      },
+      {
+        "file": "app/api/admin/content-review/route.ts",
+        "count": 2
+      },
+      {
+        "file": "app/api/admin/dashboard/system-health/route.ts",
+        "count": 3
+      },
+      {
+        "file": "app/api/admin/orders/route.ts",
+        "count": 2
+      },
+      {
+        "file": "app/api/admin/quality-reports/route.ts",
+        "count": 1
+      },
+      {
+        "file": "app/api/admin/recalculate-report/route.ts",
+        "count": 2
+      },
+      {
+        "file": "app/api/admin/system/route.ts",
+        "count": 3
+      },
+      {
+        "file": "app/api/checkout/route.ts",
+        "count": 3
+      },
+      {
+        "file": "app/api/cron/check-llm-balances/route.ts",
+        "count": 7
+      },
+      {
+        "file": "app/api/cron/keep-alive/route.ts",
+        "count": 1
+      },
+      {
+        "file": "app/api/cron/monthly-fixed-costs/route.ts",
+        "count": 1
+      },
+      {
+        "file": "app/api/cron/monthly-pnl/route.ts",
+        "count": 1
+      },
+      {
+        "file": "app/api/cron/retry-pending/route.ts",
+        "count": 1
+      },
+      {
+        "file": "app/api/free-bazi/route.ts",
+        "count": 4
+      },
+      {
+        "file": "app/api/free-name/route.ts",
+        "count": 2
+      },
+      {
+        "file": "app/api/free-qimen/route.ts",
+        "count": 1
+      },
+      {
+        "file": "app/api/free-ziwei/route.ts",
+        "count": 3
+      },
+      {
+        "file": "app/api/generate-report/route.ts",
+        "count": 4
+      },
+      {
+        "file": "app/api/reports/generate-pdf/route.ts",
+        "count": 1
+      },
+      {
+        "file": "app/api/reports/route.ts",
+        "count": 2
+      },
+      {
+        "file": "app/api/reports/update-birth-location/route.ts",
+        "count": 2
+      },
+      {
+        "file": "app/api/webhook/stripe/route.ts",
+        "count": 2
+      },
+      {
+        "file": "app/auth/signup/page.tsx",
+        "count": 2
+      },
+      {
+        "file": "app/dashboard/page.tsx",
+        "count": 4
+      },
+      {
+        "file": "app/error.tsx",
+        "count": 1
+      },
+      {
+        "file": "app/jamie/ab-tests/[key]/page.tsx",
+        "count": 2
+      },
+      {
+        "file": "app/jamie/ab-tests/page.tsx",
+        "count": 2
+      },
+      {
+        "file": "app/jamie/content-review/page.tsx",
+        "count": 2
+      },
+      {
+        "file": "app/jamie/layout.tsx",
+        "count": 1
+      },
+      {
+        "file": "app/jamie/recalculate/page.tsx",
+        "count": 2
+      },
+      {
+        "file": "app/report/[token]/ReportClientButtons.tsx",
+        "count": 2
+      },
+      {
+        "file": "app/report/[token]/ReportTracker.tsx",
+        "count": 1
+      },
+      {
+        "file": "app/tools/bazi/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "app/tools/name/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "app/tools/qimen/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "app/tools/ziwei/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/checkout/ConfirmationModal.tsx",
+        "count": 2
+      },
+      {
+        "file": "components/checkout/FamilyMemberPicker.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/checkout/PointsRedeem.tsx",
+        "count": 2
+      },
+      {
+        "file": "components/FamilyMemberModal.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/FamilyMembersManager.tsx",
+        "count": 2
+      },
+      {
+        "file": "components/FreeTryBanner.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/HistoricalFigures.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/LiveCounter.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/PromotionBanner.tsx",
+        "count": 2
+      },
+      {
+        "file": "components/PurchaseNoticeModal.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/ReferralCard.tsx",
+        "count": 3
+      },
+      {
+        "file": "components/ReferralHandler.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/ReportFeedback.tsx",
+        "count": 2
+      },
+      {
+        "file": "components/SocialProof.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/Tracker.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/TrustBar.tsx",
+        "count": 1
+      },
+      {
+        "file": "components/UpdateBirthLocation.tsx",
+        "count": 1
+      },
+      {
+        "file": "lib/ab-test.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/admin-fetch.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/ai/providers/claude.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/ai/providers/deepseek.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/ai/providers/gemini.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/ai/providers/moonshot.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/ai/providers/openai.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/ai/providers/qwen.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/ai/rag.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/content-moderation/ai-moderator.ts",
+        "count": 2
+      },
+      {
+        "file": "lib/funnel-tracker.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/monitoring/web-vitals.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/og-font.ts",
+        "count": 2
+      },
+      {
+        "file": "lib/qimen-v2-client.ts",
+        "count": 1
+      },
+      {
+        "file": "lib/security/client-audit.ts",
+        "count": 2
+      },
+      {
+        "file": "scripts/test_team_pipeline.ts",
+        "count": 1
+      }
+    ],
+    "no-raw-supabase-service-client": [],
+    "no-raw-resend": []
+  }
+}

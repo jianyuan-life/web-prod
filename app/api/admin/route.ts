@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit, clearAdminAuthFail } from '@/lib/admin-rate-limit'
 import { writeAuditLog } from '@/lib/admin-audit-log'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 // 管理後台 API — x-admin-key header 驗證 + timing-safe compare + rate limit
 //
@@ -10,10 +10,7 @@ import { writeAuditLog } from '@/lib/admin-audit-log'
 //          不再把整張表拉進 Node 記憶體。Bot 過濾在 SQL 層用 ILIKE 完成。
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 type VisitorStatRow = {

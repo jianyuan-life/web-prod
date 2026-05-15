@@ -10,17 +10,13 @@
 // - 第一次看到 visitor → 寫 ab_assignments（冪等：ON CONFLICT DO NOTHING）
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 const VALID_EVENT_TYPES = ['impression', 'click', 'conversion', 'revenue'] as const
 type ValidEventType = (typeof VALID_EVENT_TYPES)[number]
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-    { auth: { persistSession: false } },
-  )
+  return createServiceClient()
 }
 
 function getClientIp(req: NextRequest): string {

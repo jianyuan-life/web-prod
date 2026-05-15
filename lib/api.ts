@@ -99,3 +99,64 @@ export async function apiGet(path: string) {
   }
   return handleResponse(res)
 }
+
+// ─── T10b v5.10.372:Internal Next.js API helpers(client-side、相對路徑、自動帶 RateLimitError + ApiError) ───
+//
+// 為什麼:99 個 fetch caller 散落各 client-side hook、各自無 429/503 處理、無 timeout
+// 設計:internalFetch 統一加 timeout + RateLimitError 解析、可選帶 auth header
+//
+// 用法(取代散落 raw fetch):
+//   import { internalGet, internalPost, RateLimitError } from '@/lib/api'
+//   try {
+//     const data = await internalPost('/api/checkout', { plan, amount }, { authToken })
+//   } catch (e) {
+//     if (e instanceof RateLimitError) {
+//       toast(`稍後再試(${e.retryAfter}s)`)
+//     }
+//   }
+
+interface InternalFetchOptions {
+  /** Bearer token(會塞 Authorization header) */
+  authToken?: string
+  /** 額外 headers */
+  headers?: Record<string, string>
+  /** timeout(預設 30s、與外部 API 一致) */
+  timeoutMs?: number
+}
+
+export async function internalGet(path: string, opts: InternalFetchOptions = {}): Promise<unknown> {
+  const headers: Record<string, string> = { ...(opts.headers || {}) }
+  if (opts.authToken) headers['Authorization'] = `Bearer ${opts.authToken}`
+  let res: Response
+  try {
+    res = await fetchWithTimeout(path, { method: 'GET', headers }, opts.timeoutMs)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(msg.includes('abort') ? `請求逾時 (${opts.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms)` : `網路錯誤：${msg}`)
+  }
+  return handleResponse(res)
+}
+
+export async function internalPost(
+  path: string,
+  body: Record<string, unknown> | unknown,
+  opts: InternalFetchOptions = {},
+): Promise<unknown> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(opts.headers || {}),
+  }
+  if (opts.authToken) headers['Authorization'] = `Bearer ${opts.authToken}`
+  let res: Response
+  try {
+    res = await fetchWithTimeout(
+      path,
+      { method: 'POST', headers, body: JSON.stringify(body) },
+      opts.timeoutMs,
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(msg.includes('abort') ? `請求逾時 (${opts.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms)` : `網路錯誤：${msg}`)
+  }
+  return handleResponse(res)
+}

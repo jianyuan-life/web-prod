@@ -5,7 +5,6 @@
 // 供 workflow / API / 渲染層呼叫
 // ============================================================
 
-import { createClient } from '@supabase/supabase-js'
 import {
   scanBlacklist,
   summarizeHits,
@@ -13,6 +12,7 @@ import {
   type ModerationCategory,
 } from './blacklist'
 import { moderateWithAI, type AiModerationResult } from './ai-moderator'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export type ModerationAction =
   | 'pass'               // 全過
@@ -220,10 +220,7 @@ export interface ModerationLogInput {
 }
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  )
+  return createServiceClient()
 }
 
 /**

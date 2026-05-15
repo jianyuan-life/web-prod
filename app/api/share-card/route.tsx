@@ -3,17 +3,14 @@
 // 用法:GET /api/share-card?token=<report-token>
 
 import { ImageResponse } from 'next/og'
-import { createClient } from '@supabase/supabase-js'
 import { loadChineseFont } from '@/lib/og-font'
 import { PLAN_NAMES } from '@/lib/plan-names'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export const runtime = 'edge'
 
 function getServiceSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-  )
+  return createServiceClient()
 }
 
 const PLAN_HOOK: Record<string, string> = {

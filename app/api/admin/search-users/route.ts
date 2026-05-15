@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 // GET — 搜尋已註冊用戶（輸入時自動完成）
 export async function GET(req: NextRequest) {
@@ -14,10 +14,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ users: [] })
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  const supabase = createServiceClient()
 
   const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
 

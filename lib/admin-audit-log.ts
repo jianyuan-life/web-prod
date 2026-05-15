@@ -6,7 +6,7 @@
 // 欄位：id / action / target_type / target_id / metadata (jsonb) / ip / user_agent / created_at
 
 import { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export type AdminAction =
   | 'login'
@@ -57,10 +57,7 @@ function getClientIp(req: NextRequest): string {
 }
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 /**

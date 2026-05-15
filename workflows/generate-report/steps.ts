@@ -5,8 +5,7 @@
 
 import { getWritable } from 'workflow'
 import { FatalError, RetryableError } from 'workflow'
-import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter + headers + timeout)
 import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { recordEmailSend } from '@/lib/email-send-log'
@@ -31,6 +30,7 @@ const {
 // 目前 quality gate 已用 G15_V2_QUALITY_GATE env 嚴格度切換、Round 3 將接線 buildG15Call*Prompt
 // 暫不切換 systemPrompt(避免 1-Call vs 3-Call 架構衝突、Round 3 一併處理)
 import { getG15PromptVersion as _getG15PromptVersion } from '@/prompts/g15_plan_v2'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 void _getG15PromptVersion  // 防 tsc unused import warning、Round 3 啟用時移除 void
 
 // ── 常數 ──
@@ -127,10 +127,7 @@ interface CalcResult {
 
 // ── Supabase 客戶端 ──
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  )
+  return createServiceClient()
 }
 
 // ── 進度串流輔助 ──
@@ -4095,10 +4092,10 @@ export async function sendReportEmail(
   const highlightsHtml = emailHighlights.map(h =>
     `<div style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0 0 8px 0;"><span style="color:#c9a84c;margin-right:6px;">✦</span>${h}</div>`
   ).join('')
-  const resend = new Resend(process.env.RESEND_API_KEY || '')
 
-  // List-Unsubscribe header（Gmail/Yahoo 2024 大宗寄件人硬要求）
-  // https://support.google.com/mail/answer/81126
+  // T12b v5.10.370 — sendEmailWithRetry 取代 raw new Resend + send + 手動 timeout
+  // helper 自帶:retry 3 次(2/5/12s)+ dead-letter + 30s timeout(可覆蓋)+ headers 透傳
+  // List-Unsubscribe header(Gmail/Yahoo 2024 大宗寄件人硬要求、https://support.google.com/mail/answer/81126)
   const unsubscribeUrl = getUnsubscribeUrl(customerEmail)
   const listUnsubscribeHeaders = {
     'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:unsubscribe@jianyuan.life?subject=unsubscribe>`,
@@ -4107,16 +4104,16 @@ export async function sendReportEmail(
 
   let sendResult: { id?: string } | null = null
   let sendErr: unknown = null
-  // v5.3.32：Resend API 加 30 秒 timeout，避免 Email API hang 拖垮整個 workflow
-  const emailTimeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Resend API 超時（30秒）')), 30000),
-  )
   try {
-    const resendSendPromise = resend.emails.send({
+    const reportSendOutcome = await sendEmailWithRetry({
     from: emailText.from,
     to: customerEmail,
-    subject: emailText.subject,
+    emailType: 'report_ready',
+    reportId,
+    metadata: { plan: planCode, analyses: analysesCount, source: 'workflow-step' },
     headers: listUnsubscribeHeaders,
+    timeoutMs: 30000,  // 保留原 30s timeout、helper 內部會 race
+    subject: emailText.subject,
     html: `<!DOCTYPE html>
 <html lang="${emailLang}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -4153,42 +4150,27 @@ export async function sendReportEmail(
 </body>
 </html>`,
     })
-    const resendRaw = await Promise.race([resendSendPromise, emailTimeoutPromise])
-    // Resend v2 回傳 { data, error } 結構，需要 unwrap
-    const unwrapped = resendRaw as unknown as { data: { id?: string } | null; error: unknown }
-    if (unwrapped.error) {
-      sendErr = unwrapped.error
-    } else if (unwrapped.data) {
-      sendResult = { id: unwrapped.data.id }
+    // T12b v5.10.370 — sendEmailWithRetry 已自帶 record + dead-letter
+    if (reportSendOutcome.success) {
+      sendResult = { id: reportSendOutcome.resendId }
+    } else {
+      sendErr = new Error(reportSendOutcome.error || 'sendEmailWithRetry failed')
     }
   } catch (err) {
     sendErr = err
   }
 
-  // 寫入 email_send_log（不論成功失敗都記）
-  await recordEmailSend({
-    resendId: (sendResult && 'data' in sendResult
-      ? (sendResult as unknown as { data?: { id?: string } }).data?.id
-      : sendResult?.id) || null,
-    toEmail: customerEmail,
-    fromEmail: emailText.from,
-    emailType: 'report_ready',
-    subject: emailText.subject,
-    reportId,
-    status: sendErr ? 'failed' : 'sent',
-    errorMessage: sendErr ? (sendErr instanceof Error ? sendErr.message : String(sendErr)).slice(0, 400) : null,
-    metadata: { plan: planCode, analyses: analysesCount },
-  })
-
   if (sendErr) {
     // Telegram 告警 + 拋錯讓 workflow 重試
+    // (helper 已 dead-letter 進 email_send_log + audit-event critical、此處仍保留 workflow throw 以觸發 maxRetries=2)
     try {
       await notifyEmailFailed(reportId, customerEmail,
         sendErr instanceof Error ? sendErr.message : String(sendErr))
     } catch { /* 告警失敗不阻塞 */ }
-    console.error('Resend 寄信失敗:', sendErr)
+    console.error('Resend 寄信失敗(已 dead-letter、workflow retry):', sendErr)
     throw sendErr
   }
+  void sendResult  // 保留 sendResult 變數參考(未來可用 resendId 做 follow-up tracking)
 
   // 更新 email_sent_at
   const supabase = getSupabase()
@@ -4232,14 +4214,17 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
     console.warn('Telegram 告警失敗（不阻塞）:', e)
   }
 
-  const resend = new Resend(process.env.RESEND_API_KEY || '')
+  // T12b v5.10.370 — 不再 new Resend、改用 sendEmailWithRetry helper(retry + dead-letter)
 
   // 發送告警 Email 通知管理員
   try {
     const alertSubj = `⚠️ 報告生成失敗：${reportId.slice(0, 8)}`
-    const alertRes = await resend.emails.send({
+    const alertSendResult = await sendEmailWithRetry({
       from: '鑒源系統告警 <reports@jianyuan.life>',
       to: 'support@jianyuan.life',
+      emailType: 'admin_alert',
+      reportId,
+      metadata: { errorMessage, source: 'workflow-step6-alert' },
       subject: alertSubj,
       html: `
         <h2>報告生成失敗告警</h2>
@@ -4253,28 +4238,15 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
         <p>請前往 <a href="https://jianyuan.life/jamie/orders">管理後台</a> 查看並處理。</p>
       `,
     })
-    await recordEmailSend({
-      resendId: (alertRes as unknown as { data?: { id?: string } })?.data?.id || null,
-      toEmail: 'support@jianyuan.life',
-      fromEmail: '鑒源系統告警 <reports@jianyuan.life>',
-      emailType: 'admin_alert',
-      subject: alertSubj,
-      reportId,
-      status: 'sent',
-      metadata: { errorMessage },
-    })
-    console.log(`📧 告警 Email 已發送（報告 ${reportId}）`)
+    if (alertSendResult.success) {
+      console.log(`📧 告警 Email 已發送（報告 ${reportId}）attempts=${alertSendResult.attempts}`)
+    } else {
+      // helper 已 dead-letter + audit-event critical
+      console.warn(`[step6-alert] dead-letter:報告 ${reportId} attempts=${alertSendResult.attempts}`)
+    }
   } catch (emailErr) {
-    // 告警 Email 失敗不影響主流程
-    console.error('告警 Email 發送失敗:', emailErr)
-    await recordEmailSend({
-      toEmail: 'support@jianyuan.life',
-      emailType: 'admin_alert',
-      subject: `⚠️ 報告生成失敗：${reportId.slice(0, 8)}`,
-      reportId,
-      status: 'failed',
-      errorMessage: emailErr instanceof Error ? emailErr.message : String(emailErr),
-    })
+    // sendEmailWithRetry 已內部 catch、外層只接 fatal
+    console.error('告警 Email fatal:', emailErr)
   }
 
   // 客戶致歉信：僅在達最終失敗（retry_count >= 3）且尚未寄過時發送
@@ -4344,14 +4316,18 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       let apologyResId: string | null = null
       let apologyErr: unknown = null
       try {
-        const apologyRaw = await resend.emails.send({
+        // T12b v5.10.370 — sendEmailWithRetry 取代 raw resend.emails.send + 手動 record
+        const apologyOutcome = await sendEmailWithRetry({
         from,
         to: customerEmailFailed,
-        subject,
+        emailType: 'report_failed_apology',
+        reportId,
+        metadata: { plan: planCode, retryCount, source: 'workflow-step6-apology' },
         headers: {
           'List-Unsubscribe': `<${unsubscribeUrlApology}>, <mailto:unsubscribe@jianyuan.life?subject=unsubscribe>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
+        subject,
         html: `<!DOCTYPE html>
 <html lang="${emailLang}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -4380,27 +4356,16 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
 </body>
 </html>`,
       })
-        const apologyUnwrapped = apologyRaw as unknown as { data?: { id?: string } | null; error?: unknown }
-        if (apologyUnwrapped?.error) apologyErr = apologyUnwrapped.error
-        else apologyResId = apologyUnwrapped?.data?.id || null
+        // T12b v5.10.370 — sendEmailWithRetry 已自動 record + dead-letter
+        if (apologyOutcome.success) {
+          apologyResId = apologyOutcome.resendId ?? null
+        } else {
+          apologyErr = new Error(apologyOutcome.error || 'apology sendEmailWithRetry failed')
+        }
       } catch (err) {
         apologyErr = err
       }
-
-      // 不論成敗都記 log
-      await recordEmailSend({
-        resendId: apologyResId,
-        toEmail: customerEmailFailed,
-        fromEmail: from,
-        emailType: 'report_failed_apology',
-        subject,
-        reportId,
-        status: apologyErr ? 'failed' : 'sent',
-        errorMessage: apologyErr
-          ? (apologyErr instanceof Error ? apologyErr.message : String(apologyErr)).slice(0, 400)
-          : null,
-        metadata: { plan: planCode, retryCount },
-      })
+      void apologyResId  // 保留變數參考(未來追蹤用)
 
       if (apologyErr) {
         try { await notifyEmailFailed(reportId, customerEmailFailed,

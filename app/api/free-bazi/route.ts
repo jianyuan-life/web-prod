@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getFullProfileByDayMaster, type DayMasterProfile } from '@/lib/profiles'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { localBazi, BAZI_SX as SX } from '@/lib/bazi-local'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 // ============================================================
 // 免費命理速算 — Python排盤(+TS fallback) + Kimi AI 潤色
@@ -346,10 +346,7 @@ export async function POST(req: NextRequest) {
 
     // 記錄用戶分析（去重，fire-and-forget）
     if (name && inputYear && inputMonth && inputDay) {
-      const analyticsSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-        process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-      )
+      const analyticsSupabase = createServiceClient()
       analyticsSupabase.from('user_analytics').upsert({
         name,
         birth_year: inputYear,
@@ -363,7 +360,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 記錄免費工具使用（不阻塞回應）
-    const supabaseTrack = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')
+    const supabaseTrack = createServiceClient()
     supabaseTrack.from('free_tool_usage').insert({ client_name: `bazi_${year}/${month}/${day}`, birth_year: year, gender, has_ai_result: Object.keys(aiSections).length > 0 }).then(() => {}, () => {})
 
     return NextResponse.json({

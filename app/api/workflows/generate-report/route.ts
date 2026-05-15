@@ -9,8 +9,8 @@
 
 import { start } from 'workflow/api'
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { generateReportWorkflow } from '@/workflows/generate-report'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,10 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 防重複觸發：先檢查報告狀態
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-    )
+    const supabase = createServiceClient()
     const { data: report } = await supabase
       .from('paid_reports')
       .select('status')

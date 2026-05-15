@@ -4,8 +4,8 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { checkCronAuth } from '@/lib/cron-auth'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export const maxDuration = 60
 
@@ -14,10 +14,7 @@ export async function GET(req: NextRequest) {
   const authFail = checkCronAuth(req)
   if (authFail) return authFail
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  const supabase = createServiceClient()
 
   const now = new Date().toISOString()
   let expiredUsersCount = 0

@@ -8,10 +8,10 @@
 // 全部走 x-admin-key 驗證（沿用現有機制）
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/lib/admin-auth'
 import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 import { writeAuditLog } from '@/lib/admin-audit-log'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 interface VariantStats {
   variant: string
@@ -37,11 +37,7 @@ interface ExperimentWithStats {
 }
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-    { auth: { persistSession: false } },
-  )
+  return createServiceClient()
 }
 
 export async function GET(req: NextRequest) {

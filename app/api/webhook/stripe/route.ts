@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter)
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { recordRevenue } from '@/lib/accounting'
-import { recordEmailSend } from '@/lib/email-send-log'
 import { trackFunnelServer } from '@/lib/funnel-tracker'
 import { notifyStripeFailed } from '@/lib/ai/observability/telegram'
 import { PLAN_NAMES } from '@/lib/plan-names'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 function getStripe() {
   // @ts-expect-error - Stripe SDK version mismatch
@@ -15,10 +14,7 @@ function getStripe() {
 }
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  )
+  return createServiceClient()
 }
 
 export async function POST(req: NextRequest) {
@@ -252,8 +248,8 @@ export async function POST(req: NextRequest) {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
 
         // 付款後立即發訂單確認信（讓客戶知道我們收到了）
+        // T12b v5.10.370 — sendEmailWithRetry 取代 raw new Resend + send + 手動 record
         try {
-          const resend = new Resend(process.env.RESEND_API_KEY || '')
           const planName = PLAN_NAMES[planCode] || planCode
           const dashboardUrl = `${siteUrl}/dashboard?session_id=${session.id}`
 
@@ -310,9 +306,12 @@ export async function POST(req: NextRequest) {
             : ''
 
           const confirmSubject = `${clientName || '您'}，已收到您的「${planName}」訂單`
-          const confirmRes = await resend.emails.send({
+          const confirmSendResult = await sendEmailWithRetry({
             from: '鑒源命理 <noreply@jianyuan.life>',
             to: customerEmail,
+            emailType: 'stripe_webhook',
+            reportId,
+            metadata: { plan: planCode, stripe_session: session.id, amount },
             subject: confirmSubject,
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
@@ -341,28 +340,15 @@ export async function POST(req: NextRequest) {
               </div>
             `,
           })
-          await recordEmailSend({
-            resendId: (confirmRes as unknown as { data?: { id?: string } })?.data?.id || null,
-            toEmail: customerEmail,
-            fromEmail: '鑒源命理 <noreply@jianyuan.life>',
-            emailType: 'welcome',
-            subject: confirmSubject,
-            reportId,
-            status: 'sent',
-            metadata: { plan: planCode, stripe_session: session.id, amount },
-          })
-          console.info('✅ 訂單確認信已發送:', customerEmail)
+          // T12b v5.10.370 — sendEmailWithRetry 已自動 record + dead-letter
+          if (confirmSendResult.success) {
+            console.info('✅ 訂單確認信已發送:', customerEmail, `attempts=${confirmSendResult.attempts}`)
+          } else {
+            console.warn(`[stripe-webhook][confirm-send] dead-letter:${customerEmail} attempts=${confirmSendResult.attempts}`)
+          }
         } catch (emailErr) {
-          await recordEmailSend({
-            toEmail: customerEmail,
-            emailType: 'welcome',
-            subject: `${PLAN_NAMES[planCode] || planCode}訂單確認`,
-            reportId,
-            status: 'failed',
-            errorMessage: emailErr instanceof Error ? emailErr.message : String(emailErr),
-            metadata: { plan: planCode, stripe_session: session.id, amount },
-          })
-          console.error('訂單確認信發送失敗（不影響報告生成）:', emailErr)
+          // sendEmailWithRetry 內部已 catch + dead-letter、外層只接 fatal(import 失敗等)
+          console.error('訂單確認信 fatal(不影響報告生成):', emailErr)
         }
 
         // 追 funnel：payment_success

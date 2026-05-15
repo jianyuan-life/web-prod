@@ -11,11 +11,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
+import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter)
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { checkCronAuth } from '@/lib/cron-auth'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export const maxDuration = 60
 
@@ -83,10 +83,7 @@ export async function GET(req: NextRequest) {
   const authFail = checkCronAuth(req)
   if (authFail) return authFail
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  const supabase = createServiceClient()
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
 
@@ -130,7 +127,7 @@ export async function GET(req: NextRequest) {
   let sentCount = 0
   let skippedCount = 0
 
-  const resend = new Resend(process.env.RESEND_API_KEY || '')
+  // T12b v5.10.370 — 不再 new Resend、改用 sendEmailWithRetry 統一 helper
 
   for (const report of reports) {
     // 排除已發過跟進信的
@@ -183,9 +180,14 @@ export async function GET(req: NextRequest) {
       : "'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif"
 
     try {
-      await resend.emails.send({
+      // T12b v5.10.370 — sendEmailWithRetry 取代 raw resend.emails.send
+      const sendResult = await sendEmailWithRetry({
         from: '鑒源命理 <noreply@jianyuan.life>',
         to: report.customer_email,
+        emailType: 'followup_email',
+        reportId: report.id,
+        userId: (report as { user_id?: string | null }).user_id ?? null,
+        metadata: { cron: 'followup-email', clientName },
         subject: `${clientName}，你報告中最重要的 3 個發現`,
         html: `
           <div style="font-family: ${emailFont}; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #333;">
@@ -228,6 +230,12 @@ export async function GET(req: NextRequest) {
           </div>
         `,
       })
+
+      if (!sendResult.success) {
+        // helper 已 dead-letter + audit-event critical、caller 略過標記
+        console.error(`❌ followup 郵件 dead-letter(報告 ${report.id})、attempts=${sendResult.attempts}`)
+        continue
+      }
 
       // 標記已發送
       // v5.10.286 P2 修(Gemini L4 finding):防 race — 報告若在 cron 跑 process 時被軟刪、UPDATE 還會

@@ -13,9 +13,9 @@
 //   3. low/critical 發 Telegram 告警
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { notifyLLMBalanceLow, notifyLLMBalanceCritical, notify } from '@/lib/ai/observability/telegram'
 import { checkCronAuth } from '@/lib/cron-auth'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export const maxDuration = 60
 
@@ -285,10 +285,7 @@ export async function GET(req: NextRequest) {
   const authFail = checkCronAuth(req)
   if (authFail) return authFail
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  const supabase = createServiceClient()
 
   // 並行查詢（v5.3.5 擴充到 7 家）
   const [ds, ms, cl, gm, oa, qw, vy] = await Promise.all([

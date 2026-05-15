@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { internalGet, internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.372(429 友好顯示 + timeout)
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
 import { searchCities, searchLocations, type City, type LocationSearchResult, type Country } from '@/lib/cities'
@@ -157,15 +158,21 @@ export function useCheckoutForm() {
     setCouponError('')
     setCouponApplied(null)
     try {
-      const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(couponInput)}&plan=${planCode}&amount=${totalPrice}`)
-      const data = await res.json()
+      // T10b v5.10.372 — internalGet 統一處理 429 RateLimitError + timeout(原 raw fetch 無 timeout、429 無友好顯示)
+      const data = await internalGet(
+        `/api/coupons/validate?code=${encodeURIComponent(couponInput)}&plan=${planCode}&amount=${totalPrice}`,
+      ) as { valid: boolean; discountAmount?: number; message?: string }
       if (data.valid) {
-        setCouponApplied({ code: couponInput.trim().toUpperCase(), discountAmount: data.discountAmount, message: data.message })
+        setCouponApplied({ code: couponInput.trim().toUpperCase(), discountAmount: data.discountAmount ?? 0, message: data.message ?? '' })
       } else {
         setCouponError(data.message || '優惠碼無效')
       }
-    } catch {
-      setCouponError('驗證失敗，請稍後再試')
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        setCouponError(`驗證過於頻繁、請等 ${err.retryAfter} 秒後重試`)
+      } else {
+        setCouponError('驗證失敗，請稍後再試')
+      }
     } finally {
       setCouponLoading(false)
     }
@@ -284,26 +291,23 @@ export function useCheckoutForm() {
     if (index >= 2) setFamilyMembers(prev => prev.filter((_, i) => i !== index))
   }
 
-  // G15 導入模式：自動載入當前用戶的已完成人生藍圖
+  // G15 導入模式:自動載入當前用戶的已完成人生藍圖
   const loadMyReports = async () => {
     setG15MyLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const headers: Record<string, string> = {}
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
-      }
-      // 不帶 email 參數，API 會自動用登入 email 查詢
-      const res = await fetch('/api/checkout/search-reports', { headers })
-      const data = await res.json()
-      if (res.ok && data.reports) {
+      // T10b v5.10.372 — internalGet 統一處理 429 + timeout
+      const data = await internalGet('/api/checkout/search-reports', {
+        authToken: session?.access_token,
+      }) as { reports?: G15SearchResult[] }
+      if (data.reports) {
         setG15MyReports(data.reports)
       }
-    } catch { /* 靜默失敗 */ }
+    } catch { /* 靜默失敗、含 RateLimitError */ }
     finally { setG15MyLoading(false) }
   }
 
-  // G15 搜尋其他人的報告（用姓名）
+  // G15 搜尋其他人的報告(用姓名)
   const searchG15Reports = async (query: string) => {
     if (!query.trim()) {
       setG15SearchResults([])
@@ -312,13 +316,12 @@ export function useCheckoutForm() {
     setG15SearchLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const headers: Record<string, string> = {}
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
-      }
-      const res = await fetch(`/api/checkout/search-reports?q=${encodeURIComponent(query.trim())}`, { headers })
-      const data = await res.json()
-      if (res.ok && data.reports) {
+      // T10b v5.10.372 — internalGet 統一處理
+      const data = await internalGet(
+        `/api/checkout/search-reports?q=${encodeURIComponent(query.trim())}`,
+        { authToken: session?.access_token },
+      ) as { reports?: G15SearchResult[] }
+      if (data.reports) {
         // 過濾掉已選取的報告
         const selectedIds = new Set(g15Selected.map(s => s.reportId))
         setG15SearchResults(data.reports.filter((r: G15SearchResult) => !selectedIds.has(r.id)))
@@ -550,24 +553,18 @@ export function useCheckoutForm() {
         if (session?.access_token) authToken = session.access_token
       } catch { /* 靜默失敗，後端會用 fallback */ }
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+      // T10b v5.10.372 — internalPost 統一處理 429 + timeout、結帳是 P0 funnel、429 給友好顯示
+      const data = await internalPost('/api/checkout', {
+        planCode,
+        totalPrice: ['G15', 'R'].includes(planCode) ? totalPrice : undefined,
+        birthData,
+        locale: userLocale,
+        couponCode: couponApplied?.code || undefined,
+        couponDiscount: couponApplied?.discountAmount || undefined,
+        pointsToUse: pointsUsed > 0 ? pointsUsed : undefined,
+        userEmail: authEmail || sessionStorage.getItem('jianyuan_email') || undefined,
+      }, { authToken }) as { url?: string; error?: string }
 
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          planCode,
-          totalPrice: ['G15', 'R'].includes(planCode) ? totalPrice : undefined,
-          birthData,
-          locale: userLocale,
-          couponCode: couponApplied?.code || undefined,
-          couponDiscount: couponApplied?.discountAmount || undefined,
-          pointsToUse: pointsUsed > 0 ? pointsUsed : undefined,
-          userEmail: authEmail || sessionStorage.getItem('jianyuan_email') || undefined,
-        }),
-      })
-      const data = await res.json()
       if (data.url && data.url.startsWith('http')) {
         gtag.event('begin_checkout', {
           currency: 'USD',
@@ -583,10 +580,15 @@ export function useCheckoutForm() {
         })
         window.location.href = data.url
       } else {
-        setError(data.error || '付款建立失敗，請稍後再試')
+        setError(data.error || '付款建立失敗、請稍後再試')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '網路錯誤，請稍後再試')
+      if (err instanceof RateLimitError) {
+        // T10b:結帳 429 給明確倒數、不靜默失敗
+        setError(`系統繁忙、請等 ${err.retryAfter} 秒後重試`)
+      } else {
+        setError(err instanceof Error ? err.message : '網路錯誤、請稍後再試')
+      }
     } finally {
       setLoading(false)
     }

@@ -16,16 +16,13 @@
 // 冪等性：同月同服務只寫一次（用 subcategory + year_month 去重）
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { recordExpense } from '@/lib/accounting'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export const maxDuration = 30
 
 function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  )
+  return createServiceClient()
 }
 
 type FixedCost = { subcategory: string; amount: number; description: string }

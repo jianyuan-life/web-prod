@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 // 報告瀏覽 / PDF 下載追蹤 API
 // event_type: 'view' | 'pdf_download'
@@ -27,10 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '缺少 access_token' }, { status: 400 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-    )
+    const supabase = createServiceClient()
 
     // 驗證 report_id 存在且 access_token 匹配（防偽造刷數據）
     // v5.10.281 soft delete filter:軟刪報告不可 view tracking

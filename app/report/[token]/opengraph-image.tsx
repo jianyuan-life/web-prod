@@ -6,9 +6,9 @@
 
 // v5.7.10:加中文字體注入(IA round 5 P0)
 import { ImageResponse } from 'next/og'
-import { createClient } from '@supabase/supabase-js'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { getOGFonts } from '@/lib/og-font'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export const runtime = 'edge'
 export const alt = '鑒源命理分析報告'
@@ -41,10 +41,7 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
   let systemsCount = 0
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    )
+    const supabase = createServiceClient()
 
     // v5.10.283 soft delete filter:軟刪報告不再 render OG 圖
     const { data } = await supabase

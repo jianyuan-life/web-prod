@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import pkg from '../../../package.json'
@@ -55,6 +54,7 @@ import { validateAccessToken } from '@/lib/security/token-validator'
 // 後續 commits(T13b/c/d):add DropCap 首字下沉 + PullQuote 引文 + StickyTOC sidebar
 import { StickyTOC } from '@/components/report/shared/StickyTOC'
 import { DropCap, PullQuote, ExecutiveSummary } from '@/components/report/shared/DropCap'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -1197,10 +1197,7 @@ function extractDChartCitations(markdown: string): DChartCite[] {
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  )
+  const supabase = createServiceClient()
 
   // v5.10.272 soft delete filter:被軟刪的 report 不再公開
   const { data } = await supabase
@@ -1274,10 +1271,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     return notFound()
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  )
+  const supabase = createServiceClient()
 
   // v5.10.272 soft delete filter:被軟刪的 report 拿不到、客戶看到 404
   const { data, error } = await supabase

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import * as OpenCC from 'opencc-js'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 
@@ -17,6 +16,7 @@ const KIMI_KEY = process.env.KIMI_API_KEY || ''
 
 // ── 康熙字典筆畫資料庫（102,998 字，來源：Unicode Unihan kRSUnicode + 214 部首標準筆畫）──
 import kangxiStrokesData from '@/lib/kangxi_strokes.json'
+import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 const KANGXI_STROKES: Record<string, number> = kangxiStrokesData as Record<string, number>
 
 function getStrokes(char: string, unknownChars: string[]): number {
@@ -375,17 +375,14 @@ export async function POST(req: NextRequest) {
 
     // 記錄用戶分析（去重）
     if (fullName && year && month && day) {
-      const analyticsSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-        process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-      )
+      const analyticsSupabase = createServiceClient()
       analyticsSupabase.from('user_analytics').upsert({
         name: fullName, birth_year: year, birth_month: month, birth_day: day, source: 'free-name',
       }, { onConflict: 'name,birth_year,birth_month,birth_day' }).then(() => {}, () => {})
     }
 
     // 記錄免費工具使用
-    const supabaseTrack = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')
+    const supabaseTrack = createServiceClient()
     supabaseTrack.from('free_tool_usage').insert({ client_name: `name_${originalFullName}`, birth_year: year || null, gender: gender || null, has_ai_result: true }).then(() => {}, () => {})
 
     return NextResponse.json({

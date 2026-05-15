@@ -1,6 +1,6 @@
 {
   "name": "fortune-reports",
-  "version": "5.10.368",
+  "version": "5.10.372",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -8,7 +8,8 @@
     "start": "next start",
     "type-check": "tsc --noEmit",
     "test": "node __tests__/run-tests.mjs",
-    "pre-deploy": "npm run type-check && npm run build"
+    "check:no-raw-clients": "node scripts/check-no-raw-clients.mjs",
+    "pre-deploy": "npm run type-check && npm run check:no-raw-clients && npm run build"
   },
   "dependencies": {
     "@next/bundle-analyzer": "^16.2.6",
