@@ -607,6 +607,14 @@ export const NARRATIVE_FLOW_RULES = `
 3. **避免 AI 套話 8 大禁用詞**(lesson #134 editorial 原則延伸)
    - 禁:「值得深入探索」「豐富多元」「需要細細品味」「綜合考量」「整體而言」「一般來說」「如前所述」「不容忽視」
    - 改:用具體場景、具體年份、具體建議
+
+4. **T13d v5.10.368 補:PullQuote 引文 — Atlantic editorial pattern**
+   - 整篇報告必有 **1-2 處 markdown blockquote 引文**(用 `> 引文` 標記)
+   - 放最關鍵 insight、客戶最該記住的 1 句話、命格核心結論
+   - CSS 自動升級成 PullQuote 樣式(金色左邊框 + 斜體 + 引號裝飾)
+   - ❌ 禁:把所有重點都包成 blockquote(失去重點感)
+   - ✅ 範例:「> 你不是『不夠努力』、你是『太努力但方向錯了』——癸水日主的人天生在錯誤池子裡撈魚、跳對池就化為金。」
+   - ✅ 位置:章節結尾 transitional 之前 / 報告高潮處 / 命格總覽末段
 `
 
 const PSYCHOLOGY_RULES = `

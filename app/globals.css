@@ -361,6 +361,80 @@ body {
   }
 }
 
+/* T13d v5.10.368(Master Plan、lesson #144 修第四刀完成):
+   PullQuote 引文 — Atlantic editorial pattern、純 CSS 解
+   prompt 用 markdown > 引文、parser 轉 <blockquote>、CSS 升級為 PullQuote 樣式
+   範圍:main article blockquote(報告主體 AI 內容內的引文)
+   不影響:出門訣 / 表格 / 互動元件 */
+main article blockquote,
+main .section-card blockquote {
+  position: relative;
+  margin: 2.5rem auto;
+  max-width: 90%;
+  padding: 1.5rem 2rem 1.5rem 2.5rem;
+  border-left: 3px solid var(--color-gold, #c9a84c);
+  border-right: 1px solid rgba(201, 168, 76, 0.15);
+  border-top: 1px solid rgba(201, 168, 76, 0.1);
+  border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.04) 0%, transparent 60%);
+  font-family: var(--font-sans, 'Noto Serif TC');
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1.7;
+  color: var(--color-cream, #ede5d3);
+  letter-spacing: 0.02em;
+  text-wrap: balance;
+}
+
+/* PullQuote 開頭加引號裝飾 */
+main article blockquote::before,
+main .section-card blockquote::before {
+  content: '\201C'; /* 左雙引號 */
+  position: absolute;
+  left: 0.5rem;
+  top: 0.2rem;
+  font-size: 3rem;
+  color: var(--color-gold, #c9a84c);
+  opacity: 0.4;
+  line-height: 1;
+  font-family: serif;
+}
+
+/* mobile 縮 padding */
+@media (max-width: 640px) {
+  main article blockquote,
+  main .section-card blockquote {
+    padding: 1rem 1.25rem 1rem 1.75rem;
+    margin: 1.5rem auto;
+    font-size: 1rem;
+    max-width: 100%;
+  }
+  main article blockquote::before,
+  main .section-card blockquote::before {
+    font-size: 2rem;
+    left: 0.25rem;
+  }
+}
+
+/* print mode 簡化(PDF) */
+@media print {
+  main article blockquote,
+  main .section-card blockquote {
+    background: #f5f0e8 !important;
+    border-left: 3px solid #c9a84c !important;
+    border-right: none;
+    border-top: none;
+    border-bottom: none;
+    color: #333 !important;
+    font-size: 0.95rem !important;
+    page-break-inside: avoid;
+  }
+  main article blockquote::before,
+  main .section-card blockquote::before {
+    display: none;
+  }
+}
+
 body {
   /* T13b inline noop end:body 本身的閉括號沿用既有 */
   font-family: var(--font-body);
