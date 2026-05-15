@@ -34,6 +34,21 @@ const notoSansSC = Noto_Sans_SC({ subsets: ['latin'], weight: ['400', '500', '70
 // v5.10.253 perf 修:weight 從 4 個減為 2 個(只用 500/700、其他 weight 0 引用)、節省 ~200 KiB
 const cinzel = Cinzel({ subsets: ['latin'], weight: ['500', '700'], variable: '--font-display-google', display: 'swap' })
 
+// T16 v5.10.363(L4 Gemini Vision mobile 修):viewport export
+// 原 audit:layout.tsx 缺 viewport export、iOS Safari notch 區可能渲染錯
+// Next.js 14+ 標準 export const viewport
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,  // 允許 zoom in、a11y(WCAG 1.4.4)
+  userScalable: true,
+  viewportFit: 'cover' as const,  // iPhone notch 區 safe-area-inset 可用
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0a0e1a' },
+    { media: '(prefers-color-scheme: light)', color: '#0a0e1a' },  // 鑒源純暗主題
+  ],
+}
+
 export const metadata: Metadata = {
   title: {
     default: '鑒源 JianYuan — 十四大命理系統精準分析',

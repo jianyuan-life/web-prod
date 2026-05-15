@@ -322,7 +322,12 @@ body {
   background-attachment: fixed;
   background-color: #0a0e1a; /* 雙重保險 */
   color: var(--color-text);
-  min-height: 100vh;
+  /* T16 v5.10.363(Master Plan Sprint 7、L4 Gemini Vision mobile 修):
+     iOS Safari < 15.4 100vh bug — 100vh 含 URL bar 高度、viewport 切換時內容突然 jump
+     改用 100svh(small viewport height、Safari 15.4+ / Chrome 108+ 支援、舊版 fallback 100vh)
+     效果:iOS Safari 滾動時不再有 100px+ 跳動、a11y / 視覺穩定 */
+  min-height: 100vh; /* fallback 給舊瀏覽器 */
+  min-height: 100svh;
   font-family: var(--font-body);
   /* v5.10.295 / v5.10.298 CJK-friendly typography(Gemini L4 P1 修:keep-all 移出 body、防段落破版):
      - body 級僅啟用安全規則:overflow-wrap / line-break / hanging-punctuation / text-rendering
