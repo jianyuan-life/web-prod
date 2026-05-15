@@ -328,6 +328,41 @@ body {
      效果:iOS Safari 滾動時不再有 100px+ 跳動、a11y / 視覺穩定 */
   min-height: 100vh; /* fallback 給舊瀏覽器 */
   min-height: 100svh;
+}
+
+/* T13b v5.10.365(Master Plan Sprint 7、lesson #144 修第二刀):
+   DropCap 首字下沉 — The New Yorker editorial pattern、純 CSS 解、無需動 4960 行 page.tsx
+   只對報告主章節首段 <p> 第一個字符放大、editorial 質感
+   範圍:.report-section-content > p:first-of-type:first-letter
+   不影響:出門訣 / 表格 / 互動元件 */
+@media screen and (min-width: 768px) {
+  /* 只在桌面 ≥ 768px 顯示、mobile 保持簡潔 */
+  main article .section-card:first-of-type > div > p:first-of-type:first-letter,
+  main .report-section-card:first-of-type p:first-of-type:first-letter {
+    font-family: var(--font-sans, 'Noto Serif TC');
+    font-size: 4.5rem;
+    line-height: 0.9;
+    color: var(--color-gold, #c9a84c);
+    float: left;
+    margin: 0.05em 0.1em -0.05em 0;
+    padding: 0;
+    font-weight: 700;
+    text-shadow: 0 0 8px rgba(201, 168, 76, 0.15);
+  }
+}
+
+/* 不在 print mode 套用(PDF 不需 DropCap、避免 ReportLab 渲染問題) */
+@media print {
+  main article .section-card:first-of-type > div > p:first-of-type:first-letter,
+  main .report-section-card:first-of-type p:first-of-type:first-letter {
+    font-size: inherit;
+    float: none;
+    color: inherit;
+  }
+}
+
+body {
+  /* T13b inline noop end:body 本身的閉括號沿用既有 */
   font-family: var(--font-body);
   /* v5.10.295 / v5.10.298 CJK-friendly typography(Gemini L4 P1 修:keep-all 移出 body、防段落破版):
      - body 級僅啟用安全規則:overflow-wrap / line-break / hanging-punctuation / text-rendering
