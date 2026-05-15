@@ -13,6 +13,7 @@
 
 import { useState } from 'react'
 import { searchCitiesTz, type CityTz } from '@/lib/cities-with-tz'
+import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.373(timeout + 429 handling)
 
 interface Props {
   reportId: string
@@ -43,34 +44,28 @@ export default function UpdateBirthLocation({ reportId, authToken, currentTimezo
     setSubmitting(true)
     setMessage('')
     try {
-      const res = await fetch('/api/reports/update-birth-location', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          reportId,
-          timezone: selected.timezone,
-          birth_city: selected.name,
-          birth_country: selected.countryCode,
-          birth_lat: selected.lat,
-          birth_lng: selected.lng,
-        }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setMessage(`✓ ${data.message || '更新成功'}（剩餘 ${data.remaining_updates} 次）`)
-        setTimeout(() => {
-          setOpen(false)
-          setMessage('')
-          onSuccess?.(data.remaining_updates)
-        }, 2500)
-      } else {
-        setMessage(`✗ ${data.error || '更新失敗'}`)
-      }
+      // T10b v5.10.373 — internalPost 統一處理 ApiError + RateLimitError
+      const data = await internalPost('/api/reports/update-birth-location', {
+        reportId,
+        timezone: selected.timezone,
+        birth_city: selected.name,
+        birth_country: selected.countryCode,
+        birth_lat: selected.lat,
+        birth_lng: selected.lng,
+      }, { authToken }) as { message?: string; remaining_updates?: number }
+
+      setMessage(`✓ ${data.message || '更新成功'}(剩餘 ${data.remaining_updates ?? 0} 次)`)
+      setTimeout(() => {
+        setOpen(false)
+        setMessage('')
+        onSuccess?.(data.remaining_updates ?? 0)
+      }, 2500)
     } catch (e) {
-      setMessage(`✗ 網路錯誤：${e instanceof Error ? e.message : 'unknown'}`)
+      if (e instanceof RateLimitError) {
+        setMessage(`✗ 更新過於頻繁、請等 ${e.retryAfter} 秒後重試`)
+      } else {
+        setMessage(`✗ ${e instanceof Error ? e.message : '網路錯誤、請稍後再試'}`)
+      }
     } finally {
       setSubmitting(false)
     }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { internalGet, internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.373(429 友好倒數 + timeout)
 import { useRetryCountdown } from '@/components/hooks/useRetryCountdown'
 
 interface PointsRedeemProps {
@@ -37,8 +38,8 @@ export default function PointsRedeem({
         const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token
         if (!token) { setBalance(0); setLoading(false); return }
-        const res = await fetch('/api/points/balance', { headers: { Authorization: `Bearer ${token}` } })
-        const data = await res.json()
+        // T10b v5.10.373 — internalGet 統一處理(原 raw fetch 無 timeout)
+        const data = await internalGet('/api/points/balance', { authToken: token }) as { balance?: number }
         setBalance(data.balance || 0)
       } catch { setBalance(0) }
       finally { setLoading(false) }
@@ -76,31 +77,25 @@ export default function PointsRedeem({
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      const res = await fetch('/api/points/use', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ pointsToUse: pts, planCode, orderAmount }),
-      })
+      // T10b v5.10.373 — internalPost 統一處理 RateLimitError(原 raw fetch + 手動解析 Retry-After)
+      const data = await internalPost('/api/points/use', {
+        pointsToUse: pts, planCode, orderAmount,
+      }, { authToken: token }) as { success: boolean; pointsUsed?: number; discountAmount?: number; error?: string }
 
-      // T10 v5.10.353(Master Plan Sprint 7):429 讀 Retry-After 倒數
-      if (res.status === 429) {
-        const retryAfterRaw = res.headers.get('Retry-After') || ''
-        const parsed = parseInt(retryAfterRaw, 10)
-        const retryAfter = !isNaN(parsed) && parsed > 0 && parsed < 86400 ? parsed : 60
-        startCountdown(retryAfter)
-        setError(`請求過於頻繁、請等 ${retryAfter} 秒後重試`)
-        return
-      }
-
-      const data = await res.json()
-      if (data.success) {
+      if (data.success && typeof data.pointsUsed === 'number') {
         setPointsUsed(data.pointsUsed)
-        onPointsChange(data.pointsUsed, data.discountAmount)
+        onPointsChange(data.pointsUsed, data.discountAmount ?? 0)
       } else {
         setError(data.error || '驗證失敗')
       }
-    } catch {
-      setError('網路錯誤、請稍後再試')
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        // T10 v5.10.353 + T10b v5.10.373:429 倒數 UI(從 helper 拿 retryAfter、不需手動 parse Retry-After header)
+        startCountdown(err.retryAfter)
+        setError(`請求過於頻繁、請等 ${err.retryAfter} 秒後重試`)
+      } else {
+        setError(err instanceof Error ? err.message : '網路錯誤、請稍後再試')
+      }
     } finally {
       setValidating(false)
     }

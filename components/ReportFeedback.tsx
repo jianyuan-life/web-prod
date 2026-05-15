@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { reportClientFailure } from '@/lib/security/client-audit'
+import { internalGet, internalPost } from '@/lib/api'  // T10b v5.10.373(timeout + ApiError + RateLimitError)
 // Bug #29：改用全站 singleton，避免 GoTrueClient 多實例衝突
 //   （「Multiple GoTrueClient instances detected」+「Lock was released because another request stole it」）
 import { supabase } from '@/lib/supabase'
@@ -41,16 +42,16 @@ export default function ReportFeedback({ reportId, planCode, customerEmail }: Re
   // 載入已有的反饋
   const loadExistingFeedback = useCallback(async (accessToken: string) => {
     try {
-      const res = await fetch(`/api/feedback?report_id=${reportId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
-      if (!res.ok) return
-      const { feedback } = await res.json()
+      // T10b v5.10.373 — internalGet 統一處理(原 raw fetch 無 timeout)
+      const data = await internalGet(`/api/feedback?report_id=${reportId}`, {
+        authToken: accessToken,
+      }) as { feedback?: { rating: number; most_valuable?: string[]; suggestion?: string; would_recommend?: boolean | null } }
+      const feedback = data?.feedback
       if (feedback) {
         setRating(feedback.rating)
         setSelectedSections(feedback.most_valuable || [])
         setSuggestion(feedback.suggestion || '')
-        setWouldRecommend(feedback.would_recommend)
+        setWouldRecommend(feedback.would_recommend ?? null)
         setSubmitted(true)
       }
     } catch (e) {
@@ -102,24 +103,16 @@ export default function ReportFeedback({ reportId, planCode, customerEmail }: Re
     if (rating === 0) return
     setSubmitting(true)
     try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.accessToken}`,
-        },
-        body: JSON.stringify({
-          report_id: reportId,
-          rating,
-          most_valuable: selectedSections,
-          suggestion: suggestion.trim() || null,
-          would_recommend: wouldRecommend,
-        }),
-      })
-      if (res.ok) {
-        setSubmitted(true)
-        setIsEditing(false)
-      }
+      // T10b v5.10.373 — internalPost 統一處理 ApiError + RateLimitError
+      await internalPost('/api/feedback', {
+        report_id: reportId,
+        rating,
+        most_valuable: selectedSections,
+        suggestion: suggestion.trim() || null,
+        would_recommend: wouldRecommend,
+      }, { authToken: user.accessToken })
+      setSubmitted(true)
+      setIsEditing(false)
     } catch (e) {
       // T11 v5.10.360:用戶填了 feedback 失敗、加 audit 上報(無 error UI state、保 silent UX)
       reportClientFailure('feedback_submit', e, { extra: { reportId, rating }, severity: 'error' })

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { internalGet, internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.373(429 友好顯示 + timeout)
 
 interface ReferralData {
   code: string
@@ -100,21 +101,24 @@ export default function ReferralCard() {
     try {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData?.session?.access_token
-      const res = await fetch('/api/points/transfer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ recipientEmail: transferEmail, points: parseInt(transferPoints), message: transferMsg || undefined }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setTransferResult({ ok: true, msg: `已贈與 ${data.pointsTransferred} 點，餘額 ${data.senderNewBalance}` })
-        setTransferEmail(''); setTransferPoints(''); setTransferMsg('')
-        // 刷新積分
-        fetchData()
+      // T10b v5.10.373 — internalPost 統一處理 RateLimitError + ApiError
+      const data = await internalPost('/api/points/transfer', {
+        recipientEmail: transferEmail,
+        points: parseInt(transferPoints),
+        message: transferMsg || undefined,
+      }, { authToken: token }) as { pointsTransferred?: number; senderNewBalance?: number; error?: string }
+
+      setTransferResult({ ok: true, msg: `已贈與 ${data.pointsTransferred} 點、餘額 ${data.senderNewBalance}` })
+      setTransferEmail(''); setTransferPoints(''); setTransferMsg('')
+      // 刷新積分
+      fetchData()
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        setTransferResult({ ok: false, msg: `贈與過於頻繁、請等 ${err.retryAfter} 秒後重試` })
       } else {
-        setTransferResult({ ok: false, msg: data.error })
+        setTransferResult({ ok: false, msg: err instanceof Error ? err.message : '網路錯誤' })
       }
-    } catch { setTransferResult({ ok: false, msg: '網路錯誤' }) }
+    }
     finally { setTransferLoading(false) }
   }
 
@@ -130,33 +134,25 @@ export default function ReferralCard() {
         setLoading(false)
         return
       }
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${token}`,
-      }
-
-      const [refRes, ptsRes] = await Promise.all([
-        fetch('/api/referral/my-code', { headers }),
-        fetch('/api/points/balance', { headers }),
+      // T10b v5.10.373 — internalGet 統一處理(429 / ApiError 自動拋、原 raw fetch 無 timeout)
+      const [refData, ptsData] = await Promise.all([
+        internalGet('/api/referral/my-code', { authToken: token }) as Promise<ReferralData & { code?: string }>,
+        internalGet('/api/points/balance', { authToken: token }) as Promise<PointsData>,
       ])
 
-      if (refRes.ok) {
-        const refData = await refRes.json()
-        // 推薦碼不應為空或 "---"，重試一次
-        if ((!refData.code || refData.code === '---') && !isRetry) {
-          // 等待 1 秒後重試
-          await new Promise(r => setTimeout(r, 1000))
-          return fetchData(true)
-        }
-        setReferral(refData)
+      // 推薦碼不應為空或 "---"、重試一次
+      if ((!refData.code || refData.code === '---') && !isRetry) {
+        await new Promise(r => setTimeout(r, 1000))
+        return fetchData(true)
+      }
+      setReferral(refData)
+      setPoints(ptsData)
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        setError(`請求過於頻繁、請等 ${err.retryAfter} 秒後重試`)
       } else {
-        setError('無法取得推薦碼，請稍後再試')
+        setError(err instanceof Error ? err.message : '網路連線異常、請檢查網路後重新整理頁面')
       }
-
-      if (ptsRes.ok) {
-        setPoints(await ptsRes.json())
-      }
-    } catch {
-      setError('網路連線異常，請檢查網路後重新整理頁面')
     } finally {
       setLoading(false)
     }

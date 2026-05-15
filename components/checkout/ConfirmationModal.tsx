@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { internalGet, internalPost } from '@/lib/api'  // T10b v5.10.373(timeout + 429 handling)
 import { SHICHEN } from './types'
 
 const TIME_BLOCK_NAMES = [
@@ -218,8 +219,8 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
         const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token
         if (!token) { setLoadingPts(false); return }
-        const res = await fetch('/api/points/balance', { headers: { Authorization: `Bearer ${token}` } })
-        const d = await res.json()
+        // T10b v5.10.373 — internalGet 統一處理(timeout + RateLimitError)
+        const d = await internalGet('/api/points/balance', { authToken: token }) as { balance?: number }
         setBalance(d.balance || 0)
       } catch {} finally { setLoadingPts(false) }
     }
@@ -238,16 +239,14 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      const res = await fetch('/api/points/use', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ pointsToUse: pts, planCode, orderAmount: totalPrice }),
-      })
-      const data = await res.json()
-      if (data.success && onPointsChange) {
-        onPointsChange(data.pointsUsed, data.discountAmount)
+      // T10b v5.10.373 — internalPost 統一處理(原 raw fetch + 手動 headers)
+      const data = await internalPost('/api/points/use', {
+        pointsToUse: pts, planCode, orderAmount: totalPrice,
+      }, { authToken: token }) as { success?: boolean; pointsUsed?: number; discountAmount?: number }
+      if (data.success && onPointsChange && typeof data.pointsUsed === 'number') {
+        onPointsChange(data.pointsUsed, data.discountAmount ?? 0)
       }
-    } catch { /* ignore */ }
+    } catch { /* ignore、含 RateLimitError、ConfirmationModal 不顯示 retry UI */ }
   }
 
   const removePoints = () => {

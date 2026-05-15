@@ -160,3 +160,65 @@ export async function internalPost(
   }
   return handleResponse(res)
 }
+
+// T10b v5.10.373 加 internalDelete / internalPut / internalPatch — 完整 REST verb 覆蓋
+export async function internalDelete(path: string, opts: InternalFetchOptions = {}): Promise<unknown> {
+  const headers: Record<string, string> = { ...(opts.headers || {}) }
+  if (opts.authToken) headers['Authorization'] = `Bearer ${opts.authToken}`
+  let res: Response
+  try {
+    res = await fetchWithTimeout(path, { method: 'DELETE', headers }, opts.timeoutMs)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(msg.includes('abort') ? `請求逾時 (${opts.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms)` : `網路錯誤：${msg}`)
+  }
+  return handleResponse(res)
+}
+
+export async function internalPut(
+  path: string,
+  body: Record<string, unknown> | unknown,
+  opts: InternalFetchOptions = {},
+): Promise<unknown> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(opts.headers || {}),
+  }
+  if (opts.authToken) headers['Authorization'] = `Bearer ${opts.authToken}`
+  let res: Response
+  try {
+    res = await fetchWithTimeout(
+      path,
+      { method: 'PUT', headers, body: JSON.stringify(body) },
+      opts.timeoutMs,
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(msg.includes('abort') ? `請求逾時 (${opts.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms)` : `網路錯誤：${msg}`)
+  }
+  return handleResponse(res)
+}
+
+export async function internalPatch(
+  path: string,
+  body: Record<string, unknown> | unknown,
+  opts: InternalFetchOptions = {},
+): Promise<unknown> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(opts.headers || {}),
+  }
+  if (opts.authToken) headers['Authorization'] = `Bearer ${opts.authToken}`
+  let res: Response
+  try {
+    res = await fetchWithTimeout(
+      path,
+      { method: 'PATCH', headers, body: JSON.stringify(body) },
+      opts.timeoutMs,
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(msg.includes('abort') ? `請求逾時 (${opts.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms)` : `網路錯誤：${msg}`)
+  }
+  return handleResponse(res)
+}

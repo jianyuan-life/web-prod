@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { reportClientFailure } from '@/lib/security/client-audit'
+import { internalGet, internalDelete } from '@/lib/api'  // T10b v5.10.373(timeout + RateLimitError + DELETE 支援)
 import FamilyMemberModal from './FamilyMemberModal'
 
 export interface SavedFamilyMember {
@@ -52,15 +53,11 @@ export default function FamilyMembersManager() {
   const fetchMembers = useCallback(async () => {
     if (!authToken) return
     try {
-      const res = await fetch('/api/family-members', {
-        headers: { 'Authorization': `Bearer ${authToken}` },
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setMembers(data.members || [])
-      }
+      // T10b v5.10.373 — internalGet 統一處理 timeout + RateLimitError + ApiError
+      const data = await internalGet('/api/family-members', { authToken }) as { members?: SavedFamilyMember[] }
+      setMembers(data.members || [])
     } catch (e) {
-      // T11 v5.10.360:取代 catch /* 靜默 */ 改用 client-audit 上報
+      // T11 v5.10.360:取代 catch /* 靜默 */ 改用 client-audit 上報(含 RateLimitError)
       reportClientFailure('family_members_fetch', e)
     }
     setLoading(false)
@@ -73,15 +70,11 @@ export default function FamilyMembersManager() {
   const handleDelete = async (id: string) => {
     setDeletingId(id)
     try {
-      const res = await fetch(`/api/family-members/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${authToken}` },
-      })
-      if (res.ok) {
-        setMembers(prev => prev.filter(m => m.id !== id))
-      }
+      // T10b v5.10.373 — internalDelete 統一處理 timeout + ApiError + RateLimitError
+      await internalDelete(`/api/family-members/${id}`, { authToken })
+      setMembers(prev => prev.filter(m => m.id !== id))
     } catch (e) {
-      // T11 v5.10.360
+      // T11 v5.10.360(含 RateLimitError)
       reportClientFailure('family_members_delete', e, { extra: { memberId: id } })
     }
     setDeletingId(null)
