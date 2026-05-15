@@ -68,6 +68,34 @@ export function logAuditEvent(event: AuditEvent): void {
     ...event.details,
   }))
 
+  // Phase 5 v5.10.383 — 嚴重事件(error/critical)同步上報 Sentry(老闆灌 SENTRY_DSN 後即生效)
+  // info / warn 級別不上 Sentry(避免 quota 浪費)、僅 console.log
+  if (severity === 'error' || severity === 'critical') {
+    void (async () => {
+      try {
+        const { captureMessage } = await import('@/lib/ai/observability/sentry-prod')
+        await captureMessage(
+          `${tag} ${event.reason || event.type}`,
+          severity === 'critical' ? 'fatal' : 'error',
+          {
+            tags: {
+              auditType: event.type,
+              ip: event.ip || 'unknown',
+              pathname: event.pathname || 'unknown',
+              method: event.method || 'unknown',
+            },
+            extra: {
+              userAgent: event.userAgent?.slice(0, 200),
+              country: event.country,
+              ...event.details,
+            },
+            fingerprint: [`audit-event:${event.type}`],
+          },
+        )
+      } catch { /* Sentry 失敗不影響主流程 */ }
+    })()
+  }
+
   // Sprint 7 階段:同步寫進 Supabase security_events table(若 table 存在)
   // 目前 stub、需 DB schema 建立後 wire
   // try {

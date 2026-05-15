@@ -42,6 +42,14 @@ export async function GET(req: NextRequest) {
 
   if (queryErr) {
     console.error('❌ 查詢卡住報告失敗:', queryErr)
+    // Phase 5 v5.10.383 — cron 失敗 Sentry critical(整個 cron 不工作 = production 緊急)
+    try {
+      const { captureMessage } = await import('@/lib/ai/observability/sentry-prod')
+      await captureMessage(`cron retry-pending 查詢失敗:${JSON.stringify(queryErr).slice(0, 300)}`, 'fatal', {
+        tags: { source: 'cron-retry-pending', stage: 'query' },
+        fingerprint: ['cron-retry-pending-query-failed'],
+      })
+    } catch { /* noop */ }
     return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
   }
 
@@ -102,6 +110,14 @@ export async function GET(req: NextRequest) {
       console.info(`✅ 重試報告 ${report.id}（第${currentRetry + 1}次）`)
     } catch (err) {
       console.error(`❌ 重試報告 ${report.id} 失敗:`, err)
+      // Phase 5 v5.10.383 — Sentry 上報 cron retry 失敗(老闆灌 SENTRY_DSN 後即生效)
+      try {
+        const { captureException } = await import('@/lib/ai/observability/sentry-prod')
+        await captureException(err, {
+          tags: { source: 'cron-retry-pending', reportId: report.id, retryAttempt: currentRetry + 1 },
+          fingerprint: ['cron-retry-pending-failed'],
+        })
+      } catch { /* noop */ }
     }
   }
 
