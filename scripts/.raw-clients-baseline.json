@@ -1,9 +1,9 @@
 {
-  "generated": "2026-05-15T09:17:52.448Z",
+  "generated": "2026-05-15T09:40:30.189Z",
   "summary": {
     "no-raw-fetch": {
-      "fileCount": 47,
-      "totalOccurrences": 92
+      "fileCount": 45,
+      "totalOccurrences": 89
     },
     "no-raw-supabase-service-client": {
       "fileCount": 0,
@@ -131,14 +131,6 @@
       {
         "file": "app/jamie/recalculate/page.tsx",
         "count": 2
-      },
-      {
-        "file": "app/report/[token]/ReportClientButtons.tsx",
-        "count": 2
-      },
-      {
-        "file": "app/report/[token]/ReportTracker.tsx",
-        "count": 1
       },
       {
         "file": "lib/ab-test.ts",

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 import { trackFunnelClient } from '@/lib/funnel-tracker'
+import { internalPost } from '@/lib/api'  // T10b v5.10.380(timeout + 429)
 
 // 報告瀏覽追蹤元件
 // 載入後自動記錄一次瀏覽事件，5 分鐘內同一 token 不重複計算
@@ -25,17 +26,14 @@ export default function ReportTracker({ reportId, planCode, token }: ReportTrack
 
     sessionStorage.setItem(storageKey, now.toString())
 
-    fetch('/api/report-view', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        report_id: reportId,
-        plan_code: planCode,
-        event_type: 'view',
-        access_token: token, // v5.3.34：API 強制要求 access_token 防刷
-      }),
+    // T10b v5.10.380 — internalPost 統一處理(timeout + 429 silent fail)
+    internalPost('/api/report-view', {
+      report_id: reportId,
+      plan_code: planCode,
+      event_type: 'view',
+      access_token: token, // v5.3.34:API 強制要求 access_token 防刷
     }).catch(() => {
-      // 追蹤失敗不影響使用者體驗
+      // 追蹤失敗不影響使用者體驗(含 RateLimitError)
     })
 
     // 同時寫入 customer_funnel_events（v5.3.2 監控漏斗）

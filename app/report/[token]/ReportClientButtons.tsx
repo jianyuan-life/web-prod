@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { trackFunnelClient } from '@/lib/funnel-tracker'
 import { buildPdfDownloadUrl, buildPdfDownloadFilename } from '@/lib/pdf-download'
 import { isChumenjiPlan } from '@/lib/plan-names'
+import { internalPost } from '@/lib/api'  // T10b v5.10.380(timeout + 429)
 
 export default function ReportClientButtons({ pdfUrl, planCode, reportId, clientName, accessToken }: {
   pdfUrl: string | null
@@ -27,10 +28,9 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
     const now = Date.now()
     if (lastDownloaded && now - parseInt(lastDownloaded, 10) < 5 * 60 * 1000) return
     sessionStorage.setItem(storageKey, now.toString())
-    fetch('/api/report-view', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ report_id: reportId, plan_code: planCode, event_type: 'pdf_download', access_token: accessToken }),
+    // T10b v5.10.380 — internalPost 統一處理(timeout + 429 silent fail)
+    internalPost('/api/report-view', {
+      report_id: reportId, plan_code: planCode, event_type: 'pdf_download', access_token: accessToken,
     }).catch(() => {})
     // v5.3.2：同步寫入 funnel 事件
     trackFunnelClient({ step: 'pdf_downloaded', planCode, reportId })
@@ -57,13 +57,8 @@ export default function ReportClientButtons({ pdfUrl, planCode, reportId, client
     setGenerating(true)
     setGenerateMsg('正在為你重新生成 PDF，約 30 秒...')
     try {
-      const res = await fetch('/api/reports/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: reportId }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
+      // T10b v5.10.380 — internalPost 統一處理(timeout + 429 + ApiError throw)
+      const data = await internalPost('/api/reports/generate-pdf', { report_id: reportId }) as { pdf_url?: string }
       if (data.pdf_url) {
         setGenerateMsg('✓ PDF 已就緒，即將開啟...')
         setTimeout(() => { window.open(data.pdf_url, '_blank') }, 500)
