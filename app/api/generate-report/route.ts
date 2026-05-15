@@ -743,7 +743,13 @@ ${PSYCHOLOGY_RULES}
 }
 
 // 輔助函式：將報告標記為失敗
-async function markReportFailed(reportId: string, errorMessage: string) {
+async function markReportFailed(reportId: string, errorMessage: string, isDryRun = false) {
+  // dry-run(Phase 6 regression):絕不寫 DB / 不改 status / 不發 Sentry+Telegram alert
+  // 中央防線 — 即使呼叫端漏傳 isDryRun、預設 false = production 行為不變;dryRun 時這裡硬擋
+  if (isDryRun) {
+    console.info(`[dryRun] 跳過 markReportFailed(${reportId}):${errorMessage}`)
+    return
+  }
   try {
     // 取得當前重試次數 + 客戶資訊(for Telegram alert)
     const { data } = await getSupabase()
@@ -816,9 +822,13 @@ export async function POST(req: NextRequest) {
   }
 
   let reportId = ''
+  let dryRun = false
   try {
-    let { reportId: rid, accessToken, customerEmail, planCode, birthData, additionalPeople, topic, question } = await req.json()
+    let { reportId: rid, accessToken, customerEmail, planCode, birthData, additionalPeople, topic, question, dryRun: dr } = await req.json()
     reportId = rid
+    // dry-run(Phase 6 #1 regression):走完整排盤+AI 生成、但不寫 DB / 不改 status / 不發 email / 不生 PDF
+    // 嚴格 === true、其餘 8 個既有 caller 不帶此欄位 → undefined → false → 既有行為 100% 不變
+    dryRun = dr === true
 
     // Step 0: 檢查重試次數（最多 3 次）+ 從 Supabase 補齊缺失資料
     const { data: existingReport } = await getSupabase()
@@ -828,11 +838,12 @@ export async function POST(req: NextRequest) {
       .single()
 
     // 防重複生成：已完成或正在生成中的報告直接跳過
-    if (existingReport?.status === 'completed') {
+    // dryRun 例外:regression 本來就是「拿 completed 報告用新 prompt 重跑對照」、不可在此 bail
+    if (!dryRun && existingReport?.status === 'completed') {
       console.info(`報告 ${reportId} 已完成，跳過 Fallback 重複生成`)
       return NextResponse.json({ message: '報告已完成' })
     }
-    if (existingReport?.status === 'generating') {
+    if (!dryRun && existingReport?.status === 'generating') {
       console.info(`報告 ${reportId} 正在生成中，跳過 Fallback 重複觸發`)
       return NextResponse.json({ message: '報告正在生成中' })
     }
@@ -858,12 +869,26 @@ export async function POST(req: NextRequest) {
     // G15 家族藍圖必須走 Workflow，舊版 route 不支援
     if (planCode === 'G15' && (birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports')) {
       console.info('G15 家族藍圖應走 Workflow，此路由不支援')
-      await markReportFailed(reportId, 'G15 家族藍圖需透過 Workflow 生成，請重試')
+      // dryRun(regression):G15 走 workflow path、此 fallback route 本就不支援。
+      // 回 HTTP 200 + 明確 skip 訊號(非 400/error)、讓 regression script 標 SKIP 不是 FAIL
+      // (L1 QA P1-2:抽樣含 G15 completed 報告時、避免誤導性 502 + 覆蓋盲區)
+      if (dryRun) {
+        return NextResponse.json({
+          ok: false,
+          dryRun: true,
+          skipped: 'G15-workflow-only',
+          report_id: reportId,
+          plan_code: planCode,
+          reason: 'G15 家族藍圖僅走 durable workflow path、fallback generate-report 不支援、regression 無法經此 dry-run',
+        })
+      }
+      await markReportFailed(reportId, 'G15 家族藍圖需透過 Workflow 生成，請重試', dryRun)
       return NextResponse.json({ error: 'G15 需透過 Workflow 生成' }, { status: 400 })
     }
 
     const retryCount = existingReport?.retry_count ?? 0
-    if (retryCount >= 3) {
+    // dryRun 不是真重試、不受 3 次上限、且絕不寫 status='failed'(會污染真實 completed 報告)
+    if (!dryRun && retryCount >= 3) {
       await getSupabase().from('paid_reports').update({
         status: 'failed',
         error_message: '已達最大重試次數（3次），請聯繫客服 support@jianyuan.life',
@@ -872,18 +897,22 @@ export async function POST(req: NextRequest) {
     }
 
     // 用原子操作搶佔狀態為 generating，防止其他觸發源同時處理
-    const { data: claimed, error: claimErr } = await getSupabase().from('paid_reports').update({
-      status: 'generating',
-      error_message: null,
-      retry_count: existingReport?.status === 'failed' ? retryCount + 1 : retryCount,
-    })
-      .eq('id', reportId)
-      .in('status', ['pending', 'failed'])
-      .select('id')
+    // 🔴 dryRun:完全跳過此原子搶佔 — 否則會把真實 completed/pending 報告 status 改成 generating
+    //    (其他 trigger / cron / 客戶 dashboard 會誤判該報告正在重生)。dryRun 只讀不改狀態。
+    if (!dryRun) {
+      const { data: claimed, error: claimErr } = await getSupabase().from('paid_reports').update({
+        status: 'generating',
+        error_message: null,
+        retry_count: existingReport?.status === 'failed' ? retryCount + 1 : retryCount,
+      })
+        .eq('id', reportId)
+        .in('status', ['pending', 'failed'])
+        .select('id')
 
-    if (claimErr || !claimed?.length) {
-      console.info(`報告 ${reportId} 狀態搶佔失敗，可能已被其他程序處理`)
-      return NextResponse.json({ message: '報告已被其他程序處理' })
+      if (claimErr || !claimed?.length) {
+        console.info(`報告 ${reportId} 狀態搶佔失敗，可能已被其他程序處理`)
+        return NextResponse.json({ message: '報告已被其他程序處理' })
+      }
     }
 
     // Step 1: 呼叫 Python API 排盤
@@ -922,8 +951,8 @@ export async function POST(req: NextRequest) {
     } catch (e) { console.error('排盤失敗:', e) }
 
     if (!calcResult) {
-      await markReportFailed(reportId, '排盤計算失敗：Python API 無回應或超時')
-      return NextResponse.json({ error: '排盤計算失敗' }, { status: 500 })
+      await markReportFailed(reportId, '排盤計算失敗：Python API 無回應或超時', dryRun)
+      return NextResponse.json({ error: '排盤計算失敗', dryRun }, { status: 500 })
     }
 
     // Step 2: 構建 prompt 並呼叫 AI
@@ -1154,7 +1183,8 @@ ${analyses.length}套系統排盤完整數據：
           aiModelUsed = 'claude-sonnet-4-6'
           console.info(`C 方案 Sonnet fallback 完成：${reportContent.length} 字`)
           // 仍是 downgrade、ops 該知道(Sonnet 跟 Opus 品質有差、但同 family、客戶感知小)
-          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', 'Opus failed').catch(() => {})
+          // dryRun:不發 Telegram(regression 跑 100 份會洗版 ops 告警、且非真實客戶事件)
+          if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', 'Opus failed').catch(() => {})
         } catch (e) {
           console.error('C 方案 Sonnet fallback 也失敗、最後嘗試 DeepSeek:', e)
         }
@@ -1168,11 +1198,11 @@ ${analyses.length}套系統排盤完整數據：
           aiModelUsed = 'deepseek-chat'
           console.info(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
           // v5.10.268 Gemini P0「LLM Fallback 體驗斷崖」alert:客戶收到劣化模型、ops 即介入
-          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude Opus + Sonnet both failed').catch(() => {})
+          if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude Opus + Sonnet both failed').catch(() => {})
         } catch (e) {
           console.error('C 方案 DeepSeek fallback 也失敗:', e)
-          await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
-          return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
+          await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`, dryRun)
+          return NextResponse.json({ error: 'AI 生成失敗', dryRun }, { status: 500 })
         }
       }
     } else {
@@ -1207,7 +1237,7 @@ ${analyses.length}套系統排盤完整數據：
           }, 'claude-sonnet-4-6'))
           aiModelUsed = 'claude-sonnet-4-6'
           console.info(`方案 ${planCode} Sonnet 完成：${reportContent.length} 字`)
-          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', 'Opus failed').catch(() => {})
+          if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', 'Opus failed').catch(() => {})
         } catch (sonnetE) {
           console.error(`方案 ${planCode} Sonnet 也失敗、最後嘗試 DeepSeek:`, sonnetE)
         }
@@ -1220,18 +1250,18 @@ ${analyses.length}套系統排盤完整數據：
           aiModelUsed = 'deepseek-chat'
           console.info(`方案 ${planCode} DeepSeek fallback 完成：${reportContent.length} 字`)
           // v5.10.268 Gemini P0「LLM Fallback 體驗斷崖」alert(同 C plan、D/R/G15/E* 都會落到這)
-          notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude Opus + Sonnet both failed').catch(() => {})
+          if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude Opus + Sonnet both failed').catch(() => {})
         } catch (e) {
           console.error(`方案 ${planCode} DeepSeek fallback 也失敗:`, e)
-          await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`)
-          return NextResponse.json({ error: 'AI 生成失敗' }, { status: 500 })
+          await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`, dryRun)
+          return NextResponse.json({ error: 'AI 生成失敗', dryRun }, { status: 500 })
         }
       }
     }
 
     if (!reportContent) {
-      await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容')
-      return NextResponse.json({ error: 'AI 未回覆' }, { status: 500 })
+      await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容', dryRun)
+      return NextResponse.json({ error: 'AI 未回覆', dryRun }, { status: 500 })
     }
 
     // Step 3.2: Post-generation QA — 比對 AI 報告與排盤數據，自動修正幻覺
@@ -1289,6 +1319,32 @@ ${analyses.length}套系統排盤完整數據：
     }
     if (top5Timings) {
       reportResult.top5_timings = top5Timings
+    }
+
+    // 🔴 dry-run 早 return(Phase 6 #1 regression):
+    //   完整跑完排盤 + AI 生成(reportContent 已過 post-gen QA + 去除 TOP_JSON marker)
+    //   但此處直接回傳生成內容、不往下走 → 跳過 PDF 生成 / Supabase 寫回 / status='completed' / Email
+    //   → 真實客戶報告(report_result / pdf_url / status / email_sent_at)完全不受影響
+    //   ⚠️ dryRun 仍會耗用真實 AI token(ai_cost_log 照常記錄、成本透明)
+    if (dryRun) {
+      console.info(`[dryRun] ${reportId} 生成完成(${reportContent.length} 字、model=${aiModelUsed})、不持久化`)
+      return NextResponse.json({
+        ok: true,
+        dryRun: true,
+        report_id: reportId,
+        plan_code: planCode,
+        ai_model: aiModelUsed,
+        content_length: reportContent.length,
+        systems_count: analyses.length,
+        generated_content: reportContent,
+        top5_timings: top5Timings ?? undefined,
+        // L2 IA P1-2 + lesson #146 spec scope:明示 regression 對照範圍
+        // dryRun 走 fallback generate-report path、非 production 主路徑 durable workflow
+        // → C/G15 等在 workflow path 的 5-LLM QA / qualityGate 迴圈 / merge 步驟「未涵蓋」
+        // regression similarity 反映的是 fallback path 輸出、消費端須知此限制
+        path: 'fallback-generate-report',
+        scope_note: '非 workflow path、workflow-only 步驟(5-LLM QA / qualityGate / merge)未涵蓋',
+      })
     }
 
     const planName = PLAN_NAMES[planCode] || '命理分析報告'
@@ -1519,8 +1575,8 @@ ${analyses.length}套系統排盤完整數據：
     console.error('報告生成錯誤:', err)
     const errorMsg = err instanceof Error ? err.message : '未知錯誤'
     if (reportId) {
-      await markReportFailed(reportId, `報告生成未預期錯誤: ${errorMsg}`)
+      await markReportFailed(reportId, `報告生成未預期錯誤: ${errorMsg}`, dryRun)
     }
-    return NextResponse.json({ error: errorMsg }, { status: 500 })
+    return NextResponse.json({ error: errorMsg, dryRun }, { status: 500 })
   }
 }

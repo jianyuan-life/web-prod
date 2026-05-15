@@ -1,9 +1,9 @@
 {
-  "generated": "2026-05-15T09:50:37.230Z",
+  "generated": "2026-05-15T13:50:30.500Z",
   "summary": {
     "no-raw-fetch": {
       "fileCount": 40,
-      "totalOccurrences": 80
+      "totalOccurrences": 81
     },
     "no-raw-supabase-service-client": {
       "fileCount": 0,
@@ -38,7 +38,7 @@
       },
       {
         "file": "app/api/admin/recalculate-report/route.ts",
-        "count": 2
+        "count": 3
       },
       {
         "file": "app/api/admin/system/route.ts",

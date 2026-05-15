@@ -4,7 +4,7 @@
 鑑源命理平台（jianyuan.life）前端網頁開發專案。
 Next.js 14 App Router + Tailwind CSS + Supabase + Stripe + Vercel 部署。
 
-**網站版本:** **v5.10.350**(2026-05-15 出門訣 v5.10.348 sprint + .349 CSRF hotfix + .350 UI 對齊、4 LLM 平均 99.5(L1=98/L2=100/L3=100/L4=100)、32 凶 hard filter + 25 吉 boost + 真太陽時校正、4 客戶 × 12 月跨年 48/48 PASS、三 repo push web-prod 45808494 / fortune-research c92ec75 / Fly.io v111。詳:`Claude-鑑源/tasks/qimen_jixiong_overhaul_plan_2026-05-14.md` + lesson #142 不分批 / #143 不猜生辰)
+**網站版本:** **v5.10.384**(2026-05-15 線下接續:Phase 6 #1 regression admin endpoint dryRun mode wire — generate-report + recalculate-report 加 dryRun 旁路[不寫 DB/不改 status/不發 email/不生 PDF、回生成內容供 similarity diff]+ phase6_regression_100_customers.py regenerate_report() 實作 + 成本守門。4 LLM 95 gate PASS。canonical 對齊 `package.json:version`。歷史 v5.10.350:出門訣 v5.10.348 sprint + .349 CSRF hotfix + .350 UI 對齊、4 LLM 平均 99.5(L1=98/L2=100/L3=100/L4=100)、32 凶 hard filter + 25 吉 boost + 真太陽時校正、4 客戶 × 12 月跨年 48/48 PASS、三 repo push web-prod 45808494 / fortune-research c92ec75 / Fly.io v111。詳:`Claude-鑑源/tasks/qimen_jixiong_overhaul_plan_2026-05-14.md` + lesson #142 不分批 / #143 不猜生辰)
 
 **歷史:** v5.10.347(2026-05-14 Sprint 1-6 全方面安全 + 效能 + Bot 防禦完成、24 commits ship、production 全 verified、Codex L3 三輪 + IA L2 + Gemini grounding + QA agent 全跑、17 finding 全修、Multi-Model Dispatch evidence 100% commit message 帶。詳:`SECURITY.md` 9 段防線總覽 + `Claude-鑑源/tasks/lessons.md` #141 v1-v5)
 

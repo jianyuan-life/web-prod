@@ -33,6 +33,11 @@ import { checkAdminRateLimit } from '@/lib/admin-rate-limit'
 import { writeAuditLog } from '@/lib/admin-audit-log'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
+// dry-run 模式會「同步」await generate-report 跑完整排盤+AI(數分鐘)、需放寬 function timeout
+// 一般(非 dryRun)recalculate 走 fire-and-forget 6-8s、不受此影響
+// Hobby plan 上限 60s、dryRun C 方案長跑需 Vercel Pro(Phase 5 #1)、否則只適用 D/R/E 等較快方案
+export const maxDuration = 300
+
 function getSupabase() {
   return createServiceClient()
 }
@@ -63,6 +68,7 @@ export async function POST(req: NextRequest) {
     force?: boolean
     reason?: string
     key?: string
+    dryRun?: boolean   // Phase 6 #1 regression:不寫 DB / 不改 status / 不發 email、同步回傳重生內容
   }
   let body: Body = {}
   try {
@@ -75,6 +81,7 @@ export async function POST(req: NextRequest) {
   if (authFail) return authFail
 
   const { reportId, timezone, birth_city, birth_country, birth_lat, birth_lng, force, reason } = body
+  const dryRun = body.dryRun === true   // 嚴格 === true、預設 false → 既有 admin/cron 行為不變
   if (!reportId) {
     return NextResponse.json({ error: '必須提供 reportId' }, { status: 400 })
   }
@@ -145,6 +152,120 @@ export async function POST(req: NextRequest) {
     updatedBirthData.cityLng = birth_lng
     topLevelUpdate.birth_lng = birth_lng
     updatedFields.push('birth_lng')
+  }
+
+  // ── 🔴 dry-run 分支(Phase 6 #1 regression、v5.10.384)──
+  // 走完整重生流程「但不留任何副作用」:不寫 paid_reports、不改 status、不備份
+  // previous_report_result、不寫 audit log、不觸發 async workflow(workflow durable
+  // 無法同步回內容)。改為「同步 await /api/generate-report 帶 dryRun:true」、relay
+  // 生成內容供 regression similarity diff。報告現況(report_result / status / pdf
+  // / email)100% 不受影響。
+  // 注意:此分支在 auth + rate-limit + 輸入驗證 + report 讀取 + 狀態檢查「之後」、
+  //       任何 DB 寫入「之前」、確保 dryRun 不繞過任何安全檢查、也不產生副作用。
+  if (dryRun) {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
+    const internalSecret = process.env.CRON_SECRET || ''
+
+    // L3 Codex R4 P2:workflow-only 方案(R 多成員存 birth_data.members、G15 家族)
+    // fallback /api/generate-report 不支援其 payload 結構 → 會 500 或單人無效比對。
+    // 與 G15 一致:在 relay 前 clean skip(回 skipped、script 標 SKIP 非 ERROR/假 FAIL)、
+    // 且省一次注定失敗的 generate-report 呼叫(含 AI 成本)。
+    const _bdPre = (updatedBirthData || {}) as Record<string, unknown>
+    const isMultiMemberR = report.plan_code === 'R' || Array.isArray(_bdPre.members)
+    if (isMultiMemberR) {
+      return NextResponse.json({
+        ok: false,
+        dryRun: true,
+        reportId,
+        status: report.status,            // 未變更
+        skipped: 'R-workflow-only',
+        reason: 'R 合否?為多成員方案(birth_data.members)、僅走 durable workflow R branch、fallback generate-report 無法忠實重現、regression 經 dry-run 無效',
+      })
+    }
+
+    try {
+      // 傳「合併修正後的 updatedBirthData + planCode」(L3 Codex P2):
+      //  - regression 用例:無帶 timezone 等修正 → updatedBirthData == report.birth_data
+      //    → 等同「同生辰、新 prompt/引擎」對照(行為與只傳 reportId 一致)
+      //  - admin fix-preview 用例:有帶 timezone/city/經緯度修正 → 預覽即反映修正後排盤
+      //    (修 Codex P2:原只傳 reportId 會 reload 舊 birth_data、與 updated_fields 矛盾誤導)
+      // 用 raw 原生請求 + AbortController:刻意對齊本檔下方既有 server→server internal
+      // 觸發模式(workflow / fallback)。codebase 慣例 = client→internal 用 lib/api.ts
+      // internalPost、server→server internal 用原生請求 [L2 IA P1-1 建議]
+      // L3 Codex R3 P2-1:D 方案 topic/question 存在 birth_data、generate-report 只從
+      // top-level body 讀(L1066-1067、無 birth_data fallback)。dryRun 只傳 birthData
+      // 會讓 D 方案 regenerate 丟失客戶問題、similarity regression 失真。
+      // 用與 webhook(route.ts:308)+ steps.ts(L1877-1878)相同 canonical key 映射 hydrate。
+      // ⚠️ anti-drift:若 steps.ts:1877-1878 的 topic/question key 映射變更、此處需同步
+      const _bd = updatedBirthData as Record<string, unknown>
+      const hydratedTopic = (_bd.topic || _bd.analysis_topic || '') as string
+      const hydratedQuestion = (_bd.question || _bd.customer_note || _bd.other_question || '') as string
+      const controller = new AbortController()
+      const t = setTimeout(() => controller.abort(), 290000) // 290s < maxDuration 300
+      const genRes = await fetch(`${siteUrl}/api/generate-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': internalSecret },
+        body: JSON.stringify({
+          reportId,
+          dryRun: true,
+          birthData: updatedBirthData,        // 合併修正後(無修正時 = 原 birth_data)
+          planCode: report.plan_code,
+          topic: hydratedTopic,               // D 方案分析方向(忠實重現、similarity 才有效)
+          question: hydratedQuestion,         // D 方案客戶問題描述
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(t)
+      const genJson = await genRes.json().catch(() => ({} as Record<string, unknown>))
+
+      // G15 等只走 workflow path 的方案:generate-report 回 200 + skipped(非 error)
+      if (genJson?.skipped) {
+        return NextResponse.json({
+          ok: false,
+          dryRun: true,
+          reportId,
+          status: report.status,            // 未變更
+          skipped: genJson.skipped,
+          reason: genJson.reason,
+        })
+      }
+      if (!genRes.ok || genJson?.dryRun !== true) {
+        return NextResponse.json({
+          ok: false,
+          dryRun: true,
+          reportId,
+          status: report.status,            // 未變更
+          error: 'dry-run 重生失敗(generate-report 未回有效 dryRun 內容)',
+          detail: typeof genJson?.error === 'string' ? genJson.error : `HTTP ${genRes.status}`,
+        }, { status: 502 })
+      }
+      return NextResponse.json({
+        ok: true,
+        dryRun: true,
+        reportId,
+        status: report.status,              // 未變更(仍是原 completed/failed/pending)
+        updated_fields: updatedFields,      // 若有帶 timezone 等、列出「若真重算會改的欄位」
+        would_update: { ...topLevelUpdate },
+        ai_model: genJson.ai_model,
+        content_length: genJson.content_length,
+        generated_content: genJson.generated_content,
+        top5_timings: genJson.top5_timings,
+        // L2 IA P1-2 + lesson #146:透傳 regression 對照範圍限制給消費端
+        path: genJson.path || 'fallback-generate-report',
+        scope_note: genJson.scope_note,
+      })
+    } catch (e) {
+      // raw fetch abort → AbortError(name='AbortError' / message 含 'abort')
+      const isTimeout = e instanceof Error && (e.name === 'AbortError' || e.message.toLowerCase().includes('abort'))
+      return NextResponse.json({
+        ok: false,
+        dryRun: true,
+        reportId,
+        status: report.status,              // 全程未變更
+        error: isTimeout ? 'dry-run 重生超時(C 方案長跑需 Vercel Pro / 改測較快方案)' : 'dry-run 重生失敗(網路錯誤)',
+        detail: e instanceof Error ? e.message : String(e),
+      }, { status: isTimeout ? 504 : 502 })
+    }
   }
 
   // 3. 寫回 Supabase，並把 status 拉回 pending 以重觸發生成
