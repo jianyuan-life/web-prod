@@ -1971,6 +1971,25 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       {/* 瀏覽追蹤（Client Component，不影響 SSR） */}
       <ReportTracker reportId={report.id} planCode={report.plan_code} token={token} />
 
+      {/* T13c v5.10.366(Master Plan Sprint 8、lesson #144 修第三刀):
+          StickyTOC sidebar 進 production legacy renderer
+          - 對應既有 sec-${i} id(L4477/4503/4541)、scrollspy 自動跟隨
+          - hidden xl:block (≥ 1280px 桌面才顯示、mobile 用 ChapterNav)
+          - !isChumenji && sections.length > 3 條件(出門訣 / 短報告 不渲染)
+          - fixed left side、不擠 main content 寬度 */}
+      {!isChumenji && sections.length > 3 && (
+        <div className="hidden xl:block fixed left-4 top-24 max-w-[200px] z-30 pointer-events-auto">
+          <StickyTOC
+            items={sections.map((sec, i) => ({
+              id: `sec-${i}`,
+              label: sec.title || `章節 ${i + 1}`,
+              level: 1 as const,
+            }))}
+            className="bg-bg/80 backdrop-blur-md rounded-lg p-3 max-h-[75vh] overflow-y-auto"
+          />
+        </div>
+      )}
+
       {/* #11 閱讀進度條 */}
       <ReadingProgressBar />
       {/* #13 回到頂部浮動按鈕 */}
