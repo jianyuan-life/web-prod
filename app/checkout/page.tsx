@@ -13,6 +13,7 @@ import PointsRedeem from '@/components/checkout/PointsRedeem'
 import FunnelPageHit from '@/components/FunnelPageHit'
 import TrustBar from '@/components/TrustBar'
 import CheckoutProgress from '@/components/checkout/CheckoutProgress'
+import TurnstileWidget from '@/components/security/TurnstileWidget'  // Phase 5 v5.10.382 老闆按鈕 #5(Turnstile bot 防護、checkout 高價值 funnel)
 
 function CheckoutForm() {
   const ctx = useCheckoutForm()
@@ -75,6 +76,9 @@ function CheckoutForm() {
             onPointsChange={ctx.handlePointsChange}
           />
         </div>
+
+        {/* Phase 5 v5.10.382 — Cloudflare Turnstile bot 防護(老闆灌 NEXT_PUBLIC_TURNSTILE_SITE_KEY 後 widget render、未設則隱身、結帳是高價值 funnel 防 bot 重要) */}
+        <TurnstileWidget onVerify={ctx.setTurnstileToken} />
 
         {/* R 方案多人表單 */}
         {ctx.isRelationPlan ? (

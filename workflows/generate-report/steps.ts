@@ -4202,11 +4202,32 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
   }).eq('id', reportId)
   console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
 
+  // Phase 5 v5.10.382 — Sentry critical event(老闆灌 SENTRY_DSN 後即生效、未設則 fallback console)
+  try {
+    const { captureMessage } = await import('@/lib/ai/observability/sentry-prod')
+    const isFinalFail = (reportData?.retry_count ?? 0) >= 3
+    await captureMessage(`報告生成失敗:${errorMessage}`, isFinalFail ? 'fatal' : 'error', {
+      tags: {
+        reportId,
+        planCode: reportData?.plan_code || 'unknown',
+        retryCount: reportData?.retry_count ?? 0,
+        isFinalFail,
+      },
+      extra: {
+        customerEmail: reportData?.customer_email || 'unknown',
+        errorMessage,
+      },
+      fingerprint: ['report-generation-failed', reportData?.plan_code || 'unknown'],
+    })
+  } catch (e) {
+    console.warn('Sentry capture 失敗(不阻塞):', e)
+  }
+
   // Telegram 即時告警給老闆
   try {
     const { notifyFailed, notifyWorkflowFailed } = await import('@/lib/ai/observability/telegram')
     await notifyFailed(reportId, errorMessage)
-    // 如果已達 3 次重試仍失敗，再發一次 workflow 崩潰告警（需立刻人工介入）
+    // 如果已達 3 次重試仍失敗、再發一次 workflow 崩潰告警(需立刻人工介入)
     if ((reportData?.retry_count ?? 0) >= 3) {
       await notifyWorkflowFailed(reportId, errorMessage, 'final_failure_after_3_retries')
     }

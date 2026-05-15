@@ -102,6 +102,9 @@ export function useCheckoutForm() {
   const [authChecked, setAuthChecked] = useState(false)
   const [authEmail, setAuthEmail] = useState('')
 
+  // Phase 5 v5.10.382 — Turnstile bot 防護(老闆灌 NEXT_PUBLIC_TURNSTILE_SITE_KEY 後 widget 自動顯示、verify 後設 token)
+  const [turnstileToken, setTurnstileToken] = useState('')
+
   // 計算金額
   const extraMemberCount = Math.max(0, familyMembers.length - 2)
   const extraPrice = 0
@@ -436,6 +439,24 @@ export function useCheckoutForm() {
     setShowConfirmModal(false)
     setLoading(true)
 
+    // Phase 5 v5.10.382 — Turnstile bot 防護:有 site key 時必驗(沒設則 stub mode 自動 pass)
+    // 結帳是 P0 高價值 funnel、bot 防禦比 signup 更重要
+    const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    if (turnstileSiteKey) {
+      try {
+        const verifyRes = await internalPost('/api/auth/turnstile-verify', { token: turnstileToken }) as { success?: boolean; errorCodes?: string[] }
+        if (!verifyRes.success) {
+          setError('人機驗證失敗、請重新嘗試')
+          setLoading(false)
+          return
+        }
+      } catch {
+        setError('人機驗證系統異常、請稍後再試')
+        setLoading(false)
+        return
+      }
+    }
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let birthData: Record<string, any> = {}
@@ -633,6 +654,8 @@ export function useCheckoutForm() {
     extraMemberCount, extraPrice, rExtraCount, totalPrice, finalPrice,
     // Auth
     authChecked,
+    // Phase 5 v5.10.382 — Turnstile
+    setTurnstileToken,
     // 驗證
     isFormValid,
     // 確認彈窗

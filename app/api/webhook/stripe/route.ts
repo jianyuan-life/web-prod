@@ -124,7 +124,16 @@ export async function POST(req: NextRequest) {
 
       if (insertErr) {
         console.error('❌ Supabase insert 失敗（嚴重）:', insertErr)
-        // insert 失敗 = 客戶付了錢但報告永遠不會生成，回傳 500 讓 Stripe 重試 webhook
+        // Phase 5 v5.10.382 — Sentry critical(老闆灌 SENTRY_DSN 後即生效)
+        try {
+          const { captureMessage } = await import('@/lib/ai/observability/sentry-prod')
+          await captureMessage('Stripe webhook Supabase insert failed', 'fatal', {
+            tags: { source: 'stripe-webhook', planCode, stripeSessionId: session.id },
+            extra: { customerEmail, amount, insertErr: String(insertErr).slice(0, 500) },
+            fingerprint: ['stripe-webhook-supabase-insert-failed'],
+          })
+        } catch { /* noop */ }
+        // insert 失敗 = 客戶付了錢但報告永遠不會生成、回傳 500 讓 Stripe 重試 webhook
         return NextResponse.json({ error: 'Supabase insert failed' }, { status: 500 })
       }
       reportId = insertData?.id || ''
@@ -182,6 +191,15 @@ export async function POST(req: NextRequest) {
       }
     } catch (err) {
       console.error('❌ Supabase 連線異常（嚴重）:', err)
+      // Phase 5 v5.10.382 — Sentry fatal(老闆灌 SENTRY_DSN 後即生效)
+      try {
+        const { captureException } = await import('@/lib/ai/observability/sentry-prod')
+        await captureException(err, {
+          tags: { source: 'stripe-webhook', critical: 'supabase-connection-failed', planCode },
+          extra: { customerEmail, amount, stripeSessionId: session.id },
+          fingerprint: ['stripe-webhook-supabase-connection-failed'],
+        })
+      } catch { /* noop */ }
       return NextResponse.json({ error: 'Supabase connection error' }, { status: 500 })
     }
 

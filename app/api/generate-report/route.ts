@@ -761,6 +761,28 @@ async function markReportFailed(reportId: string, errorMessage: string) {
 
     console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
 
+    // Phase 5 v5.10.382 — Sentry critical event(老闆灌 SENTRY_DSN 後即生效、未設則 fallback console)
+    try {
+      const { captureMessage } = await import('@/lib/ai/observability/sentry-prod')
+      const isFinalFail = currentRetry >= 2
+      await captureMessage(`報告生成失敗(generate-report fallback):${errorMessage}`, isFinalFail ? 'fatal' : 'error', {
+        tags: {
+          reportId,
+          planCode: data?.plan_code || 'unknown',
+          retryCount: currentRetry,
+          isFinalFail,
+          source: 'api/generate-report',
+        },
+        extra: {
+          customerEmail: data?.customer_email || 'unknown',
+          clientName: data?.client_name || 'unknown',
+          amount: data?.amount_usd ?? 0,
+          errorMessage,
+        },
+        fingerprint: ['generate-report-failed', data?.plan_code || 'unknown'],
+      })
+    } catch { /* noop */ }
+
     // v5.10.270 Codex P0#3 修:retry_count handling 不一致 → markReportFailed 觸發 Telegram alert
     // 客戶花 $29-279 報告失敗、ops 必須立即知道(refund / 重新生成 / 致歉信)
     if (currentRetry >= 2) {
