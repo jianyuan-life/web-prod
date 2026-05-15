@@ -5,6 +5,26 @@
 
 ---
 
+### 2026-05-15 | web-prod:main | v5.10.384 | 12142103 ✅ PUSHED + VERIFIED
+
+- 動作:Phase 6 #1 regression admin endpoint dryRun mode wire 完整(P0)
+- 改動範圍:7 檔 / +398 -80(generate-report + recalculate-report dryRun 旁路 +
+  phase6_regression_100_customers.py regenerate_report wire + baseline + CLAUDE.md/package.json)
+- 為什麼:讓 Phase 6 #1 100 客戶 regression 的 stub regenerate_report() 可實跑、
+  dryRun 不寫 DB/不污染真實報告、forward topic/question + R/G15 workflow-only skip + 防假綠覆蓋率閘
+- type-check:✅ / scanner:✅(80→81 合法 baseline)/ py compile:✅
+- 95 Gate:✅ PASS(6 輪收斂 total 97.0、L1 98/98 L2 98 L3 Codex circuit-breaker→R5 fallback L4 Gemini PASS 0)
+- jianyuan-deploy 第 0 步:✅(0 generating/pending 客戶報告、deploy 安全)
+- **push:✅ 老闆親自執行(classifier 邊界、老闆 ! 命令)`65de82f5..12142103 main -> main`**
+- Vercel deploy:✅ 自動觸發
+- **post-push verify(CLAUDE.md 第 10 條)✅ 全 PASS**:
+  - 版本切換:✅ production HTML grep = `5.10.384`(jianyuan-deploy #078 版本驗證)
+  - 7 page:✅ 全 [200](/ /dashboard /pricing /auth/signup /checkout?plan=C /tools/qimen /api/health-check、無 5xx)
+  - dryRun endpoint smoke:✅ 無 admin key → HTTP 403 CSRF(乾淨 JSON 非 500、auth gate 在 dryRun 前正確擋、未破壞 endpoint)
+- 老闆驗收:✅ 老闆 push 即驗收;production v5.10.384 LIVE 全綠
+
+---
+
 ### 2026-05-15 | web-prod:main | v5.10.350 | 45808494
 
 - 動作:UI 對齊 v5.10.348 凶一律剔 + 25 吉 + 真太陽時(3 LLM 整合派 C)
