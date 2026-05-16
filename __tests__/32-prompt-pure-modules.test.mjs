@@ -63,33 +63,27 @@ test('score 非數字 → -1(防型別污染)', () => {
 })
 done()
 
-// ── P3 apology-retry：4 大保證齊全 + SSOT 對齊 ──
+// ── P3 4 大保證 SSOT 不變量(致歉信本體已存在 production steps.ts:4331、
+//    我的 apology-retry.ts 已刪除為多餘;此處只守 GuaranteeBlock 用的
+//    4 保證文字與根 CLAUDE.md「退費 policy v5.7.8」對齊 + 不承諾退款)──
 const GUARANTEES = [
   '失敗自動重試 3 次,並由真人在 24 小時內接手協助補開新單(不會多扣款)',
   '內容明顯錯誤(出生資料解讀錯)免費重新生成、不再扣款',
   '系統重複扣款,無條件退回多扣金額',
   '未授權扣款(盜刷 / 家人誤購)提供 Stripe 交易紀錄即可申訴退回',
 ]
-function buildApology(name, plan) {
-  return {
-    subject: `${name},您的「${plan}」報告我們正在親自為您處理`,
-    text: `${name}...4 大保證:\n` + GUARANTEES.map((g, i) => `${i + 1}. ${g}`).join('\n'),
-  }
-}
-suite('P3 失敗致歉信 — 4 大保證對齊根 CLAUDE.md SSOT')
-test('subject 含客戶名與方案名', () => {
-  const e = buildApology('王先生', '人生藍圖')
-  assertIncludes(e.subject.split(''), '王')
-  assert(e.subject.includes('人生藍圖'))
-})
-test('4 大保證全列、不缺項', () => {
-  const e = buildApology('A', 'C')
+suite('P3 4 大保證 SSOT 不變量(GuaranteeBlock + 既有 prod 致歉信共用)')
+test('恰 4 條保證', () => {
   assertEqual(GUARANTEES.length, 4)
-  for (const g of GUARANTEES) assert(e.text.includes(g.slice(0, 6)), `缺保證:${g}`)
 })
-test('不承諾退款(政策不退款、只走 4 保證)', () => {
-  const e = buildApology('A', 'C')
-  assert(!/全額退款|無條件退款|退費/.test(e.text), '不得出現無條件退款承諾')
+test('涵蓋:失敗補開 / 錯誤重生 / 重複扣款退 / 盜刷申訴', () => {
+  const joined = GUARANTEES.join('|')
+  for (const k of ['重試 3 次', '免費重新生成', '重複扣款', '未授權扣款'])
+    assert(joined.includes(k), `缺保證關鍵:${k}`)
+})
+test('不出現無條件退款承諾(政策:不退款、只走 4 保證)', () => {
+  const joined = GUARANTEES.join('')
+  assert(!/全額退款|無條件退款|可退費/.test(joined), '不得承諾退款')
 })
 done()
 

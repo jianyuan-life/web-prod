@@ -1,11 +1,13 @@
 // ============================================================
 // 提示詞合集 Prompt 4 — Post-purchase 5 封 Email Drip
 // ============================================================
-// trigger = supabase paid_reports.completed_at。本檔 = 5 封模板 +
-// 排程定義。cron 觸發 + Supabase email_drips 防重寄 = 呼叫端 wire
-// (cron 排程 = 老闆,auto-sync 例外 e + 群發類 b)。
-//
-// additive、未自動 wire。退訂連結由呼叫端用既有 lib/unsubscribe 注入。
+// 🔴 資產盤點修正(2026-05-16):`app/api/cron/followup-email/route.ts`
+//   **已存在**「完成後 D+3 跟進信 + 出門訣 CTA + followup_sent dedup」=
+//   等同本序列的 step 2。本檔不是新獨立功能,而是**擴充既有 cron** 的
+//   D+0/1/7/14 其餘 4 觸點的模板來源 — wire 時必接進既有 followup-email
+//   route(沿用 followup_sent / sendEmailWithRetry / lib/unsubscribe),
+//   **嚴禁另起平行 cron**(會與既有重複寄信、lesson #144 雙實作分裂)。
+//   trigger = paid_reports.completed_at。cron 排程改動 = 老闆(auto-sync 例外 e)。
 
 export interface DripCtx {
   customerName: string
