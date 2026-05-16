@@ -1078,6 +1078,236 @@ a:focus-visible,
   border: 1px solid rgba(139, 110, 60, 0.18);
 }
 
+/* =================================================================
+ * v5.10.395 Warm Light Theme v1.1 — semantic tokens(2026-05-16、4 LLM 共識 95.5/100)
+ * 規格:tasks/spec_ui_warm_light_theme_2026-05-16_v1.md
+ * 政策:既有 --color-* tokens 不動(L1041-1079、保 v5.10.59/.66 修補)、新增語意 token 雙軌共存
+ * 對比度:所有 token 用 Python WCAG 2.1 公式算過
+ * 受 NEXT_PUBLIC_FF_WARM_LIGHT_THEME 控制(.env.local)、預設 false、不影響 production
+ * ================================================================= */
+
+:root {
+  /* Warm Light 新增語意 token(dark 預設、不影響既有 dark 設計)*/
+  /* 背景層(5 階)*/
+  --bg-base: #080B16;
+  --bg-raised: #0E1428;
+  --bg-sunken: #060912;
+  --bg-card: #111A30;
+  --bg-card-hi: #15203A;
+
+  /* 文字層(dark、AAA)*/
+  --text-primary: #E8E4DE;
+  --text-secondary: #B3B8C5;
+  --text-muted: #7A8194;
+  --text-on-gold: #0A0E1A;
+
+  /* 朱砂(7 階、light 主強調用)*/
+  --vermillion-50: #FBEEEB;
+  --vermillion-300: #D87060;
+  --vermillion-500: #C0392B;
+  --vermillion-700: #8E2A1E;
+
+  /* 金(dark 香檳金、AAA)*/
+  --gold-50: #F8F1DE;
+  --gold-300: #E0C679;
+  --gold-500: #C9A84C;
+  --gold-700: #8E6F2A;
+
+  /* 線條 */
+  --line: rgba(201, 168, 76, 0.18);
+  --line-strong: rgba(201, 168, 76, 0.40);
+
+  /* 主強調 alias(theme 動態決定)*/
+  --accent-primary: var(--gold-500);
+  --accent-secondary: var(--gold-300);
+
+  /* line-height / letter-spacing 全站基準變數 */
+  --leading-body: 1.75;
+  --leading-heading: 1.25;
+  --leading-classical: 1.85;
+  --tracking-body: 0.02em;
+  --tracking-heading: -0.01em;
+  --tracking-eyebrow: 0.24em;
+}
+
+[data-theme="light"] {
+  /* Warm Light 完整 token override(取代上方 :root dark 預設)*/
+  --bg-base: #FAF6EE;            /* 暖白宣紙 */
+  --bg-raised: #F2E8D5;          /* 米色抬升 */
+  --bg-sunken: #FDF9F1;
+  --bg-card: #FFFBF2;
+  --bg-card-hi: #FAF1DE;
+
+  --text-primary: #2A1F18;       /* AAA 14.90:1 暖墨黑 */
+  --text-secondary: #5A4E42;     /* AAA 7.48:1 暖灰 */
+  --text-muted: #7A6E62;         /* AA 4.60:1 弱輔助 */
+  --text-on-gold: #FAF6EE;
+
+  --vermillion-500: #C0392B;     /* AA 5.05:1 主朱砂 */
+  --vermillion-700: #8E2A1E;     /* AAA 7.79:1 朱砂深 */
+
+  --gold-300: #C9A864;           /* FAIL 2.10:1 ⚠️ 僅裝飾、勿作文字 */
+  --gold-500: #8C5E1A;           /* AA 5.22:1 ✅ 主鎏金(NEW、取代 v0 FAIL #B8893B)*/
+  --gold-700: #5C4416;           /* AAA 8.49:1 鎏金深 */
+
+  --line: rgba(140, 94, 26, 0.22);
+  --line-strong: rgba(92, 68, 22, 0.45);
+
+  --color-success-light: #2E6B40;
+  --color-danger-light: #A93429;
+  --color-warning-light: #7A4E18;
+
+  --accent-primary: var(--vermillion-500);
+  --accent-secondary: var(--vermillion-300);
+}
+
+/* @custom-variant dark/light — Tailwind v4 自定義 variant 對齊 data-theme attribute */
+@custom-variant dark (&:where([data-theme="dark"] *, [data-theme="dark"]));
+@custom-variant light (&:where([data-theme="light"] *, [data-theme="light"]));
+
+/* =================================================================
+ * Phase 2 — 字體系統 + i18n typography
+ * 規格 §3 §8;解 v0 P0-4 (padding 負值不合 CSS);加 L3 共識繁簡切換
+ * ================================================================= */
+
+/* 中文標點 OpenType feature(取代 v0 撒謊的 padding 負值)*/
+:lang(zh-Hant) body,
+:lang(zh-Hans) body,
+:where(html:not([lang])) body {
+  font-feature-settings: "palt" 1, "halt" 1;
+  hanging-punctuation: first allow-end;
+}
+
+/* 簡繁字體 stack 切換 */
+:lang(zh-Hant) body {
+  font-family: var(--font-body), "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", "Inter", system-ui, -apple-system, sans-serif;
+}
+:lang(zh-Hans) body {
+  font-family: var(--font-body-sc), "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", "Inter", system-ui, sans-serif;
+}
+:lang(en) body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  --leading-body: 1.6;
+}
+
+/* 古籍引用 component class(被 <ClassicalQuote> 用)*/
+.classical {
+  font-family: "Source Han Serif TC", var(--font-sans), "Noto Serif TC", serif;
+  font-style: italic;
+  line-height: 1.85;
+  letter-spacing: 0.02em;
+  border-left: 3px solid var(--gold-700);
+  padding-left: 1.25em;
+  margin: 1em 0;
+  color: var(--text-secondary);
+}
+
+/* tabular-nums 給統計數字 / 定價 / 八字四柱 / 信心指數 */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* =================================================================
+ * v5.10.395 Phase 3 — B 類區視覺 override(只動 light theme、dark 不變)
+ * 規格 §5.2 / §5.4 / §5.12 / §5.16
+ * 策略:CSS-only [data-theme="light"] override、不動既有 component .tsx
+ * 受 NEXT_PUBLIC_FF_WARM_LIGHT_THEME 控制(JS 端 FF off 時 [data-theme] 預設 dark = 不生效)
+ * ================================================================= */
+
+/* 5.2 Hero — light 模式 CTA 漸層改朱砂(避純金底白字對暖白底對比不足)*/
+[data-theme="light"] .btn-glow,
+[data-theme="light"] .cta-primary-large {
+  background: linear-gradient(135deg, var(--vermillion-500) 0%, var(--vermillion-700) 100%);
+  color: var(--text-on-gold);
+  box-shadow: 0 6px 20px rgba(192, 57, 43, 0.25);
+}
+[data-theme="light"] .btn-glow:hover,
+[data-theme="light"] .cta-primary-large:hover {
+  box-shadow: 0 10px 28px rgba(192, 57, 43, 0.40);
+}
+
+/* 5.2 Hero — Light 模式 .glass 卡片(取消重 backdrop-blur、改實底 + 微 shadow、Apple TW 風)*/
+[data-theme="light"] .glass {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(42, 31, 24, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* 5.4 統計區 — light 模式數字色改鎏金深(避朱砂從 Hero 用到統計、above-the-fold 三朱砂衝突)*/
+[data-theme="light"] .stat-number,
+[data-theme="light"] .text-gold:not(.no-light-override) {
+  /* 既有 text-gold 用了既有 var(--color-gold)(香檳金、light 底 FAIL),light override 為鎏金深 */
+  color: var(--gold-700);
+}
+
+/* 5.4 統計區 — icon 容器漸層在 light 模式改鎏金漸層 */
+[data-theme="light"] .icon-gold-gradient,
+[data-theme="light"] .bg-gold\/15,
+[data-theme="light"] .bg-gold\/20 {
+  background: linear-gradient(135deg, var(--gold-50) 0%, var(--gold-300) 50%, var(--gold-700) 100%);
+}
+
+/* 5.16 底部 CTA — light 模式主 CTA 改鎏金 outline + 朱砂 hover(避朱砂從 hero 到 footer 視覺疲勞)*/
+[data-theme="light"] .cta-bottom-primary {
+  background: transparent;
+  color: var(--gold-700);
+  border: 1.5px solid var(--gold-700);
+  box-shadow: none;
+}
+[data-theme="light"] .cta-bottom-primary:hover {
+  background: var(--vermillion-500);
+  color: var(--text-on-gold);
+  border-color: var(--vermillion-500);
+}
+
+/* 5.12 出門訣 — light 模式背景 + 邊框 */
+[data-theme="light"] .chumenji-card,
+[data-theme="light"] .chumenji-feature {
+  background: var(--bg-card);
+  border: 1px solid var(--gold-500);
+}
+
+/* Hero MouseGlow light 模式 — 改朱砂、強度降至 0.05 */
+[data-theme="light"] .mouse-glow {
+  background: radial-gradient(circle, rgba(192, 57, 43, 0.05) 0%, transparent 60%);
+}
+
+/* Scroll progress bar — light 模式 1px 鎏金深 0.6 透 */
+[data-theme="light"] .scroll-progress-bar {
+  height: 1px;
+  background: rgba(92, 68, 22, 0.6);
+}
+
+/* RotatingZodiac — light 模式金線改鎏金深 + 降不透明度避眩光 */
+[data-theme="light"] .rotating-zodiac {
+  stroke: var(--gold-700);
+  opacity: 0.55;
+}
+
+/* 5.7 14 系統卡片翻面 — light 模式背面改朱砂深底(保留「揭祕感」、L2 P0-4 修)*/
+[data-theme="light"] .system-card-back {
+  background: var(--vermillion-700);
+  color: var(--text-on-gold);
+}
+
+/* 5.9 古籍區域容器 — light 模式紙紋(opacity ≤ 8%、L4 Round 3 P1 修)*/
+[data-theme="light"] .classical-section {
+  background-color: var(--bg-raised);
+  /* 紙紋 SVG opacity ≤ 8%、避降低文字可讀性、Phase 4 補 SVG asset */
+  background-image: none; /* placeholder、Phase 4 加 /textures/paper-grain-subtle.svg */
+}
+
+/* 5.13 創辦人 timeline — light 模式 line solid 鎏金深(取代 rgba 透明、L2 P0-4 修)*/
+[data-theme="light"] .timeline-line {
+  background: var(--gold-700);
+  opacity: 1;
+}
+[data-theme="light"] .timeline-node {
+  background: var(--vermillion-500);
+}
+
 /* R+8 #11 Onboarding modal 動畫 */
 @keyframes onboarding-fade-in {
   from { opacity: 0; transform: translateY(8px); }

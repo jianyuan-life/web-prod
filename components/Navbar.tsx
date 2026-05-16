@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import LocaleSwitcher from './LocaleSwitcher'
+import { ThemeToggleSimple } from './ThemeToggleSimple'
 import { getLocale, UI_TEXT } from '@/lib/i18n'
 
 export default function Navbar() {
@@ -172,6 +173,12 @@ export default function Navbar() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* v5.10.395 Warm Light Theme v1.1 — NavBar 主切換 toggle(FF 控制)*/}
+          {process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && (
+            <div className="hidden md:block">
+              <ThemeToggleSimple />
+            </div>
+          )}
           <LocaleSwitcher />
           {/* 桌面版用戶區域 */}
           <div className="hidden md:flex items-center gap-3">

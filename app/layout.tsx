@@ -15,6 +15,9 @@ import GlobalBackToTop from '@/components/GlobalBackToTop'
 import EmailLink from '@/components/EmailLink'
 import CookieConsent from '@/components/CookieConsent'
 import { GlobalToastProvider } from '@/components/report/shared/GlobalToast'
+import { ThemeProvider } from '@/components/ThemeProvider'
+import { ThemeLanguageSettings } from '@/components/ThemeLanguageSettings'
+import { FirstVisitWarmBanner } from '@/components/FirstVisitWarmBanner'
 import './globals.css'
 
 // v5.3.44 字型 variable 保留歷史命名（QA 稽核發現動了會破壞 200+ 處品牌標題視覺）
@@ -87,6 +90,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable} ${cinzel.variable}`} suppressHydrationWarning>
       <head>
+        {/* v5.10.395 Warm Light Theme v1.1 — SSR no-flash + R8 localStorage migration
+            必須在 ThemeProvider hydrate 前執行、避免閃爍
+            規格:tasks/spec_ui_warm_light_theme_2026-05-16_v1.md §4.1 §4.5
+            L4 Gemini Round 3 P2:fallback 用 prefers-color-scheme detect、不寫死 dark
+            L2 IA Round 1 P0-3:既有 R8 'jy_report_theme_v1' key 一次性遷移 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "(function(){try{var O='jy_report_theme_v1',N='theme',o=localStorage.getItem(O);if(o&&!localStorage.getItem(N)){localStorage.setItem(N,o);}var t=localStorage.getItem(N),pd=window.matchMedia('(prefers-color-scheme: dark)').matches,th=(t==='light'||t==='dark')?t:(pd?'dark':'light');document.documentElement.setAttribute('data-theme',th);}catch(e){var fd=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',fd?'dark':'light');}})();",
+          }}
+        />
         {/* v5.10.326 perf:預連線關鍵第三方來源 — 縮短 TLS handshake / DNS 解析時間
             節省 LCP 100-300ms(尤其 mobile 3G/4G、handshake 高延遲)*/}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -282,10 +295,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Tracker />
         <ReferralHandler />
         <CookieConsent />
+        {/* v5.10.395 Warm Light Theme v1.1 — ThemeProvider 包整 app(對齊 inline script 同 data-theme attr)
+            預設 system + R8 localStorage 已由 inline script 遷移到 'theme' key */}
+        <ThemeProvider>
         {/* v5.10.250 wire dead component:GlobalToastProvider 包整 app、開放 useToast() 全域可用 */}
         <GlobalToastProvider>
         <LocaleContent>
         <Navbar />
+        {process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && <FirstVisitWarmBanner />}
         <main className="pt-16">{children}</main>
         <GlobalBackToTop />
         <footer className="border-t border-gold/10 mt-20">
@@ -340,10 +357,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {/* P0-6（2026-04-17）：year 寫死防 hydration #418（server/client 跨時區年份差異會觸發 React #418 text mismatch，suppressHydrationWarning 只擋 warning 擋不住 error） */}
               <p className="mt-2">&copy; 2026 鑒源 JianYuan. 版權所有 &middot; v{pkg.version}</p>
             </div>
+
+            {/* v5.10.395 Warm Light Theme v1.1 — Footer 完整 theme + language settings(FF 控制)*/}
+            {process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && <ThemeLanguageSettings />}
           </div>
         </footer>
         </LocaleContent>
         </GlobalToastProvider>
+        </ThemeProvider>
         {/* v5.10.324:Vercel Analytics + Speed Insights(P0 #1 監控對齊)
             - Analytics:即時 page-view + traffic source、不需 cookie consent(IP 匿名化)
             - SpeedInsights:RUM Web Vitals(LCP/FID/CLS/INP/TTFB)
