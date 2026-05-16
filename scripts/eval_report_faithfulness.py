@@ -287,9 +287,24 @@ def main() -> int:
     _load_env()
     threshold = float(_env("FAITHFULNESS_THRESHOLD", default=str(DEFAULT_THRESHOLD)))
 
+    # --dry 不連網:無 Supabase env 時報「邏輯就緒」即退 0、不崩
+    has_sb = bool(_env("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL")) and bool(
+        _env("SUPABASE_SERVICE_ROLE_KEY")
+    )
+    if not has_sb:
+        msg = f"缺 SUPABASE env(threshold={threshold});腳本邏輯就緒、env 齊備即可跑"
+        if args.dry:
+            print(f"[dry] {msg}")
+            return 0
+        print(f"[error] {msg}")
+        return 2
+
     try:
         reports = fetch_recent_reports(args.limit)
     except Exception as e:
+        if args.dry:
+            print(f"[dry] 抓報告失敗(env 可能無效):{e};邏輯就緒")
+            return 0
         print(f"[error] 抓報告失敗:{e}")
         traceback.print_exc()
         return 2
