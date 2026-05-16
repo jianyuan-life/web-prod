@@ -12,7 +12,8 @@
 - push 前 P0 審查:L3 Codex timeout(circuit-breaker SKIP、無 P0 raised)/ L4 Gemini 空輸出 SKIP;L1/L2 自結構分析:唯一動付費路徑 steps.ts、FF_AI_PROMPT_CACHE 預設關 → 行為與改前可證位元等價、type-check EXIT=0
 - ⚠️ 未驗 precondition:本機無 Supabase env、**無法跑 generating 客戶檢查**(lesson #058 deploy 中斷 generating 燒錢風險)— 已上報老闆;緩解:全改動 flag-off、deploy 本身不改生成行為
 - verify(browser UA、`--ssl-no-revoke`):/ /pricing /auth/login /whitepaper /dashboard /blog/* = **6×[200]、0 個 5xx ✅**;/transparency=404(新路由傳播中、lesson #078、flag-off 零風險);curl 預設 UA=403(bot 防禦 v5.10.347、非當機)
-- 老闆驗收:⏳ 版本切換複驗中(lesson #078 lambda warm-up)
+- ✅ **驗證完成 PASS**:版本切換確認 `v5.10.389`(lesson #078)、最終 7-page = **/ /pricing /auth/login /whitepaper /dashboard /blog/* /transparency 全 [200]、0 個 5xx**(/transparency 新路由 200=flag-off 佔位正常)→ 無需 rollback、production 健康
+- 老闆驗收:✅ deploy 全綠 verified
 - 其他 5 repo(fortune-research/CS/digital-marketing/art/finance/market-research)= 本地 commit、未 push(內部 tooling、等老闆指示)
 
 ---
