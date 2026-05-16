@@ -5,6 +5,18 @@
 
 ---
 
+### 2026-05-16 | web-prod:main | v5.10.389 | 7096b4fb..af3cf116 ✅ PUSHED(老闆授權)
+
+- 動作:提示詞合集 30 Prompt 全 staged → 老闆 `! git push origin main` 授權 → push web-prod 8 commits
+- push:✅ `7096b4fb..af3cf116 main->main` EXIT=0、0 未推
+- push 前 P0 審查:L3 Codex timeout(circuit-breaker SKIP、無 P0 raised)/ L4 Gemini 空輸出 SKIP;L1/L2 自結構分析:唯一動付費路徑 steps.ts、FF_AI_PROMPT_CACHE 預設關 → 行為與改前可證位元等價、type-check EXIT=0
+- ⚠️ 未驗 precondition:本機無 Supabase env、**無法跑 generating 客戶檢查**(lesson #058 deploy 中斷 generating 燒錢風險)— 已上報老闆;緩解:全改動 flag-off、deploy 本身不改生成行為
+- verify(browser UA、`--ssl-no-revoke`):/ /pricing /auth/login /whitepaper /dashboard /blog/* = **6×[200]、0 個 5xx ✅**;/transparency=404(新路由傳播中、lesson #078、flag-off 零風險);curl 預設 UA=403(bot 防禦 v5.10.347、非當機)
+- 老闆驗收:⏳ 版本切換複驗中(lesson #078 lambda warm-up)
+- 其他 5 repo(fortune-research/CS/digital-marketing/art/finance/market-research)= 本地 commit、未 push(內部 tooling、等老闆指示)
+
+---
+
 ### 2026-05-16 | 6 repo | 提示詞合集 30 Prompt 全 staged | ⏳ 全本地未 PUSH(等老闆)
 
 - 動作:提示詞合集 30 Prompt 自治產出全部完成(P1 完整 + 29 staged)
