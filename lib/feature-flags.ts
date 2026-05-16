@@ -54,6 +54,19 @@ const REGISTRY: Record<string, FlagDef> = {
     description: '付費報告 Claude system prompt prompt-caching(token 成本 ↓ 70-90%)',
     scope: 'server',
   },
+
+  // ── 提示詞合集 Prompt 7:報告語氣鐵律 v1(心理安全層)──
+  // 末尾 append TONE_CHARTER_V1(不下定論/IFS part/ACT/危機轉介/出門訣 reframe)。
+  // 預設 false。啟用 = P0 客戶認可版 prompt 變更:須先整併 route.ts 雙定義
+  // (lesson #144)+ promptfoo 90% gate + 4 層審查 + 老闆拍板。
+  // 詳:workflows/generate-report/tone-charter.ts 啟用 SOP。
+  FF_TONE_CHARTER_V1: {
+    default: false,
+    owner: 'jamie',
+    retireBy: '2026-Q4',
+    description: '付費報告語氣鐵律 v1 心理安全層(不下定論/IFS/ACT/危機/出門訣 reframe)',
+    scope: 'server',
+  },
 } as const
 
 export type FlagName = keyof typeof REGISTRY
