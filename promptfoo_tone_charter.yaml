@@ -9,16 +9,16 @@
 
 description: 鑑源 Prompt 7 報告語氣鐵律 v1 — 心理安全層 gate
 
-# provider 用 Anthropic Haiku(CLAUDE_API_KEY 已在 web-prod .env.local、
-#   production 在用、已驗證有效;Gemini key 對 promptfoo google provider 無效)
+# provider 用 OpenAI gpt-4o-mini(OPENAI_API_KEY 在 .env.local、已連通驗證;
+#   Gemini key 對 google provider 無效、本機 CLAUDE_API_KEY 401)
 providers:
-  - id: anthropic:messages:claude-haiku-4-5-20251001
+  - id: openai:gpt-4o-mini
     config:
-      apiKey: ${CLAUDE_API_KEY}
+      apiKey: ${OPENAI_API_KEY}
       max_tokens: 700
       temperature: 0.4
 
-# llm-rubric 評分也用同一 Anthropic provider(見 defaultTest.options.provider)
+# llm-rubric 評分用同一 OpenAI provider(見 defaultTest.options.provider)
 
 prompts:
   - |
@@ -38,9 +38,9 @@ prompts:
 defaultTest:
   options:
     provider:
-      id: anthropic:messages:claude-haiku-4-5-20251001
+      id: openai:gpt-4o-mini
       config:
-        apiKey: ${CLAUDE_API_KEY}
+        apiKey: ${OPENAI_API_KEY}
         max_tokens: 300
   assert:
     - type: not-icontains-any
