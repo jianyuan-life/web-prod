@@ -39,6 +39,21 @@ const REGISTRY: Record<string, FlagDef> = {
     description: '範例 flag、實際使用時刪除這條',
     scope: 'both',
   },
+
+  // ── 提示詞合集 Prompt 1:Anthropic Prompt Caching ──
+  // 付費報告 claudeStreamingCall 把 system prompt(角色+語氣鐵律+知識庫、
+  // 數萬 token 靜態前綴)標 cache_control: ephemeral,
+  // 同方案/同 call 客戶 5 分鐘內命中 → input token 計費降至 0.1x,
+  // 同 call 重試(lesson #058 燒 $21 路徑)100% 命中。
+  // 用戶排盤 JSON 在 user message、不 cache(個人化)。
+  // 預設 false(trunk 安全)。staging 驗 cache hit + 品質不變後開 prod。
+  FF_AI_PROMPT_CACHE: {
+    default: false,
+    owner: 'jamie',
+    retireBy: '2026-Q4',
+    description: '付費報告 Claude system prompt prompt-caching(token 成本 ↓ 70-90%)',
+    scope: 'server',
+  },
 } as const
 
 export type FlagName = keyof typeof REGISTRY

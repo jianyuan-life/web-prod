@@ -8,6 +8,7 @@ import { FatalError, RetryableError } from 'workflow'
 import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter + headers + timeout)
 import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
+import { isFlagEnabled } from '@/lib/feature-flags'  // Prompt 1: FF_AI_PROMPT_CACHE
 import { recordEmailSend } from '@/lib/email-send-log'
 import { notifyEmailFailed } from '@/lib/ai/observability/telegram'
 import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
@@ -1376,7 +1377,7 @@ async function savePartialContent(reportId: string, callLabel: string, content: 
 async function claudeStreamingCall(
   systemPrompt: string, userPrompt: string, maxTokens: number,
   reportId?: string, callLabel?: string,
-): Promise<{ content: string; inputTokens: number; outputTokens: number }> {
+): Promise<{ content: string; inputTokens: number; outputTokens: number; cacheCreationTokens: number; cacheReadTokens: number }> {
   const checkpointKey = callLabel || 'default'
 
   // 串流存檔：檢查是否有上次中斷的部分內容，用「從這裡繼續」的 prompt
@@ -1397,22 +1398,37 @@ async function claudeStreamingCall(
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 900000)
 
+  // ── 提示詞合集 Prompt 1:Anthropic Prompt Caching(FF_AI_PROMPT_CACHE)──
+  //   system prompt(角色+語氣鐵律+知識庫)為數萬 token 靜態前綴 → 標 ephemeral cache。
+  //   user message(排盤 JSON、個人化)不 cache。
+  //   命中時 input token 計費 0.1x;同 call 重試 100% 命中(lesson #058 燒錢路徑)。
+  //   flag off → system 維持 string、行為與改造前完全一致(trunk 安全)。
+  const promptCacheOn = isFlagEnabled('FF_AI_PROMPT_CACHE')
+  const claudeHeaders: Record<string, string> = {
+    'x-api-key': getNextClaudeKey(),
+    'anthropic-version': '2023-06-01',
+    'content-type': 'application/json',
+  }
+  if (promptCacheOn) {
+    // anthropic-version 2023-06-01 下 prompt caching 需 beta header(5 分鐘 TTL)
+    claudeHeaders['anthropic-beta'] = 'prompt-caching-2024-07-31'
+  }
+  const systemField = promptCacheOn
+    ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }]
+    : systemPrompt
+
   let res: Response
   try {
     res = await fetch(CLAUDE_API, {
       method: 'POST',
-      headers: {
-        'x-api-key': getNextClaudeKey(),
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
+      headers: claudeHeaders,
       // v5.3.9：Claude Opus 4.7 不接受 temperature 參數（API 400: deprecated for this model）
       body: JSON.stringify({
         model: 'claude-opus-4-6',
         max_tokens: maxTokens,
         stream: true,
         messages: [{ role: 'user', content: actualUserPrompt }],
-        system: systemPrompt,
+        system: systemField,
       }),
       signal: controller.signal,
     })
@@ -1463,6 +1479,9 @@ async function claudeStreamingCall(
   // token 計量（從 SSE message_start / message_delta 事件收集）
   let inputTokens = 0
   let outputTokens = 0
+  // Prompt 1:prompt caching token 計量(flag off 時恆 0、不影響成本)
+  let cacheCreationTokens = 0
+  let cacheReadTokens = 0
 
   try {
     while (true) {
@@ -1483,6 +1502,9 @@ async function claudeStreamingCall(
             inputTokens = event.message.usage.input_tokens || 0
             // message_start 也可能帶初始 output_tokens（通常為 0~少量）
             outputTokens = event.message.usage.output_tokens || outputTokens
+            // Prompt 1:cache token(命中時 input_tokens 只算未命中部分)
+            cacheCreationTokens = event.message.usage.cache_creation_input_tokens || 0
+            cacheReadTokens = event.message.usage.cache_read_input_tokens || 0
           } else if (event.type === 'message_delta' && event.usage) {
             // Anthropic 串流：message_delta 的 usage.output_tokens 是累積值
             if (typeof event.usage.output_tokens === 'number') {
@@ -1535,7 +1557,7 @@ async function claudeStreamingCall(
     }
   }
 
-  return { content: finalResult, inputTokens, outputTokens }
+  return { content: finalResult, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens }
 }
 
 // ── DeepSeek 呼叫（內部輔助，非 step）——含 180s 超時 ──
@@ -1943,9 +1965,19 @@ async function callClaudeOnly(
   }
 
   try {
-    const { content, inputTokens, outputTokens } = await claudeStreamingCall(
+    const { content, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens } = await claudeStreamingCall(
       systemPrompt, userPrompt, maxTokens, reportId, label,
     )
+
+    // Prompt 1:cache 命中時 Anthropic input_tokens 只算未命中部分,
+    //   cache write 計費 1.25x、cache read 0.1x。換算成「等值未快取 input token」
+    //   餵給 estimateCostUsd(線性定價)→ cost_usd 反映真實節省。
+    //   cache off → cacheCreation/Read=0 → effectiveInput=inputTokens(零行為變化)。
+    const effectiveInputTokens = Math.round(
+      inputTokens + cacheCreationTokens * 1.25 + cacheReadTokens * 0.1,
+    )
+    const totalInputSeen = inputTokens + cacheCreationTokens + cacheReadTokens
+    const cacheHitRate = totalInputSeen > 0 ? cacheReadTokens / totalInputSeen : 0
 
     // v5.3.19：空內容保護（Bug 4 根因）
     //   Claude streaming 偶爾回空字串（early disconnect / rate limit abort），
@@ -1965,15 +1997,29 @@ async function callClaudeOnly(
       await recordAIUsage({
         provider: 'claude',
         model,
-        promptTokens: inputTokens,
+        promptTokens: effectiveInputTokens,
         completionTokens: outputTokens,
         reportId,
         callStage: label,
         latencyMs: Date.now() - start,
         status: 'success',
+        metadata: {
+          raw_input_tokens: inputTokens,
+          cache_creation_tokens: cacheCreationTokens,
+          cache_read_tokens: cacheReadTokens,
+          cache_hit_rate: Number(cacheHitRate.toFixed(4)),
+          prompt_cache: cacheCreationTokens + cacheReadTokens > 0,
+        },
       })
     } catch { /* 記錄失敗不影響主流程 */ }
 
+    if (cacheCreationTokens + cacheReadTokens > 0) {
+      console.log(
+        `[PROMPT-CACHE] ${label}: hit=${(cacheHitRate * 100).toFixed(1)}% ` +
+          `read=${cacheReadTokens} write=${cacheCreationTokens} uncached=${inputTokens} ` +
+          `→ 等值計費 input=${effectiveInputTokens}(原始 ${totalInputSeen}、省 ${totalInputSeen - effectiveInputTokens})`,
+      )
+    }
     console.log(`${label} 完成 (${model}): ${content.length} 字, tokens=${inputTokens}/${outputTokens}`)
     return { content, model }
   } catch (err) {
