@@ -29,39 +29,9 @@ test('七殺(紫微)與傷官(八字)各有對應且語感一致', () => {
 })
 done()
 
-// ── P8 judge：JSON verdict 解析韌性 ──
-function parseVerdict(txt) {
-  const s = txt.indexOf('{')
-  const e = txt.lastIndexOf('}')
-  if (s < 0 || e < 0) return { score: -1, hallucinations: [], missing_citations: [] }
-  try {
-    const p = JSON.parse(txt.slice(s, e + 1))
-    return {
-      score: typeof p.score === 'number' ? p.score : -1,
-      hallucinations: Array.isArray(p.hallucinations) ? p.hallucinations : [],
-      missing_citations: Array.isArray(p.missing_citations) ? p.missing_citations : [],
-    }
-  } catch {
-    return { score: -1, hallucinations: [], missing_citations: [] }
-  }
-}
-suite('P8 Writer-Judge 解析韌性(judge 掛掉不可阻斷主流程)')
-test('正常 JSON', () => {
-  const v = parseVerdict('結果:{"score":92,"hallucinations":[],"missing_citations":["八字日主"]}')
-  assertEqual(v.score, 92)
-  assertEqual(v.missing_citations.length, 1)
-})
-test('文字包裹 JSON 仍可解析', () => {
-  assertEqual(parseVerdict('```json\n{"score":80,"hallucinations":["編造流年"]}\n```').score, 80)
-})
-test('壞 JSON → score -1(呼叫端視為 judge 不可用、不丟棄報告)', () => {
-  assertEqual(parseVerdict('完全不是 json').score, -1)
-  assertEqual(parseVerdict('{壞掉').score, -1)
-})
-test('score 非數字 → -1(防型別污染)', () => {
-  assertEqual(parseVerdict('{"score":"high"}').score, -1)
-})
-done()
+// ── P8 已移除:judge.ts 為重造(lib/ai/team/peer-review.ts + truth-gate.ts
+//    已存在且更完整)。資產盤點修正、刪 judge.ts、此 suite 一併移除,
+//    不測已刪模組的幽靈。P8 真實狀態 = 既有 lib/ai/team 系統(本檔不重測)。
 
 // ── P3 4 大保證 SSOT 不變量(致歉信本體已存在 production steps.ts:4331、
 //    我的 apology-retry.ts 已刪除為多餘;此處只守 GuaranteeBlock 用的
