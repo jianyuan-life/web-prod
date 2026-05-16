@@ -67,6 +67,38 @@ const REGISTRY: Record<string, FlagDef> = {
     description: '付費報告語氣鐵律 v1 心理安全層(不下定論/IFS/ACT/危機/出門訣 reframe)',
     scope: 'server',
   },
+
+  // ── 提示詞合集 Prompt 2:Stripe Tax ──
+  // checkout 套 automatic_tax/tax_id_collection。預設 false。
+  // 啟用前老闆必:Stripe Dashboard 填統編+開 Tax + 法務確認文案(動真錢)。
+  FF_STRIPE_TAX: {
+    default: false,
+    owner: 'jamie',
+    retireBy: '2026-Q4',
+    description: 'Stripe automatic_tax + 統編 collection(需老闆 Dashboard 設定 + 法務)',
+    scope: 'server',
+  },
+
+  // ── 提示詞合集 Prompt 11:Post-purchase Upsell Modal ──
+  // dashboard 報告 completed 後彈 R/E2 折扣 modal。預設 false。
+  // 啟用前老闆必:Stripe Dashboard 預建 promo code(動真錢)。
+  FF_UPSELL_MODAL: {
+    default: false,
+    owner: 'jamie',
+    retireBy: '2026-Q4',
+    description: 'Post-purchase upsell modal(需老闆 Stripe promo code)',
+    scope: 'both',
+  },
+
+  // ── 提示詞合集 Prompt 29:/transparency 公開 MRR 頁 ──
+  // 預設 false。公開財務 = One-way door,需老闆書面 sign-off。
+  FF_TRANSPARENCY_PAGE: {
+    default: false,
+    owner: 'jamie',
+    retireBy: '2026-Q4',
+    description: '/transparency 公開 MRR 頁(One-way door、需老闆書面同意)',
+    scope: 'both',
+  },
 } as const
 
 export type FlagName = keyof typeof REGISTRY
