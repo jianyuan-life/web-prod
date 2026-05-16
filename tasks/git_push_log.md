@@ -5,6 +5,18 @@
 
 ---
 
+### 2026-05-16 | web-prod:main | v5.10.385-386 | 773505fb + 400caf02 ⏳ 本地未 PUSH(等老闆)
+
+- 動作:提示詞合集 P1 Prompt Caching(完整、flag off)+ P7/P27/P9 staged artifacts
+- 改動範圍:5 檔(feature-flags.ts / steps.ts / tone-charter.ts[新] / crisis_resources.ts[新] / eval_report_faithfulness.py[新] + package.json)
+- 為什麼:提示詞合集 30 Prompt「把每件事完善」— 先做最高 ROI 純 code 自治項
+- type-check:✅ EXIT=0(兩批皆驗)
+- Vercel deploy:⏳ 未 push(lesson #147 production push 必老闆確認)
+- 老闆驗收:⏳ 待老闆貼 `! git push origin main`(2 commits)→ 接 7-page verify + push 前補 P0 四層審查(改 steps.ts 付費路徑 = P0)
+- 詳:`Claude-鑑源/tasks/prompt_collection_progress_2026-05-16.md`
+
+---
+
 ### 2026-05-15 | web-prod:main | v5.10.384 | 12142103 ✅ PUSHED + VERIFIED
 
 - 動作:Phase 6 #1 regression admin endpoint dryRun mode wire 完整(P0)
