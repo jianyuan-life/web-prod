@@ -47,6 +47,10 @@ const REGISTRY: Record<string, FlagDef> = {
   // 同 call 重試(lesson #058 燒 $21 路徑)100% 命中。
   // 用戶排盤 JSON 在 user message、不 cache(個人化)。
   // 預設 false(trunk 安全)。staging 驗 cache hit + 品質不變後開 prod。
+  // Canary(非 REGISTRY flag、特殊 env):PROMPT_CACHE_CANARY_REPORT_IDS
+  //   = 逗號分隔 reportId,僅該些 report 啟用 cache(其他客戶零影響)。
+  //   用途:4-LLM/QA-IA 面板要求「先單一 reportId 實測 1 筆」安全路徑。
+  //   驗證(API 不 400 + [PROMPT-CACHE] log + cost 記帳正確)後再開本 flag 全域。
   FF_AI_PROMPT_CACHE: {
     default: false,
     owner: 'jamie',

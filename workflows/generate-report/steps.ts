@@ -1403,7 +1403,19 @@ async function claudeStreamingCall(
   //   user message(排盤 JSON、個人化)不 cache。
   //   命中時 input token 計費 0.1x;同 call 重試 100% 命中(lesson #058 燒錢路徑)。
   //   flag off → system 維持 string、行為與改造前完全一致(trunk 安全)。
-  const promptCacheOn = isFlagEnabled('FF_AI_PROMPT_CACHE')
+  //   ── Canary(4-LLM/QA-IA 面板 2026-05-16 共識:GO 但禁盲目全開)──
+  //   除全域 flag 外,額外支援 PROMPT_CACHE_CANARY_REPORT_IDS(逗號分隔
+  //   reportId 清單):僅這些 reportId 啟用 cache,其他客戶完全不受影響。
+  //   → IA Agent 要求的「先單一 reportId 安全實測 1 筆」路徑得以零風險執行
+  //   (對某測試 reportId 跑 /jamie/recalculate 即只該筆走 cache、可驗
+  //   API 不 400 + [PROMPT-CACHE] log + cost 記帳,確認後再開全域 flag)。
+  const canaryIds = (process.env.PROMPT_CACHE_CANARY_REPORT_IDS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const promptCacheOn =
+    isFlagEnabled('FF_AI_PROMPT_CACHE') ||
+    (reportId != null && canaryIds.includes(reportId))
   const claudeHeaders: Record<string, string> = {
     'x-api-key': getNextClaudeKey(),
     'anthropic-version': '2023-06-01',
