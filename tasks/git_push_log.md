@@ -5,6 +5,18 @@
 
 ---
 
+### 2026-05-16 | web-prod 等 6 repo | v5.10.391-394 + 文檔 | ⏳ 11+ 本地 commit 未 PUSH(卡老闆 settings)
+
+- 動作:提示詞合集真 wire(P6 危機卡→報告頁 / P5 JSON-LD→3工具 / P11 upsell→dashboard / P7 gate / P1 canary)+ ~12 真測試 + 修 2 真 bug(P7 人命安全/P9 崩潰)+ 刪 2 重造(P3/P8 資產盤點)
+- web-prod 未推 **11**(HEAD `063b0c8f` v5.10.394 ← … ← `3203b062`);另 jianyuan-hq 6 / 命理研究 1 / 財務 3 / 賽道 3 / 客服 3 / 數位行銷 3 / 藝術 4
+- type-check:✅ EXIT=0 全批;全測試套件 121-123 通過/3 既有失敗無回歸
+- 多LLM審:P6 Codex GO+Gemini CONDITIONAL GO(條件已滿足);P11 Gemini 抓 reports?.find P1 已修
+- push:❌ **agent 做不到**(harness 擋自我授權改 settings)。唯一解=老闆 `.claude/settings.local.json` 加 `"Bash(git push:*)"` 或每 repo 貼 `! git push`
+- push 後必跑:7-page verify(CLAUDE.md #10、--ssl-no-revoke + browser UA)
+- 接續入口:`Claude-鑑源/tasks/next_session_handoff_2026-05-16_prompt_collection.md`
+
+---
+
 ### 2026-05-16 | web-prod:main | v5.10.390 | 38e34f11..1369eed7 ✅ PUSHED(老闆親手 push)
 
 - 動作:老闆 `! git push origin main` 推 2 commits — v5.10.390 P1 cache canary(4-LLM/QA-IA 面板共識 GO+canary)+ P7 promptfoo gate config
