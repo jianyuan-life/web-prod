@@ -463,7 +463,7 @@ function DashboardContent() {
   //   彈加購 modal(UpsellModal 內含映射、無對應方案自動 return null)。
   //   flag off(預設)→ upsellSourcePlan='' → 不渲染、零行為變化。
   const upsellSourcePlan = isFlagEnabled('FF_UPSELL_MODAL')
-    ? (reports.find(r => r.status === 'completed')?.plan_code || '')
+    ? (reports?.find(r => r.status === 'completed')?.plan_code || '')
     : ''
 
   return (
