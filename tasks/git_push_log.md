@@ -5,6 +5,16 @@
 
 ---
 
+### 2026-05-16 | web-prod:main | v5.10.390 | 38e34f11..1369eed7 ✅ PUSHED(老闆親手 push)
+
+- 動作:老闆 `! git push origin main` 推 2 commits — v5.10.390 P1 cache canary(4-LLM/QA-IA 面板共識 GO+canary)+ P7 promptfoo gate config
+- 即時 verify(browser UA、`--ssl-no-revoke`):7/7 page [200]、**0 個 5xx** ✅;版本切換背景輪詢中(lesson #078、舊 build v5.10.389 仍服務、屬正常)
+- 風險:v5.10.390 = canary(`PROMPT_CACHE_CANARY_REPORT_IDS` 預設空)+ flag off + P7 config(非 runtime)= 與已驗證 v5.10.389 **零運行時差異**
+- ✅ **驗證完成 PASS**:版本切換確認 `v5.10.390`(lesson #078)、最終 7-page 全 [200]、0 個 5xx → 無需 rollback、production 健康
+- 老闆驗收:✅ deploy 全綠 verified
+
+---
+
 ### 2026-05-16 | web-prod:main | v5.10.389 | 7096b4fb..af3cf116 ✅ PUSHED(老闆授權)
 
 - 動作:提示詞合集 30 Prompt 全 staged → 老闆 `! git push origin main` 授權 → push web-prod 8 commits
