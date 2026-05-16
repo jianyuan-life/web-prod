@@ -11,6 +11,8 @@ import ReportProgress from '@/components/ReportProgress'
 import FamilyMembersManager from '@/components/FamilyMembersManager'
 import ReferralCard from '@/components/ReferralCard'
 import { PLAN_NAMES, CHUMENJI_CODES } from '@/lib/plan-names'
+import UpsellModal from '@/components/UpsellModal'  // P11
+import { isFlagEnabled } from '@/lib/feature-flags'  // P11 FF_UPSELL_MODAL
 
 type Report = {
   id: string
@@ -457,8 +459,16 @@ function DashboardContent() {
 
   // 評分系統已移除（命不該有分數）
 
+  // P11 — Post-purchase upsell:有 completed 報告 + FF_UPSELL_MODAL on 時
+  //   彈加購 modal(UpsellModal 內含映射、無對應方案自動 return null)。
+  //   flag off(預設)→ upsellSourcePlan='' → 不渲染、零行為變化。
+  const upsellSourcePlan = isFlagEnabled('FF_UPSELL_MODAL')
+    ? (reports.find(r => r.status === 'completed')?.plan_code || '')
+    : ''
+
   return (
     <div className="py-20">
+      {upsellSourcePlan && <UpsellModal sourcePlan={upsellSourcePlan} />}
       <div className="max-w-5xl mx-auto px-6">
         {/* 付款成功提示 */}
         {paymentSuccess && (
