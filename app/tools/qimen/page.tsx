@@ -8,6 +8,7 @@ import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(time
 import AIAnalysisCard from '@/components/AIAnalysisCard'
 import LiveCounter from '@/components/LiveCounter'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
+import { buildFreeToolJsonLd } from '@/lib/seo/free-tool-schema'  // P5 SEO 三層 JSON-LD
 
 // ── 十二時辰 ──
 const SHICHEN = [
@@ -426,6 +427,11 @@ export default function QimenToolPage() {
 
   return (
     <div className="py-16 overflow-x-hidden max-w-full">
+      {/* P5 — 三層 JSON-LD(純 SEO、使用者不可見、零渲染風險) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildFreeToolJsonLd('qimen')) }}
+      />
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* ═══ 標題 ═══ */}
         <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 break-words">

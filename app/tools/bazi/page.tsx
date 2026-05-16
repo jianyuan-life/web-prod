@@ -11,6 +11,7 @@ import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
 import LiveCounter from '@/components/LiveCounter'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
+import { buildFreeToolJsonLd } from '@/lib/seo/free-tool-schema'  // P5 SEO 三層 JSON-LD
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -488,6 +489,11 @@ export default function FreeToolPage() {
 
   return (
     <div className="py-12 md:py-20 overflow-x-hidden max-w-full">
+      {/* P5 — 三層 JSON-LD(SoftwareApplication+FAQPage+HowTo、純 SEO、使用者不可見、零渲染風險) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildFreeToolJsonLd('bazi')) }}
+      />
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* Hero */}
         <div className="text-center mb-10 md:mb-14">

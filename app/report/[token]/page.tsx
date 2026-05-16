@@ -55,6 +55,10 @@ import { validateAccessToken } from '@/lib/security/token-validator'
 import { StickyTOC } from '@/components/report/shared/StickyTOC'
 import { DropCap, PullQuote, ExecutiveSummary } from '@/components/report/shared/DropCap'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
+// 提示詞合集 P6 — 危機偵測接入(攸關人命、additive、FF_CRISIS_CARD 控)
+import CrisisCard from '@/components/CrisisCard'
+import { scanForCrisis } from '@/lib/content-moderation/crisis-detector'
+import { isFlagEnabled } from '@/lib/feature-flags'
 
 // ============================================================
 // 報告閱讀頁 — 透過 access_token 讀取真實報告（無需登入）
@@ -1659,6 +1663,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   // 簡體中文報告使用 SC 字體
   const isSimplified = report.birth_data?.locale === 'zh-CN'
 
+  // 提示詞合集 P6 — 危機偵測(攸關人命、唯讀掃 aiContent、FF_CRISIS_CARD 控)
+  //   flag off(預設)→ crisis 恆 false、零行為變化(trunk 安全)
+  //   flag on + 命中 → 報告最頂插 <CrisisCard/>(資源未法務核對前 P27 硬閘
+  //   會顯通用 fallback、絕不顯錯號碼);scanForCrisis 純字串、不阻斷渲染
+  const crisisLocale = report.birth_data?.locale === 'zh-CN' ? 'zh-CN' : 'zh-TW'
+  const crisisCountry =
+    report.birth_data?.locale === 'zh-CN' ? 'CN' : 'TW'
+  const crisisScan = isFlagEnabled('FF_CRISIS_CARD')
+    ? scanForCrisis(aiContent)
+    : { crisis: false, categories: [] as string[], matchedTerms: [] as string[] }
+
   return (
     <div className={`min-h-screen pb-16${isSimplified ? ' locale-cn' : ''}${isFamily ? ' is-family' : ''}`} style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
       <style>{`
@@ -1961,6 +1976,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           .report-card div[role="listitem"] span:last-child { text-align: left !important; }
         }
       `}</style>
+
+      {/* 提示詞合集 P6 — 危機支援卡(命中情緒風險詞時置報告最頂、最優先看到)
+          FF_CRISIS_CARD off 預設不顯;資源未法務核對前顯通用 fallback */}
+      {crisisScan.crisis && (
+        <div className="max-w-3xl mx-auto px-4 pt-6">
+          <CrisisCard locale={crisisLocale} country={crisisCountry} />
+        </div>
+      )}
 
       {/* 瀏覽追蹤（Client Component，不影響 SSR） */}
       <ReportTracker reportId={report.id} planCode={report.plan_code} token={token} />

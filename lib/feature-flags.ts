@@ -94,6 +94,19 @@ const REGISTRY: Record<string, FlagDef> = {
     scope: 'both',
   },
 
+  // ── 提示詞合集 Prompt 6:危機支援卡接入報告渲染 ──
+  // 命中情緒風險詞 → 報告最頂顯 <CrisisCard/>(攸關人命)。預設 false
+  // (trunk 安全);資源未法務核對(P27 CRISIS_RESOURCES_VERIFIED=false)
+  // 時 CrisisCard 顯通用 fallback、絕不顯未驗證號碼。建議老闆/panel
+  // 評估「安全功能是否該預設 ON」。
+  FF_CRISIS_CARD: {
+    default: false,
+    owner: 'jamie',
+    retireBy: '2026-Q4',
+    description: '報告偵測情緒風險詞 → 置頂危機支援卡(攸關人命、P27 硬閘保護)',
+    scope: 'both',
+  },
+
   // ── 提示詞合集 Prompt 29:/transparency 公開 MRR 頁 ──
   // 預設 false。公開財務 = One-way door,需老闆書面 sign-off。
   FF_TRANSPARENCY_PAGE: {
