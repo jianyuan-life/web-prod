@@ -1091,6 +1091,7 @@ export interface ChumenjiTopItem {
   confidence: Record<string, unknown>
   ju: string
   gong: string
+  nianming_gong?: string
   kongwang: boolean
   shensha_warning: string
   week_number?: number
@@ -1873,6 +1874,12 @@ ${analyses.length}套系統排盤完整數據：
     userPrompt += `你必須使用這些結果，不能更換、不能調整、不能用任何理由否決。\n`
     userPrompt += `你的工作是用白話文解釋為什麼這些時辰最好，讓客戶看得懂。\n\n`
 
+    // F4 (2026-06-05): 注入客戶年命宮、防 AI 用流年(如丙午)幻覺自推
+    const _nmGong = chumenjiTop.results[0]?.nianming_gong || ''
+    if (_nmGong) {
+      userPrompt += `【客戶年命宮 — 固定值、不可自行推算】客戶年命宮在「${_nmGong}」宮。凡提到年命宮一律用此值，禁止用流年（如丙午年）或自行推算其他宮位。\n\n`
+    }
+
     // 計算整批結果的排序位置（用於相對描述，非絕對分數）
     const sortedByScore = [...chumenjiTop.results].sort((a, b) => b.score - a.score)
     const rankMap = new Map(sortedByScore.map((r, i) => [r, i + 1]))
@@ -1902,6 +1909,7 @@ ${analyses.length}套系統排盤完整數據：
     userPrompt += `4. 不得使用生物節律、體力週期、智力週期、情緒週期、美感週期、直覺週期、低潮日、西洋占星、八字、風水八宅或任何非奇門遁甲系統來否決或調整這些時辰。\n`
     userPrompt += `5. 你的任務：(a) 用白話文解釋門+星+神組合的含義 (b) 給出具體的穿著/物品/行為建議 (c) 說明為什麼這個組合對客戶的事件有利。\n`
     userPrompt += `6. 所有加減分因素（年命宮共振、格局、空亡、神煞）已包含在排序中，不需要你重新計算或解釋分數來源。\n`
+    userPrompt += `7. 【格局忠實、防幻覺】只能寫各盤「能量理由」中明確出現的格局名（如玉女守門、青龍返首、三奇得使）；能量理由沒提到的格局，禁止自行添加、推斷或套用到其他盤——寧可不提，不可幻覺生成。每張卡片的格局描述必須與該盤的能量理由一致。\n`
     userPrompt += `${'='.repeat(60)}\n\n`
   }
 
