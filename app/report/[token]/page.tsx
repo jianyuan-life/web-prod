@@ -821,7 +821,9 @@ const SUB_BOX_STYLES: Record<string, { bg: string; border: string; titleColor: s
   improvement: { bg: 'rgba(197,150,58,0.07)',  border: '1.5px solid rgba(197,150,58,0.25)', titleColor: '#c9a84c', icon: '🔑' },
 }
 
-function classifySubSection(title: string): 'positive' | 'caution' | 'improvement' | 'general' {
+function classifySubSection(title: string): 'positive' | 'caution' | 'improvement' | 'detail' | 'general' {
+  // v4 漸進式 L3：命理依據摺疊（解審閱疲勞、想深入才展開）
+  if (/查看命理邏輯|命理依據|命理邏輯|命理推演|專業依據/.test(title)) return 'detail'
   if (/好的地方|好的方面|優勢|優點|強項|祝福|相容性|🟢/.test(title)) return 'positive'
   if (/需要注意|需注意|注意的地方|注意|風險|挑戰|弱點|關係張力|🟡/.test(title)) return 'caution'
   if (/改善方案|改善建議|改善|建議|提升|行動|指南|刻意練習|🔵/.test(title)) return 'improvement'
@@ -929,7 +931,14 @@ function renderSectionMarkdown(content: string): string {
     const subType = classifySubSection(subTitle)
     const style = SUB_BOX_STYLES[subType]
 
-    if (style && subBody) {
+    if (subType === 'detail' && subBody) {
+      // v4 漸進式 L3：命理依據摺疊區（預設摺疊、想深入才展開、解審閱疲勞）
+      html += `
+        <details class="report-detail" style="margin:12px 0;border:1px solid rgba(197,150,58,0.22);border-radius:8px;background:rgba(197,150,58,0.03);">
+          <summary style="cursor:pointer;padding:10px 14px;font-size:0.82rem;font-weight:600;color:#c9a84c;letter-spacing:0.03em;">${subTitle}</summary>
+          <div style="padding:2px 14px 12px;font-size:0.86rem;line-height:1.75;color:var(--color-text-muted);">${renderInlineMarkdown(subBody)}</div>
+        </details>`
+    } else if (style && subBody) {
       // 彩色框子章節
       html += `
         <div style="background:${style.bg};border:${style.border};border-radius:8px;padding:12px 16px;margin:12px 0;">

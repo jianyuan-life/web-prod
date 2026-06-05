@@ -24,6 +24,7 @@ const SANITIZE_CONFIG: sanitizeHtml.IOptions = {
     'p','h1','h2','h3','h4','h5','h6','strong','em','u','s','ul','ol','li',
     'a','br','hr','blockquote','table','thead','tbody','tr','th','td',
     'code','pre','span','div','b','i','sup','sub',
+    'details','summary',
   ],
   allowedAttributes: {
     '*': [
