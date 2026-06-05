@@ -57,6 +57,22 @@ SCAN_DIRS = [
     WORKSPACE_ROOT / 'Claude-鑑源' / 'Claude-鑑源命理研究部門',
 ]
 
+# 🔴 規則源品質 gate（2026-06-05 加）：排除「開發過程文件」，只灌真正的命理規則。
+# 背景：命理研究部門 496 個 .md 裡 ~31% 是 QA/IA 審查報告、驗證報告、技術債修復、
+#       audit、github 軟體比對 —— 這些灌進 rules_library 會讓客戶報告生成時
+#       retrieve 到「IA Agent 審查報告 R5」這類雜訊、污染客戶驗算。必須過濾。
+# 原則：精確排除明確的開發文件、保留 SOP / 知識庫 / 古籍原文 / patterns / 派別方法。
+EXCLUDE_PATTERNS = re.compile(
+    r'(AGENT_REPORT|QA_REPORT|QA_AGENT|IA_AGENT'
+    r'|_VERIFICATION|VERIFICATION_REPORT|calc_verification|verification_qimen'
+    r'|_TECH_DEBT|TECH_DEBT_FIX|_PERSONALIZATION_FIX|OPTIMIZATION_REPORT'
+    r'|GLOBAL_COMPARISON|_DECISION\.md|MONTH_QIMEN_CLASSICAL_VERIFICATION'
+    r'|[\\/]06_software_cross_check[\\/]|[\\/]qa_scripts[\\/]|[\\/]github[\\/]|[\\/]software[\\/]'
+    r'|_audit|audit_R|audit_2026|[\\/]_diff|dryrun|_dry_'
+    r'|handoff|next_session|[\\/]lessons|todo\.md)',
+    re.IGNORECASE,
+)
+
 # 檔名 → 系統 mapping（優先比對，沒命中則嘗試推斷）
 FILE_SYSTEM_MAP = {
     'bazi':              'bazi',
@@ -448,6 +464,9 @@ def iter_rule_files(system_filter: str | None) -> Iterable[Path]:
         for md in sorted(root.rglob('*.md')):
             # 跳過 _archived
             if '_archived' in md.parts:
+                continue
+            # 🔴 品質 gate（2026-06-05）：跳過開發過程文件（審查報告/驗證/技術債/audit/github）
+            if EXCLUDE_PATTERNS.search(str(md)):
                 continue
             if system_filter:
                 if infer_system(md) != system_filter:
