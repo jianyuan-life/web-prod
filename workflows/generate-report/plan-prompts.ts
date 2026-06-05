@@ -9,10 +9,15 @@
 //   g15_plan v3 架構不同(1-Call vs 3-Call、見 steps.ts L24-27 註)、本 commit 不動 g15、待 round 3
 import * as _dV2 from '@/prompts/d_plan_v2'
 import * as _dV3 from '@/prompts/d_plan_v3'
+import * as _dV4 from '@/prompts/d_plan_v4'
 import * as _rV2 from '@/prompts/r_plan_v2'
 import * as _rV3 from '@/prompts/r_plan_v3'
 const _USE_V3 = process.env.USE_PLAN_V3 === 'true'
-const { getDPlanSystemPrompt, getDPlanStructurePrompt } = _USE_V3 ? _dV3 : _dV2
+// D 精準診斷書 v4（漸進式 L1/L2/L3、解審閱疲勞）：預設 off、staged rollout、不影響現有客戶
+const _USE_V4_D = process.env.USE_PLAN_V4_D === 'true'
+const { getDPlanSystemPrompt, getDPlanStructurePrompt } = _USE_V4_D
+  ? { getDPlanSystemPrompt: _dV4.getDPlanSystemPromptV4, getDPlanStructurePrompt: _dV4.getDPlanStructurePromptV4 }
+  : _USE_V3 ? _dV3 : _dV2
 const { getRPlanSystemPrompt, getRPlanStructurePrompt } = _USE_V3
   ? { getRPlanSystemPrompt: _rV3.getRPlanSystemPromptV3, getRPlanStructurePrompt: _rV3.getRPlanStructurePromptV3 }
   : _rV2
