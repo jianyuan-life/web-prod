@@ -18,7 +18,9 @@ import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 //   d_plan / r_plan / g15_plan 後續 commit 接(本 commit 只動 c、stage 1 最小驗證)
 import * as _cV2 from '@/prompts/c_plan_v2'
 import * as _cV3 from '@/prompts/c_plan_v3'
-const _C_PROMPTS = process.env.USE_PLAN_V3 === 'true' ? _cV3 : _cV2
+import * as _cV4 from '@/prompts/c_plan_v4'
+// C 人生使用說明書 v4（漸進式 L1/L2/L3、解審閱疲勞）：預設 off、staged rollout、不影響現有客戶
+const _C_PROMPTS = process.env.USE_PLAN_V4_C === 'true' ? _cV4 : process.env.USE_PLAN_V3 === 'true' ? _cV3 : _cV2
 const {
   getAgeGroup,
   FORBIDDEN_WORDS_BY_STAGE,
