@@ -58,7 +58,10 @@ tests:
           - 後顯化
 
 defaultTest:
-  threshold: 0.7
+  # v5.10.404 鐵律對齊（CLAUDE.md 第 7 條 (d) promptfoo gate ≥ 90%）：0.7 → 0.9
+  #   goal 4 基建稽核發現原 0.7 違反「≥90%」鐵律。
+  #   ⚠️ 未跑現有 prompt 驗證是否達 0.9、首次 promptfoo eval 需確認；promptfoo 目前手動跑（未進 CI、goal 4 接力項：加 web ci.yml job + GEMINI_API_KEY secret）
+  threshold: 0.9
 
 # 實際跑:
 #   set DEEPSEEK_API_KEY=...(已配 ~/.claude/.env)
