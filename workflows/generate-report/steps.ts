@@ -2856,7 +2856,21 @@ export async function qualityGate(
     // v5.6.3 (2026-04-28) ROI #2 round 2: cRequired 從 9 條 → 13 條(9 hard + 4 軟)
     // IA round 1 抓出 P0:全當 hardFailure 會擴大 retry 攻擊面 +44%、最壞 $14 燒
     // 修法:新加 4 條集大成檢查走 [軟性]、由 5 LLM QA 兜底品質、結構檢查保留 9 老條當地基
-    const cRequired = [
+    // v5.10.401:C v4(人生使用說明書)漸進式 5 大章不同於 v2 17 章、qualityGate 條件化(Codex P2 同類)
+    const _useV4C = process.env.USE_PLAN_V4_C === 'true'
+    const cRequired = _useV4C ? [
+      // C v4:L1 人生速覽 + 五大章(原廠設定/競爭力財富/感情磁場/精準診斷/五年戰略)+ 開運/刻意練習/寫給
+      { pattern: /人生速覽|核心人生定位/, name: 'L1 人生速覽', soft: false },
+      { pattern: /原廠設定|你是誰|底層邏輯/, name: '原廠設定與底層邏輯', soft: false },
+      { pattern: /競爭力|財富路徑|賺錢/, name: '核心競爭力與財富', soft: false },
+      { pattern: /感情.*人際|人際磁場|感情.*磁場/, name: '感情與人際磁場', soft: false },
+      { pattern: /精準診斷|診斷書/, name: '精準診斷書', soft: false },
+      { pattern: /五年戰略|未來五年|戰略推演/, name: '五年戰略推演', soft: false },
+      { pattern: /刻意練習/, name: '刻意練習', soft: false },
+      { pattern: /寫給.*的話|寫給.*的一封信/, name: '寫給你的話', soft: false },
+      { pattern: /查看命理邏輯/, name: 'L3 命理依據摺疊', soft: true },
+      { pattern: /開運|防禦清單|幸運/, name: '開運與防禦清單', soft: true },
+    ] : [
       { pattern: /人生速覽|你的人生速覽/, name: '人生速覽', soft: false },
       { pattern: /命格名片|命格.*封號|核心身份/, name: '命格名片', soft: false },
       // v5.7.47:加父母版變體(toddler/child voice=parent 寫「您的孩子是什麼樣的人」)
@@ -3257,7 +3271,20 @@ export async function qualityGate(
     // v5.6.5 (2026-04-28) ROI #8 (軟性): 加雙人對位視覺化檢查、避免 R 報告純文字弱於市面對手
     // production 確認 (Supabase 撈 r_production_status.md):R 已通 4/4、待辦 #4 過期、CLAUDE.md 待關
     // 12 天 0 新單 → funnel 斷、不是 AI 問題、本 ROI 補對位表強化視覺差異化
-    const rRequired = [
+    // v5.10.401:R v4(關係盡職調查報告)章節大綱不同於 v2、qualityGate 條件化避免 v4 fail(Codex P2)
+    const _useV4R = process.env.USE_PLAN_V4_R === 'true'
+    const rRequired = _useV4R ? [
+      // R v4 漸進式:L1 答案層 + L2 五段(價值觀/利益/情緒/診斷/停看聽)+ 寫給
+      { pattern: /你們的問題|關係描述/, name: '你們的問題', soft: false },
+      { pattern: /你們的答案|合否結論|結論/, name: '你們的答案', soft: false },
+      { pattern: /核心價值觀|價值觀|底線碰撞/, name: '核心價值觀碰撞', soft: false },
+      { pattern: /利益|財富共振|利益綁定/, name: '利益財富共振', soft: false },
+      { pattern: /情緒消耗|日常生活|情緒/, name: '日常情緒消耗', soft: false },
+      { pattern: /精準診斷|診斷書/, name: '精準診斷書', soft: false },
+      { pattern: /停看聽|關鍵節點|流年|2026|2027/, name: '停看聽關鍵節點', soft: false },
+      { pattern: /寫給.*的話/, name: '寫給你們的話', soft: false },
+      { pattern: /查看命理邏輯/, name: 'L3 命理依據摺疊', soft: true },
+    ] : [
       { pattern: /你們的問題|關係描述/, name: '你們的問題', soft: false },
       { pattern: /你們的答案|合否結論/, name: '你們的答案', soft: false },
       { pattern: /化學反應|合盤分析/, name: '化學反應', soft: false },
@@ -3281,9 +3308,10 @@ export async function qualityGate(
     if (!hasConclusion) {
       warnings.push('合否缺少明確結論（應有「你們合/不合/合但有致命雷區」）')
     }
-    // 內容長度檢查
-    if (reportContent.length < 8000) {
-      warnings.push(`合否內容偏短: ${reportContent.length} 字（期望 > 8,000 字）`)
+    // 內容長度檢查(v4 漸進式 6500-9000 目標、門檻調降；v2 期望 8000)
+    const _rMinLen = _useV4R ? 5500 : 8000
+    if (reportContent.length < _rMinLen) {
+      warnings.push(`合否內容偏短: ${reportContent.length} 字（期望 > ${_rMinLen} 字）`)
     }
     // L3 P0 Bug 4 修復：雙方互動比例檢查（>= 40% 段落必須包含雙方互動字眼）
     // 掃描段落中是否有「你們」「兩個人」「互動」「彼此」「對方」「她/他」等雙方字眼
@@ -3294,18 +3322,28 @@ export async function qualityGate(
     if (interactionRatio < 0.40) {
       warnings.push(`合否雙方互動比例過低: ${(interactionRatio * 100).toFixed(0)}% 段落含互動字眼（期望 >= 40%，避免變成個人分析）`)
     }
-    // R 每章三段式總結檢查（🟢🟡🔵）
-    const hasTrinitySummary = /🟢|好的地方/.test(reportContent)
-      && /🟡|需要注意/.test(reportContent)
-      && /🔵|改善建議|關係處方/.test(reportContent)
+    // R 每章三段式總結檢查（v2 🟢🟡🔵 / v4 ●▌▸ 純文字無 emoji）
+    const hasTrinitySummary = _useV4R
+      ? (/●|有利/.test(reportContent) && /▌|注意/.test(reportContent) && /▸|改善/.test(reportContent))
+      : (/🟢|好的地方/.test(reportContent) && /🟡|需要注意/.test(reportContent) && /🔵|改善建議|關係處方/.test(reportContent))
     if (!hasTrinitySummary) {
-      warnings.push('合否缺少三段式總結（🟢好的地方/🟡需要注意/🔵改善建議）')
+      warnings.push(`合否缺少三段式總結（${_useV4R ? 'v4 ●有利/▌注意/▸改善' : 'v2 🟢好的地方/🟡需要注意/🔵改善建議'}）`)
     }
   }
 
   // 2e. D 方案「心之所惑」必要章節檢查
   if (planCode === 'D') {
-    const dRequired = [
+    // v5.10.401:D v4(精準診斷書)漸進式 5 段不同於 v2、qualityGate 條件化(Codex P2 同類)
+    const _useV4D = process.env.USE_PLAN_V4_D === 'true'
+    const dRequired = _useV4D ? [
+      // D v4:L1 你的問題/你的答案 + L2 為什麼/沙盤/時機對策 + 寫給
+      { pattern: /你的問題/, name: '你的問題（客戶原文引用）' },
+      { pattern: /你的答案|答案[:：]/, name: '你的答案（直接回答）' },
+      { pattern: /為什麼是這個答案|為什麼/, name: '為什麼是這答案' },
+      { pattern: /情境沙盤|沙盤|推演/, name: '情境沙盤推演' },
+      { pattern: /時機.*對策|對策行動|時機/, name: '時機對策' },
+      { pattern: /寫給.*的話/, name: '寫給你的話' },
+    ] : [
       { pattern: /你的問題/, name: '你的問題（客戶原文引用）' },
       { pattern: /你的答案/, name: '你的答案（直接回答）' },
       { pattern: /深入解析|命格.*看/, name: '深入解析' },
@@ -3324,8 +3362,8 @@ export async function qualityGate(
     // D 方案字數範圍 6,000-9,000 字（物超所值鐵律）
     // v5.6.3 (2026-04-28) ROI #4: 下限從 5500 → 5000（避免邊緣 retry 燒 Claude $1+ /次）
     // 5000-5499 範圍仍可接受、寫進 warnings 但不該觸發 retry（成本 vs 品質權衡）
-    if (reportContent.length < 5000) {
-      warnings.push(`心之所惑內容偏短: ${reportContent.length} 字（期望 6,000-9,000 字、< 5,000 觸發重跑）`)
+    if (reportContent.length < (_useV4D ? 3800 : 5000)) {
+      warnings.push(`心之所惑內容偏短: ${reportContent.length} 字（期望 ${_useV4D ? '4,000-7,000' : '6,000-9,000'} 字、< ${_useV4D ? 3800 : 5000} 觸發重跑）`)
     }
     if (reportContent.length > 11000) {
       warnings.push(`[軟性] 心之所惑內容過長: ${reportContent.length} 字（D 方案應 6,000-9,000 字，不是 C 方案的百科全書）`)
@@ -3351,7 +3389,8 @@ export async function qualityGate(
   // 對應接力檔:tasks/next_session_handoff_2026-05-06_g15_R1_prompt_complete.md「Round 2 立即可動清單」
   if (planCode === 'G15') {
     const g15V2Strict = process.env.G15_V2_QUALITY_GATE === 'true'
-    const g15Prefix = g15V2Strict ? '' : '[軟性]'  // 空字串 = 走 hardFailures、[軟性] = 只 log
+    // v5.10.401:v4 時(5章6-8k)v6 強制檢查(18章/22k)降軟性、避免 v4+v2_strict 同開誤 hard-fail 合法 v4 報告(IA/Codex P2)
+    const g15Prefix = (g15V2Strict && process.env.USE_PLAN_V4_G15 !== 'true') ? '' : '[軟性]'  // 空字串 = hardFailures、[軟性] = 只 log
     const g15LegacyPrefix = '[軟性]'  // 既有 v1 grep 永遠 [軟性](保留向後相容)
 
     // ── 既有 v1 互動比例(≥ 35% [軟性]、保留向後相容)──
@@ -3367,8 +3406,20 @@ export async function qualityGate(
       warnings.push(`${g15LegacyPrefix} 家族藍圖成員互動比例過低: ${(g15InteractionRatio * 100).toFixed(0)}% 段落含家族/互動字眼(期望 >= 35%、避免變成個人分析的拼貼)`)
     }
 
-    // ── 既有 v1 必要章節 ──
-    const g15Required = [
+    // ── 必要章節(v5.10.401:G15 v4 組織動力診斷書 5 大章不同於 v2 18 章、條件化、Codex P2 同類)──
+    const _useV4G15 = process.env.USE_PLAN_V4_G15 === 'true'
+    const g15Required = _useV4G15 ? [
+      // G15 v4:L1 速覽 + 磁場/互動矩陣/財富傳承/精準診斷/修復戰略 + 寫給這個家 + 法務免責(G15-6)
+      { pattern: /家族能量|能量速覽|能量全貌/, name: '家族能量速覽' },
+      { pattern: /磁場|集體潛意識/, name: '家族磁場與集體潛意識' },
+      { pattern: /互動矩陣|權力動態|成員互動/, name: '核心互動矩陣與權力動態' },
+      { pattern: /財富傳承|流失風險|財富命脈/, name: '財富傳承與流失風險' },
+      { pattern: /精準診斷|診斷書/, name: '精準診斷書' },
+      { pattern: /修復.*戰略|升級戰略|修復升級/, name: '家族修復升級戰略' },
+      { pattern: /刻意練習/, name: '家族刻意練習' },
+      { pattern: /寫給.*家|寫給這個家/, name: '寫給這個家的話' },
+      { pattern: /法務免責|危機.*轉介|1925/, name: '法務免責(G15-6 P0)' },
+    ] : [
       { pattern: /家族能量|能量圖譜|能量全貌/, name: '家族能量圖譜' },
       { pattern: /互動關係|成員互動|互動.*分析/, name: '成員互動關係深度分析' },
       { pattern: /好的地方/, name: '好的地方' },
@@ -3386,9 +3437,11 @@ export async function qualityGate(
       }
     }
 
-    // ── 既有 v1 內容長度(依家庭人數)──
+    // ── 內容長度(依家庭人數;v4 漸進式 6-8k 目標、門檻調降)──
     const memberCount = systemsCount || 2
-    const minG15Length = memberCount <= 2 ? 8000 : memberCount <= 3 ? 10000 : 12000
+    const minG15Length = _useV4G15
+      ? (memberCount <= 3 ? 5500 : 6500)
+      : (memberCount <= 2 ? 8000 : memberCount <= 3 ? 10000 : 12000)
     if (reportContent.length < minG15Length) {
       warnings.push(`家族藍圖內容偏短: ${reportContent.length} 字(期望 > ${minG15Length} 字)`)
     }
@@ -3515,9 +3568,10 @@ export async function qualityGate(
     }
   }
 
-  // 2f. C 方案字數下限（預期 30,000+ 字）
-  if (planCode === 'C' && reportContent.length < 20000) {
-    warnings.push(`人生藍圖內容偏短: ${reportContent.length} 字（期望 > 20,000 字）`)
+  // 2f. C 方案字數下限（v2 預期 20,000+；v4 漸進式 12-15k 目標、門檻調降避免 v4 一開 flag 即 fail、QA P1+Codex P2）
+  const _cV4Len = process.env.USE_PLAN_V4_C === 'true'
+  if (planCode === 'C' && reportContent.length < (_cV4Len ? 11000 : 20000)) {
+    warnings.push(`人生藍圖內容偏短: ${reportContent.length} 字（期望 > ${_cV4Len ? 11000 : 20000} 字）`)
   }
 
   // 2f-3. v5.10.62 14 系統最少引用次數 quality gate(sub-agent strict eval finding)
@@ -3552,7 +3606,8 @@ export async function qualityGate(
   // 用 C_V2_QUALITY_GATE env(v2 啟用)= '' 走 hardFailures、(v1 預設)= '[軟性]' 只 log
   if (planCode === 'C') {
     const cV2Strict = process.env.C_V2_QUALITY_GATE === 'true'
-    const cPrefix = cV2Strict ? '' : '[軟性]'  // 對齊 G15 v5.10.47 pattern
+    // v5.10.401:v4(漸進式 5 章、無「三階段行動計畫/給您的一句話」)時降軟性、避免 v4+C_V2_QUALITY_GATE 同開誤擋 v2 章節(QA/IA P2)
+    const cPrefix = (cV2Strict && process.env.USE_PLAN_V4_C !== 'true') ? '' : '[軟性]'
 
     const C_CHAPTER_MIN_LEN: Array<{ pattern: RegExp; name: string; minLen: number }> = [
       // C 方案章節編號是「十五、刻意練習」(C prompt L1404 寫「十六」、實際 render 重編後變十五)
