@@ -59,3 +59,59 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://jianyuan.life
           NEXT_PUBLIC_API_URL: https://placeholder.fly.dev
         run: npm run build
+
+  # ────────────────────────────────────────────────────────────
+  # promptfoo Prompt Evaluation Gate(2026-06-06 goal 4 基建補)
+  #
+  # 業界共識 SOP + CLAUDE.md 第 7 條鐵律 (d):prompt 改動必 ≥ 90% 通過才 ship。
+  # promptfoo.yaml threshold 已設 0.9、但「未進 CI、只能本機手動跑」是 goal 4 缺口。
+  # 本 job 把 promptfoo eval 拉進 CI、prompt/規則改動時自動 gate。
+  #
+  # 🔴 需老闆設定 GitHub Secret(否則此 gate 自動 SKIP、不擋 push):
+  #    repo settings → Secrets and variables → Actions → New repository secret
+  #    Name  = GEMINI_API_KEY
+  #    Value = (你 ~/.claude/.env 裡的 GEMINI_API_KEY)
+  #    → promptfoo.yaml provider 用 google:gemini-2.5-flash + ${GEMINI_API_KEY}
+  #
+  # 設計:secret 未設 → 印警告 + SKIP(不 fail、避免 fork PR / 設定前卡住);
+  #       secret 已設 → 真跑 eval、< 0.9 threshold 直接 exit 非 0 擋 CI。
+  #
+  # 觸發範圍:沿用 workflow 層 on.push/pull_request(paths-ignore **.md/docs)、
+  #   跟 type-check/build 同 trigger。promptfoo.yaml 只 2 個 smoke test、
+  #   且有 secret guard、每次跑成本低、不另設 per-job path filter
+  #   (GitHub Actions path filter 是 workflow 層、非 job 層、需 dorny/paths-filter
+  #    才能 job 層收斂、暫不引入第三方 action)。
+  # ────────────────────────────────────────────────────────────
+  promptfoo-gate:
+    name: Promptfoo Eval Gate (>= 0.9)
+    needs: type-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check GEMINI_API_KEY secret presence
+        id: secretcheck
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::GEMINI_API_KEY secret 未設、promptfoo gate SKIP。請至 repo Settings → Secrets → Actions 新增 GEMINI_API_KEY 才會啟用 ≥0.9 prompt 評估閘門。"
+          else
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run promptfoo eval (threshold 0.9 in promptfoo.yaml)
+        if: steps.secretcheck.outputs.has_key == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # --no-cache 確保每次真評(對齊 promptfoo.yaml 註解的本機跑法)
+          # promptfoo 在任一 test < defaultTest.threshold(0.9) 時 exit 非 0 → 擋 CI
+          # (GitHub Actions 預設 shell = bash -e {0}、單行指令非 0 自動 fail、不需 set -e)
+          npx --yes promptfoo@latest eval -c promptfoo.yaml --no-cache
+      - name: Gate result note
+        if: steps.secretcheck.outputs.has_key != 'true'
+        run: echo "promptfoo gate SKIPPED — set GEMINI_API_KEY secret to enable. 不視為失敗。"
