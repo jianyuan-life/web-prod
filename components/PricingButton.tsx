@@ -58,7 +58,7 @@ export default function PricingButton({ code, popular, seasonal, locked }: Prici
       <button
         onClick={handleClick}
         disabled={seasonal}
-        className={`w-full text-center py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer ${
+        className={`w-full text-center min-h-[44px] py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer ${
           popular ? 'bg-gold text-dark btn-glow' :
           seasonal ? 'bg-white/5 text-text-muted/40 cursor-not-allowed' :
           locked ? 'glass text-gold hover:bg-gold/10' :

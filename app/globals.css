@@ -645,6 +645,16 @@ textarea {
   min-height: 44px;
 }
 
+/* v5.10.403 手機選單觸控區 ≥44px（goal 3 UI 稽核 P1-1）
+   原 v5.3.56 只含 input/select/textarea、手機漢堡選單的 <a>/<button> 仍 py-1≈28px
+   針對 #mobile-menu 容器內連結/按鈕補 44px、不影響桌面與其他按鈕 */
+#mobile-menu a,
+#mobile-menu button {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
 /* 無障礙：減少動態效果（WCAG 2.3.3 Animation from Interactions）
    — 覆蓋 html.scroll-behavior: smooth 和所有 CSS 動畫/過渡 */
 @media (prefers-reduced-motion: reduce) {
