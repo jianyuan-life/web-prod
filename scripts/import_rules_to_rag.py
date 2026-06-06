@@ -411,12 +411,13 @@ def voyage_embed(texts: list[str], api_key: str) -> list[list[float]]:
         'Content-Type': 'application/json',
     }
     last_err = None
-    for attempt in range(3):
+    for attempt in range(6):  # 2026-06-06 goal 2 灌庫:3→6 次、連續 429 rate limit(7778 條/970 批)時撐更久
         try:
             r = requests.post(VOYAGE_ENDPOINT, json=payload, headers=headers, timeout=60)
             if r.status_code == 429:
-                wait = 5 * (attempt + 1)
-                print(f'  [voyage] 429 rate limit，等 {wait}s 重試', file=sys.stderr)
+                wait = min(10 * (attempt + 1), 60)  # 10,20,30,40,50,60s 漸進 backoff
+                last_err = f'429 rate limit (attempt {attempt+1}/6)'  # 設 last_err、避免六次 429 後 raise None 誤導(前次根因)
+                print(f'  [voyage] 429 rate limit，等 {wait}s 重試 ({attempt+1}/6)', file=sys.stderr)
                 time.sleep(wait)
                 continue
             r.raise_for_status()
@@ -432,7 +433,7 @@ def voyage_embed(texts: list[str], api_key: str) -> list[list[float]]:
         except Exception as e:
             last_err = str(e)
         time.sleep(2 * (attempt + 1))
-    raise RuntimeError(f'Voyage embed 三次失敗：{last_err}')
+    raise RuntimeError(f'Voyage embed 六次失敗：{last_err}')
 
 
 # ============================================================
@@ -574,6 +575,7 @@ def main() -> int:
         supabase_insert(rows, supabase_url, service_key)
         total_inserted += len(rows)
         print(f'  [{i + len(batch):>4}/{len(chunks)}] embedded+inserted {len(rows)} 條，耗時 {time.time() - t0:.1f}s')
+        time.sleep(0.5)  # 2026-06-06 goal 2:批次間 throttle 0.5s、避免 Voyage RPM 429(前次灌到 24 條連續 429 失敗)
 
     print(f'\n[done] 匯入完成：{total_inserted} 條')
     return 0
