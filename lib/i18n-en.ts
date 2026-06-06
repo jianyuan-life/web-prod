@@ -678,7 +678,7 @@ export const EN_FOUNDER: Record<string, string> = {
 
   // E1-E4 features
   '描述事件背景＋期望結果（200 字）': 'Describe event background + desired outcome (200 words)',
-  '14 類事件精準匹配＋自由描述 AI 分類': 'Precise match across 14 event types + free-description AI categorization',
+  '15 類事件智能匹配（14 類精準匹配＋自由描述 AI 分類）': '15 event types smart-matching (14 precise types + free-description AI categorization)',
   '25 層古法評分（門/星/神/干/格局/神煞）': '25-layer classical scoring (gates / stars / spirits / stems / formations / spirit-directions)',
   '個人年命宮交叉驗證': 'Personal Life Palace cross-check',
   'Top3 吉時＋方位度數＋信心等級': 'Top 3 auspicious hours + directions in degrees + confidence level',
