@@ -2324,6 +2324,42 @@ export async function aiGenerateG15(
   const locale = familyReports[0]?.birthData?.locale
   const memberCount = familyReports.length
 
+  // ──────────── v4 path:組織動力診斷書(漸進式 L1/L2/L3、5 大章、解審閱疲勞)────────────
+  // flag USE_PLAN_V4_G15、預設 off、不影響現有客戶(走下方 v1 path);啟用走 v4 獨立 3-Call
+  // 對齊 c_plan_v4/d_plan_v4 範式、字數砍半(6-8k);獨立邏輯、不繼承 v2 FORCE_V1_FALLBACK 包袱
+  // ⚠️ v4 3-Call 跑通與 quality gate 適配待啟用後實測(flag off 時零影響、與 C/D v4 staged 一致)
+  const _USE_V4_G15 = process.env.USE_PLAN_V4_G15 === 'true'
+  if (_USE_V4_G15) {
+    const v4 = await import('@/prompts/g15_plan_v4')
+    console.log(`G15 v4 啟動:組織動力診斷書 3-Call、memberCount=${memberCount}`)
+
+    await emitProgress({ step: 'AI分析', progress: 30, message: 'G15 v4 Call 1:家族能量速覽 + 磁場與集體潛意識...' })
+    const v4c1p = v4.buildG15Call1Prompt(memberCount, locale)
+    const v4c1u = baseUserPrompt + `\n請依本 Call 範圍輸出「L1 家族能量速覽 + 〇 能量全貌 Hero + 一、家族磁場與集體潛意識」、不要寫前言、直接從 "## L1" 開始。`
+    const v4c1r = await callClaudeOnly(v4c1p, v4c1u, 128000, 'G15_v4_call1', reportId)
+    const v4c1c = trimToLastCompleteSentence(cleanAIResponse(v4c1r.content))
+    console.log(`G15 v4 Call 1 完成:${v4c1c.length} 字`)
+
+    await emitProgress({ step: 'AI分析', progress: 50, message: 'G15 v4 Call 2:核心互動矩陣 + 財富傳承...' })
+    const v4c1s = v4.extractG15V4Summary(v4c1c)
+    const v4c2p = v4.buildG15Call2Prompt(memberCount, v4c1s, locale)
+    const v4c2u = baseUserPrompt + `\n請依本 Call 範圍輸出「二、核心互動矩陣與權力動態 + 三、財富傳承與流失風險」、不要寫前言、直接從 "## 二、" 開始。`
+    const v4c2r = await callClaudeOnly(v4c2p, v4c2u, 128000, 'G15_v4_call2', reportId)
+    const v4c2c = trimToLastCompleteSentence(cleanAIResponse(v4c2r.content))
+    console.log(`G15 v4 Call 2 完成:${v4c2c.length} 字`)
+
+    await emitProgress({ step: 'AI分析', progress: 70, message: 'G15 v4 Call 3:精準診斷 + 修復戰略 + 寫給這個家...' })
+    const v4c3p = v4.buildG15Call3Prompt(memberCount, v4c1s, v4.extractG15V4Summary(v4c2c), locale)
+    const v4c3u = baseUserPrompt + `\n請依本 Call 範圍輸出「四、精準診斷書 + 五、家族修復升級戰略 + 家族開運 + 寫給這個家的話 + 法務免責」、不要寫前言、直接從 "## 四、" 開始。`
+    const v4c3r = await callClaudeOnly(v4c3p, v4c3u, 128000, 'G15_v4_call3', reportId)
+    const v4c3c = trimToLastCompleteSentence(cleanAIResponse(v4c3r.content))
+    console.log(`G15 v4 Call 3 完成:${v4c3c.length} 字`)
+
+    const v4Final = `${v4c1c}\n\n${v4c2c}\n\n${v4c3c}`
+    console.log(`G15 v4 全 3 Call 完成:總長 ${v4Final.length} 字`)
+    return { content: v4Final, model: 'claude-opus-4-6' }
+  }
+
   // ──────────── v2 path:3-Call LLM 共識版 ────────────
   // v5.10.27 hotfix: force v1 fallback,v2 path call3 從未跑通(workflow 卡 call2 後、可能 Vercel timeout)
   // 對應 lesson #073「連 3 輪 accept」、暫關 v2、回 v1 認可版穩定 path
