@@ -2004,7 +2004,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           - !isChumenji && sections.length > 3 條件(出門訣 / 短報告 不渲染)
           - fixed left side、不擠 main content 寬度 */}
       {!isChumenji && sections.length > 3 && (
-        <div className="hidden xl:block fixed left-4 top-24 max-w-[200px] z-30 pointer-events-auto">
+        <div className="hidden min-[1400px]:block fixed left-4 top-24 max-w-[200px] z-30 pointer-events-auto">
           <StickyTOC
             items={sections.map((sec, i) => ({
               id: `sec-${i}`,
@@ -2118,15 +2118,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
            - mobile clamp padding 不動、< 768px 已單欄無 sidebar
            - 主數據卡片(命格名片/命盤一覽/雷達/timeline/表格)可吃滿 1600 視覺更飽滿 */}
       {/* v5.10.16 R+13 revert(R+12 1920 width Gemini 90→85 退步、自相矛盾「主內容要寬 vs 段落要窄」、回 1600 平衡)*/}
-      <div className="mx-auto pt-6 max-w-[1600px]" style={{
-        paddingLeft: 'clamp(1rem, 3vw, 2rem)',
-        paddingRight: 'clamp(1rem, 3vw, 2rem)',
-      }}>
+      {/* v5.10.407 修目錄遮正文 + 正文置中(老闆登入 UI 抓):正文 wrapper 改置中(下方)、left 自然避開左側目錄不遮、左右留白對稱、解「字擠左版面空」 */}
+      <div className="mx-auto pt-6 max-w-[1600px] px-4 sm:px-6">
         {/* v5.10.147 P0 緊急修(老闆糾正第 N 次、表格第 1 欄被截斷、最終根治):
             完全移除 SidebarTOC(無論兩欄或 fixed 都會擠/遮表格、復發風險高)
             連貫性改靠 v5.10.145 breadcrumb + v5.10.146 ChapterNav + v5.10.144 mobile FAB(都不碰 main 寬度)
             main 100% 全寬、表格 td 加 white-space:nowrap、第 1 欄絕不再截斷 */}
-        <div className="w-full">
+        {/* v5.10.407 #3 修(老闆「版面這麼大字擠左右留白」):正文統一 880px 置中、左右對稱平衡;側目錄改 ≥1400 才顯示(1280 隱藏改用頂部 ChapterNav、徹底不遮) */}
+        <div className="w-full max-w-[880px] mx-auto">
         {!isChumenji && sections.length > 3 && (
           <ReportBreadcrumb planName={PLAN_NAMES[report.plan_code] || '命理分析'} />
         )}
@@ -4001,8 +4000,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         )}
 
         {/* ──── 目錄導航（起承轉合四篇分組）──── v5.7.65 lg+ 隱藏(SidebarTOC 已存在、Gemini P2 redundant) */}
+        {/* v5.10.407 #4 修(老闆導航):章節目錄改 <1400 顯示(含 1280、補側目錄 ≥1400 gap)、流內區塊不遮、href #sec-i 對齊可跳轉 */}
         {sections.length > 3 && (
-          <div id="mobile-toc" className="glass rounded-xl p-6 mb-8 no-print lg:hidden scroll-mt-24">
+          <div id="mobile-toc" className="glass rounded-xl p-6 mb-8 no-print min-[1400px]:hidden scroll-mt-24">
             <div className="flex items-center justify-between mb-4">
               <div className="text-gold/70 text-xs tracking-[2px]">{isShowingSummary ? '重點摘要目錄' : '目錄'}</div>
               <div className="text-text-muted/50 text-[10px] tracking-wider">
