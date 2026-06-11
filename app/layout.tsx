@@ -95,9 +95,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             規格:tasks/spec_ui_warm_light_theme_2026-05-16_v1.md §4.1 §4.5
             L4 Gemini Round 3 P2:fallback 用 prefers-color-scheme detect、不寫死 dark
             L2 IA Round 1 P0-3:既有 R8 'jy_report_theme_v1' key 一次性遷移 */}
+        {/* v5.10.408:/report/* 首繪即鎖 dark(對齊 ThemeProvider forcedTheme、避免 light→dark 閃爍)*/}
         <script
           dangerouslySetInnerHTML={{
-            __html: "(function(){try{var O='jy_report_theme_v1',N='theme',o=localStorage.getItem(O);if(o&&!localStorage.getItem(N)){localStorage.setItem(N,o);}var t=localStorage.getItem(N),pd=window.matchMedia('(prefers-color-scheme: dark)').matches,th=(t==='light'||t==='dark')?t:(pd?'dark':'light');document.documentElement.setAttribute('data-theme',th);}catch(e){var fd=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',fd?'dark':'light');}})();",
+            __html: "(function(){try{var O='jy_report_theme_v1',N='theme',o=localStorage.getItem(O);if(o&&!localStorage.getItem(N)){localStorage.setItem(N,o);}if(location.pathname.indexOf('/report/')===0){document.documentElement.setAttribute('data-theme','dark');var vm=localStorage.getItem('jy_report_view_mode_v1');document.documentElement.setAttribute('data-view-mode',vm==='expert'?'expert':'simple');return;}var t=localStorage.getItem(N),pd=window.matchMedia('(prefers-color-scheme: dark)').matches,th=(t==='light'||t==='dark')?t:(pd?'dark':'light');document.documentElement.setAttribute('data-theme',th);}catch(e){if(location.pathname.indexOf('/report/')===0){document.documentElement.setAttribute('data-theme','dark');return;}var fd=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.setAttribute('data-theme',fd?'dark':'light');}})();",
           }}
         />
         {/* v5.10.326 perf:預連線關鍵第三方來源 — 縮短 TLS handshake / DNS 解析時間

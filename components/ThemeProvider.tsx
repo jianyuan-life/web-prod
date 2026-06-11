@@ -16,14 +16,22 @@
  */
 
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
+import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
+  // v5.10.408:報告閱讀區 light 適配未完成(殼 inline 深空漸層 page.tsx L1687 +
+  // 實測 326/929 處正文文字在淺殼下 < 3:1 不可讀)、warm-light 報告遷移 sprint 完成前
+  // /report/* 鎖 dark。forcedTheme 不寫 localStorage、離開報告頁即回用戶原偏好;
+  // 解「html=light、內容全黑」狀態錯亂(主題鍵看似壞掉 + 暖白 banner 不實宣傳)。
+  const forcedTheme = pathname?.startsWith('/report/') ? 'dark' : undefined
   return (
     <NextThemesProvider
       attribute="data-theme"
       defaultTheme="system"
       enableSystem
+      forcedTheme={forcedTheme}
       disableTransitionOnChange={false}
       themes={['light', 'dark']}
       // 注意:next-themes 預設 storageKey = 'theme'

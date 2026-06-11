@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
+import { usePathname } from 'next/navigation'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import LocaleSwitcher from './LocaleSwitcher'
 
@@ -30,9 +31,14 @@ const OPTIONS: { value: ThemeOption; label: string; icon: typeof Sun }[] = [
 
 export function ThemeLanguageSettings() {
   const { theme, setTheme } = useTheme()
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => setMounted(true), [])
+
+  // v5.10.408:/report/* forcedTheme=dark(報告 light 適配未完成)、主題選擇器在
+  // 報告頁按了畫面不變 = 壞 affordance → 報告頁只藏主題排、語言切換照常。
+  const hideTheme = pathname?.startsWith('/report/') ?? false
 
   return (
     <section
@@ -40,7 +46,8 @@ export function ThemeLanguageSettings() {
       className="border-t border-line/40 mt-8 pt-6 pb-2"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto px-4">
-        {/* 主題切換 */}
+        {/* 主題切換(/report/* 隱藏、見上方 hideTheme 註解)*/}
+        {!hideTheme && (
         <fieldset>
           <legend className="text-[11px] uppercase tracking-[0.24em] text-text-muted mb-2">
             主題
@@ -85,6 +92,7 @@ export function ThemeLanguageSettings() {
             })}
           </div>
         </fieldset>
+        )}
 
         {/* 語言切換(沿用既有 LocaleSwitcher)*/}
         <fieldset>

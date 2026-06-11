@@ -433,6 +433,32 @@ main .section-card blockquote::before {
   main .section-card blockquote::before {
     display: none;
   }
+
+  /* v5.10.408(L2 IA P1 修):精簡版預設後、列印必須全文 —
+     SectionExpander 摺疊是 inline style(maxHeight/mask)、print 只有 !important 蓋得過。
+     強制展開 + 藏「展開本章全文」鍵、確保 window.print() 永遠輸出完整章節。 */
+  .section-expander > div {
+    max-height: none !important;
+    overflow: visible !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+  .section-expander button {
+    display: none !important;
+  }
+}
+
+/* v5.10.408(L1 QA P2-2 + L2 IA P2-4 + L3 Codex P2 三家共審必修):
+   精簡版預設的首繪即摺疊(防 CLS)— layout.tsx inline script 在 hydration 前已設
+   html[data-view-mode]、本規則讓 SSR 全文在 first paint 就呈現 300px 摺疊、
+   不再「先畫 47 螢幕全文、hydration 後跳收 18 螢幕」。
+   hydration 後 SectionExpander 接手:收合=inline 同值、展開=inline max-height:none 蓋過本規則。
+   print 區塊的 !important 規則(上方)優先權更高、列印仍全文。 */
+html[data-view-mode="simple"] .section-expander > div {
+  max-height: 300px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
 }
 
 body {
@@ -489,16 +515,23 @@ main h3 {
    - 對 .btn-ink class 加 ::after 偽元素 ink dot 擴散
    - prefers-reduced-motion 自動關閉 */
 @media (prefers-reduced-motion: no-preference) {
-  /* a 標籤底線從中心擴散(墨跡感、editorial)*/
-  main a:not(.no-ink):not([role="button"]) {
+  /* a 標籤底線從中心擴散(墨跡感、editorial)
+     v5.10.408 P0 修:排除按鈕型 anchor(.btn-glow / .cta-primary-large / 任何 bg-* utility)。
+     根因:本規則 background-image 特異性 (0,2,2) > [data-theme="light"] .btn-glow (0,2,0)、
+     light theme 下把 CTA 的 vermillion 漸層蓋成 0%×1px 底線、而 .btn-glow 的 background
+     shorthand 又已 reset 掉 bg-gold 的 background-color → 主 CTA 整顆透明 + 近白字 = 隱形
+     (實測影響:home hero banner/查看完整方案/PricingCards popular/blog/qimen→checkout/FreemiumPaywall)。
+     用 :where() 包排除、特異性維持 (0,2,2) 不變、不影響其他 cascade。
+     底線效果只該給純文字連結、不該給按鈕型 anchor。 */
+  main a:not(.no-ink):not([role="button"]):where(:not(.btn-glow)):where(:not(.cta-primary-large)):where(:not([class*="bg-"])) {
     background-image: linear-gradient(to right, var(--jy-text-gold), var(--jy-text-gold));
     background-position: 0 100%;
     background-repeat: no-repeat;
     background-size: 0% 1px;
     transition: background-size 380ms cubic-bezier(0.4, 0, 0.2, 1);
   }
-  main a:not(.no-ink):not([role="button"]):hover,
-  main a:not(.no-ink):not([role="button"]):focus-visible {
+  main a:not(.no-ink):not([role="button"]):where(:not(.btn-glow)):where(:not(.cta-primary-large)):where(:not([class*="bg-"])):hover,
+  main a:not(.no-ink):not([role="button"]):where(:not(.btn-glow)):where(:not(.cta-primary-large)):where(:not([class*="bg-"])):focus-visible {
     background-size: 100% 1px;
   }
 
@@ -1234,6 +1267,21 @@ a:focus-visible,
 [data-theme="light"] .btn-glow:hover,
 [data-theme="light"] .cta-primary-large:hover {
   box-shadow: 0 10px 28px rgba(192, 57, 43, 0.40);
+}
+
+/* v5.10.408 P0 修:.text-dark 在 light theme 的附帶損害還原。
+   根因:上方 [data-theme="light"] --color-dark: #f5f3ee 是為了 bg-dark 表面翻淺、
+   但 text-dark 全 codebase 25+ 處語義都是「金/彩色填充上的深字」(badges 推薦/最熱門/FREE/值符、
+   cookie 按鈕、about/faq/whitepaper CTA、checkout 步驟圈)— 被連帶翻近白 → 金底白字 1.9:1 不可讀。
+   修:light theme 把 text-dark 鎖回金底深字 token(#0A0E1A)。
+   排除 .btn-glow / .cta-primary-large(它們在 light 是朱砂紅底、白字才對、見上方 override)。 */
+[data-theme="light"] .text-dark:not(.btn-glow):not(.cta-primary-large) {
+  color: var(--color-text-on-gold, #0A0E1A);
+}
+/* 同根漏網(L1 QA P2-3):hover:text-dark 生成的是 .hover\:text-dark:hover、
+   不被上一條字面 .text-dark 命中(HistoricalFigures hover:bg-gold + hover:text-dark)。 */
+[data-theme="light"] .hover\:text-dark:hover {
+  color: var(--color-text-on-gold, #0A0E1A);
 }
 
 /* 5.2 Hero — Light 模式 .glass 卡片(取消重 backdrop-blur、改實底 + 微 shadow、Apple TW 風)*/

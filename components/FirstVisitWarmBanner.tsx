@@ -22,18 +22,27 @@
 
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
+import { usePathname } from 'next/navigation'
 import { Sun, X } from 'lucide-react'
 
 const DISMISS_KEY = 'jy_warm_banner_dismissed_v1'
 
 export function FirstVisitWarmBanner() {
   const { resolvedTheme, setTheme } = useTheme()
+  const pathname = usePathname()
   const [visible, setVisible] = useState(false)
   const [mounted, setMounted] = useState(false)
+  // v5.10.408:/report/* forcedTheme=dark(報告 light 適配未完成)、此 banner 在報告頁
+  // 宣傳「暖白閱讀主題」與實際深色閱讀區矛盾、且點切換對閱讀區無效 → 報告頁不顯示。
+  const onReport = pathname?.startsWith('/report/') ?? false
 
   useEffect(() => {
     setMounted(true)
     if (typeof window === 'undefined') return
+    // v5.10.408(L1 QA P2-1 + L3 Codex P3 雙家):報告頁 banner 不渲染、effect 也不可
+    // 發 warm_banner_shown(否則 GA 記到從未顯示的 impression、且 dismiss 狀態錯亂)。
+    // onReport 來自 usePathname、首載固定、不需進 deps。
+    if (onReport) return
     try {
       const dismissed = window.localStorage.getItem(DISMISS_KEY)
       const themeSet = window.localStorage.getItem('theme')
@@ -69,7 +78,7 @@ export function FirstVisitWarmBanner() {
     }
   }
 
-  if (!mounted || !visible) return null
+  if (!mounted || !visible || onReport) return null
 
   const isLight = resolvedTheme === 'light'
 

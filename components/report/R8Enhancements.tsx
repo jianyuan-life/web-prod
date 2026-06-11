@@ -104,11 +104,14 @@ export function DarkModeToggle() {
 // 切換時透過 [data-view-mode] 顯示/隱藏 .expert-only 區塊
 // ============================================================
 export function ViewModeToggle() {
-  const [mode, setMode] = useState<'simple' | 'expert'>('expert')
+  // v5.10.408:首次預設改「精簡版」(解老闆「抓不到重點+觀看疲勞」:expert 47.6 螢幕
+  // vs simple 18.2 螢幕、每章有醒目「展開本章全文」、一鍵切完整版)。
+  // 已明確點過 完整版/精簡版 的用戶偏好(localStorage)照舊尊重。
+  const [mode, setMode] = useState<'simple' | 'expert'>('simple')
 
   useEffect(() => {
     const stored = readStorage(STORAGE_KEYS.VIEW_MODE)
-    const next: 'simple' | 'expert' = stored === 'simple' ? 'simple' : 'expert'
+    const next: 'simple' | 'expert' = stored === 'expert' ? 'expert' : 'simple'
     setMode(next)
     applyMode(next)
   }, [])
@@ -513,15 +516,18 @@ export function WhyThisVerdictLink({
 }
 
 // ============================================================
-// 工具列容器(把 ViewModeToggle / DarkModeToggle / TermGlossary 放一起)
+// 工具列容器(把 ViewModeToggle / TermGlossary 放一起)
 // 給 page.tsx sticky CTA bar 用
+// v5.10.408:暫移 DarkModeToggle — /report/* 已 forcedTheme=dark(ThemeProvider)、
+// 報告閱讀區 light 適配未完成(殼 inline 深色 + 326 處正文淺殼下不可讀)、
+// 按了只改全站偏好、閱讀區不變 = 「按了沒反應」壞體驗。
+// warm-light 報告遷移 sprint 完成後:移除 forcedTheme + 還原本行 <DarkModeToggle />。
 // ============================================================
 export function R8Toolbar() {
   return (
     <div className="flex items-center gap-2">
       <ViewModeToggle />
       <TermGlossaryButton />
-      <DarkModeToggle />
     </div>
   )
 }

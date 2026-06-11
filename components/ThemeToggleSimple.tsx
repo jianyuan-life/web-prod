@@ -20,14 +20,20 @@
 
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
+import { usePathname } from 'next/navigation'
 import { Sun, Moon } from 'lucide-react'
 
 export function ThemeToggleSimple() {
   const { theme, setTheme, systemTheme, resolvedTheme } = useTheme()
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
 
   // Hydration mismatch 防護:client 端才 render 真實狀態(避免 SSR vs client text 不對)
   useEffect(() => setMounted(true), [])
+
+  // v5.10.408:/report/* forcedTheme=dark(報告閱讀區 light 適配未完成)、
+  // 此鍵在報告頁按了只寫偏好、畫面不變 = 壞 affordance → 報告頁不顯示。
+  if (pathname?.startsWith('/report/')) return null
 
   if (!mounted) {
     // SSR / pre-mount: render skeleton avoid hydration mismatch
