@@ -50,8 +50,9 @@ export default function ChumenjiTop3Bar({
           <h3 id="chumenji-top3-title" className="text-base font-bold text-cream">
             {title}
           </h3>
+          {/* v5.10.409(E1 人類視角審查 P1):分數可因吉格加乘破百、原「滿分 100」與 147 分自相矛盾 */}
           <p className="text-[11px] text-text-muted mt-0.5">
-            最強 {maxScore} 分 · 最弱 {minScore} 分 · 差距 {scoreSpread} 分(滿分 100)
+            最強 {maxScore} 分 · 最弱 {minScore} 分 · 差距 {scoreSpread} 分(基準 100、吉格加乘可破百)
           </p>
         </div>
       </div>

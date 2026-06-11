@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useId } from 'react'
+import { useState, useEffect, useRef, useId } from 'react'
 import { safeHtml } from '@/lib/sanitize'
 
 interface SectionExpanderProps {
@@ -24,6 +24,12 @@ export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle 
   // null 首幀 = CSS 控制、兩群都零跳動;effect 同步後才接手互動狀態。
   const [simpleMode, setSimpleMode] = useState<boolean | null>(null)
   const [userExpanded, setUserExpanded] = useState(false)
+  // v5.10.409(D 審查 P1「完整版空殼」+ R P2「已全顯仍標展開」):
+  // 短章(內容高 ≤ 340px、本來就不到截斷線)摺疊毫無意義 — 14 顆「展開」鍵點了零增量
+  // = 假功能、廉價感。mount 後量一次 scrollHeight(不受 maxHeight clamp 影響)、
+  // 過短 → 完全停用摺疊(inline none 蓋過 html[data-view-mode] CSS 規則)。
+  const [tooShort, setTooShort] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const sync = () => {
@@ -32,15 +38,16 @@ export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle 
       if (!isSimple) setUserExpanded(false) // 回完整版時重置(下次切精簡版重新截斷)
     }
     sync()
+    if (contentRef.current && contentRef.current.scrollHeight <= 340) setTooShort(true)
     const obs = new MutationObserver(sync)
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-view-mode'] })
     return () => obs.disconnect()
   }, [])
 
-  const collapsed = simpleMode === true && !userExpanded
+  const collapsed = simpleMode === true && !userExpanded && !tooShort
   const contentId = useId()
 
-  // 互動後的 inline style:收合=與 CSS 同值(無視覺變化)、用戶展開=none 蓋過 CSS、
+  // 互動後的 inline style:收合=與 CSS 同值(無視覺變化)、用戶展開/短章=none 蓋過 CSS、
   // 未知(null)/expert=undefined 交給 CSS(expert 時 attr 不匹配、自然全文)。
   const contentStyle = collapsed
     ? {
@@ -49,7 +56,7 @@ export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle 
         WebkitMaskImage: 'linear-gradient(to bottom, #000 55%, transparent)',
         maskImage: 'linear-gradient(to bottom, #000 55%, transparent)',
       }
-    : simpleMode === true && userExpanded
+    : tooShort || (simpleMode === true && userExpanded)
       ? { maxHeight: 'none', overflow: 'visible' as const, WebkitMaskImage: 'none', maskImage: 'none' }
       : undefined
 
@@ -57,6 +64,7 @@ export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle 
     <div className="section-expander">
       <div
         id={contentId}
+        ref={contentRef}
         style={contentStyle}
         dangerouslySetInnerHTML={{ __html: safeHtml(fullHtml) }}
       />

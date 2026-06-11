@@ -588,6 +588,33 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;')
 }
 
+// v5.10.409 入口級機器產物清理(2026-06-12 人類視角審查 E1 P0 + R P0):
+// 在 sectioning 之前對整份 ai_content 清一次、所有下游渲染路徑(renderSectionMarkdown /
+// SectionExpander / 自訂 E 系卡片 / 章首速覽抽取)全部免疫 — 解「下游某條路徑漏接清理」的結構性病灶。
+// ① E1 實測:報告尾裸吐 ~2500 字 timing JSON、且因 AI 截斷「陣列未閉合」、
+//    既有 renderInlineMarkdown 的清理在該渲染路徑沒被經過(8f6270cc 實證、佔正文 44%)
+// ② R 實測:西占/吠陀章把「raw_data 度數 198.93/30 = 6.63 → floor」「西占 SELF-CHECK」
+//    整段驗算稿印給客戶(116836df desktop_s07/s08)
+function sanitizeAiContentLeaks(content: string): string {
+  if (!content) return content
+  return (
+    content
+      // 已閉合的 timing 物件陣列(含 fenced ```json 包裹)
+      .replace(/```(?:json)?\s*\[\s*\{\s*"(?:rank|week|title|date)"[\s\S]*?\]\s*```/g, '')
+      .replace(/\[\s*\{\s*"(?:rank|week)"\s*:[\s\S]*?\}\s*\]/g, '')
+      // 截斷未閉合的 timing 陣列/物件:從 array 開頭一路到內容結尾(AI max_tokens 截斷案)
+      .replace(/\n\s*(?:```(?:json)?\s*)?\[\s*\{\s*"(?:rank|week|title|date|time_start)"[\s\S]*$/, '')
+      // 機器驗算稿:SELF-CHECK / 「→ floor」整行必殺;raw_data 只殺「計算式型」
+      // (raw_data 度數 = xx / raw_data = xx — R 實證洩漏型),描述型(C 矩陣方法說明
+      // 「該系統 raw_data 是否直接提及」)保留、避免誤殺正當段落(真資料迴歸測試 C diff=138 抓到)
+      .replace(/^[^\n]*SELF-CHECK[^\n]*$/gm, '')
+      .replace(/^[^\n]*raw_data\s*(?:度數|數值)?\s*[=＝][^\n]*$/gm, '')
+      .replace(/^[^\n]*→\s*floor[^\n]*$/gm, '')
+      // 清掉殘留的連續空行
+      .replace(/\n{3,}/g, '\n\n')
+  )
+}
+
 // 將純文字 markdown 段落轉 HTML（不含 ### 處理）
 function renderInlineMarkdown(text: string): string {
   // ── 分數殘留清理 ──
@@ -1369,7 +1396,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     )
   }
 
-  const aiContent = report.report_result?.ai_content || ''
+  // v5.10.409:入口級清洩漏(timing JSON / SELF-CHECK 驗算稿)、見 sanitizeAiContentLeaks 註解
+  const aiContent = sanitizeAiContentLeaks(report.report_result?.ai_content || '')
   const analysesSummary = report.report_result?.analyses_summary || []
 
   // v5.7.26 大運 regex 收緊(修 v5.6.10 R7 誤配 bug)
