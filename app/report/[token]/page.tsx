@@ -567,6 +567,14 @@ function parseStructuredContent(markdown: string): ContentSection[] {
       sections[sections.length - 1].content += `\n\n### ${cleanTitle}\n${content}`
       continue
     }
+    // v5.10.410(G15 人類視角審查 P0):AI 把練習內容寫成與章標題同級的「## 練習1~4」、
+    // 原 parser 切成獨立章後被下游章節分組丟棄 → 「八、刻意練習」對客戶呈現空殼(實測 45 字、
+    // payload 有完整 4 練習)。同 CATEGORY_LABEL_ONLY 機制併回前一真章節作 ### 子節。
+    const EXERCISE_H2 = /^練習\s*[\d一二三四五六七八]+/
+    if (EXERCISE_H2.test(cleanTitle) && sections.length > 0) {
+      sections[sections.length - 1].content += `\n\n### ${cleanTitle}\n${content}`
+      continue
+    }
     sections.push({ type, title: cleanTitle, content })
   }
 
@@ -4735,6 +4743,10 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
           // v5.10.136 DS2 #1 30 秒懶人包(連貫性 +4 分、Stripe Substack 範本):
           // 全篇章節索引、首屏一張卡讓客戶 30 秒掌握報告全貌、減少跳讀無頭蒼蠅感
+          // v5.10.410(D 人類視角審查 P1):懶人包 plan-aware —
+          //   D 問答型不套 C「起/承打底」文案(D 該先看答案章)、且 D 跳過 PartSection
+          //   → #part-* 是死錨、改用前 4 章 #sec-N 真錨點;C/G15/R 維持起承轉合版。
+          const isQaPlan = report.plan_code === 'D'
           const lazyOverview = grouped.length > 1 && grouped.length <= 6 ? (
             <div className="rounded-2xl px-5 py-4 mb-8 mt-4 no-print" style={{
               background: 'linear-gradient(135deg, rgba(212,175,55,0.07), rgba(15,22,40,0.5))',
@@ -4742,15 +4754,26 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             }}>
               <div className="text-gold/65 text-[10px] tracking-[3px] mb-3 font-semibold">⏱️ 30 秒懶人包</div>
               <div className="text-cream/85 text-sm leading-relaxed mb-3">
-                這份報告分 <span className="text-gold font-semibold">{grouped.length}</span> 篇、共 <span className="text-gold font-semibold">{sections.length}</span> 章。沒時間細讀?先看「起 / 承」打底、其他章節按章節錨點跳讀即可。
+                {isQaPlan ? (
+                  <>這份報告共 <span className="text-gold font-semibold">{sections.length}</span> 章、圍繞你問的問題展開。沒時間細讀?<span className="text-gold font-semibold">先看開頭的直接回答</span>、再跳「具體建議」章照著做即可。</>
+                ) : (
+                  <>這份報告分 <span className="text-gold font-semibold">{grouped.length}</span> 篇、共 <span className="text-gold font-semibold">{sections.length}</span> 章。沒時間細讀?先看「起 / 承」打底、其他章節按章節錨點跳讀即可。</>
+                )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                {grouped.map((g, i) => (
-                  <a key={g.part.key} href={`#part-${g.part.key}`} className="rounded-lg px-3 py-2 hover:bg-gold/10 transition-colors" style={{ background: 'rgba(15,22,40,0.4)', border: '1px solid rgba(212,175,55,0.10)' }}>
-                    <div className="text-gold/75 text-[10px] mb-1 font-semibold">{['起','承','轉','合'][i] || `${i+1}`}篇 · {g.chapters.length} 章</div>
-                    <div className="text-cream/80 text-[12px] leading-tight">{g.part.name}</div>
-                  </a>
-                ))}
+                {isQaPlan
+                  ? sections.slice(0, 4).map((sec, i) => (
+                      <a key={`lz-sec-${i}`} href={`#sec-${indexMap.get(sec) ?? i}`} className="rounded-lg px-3 py-2 hover:bg-gold/10 transition-colors" style={{ background: 'rgba(15,22,40,0.4)', border: '1px solid rgba(212,175,55,0.10)' }}>
+                        <div className="text-gold/75 text-[10px] mb-1 font-semibold">第 {i + 1} 章</div>
+                        <div className="text-cream/80 text-[12px] leading-tight">{sec.title.replace(/^[一二三四五六七八九十]+、/, '').slice(0, 12)}</div>
+                      </a>
+                    ))
+                  : grouped.map((g, i) => (
+                      <a key={g.part.key} href={`#part-${g.part.key}`} className="rounded-lg px-3 py-2 hover:bg-gold/10 transition-colors" style={{ background: 'rgba(15,22,40,0.4)', border: '1px solid rgba(212,175,55,0.10)' }}>
+                        <div className="text-gold/75 text-[10px] mb-1 font-semibold">{['起','承','轉','合'][i] || `${i+1}`}篇 · {g.chapters.length} 章</div>
+                        <div className="text-cream/80 text-[12px] leading-tight">{g.part.name}</div>
+                      </a>
+                    ))}
               </div>
             </div>
           ) : null

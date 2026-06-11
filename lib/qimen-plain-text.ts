@@ -219,12 +219,16 @@ export function buildCalendarDescription(params: {
   lines.push(`方位：${direction}`)
   lines.push(`步行 500 公尺、停留 40 分鐘，朝${direction.replace(/\s.*/, '')}方向。`)
   lines.push('')
-  lines.push('── 坐這個盤對你的輔助 ──')
-  if (plainAdvantage) lines.push(plainAdvantage)
-  if (plainPurpose && plainPurpose.length > 0) {
-    for (const p of plainPurpose) lines.push(`• ${p}`)
+  // v5.10.410(E1/E2 人類視角審查 P1):plainAdvantage/plainPurpose 都缺時
+  // 不再輸出孤兒標題「── 坐這個盤對你的輔助 ──」(舊報告實測 details 出現空段、廉價感)
+  if (plainAdvantage || (plainPurpose && plainPurpose.length > 0)) {
+    lines.push('── 坐這個盤對你的輔助 ──')
+    if (plainAdvantage) lines.push(plainAdvantage)
+    if (plainPurpose && plainPurpose.length > 0) {
+      for (const p of plainPurpose) lines.push(`• ${p}`)
+    }
+    lines.push('')
   }
-  lines.push('')
   lines.push('鑒源命理平台 jianyuan.life')
   return lines.join('\n')
 }
