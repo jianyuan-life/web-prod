@@ -64,6 +64,9 @@ export default function DayunTimeline({
   //   → 不顯示「高峰 / 低谷」誤導文字、改顯示「能量平穩 · 整段大運起伏不大」
   //   依據:Gemini eval「這個錯誤會嚴重打擊我對整份報告數據準確性的信任」
   const samePeakValley = peak.age_start === valley.age_start && peak.age_end === valley.age_end
+  // v5.10.415(走查 finding #2):extraction 沒抓到真實能量時全柱 default 60、
+  // 「能量指數 60/100」×6 = 假數據感。全平 → 隱藏能量數字與圖例、只留大運柱與主題。
+  const flatEnergy = stages.length > 1 && stages.every((d) => d.energy === stages[0].energy)
   const energyFlat = peak.energy === valley.energy
 
   return (
@@ -179,7 +182,7 @@ export default function DayunTimeline({
 
                 {/* 能量分數 */}
                 <div className="text-[9px] text-text-muted/55 mb-1">
-                  能量 {s.energy}
+                  {flatEnergy ? ' ' : `能量 ${s.energy}`}
                 </div>
 
                 {/* 主題(若有)— v5.10.295 line-clamp-2 → 3、防大運主題重點被截 */}
@@ -217,7 +220,7 @@ export default function DayunTimeline({
                 </div>
                 <div>
                   <div className="text-cream text-sm font-semibold">{displayStage.age_start}-{displayStage.age_end ?? displayStage.age_start + 10} 歲大運</div>
-                  <div className="text-text-muted text-[11px] mt-0.5">能量指數 {displayStage.energy} / 100 · {displayStage.is_current ? '正在經歷' : displayStage.age_start > (currentAge || 30) ? '未來十年' : '已過'}</div>
+                  <div className="text-text-muted text-[11px] mt-0.5">{flatEnergy ? '' : `能量指數 ${displayStage.energy} / 100 · `}{displayStage.is_current ? '正在經歷' : displayStage.age_start > (currentAge || 30) ? '未來十年' : '已過'}</div>
                 </div>
               </div>
               {activeIdx !== null && (
@@ -231,8 +234,8 @@ export default function DayunTimeline({
           </div>
         )}
 
-        {/* 圖例 — v5.10.306 editorial:rounded-full dot → square hairline marker(magazine legend pattern) */}
-        <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-gold/10 text-[10px]">
+        {/* 圖例 — v5.10.306 editorial;v5.10.415:flatEnergy 隱藏(無真實能量數據時圖例=噪音) */}
+        {!flatEnergy && <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-gold/10 text-[10px]">
           <div className="flex items-center gap-2 text-text-muted">
             <span className="w-2 h-2" style={{ background: '#6ab04c' }} aria-hidden />
             <span style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>高 峰  75+</span>
@@ -249,7 +252,7 @@ export default function DayunTimeline({
             <span className="w-2 h-2" style={{ background: '#bdc3c7' }} aria-hidden />
             <span style={{ fontFamily: 'var(--jy-font-mono), monospace' }}>蟄 伏  0-25</span>
           </div>
-        </div>
+        </div>}
       </div>
     </section>
   )

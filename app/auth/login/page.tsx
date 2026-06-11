@@ -54,7 +54,7 @@ function LoginForm() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-6">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center text-white mb-2">歡迎回來</h1>
+        <h1 className="text-2xl font-bold text-center text-text mb-2">歡迎回來</h1>
         <p className="text-center text-text-muted text-sm mb-6">登入你的鑒源帳號</p>
 
         {/* 從結帳頁導回時的溫和提示 */}
@@ -129,7 +129,7 @@ function LoginForm() {
             <div className="relative flex justify-center"><span className="px-3 text-xs text-text-muted/60" style={{ background: 'var(--color-dark)' }}>或</span></div>
           </div>
           <button onClick={handleGoogleLogin}
-            className="w-full max-w-md py-2.5 glass rounded-xl text-sm text-white hover:bg-white/10 transition-colors">
+            className="w-full max-w-md py-2.5 glass rounded-xl text-sm text-text hover:bg-white/10 transition-colors">
             Google 登入
           </button>
         </div>

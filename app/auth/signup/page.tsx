@@ -117,7 +117,7 @@ function SignupForm() {
       <div className="min-h-[80vh] flex items-center justify-center px-6">
         <div className="glass rounded-2xl p-8 max-w-md text-center">
           <div className="text-4xl mb-4">&#9993;</div>
-          <h2 className="text-xl font-bold text-white mb-2">請查看 Email</h2>
+          <h2 className="text-xl font-bold text-text mb-2">請查看 Email</h2>
           <p className="text-sm text-text-muted">我們已寄出驗證信到 <span className="text-gold">{form.email}</span>，請點擊信中連結完成註冊。</p>
         </div>
       </div>
@@ -127,7 +127,7 @@ function SignupForm() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-6">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center text-white mb-2">建立帳號</h1>
+        <h1 className="text-2xl font-bold text-center text-text mb-2">建立帳號</h1>
         <p className="text-center text-text-muted text-sm mb-8">開始你的命理探索之旅</p>
 
         <form onSubmit={handleSignup} className="glass rounded-2xl p-6 space-y-4">
@@ -247,7 +247,7 @@ function SignupForm() {
             <div className="relative flex justify-center"><span className="px-3 text-xs text-text-muted/60" style={{ background: 'var(--color-dark)' }}>或</span></div>
           </div>
           <button onClick={handleGoogleLogin}
-            className="w-full max-w-md py-2.5 glass rounded-xl text-sm text-white hover:bg-white/10 transition-colors">
+            className="w-full max-w-md py-2.5 glass rounded-xl text-sm text-text hover:bg-white/10 transition-colors">
             使用 Google 帳號直接註冊
           </button>
         </div>

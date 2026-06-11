@@ -329,7 +329,7 @@ export default function FamilyDynamicsPanel({ members, aiContent }: FamilyDynami
                           background: `linear-gradient(90deg, ${color}99, ${color}44)`,
                         }}></div>
                       </div>
-                      <span className="text-xs text-text-muted/80 w-10 text-right">{count.toFixed(1)}人</span>
+                      <span className="text-xs text-text-muted/80 w-10 text-right">{Math.round(count)} 人</span>
                     </div>
                   )
                 })}
