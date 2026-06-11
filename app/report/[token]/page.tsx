@@ -4543,7 +4543,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             //   原 extractTLDR 抽 tldr 但 sec.content 沒被移除 → render 時 tldr blockquote + 完整 sec.content 視覺重複貼
             //   改用 extractTLDRAndStripped 同時取 tldr + 移除來源後 content、render 用 cleanedContent 避免 echo
             //   若無 tldr、cleanedContent = sec.content 不變
-            const { tldr, strippedContent: cleanedContent } = extractTLDRAndStripped(sec.content, 70)
+            const { tldr: tldrRaw, strippedContent } = extractTLDRAndStripped(sec.content, 70)
+            // v5.10.414(R 審查 P1):免責聲明被抽成章首速覽金句(116836df 三年總覽章實證、
+            // 最顯眼版位放法務字=廉價感)— 渲染端攔截、內容保留原樣。
+            // Gemini L4 P1 修:只攔「免責句型」(本報告/本建議…開頭 + 免責詞)、
+            // 不誤傷正常句「此運勢僅供參考仍需努力」;Codex L3 P2 修:補簡體變體。
+            const tldrIsDisclaimer = !!tldrRaw && /^[*\s]*本(報告|建議|內容|服務|报告|建议|内容|服务)[^\n]{0,40}(不構成|不构成|僅供參考|仅供参考|免責|免责|不取代)/.test(tldrRaw)
+            const tldr = tldrIsDisclaimer ? '' : tldrRaw
+            const cleanedContent = tldrIsDisclaimer ? sec.content : strippedContent
 
             // v5.10.46 P0 修(QA Agent 抓 14 個 sys-XXX dead anchor、SystemsAnchorList 跳轉全失效):
             //   nav `href="#sys-八字四柱"` / "#sys-紫微斗數" 等 14 系統章節錨點、production 0 個 id 對應

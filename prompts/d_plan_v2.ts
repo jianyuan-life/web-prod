@@ -162,7 +162,34 @@ export function getDPlanSystemPrompt(locale?: string): string {
 
 對應 lesson #068(production prompt quote bank 幻覺)+ lesson #056(跨系統幻想禁區)+ lesson #086(D 何宣偽古籍 + 重複吐 P0 三輪一致)+ lesson #079 第三件 D 階段 ④。
 
+【流月干支真值表 — 鐵律、v5.10.414】
+報告中提到任何「流月干支」(如時機表的 X 月干支)、**只可照下表抄寫、嚴禁自行用五虎遁推算**。
+(歷史事故 9c08fc78:AI 把客戶出生年的月柱當成流年月柱、整條擇時推理鏈全錯、懂八字的客戶一查萬年曆即拆穿)
+${monthPillarTables()}
+月份以節氣為界(寅月自立春起、卯月自驚蟄起、依此類推)、非國曆月。若你寫的干支不在上表、即為錯誤、必須重查。
+
 ${ETHICS_RULES}`
+}
+
+// v5.10.414(D 人類視角審查 P0):流月干支真值表 — 動態計算本年前後三年、prompt 注入禁 AI 自推。
+// 五虎遁標準法(《淵海子平》):甲己之年丙作首、乙庚之歲戊為頭、丙辛必定尋庚起、丁壬壬位順行流、戊癸甲寅之上好追求。
+// 驗證:2026 丙午年 → 庚寅起 → 七月(申)=丙申(與萬年曆一致、reviewer 已核)。
+const MP_STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+const MP_BRANCHES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+function monthPillarTable(year: number): string {
+  const yStem = ((year - 4) % 10 + 10) % 10
+  const yBranch = ((year - 4) % 12 + 12) % 12
+  // 年干 → 寅月天干 index:甲己→丙(2)、乙庚→戊(4)、丙辛→庚(6)、丁壬→壬(8)、戊癸→甲(0)
+  const firstStem = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0][yStem]
+  const monthBranches = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1] // 寅卯辰巳午未申酉戌亥子丑
+  // Gemini L4 P2:雙錨點(農曆月名+地支月)、防 AI「七月」對不上「申月」再幻覺
+  const MONTH_LABELS = ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
+  const rows = monthBranches.map((b, i) => `${MONTH_LABELS[i]}(${MP_BRANCHES[b]}月)=${MP_STEMS[(firstStem + i) % 10]}${MP_BRANCHES[b]}`)
+  return `${year} ${MP_STEMS[yStem]}${MP_BRANCHES[yBranch]}年:${rows.join('、')}`
+}
+function monthPillarTables(): string {
+  const y = new Date().getFullYear()
+  return [y - 1, y, y + 1].map(monthPillarTable).join('\n')
 }
 
 // ── user prompt 結構指引 ──
