@@ -102,7 +102,12 @@ export function BackToTopButton() {
 export function ReadingTime({ textLength }: { textLength: number }) {
   const rawMin = Math.max(5, Math.ceil(textLength / 1000))  // 1000 chars/min realistic 中文輕讀
   const minutes = Math.min(120, rawMin)  // cap 120 min(避免 339 等不切實際數)
-  const essenceMin = Math.min(15, Math.max(8, Math.round(minutes / 8)))
+  // v5.10.413(E1/E2 審查 P2):短報告「精華 8 分 · 完整 5 分」邏輯反轉/「8 分 · 8 分」重複 —
+  // 精華下限 8 分鐘對短報告無意義;完整 ≤ 12 分鐘直接單一數字、雙入口只給長報告
+  if (minutes <= 12) {
+    return <span className="text-text-muted/60 text-xs">約 {minutes} 分鐘讀完</span>
+  }
+  const essenceMin = Math.min(minutes - 1, Math.min(15, Math.max(5, Math.round(minutes / 8))))
   return (
     <span className="text-text-muted/60 text-xs">
       精華 {essenceMin} 分鐘 · 完整版 {minutes} 分鐘

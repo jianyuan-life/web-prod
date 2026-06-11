@@ -619,6 +619,15 @@ function sanitizeAiContentLeaks(content: string): string {
       .replace(/^[^\n]*SELF-CHECK[^\n]*$/gm, '')
       .replace(/^[^\n]*raw_data\s*(?:度數|數值)?\s*[=＝][^\n]*$/gm, '')
       .replace(/^[^\n]*→\s*floor[^\n]*$/gm, '')
+      // v5.10.413(D 審查 P2「同屏 14/15 並存」):對外清零 15→14 搬入口級 —
+      // stripRawMarkdown 只掛部分渲染路徑、hero/速覽等路徑漏接(D 9c08fc78 live 實證
+      // 「15 套系統交叉」與「14 套交叉」同屏)。入口一次換、全路徑一致。
+      .replace(/十五系統/g, '十四系統')
+      .replace(/十五套/g, '十四套')
+      .replace(/十五個系統/g, '十四個系統')
+      .replace(/15\s*系統/g, '14 系統')
+      .replace(/15\s*套/g, '14 套')
+      .replace(/15\s*個\s*系統/g, '14 個系統')
       // 清掉殘留的連續空行
       .replace(/\n{3,}/g, '\n\n')
   )
@@ -5070,7 +5079,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <div className="text-left text-[10px] leading-snug" style={{ color: 'rgba(197,150,58,0.55)' }}>
                     <div className="font-semibold tracking-wide" style={{ color: 'rgba(197,150,58,0.75)' }}>✦ 認證命理師</div>
                     <div className="text-text-muted/60">鑑源命理研究部門</div>
-                    <div className="text-text-muted/45 mt-0.5">14 套系統交叉驗證</div>
+                    {/* v5.10.413(E2 審查 P2):E 系=純奇門、掛 14 套交叉徽章失實 */}
+                    <div className="text-text-muted/45 mt-0.5">{isChumenji ? '奇門遁甲擇日驗證' : '14 套系統交叉驗證'}</div>
                     <div className="text-text-muted/45">掃描右側 QR 驗證真偽</div>
                   </div>
                   {tk && (
