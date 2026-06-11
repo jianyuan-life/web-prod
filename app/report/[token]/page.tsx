@@ -91,6 +91,7 @@ interface Top5Timing {
   plain_advantage?: string      // 盤的優勢（40-80 字白話）
   plain_purpose?: string[]      // 最適合做什麼（3-4 個動詞行動）
   // v5.3.78：月度執行提醒動態資料需要（引擎已傳、補型別定義）
+  week?: number             // E3 週次(1-4、v5.10.411 週分組標頭用、引擎已傳)
   score?: number
   star?: string
   door?: string
@@ -1043,6 +1044,25 @@ function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   })
   const details = encodeURIComponent(description)
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}&ctz=Asia/Taipei`
+}
+
+// v5.10.411(E3 審查 P0):出門訣卡片欄位是 raw JSX 文字、AI 偶帶 markdown ** 直接裸印
+// (0d8e60b2 實證 104 處)。卡片不走 renderInlineMarkdown、用此輕量 strip。
+function stripTimingMd(s?: string): string {
+  return (s || '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*\*/g, '')
+}
+
+// v5.10.411(E3 審查 P1):部分報告 plain_advantage 與 plain_purpose 內容逐字相同、
+// 每卡 ✨/🎯 雙段全同 ×8 卡 = 疲勞主因。重複時只留 🎯 行動清單段。
+function timingAdvantageDupPurpose(timing: { plain_advantage?: string; plain_purpose?: string[] }): boolean {
+  const adv = stripTimingMd(timing.plain_advantage).replace(/[\s•・]/g, '')
+  if (!adv) return false
+  const purposes = (timing.plain_purpose || []).map(p => stripTimingMd(p).replace(/[\s•・]/g, ''))
+  if (purposes.length === 0) return false
+  // v5.10.411 Codex L3 P2 修:只認「完全相等」為重複(原 adv.includes(joined) 會把
+  // 「含 purposes 但另有個人化說明」的 advantage 誤藏 = 內容流失)
+  const joined = purposes.join('')
+  return adv === joined || purposes.includes(adv)
 }
 
 // v5.3.75：方位度數對照表——讓客戶拿指南針對度數出門
@@ -4165,7 +4185,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             </div>
 
             <div className="space-y-6 sm:space-y-8">
-              {top5Timings.map((timing) => (
+              {top5Timings.map((timing, tIdx) => (
                 <div
                   key={timing.rank}
                   className="section-card hover-lift"
@@ -4180,12 +4200,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     boxShadow: timing.rank === 1 ? '0 4px 20px rgba(201,168,76,0.12)' : undefined,
                   }}
                 >
+                  {/* v5.10.411(E3 審查 P1):8 卡平鋪無週分組 = 疲勞主因之一、E3 按 timing.week 插分組標頭 */}
+                  {report.plan_code === 'E3' && timing.week && (tIdx === 0 || top5Timings[tIdx - 1]?.week !== timing.week) && (
+                    <div className="flex items-center gap-3 mb-4 -mt-1">
+                      <div className="text-gold/80 text-xs font-bold tracking-[2px]">第 {timing.week} 週</div>
+                      <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(201,168,76,0.3), transparent)' }} />
+                    </div>
+                  )}
                   {/* v5.3.75：取消排名標識（🥇🥈🥉 + #N）——符合命盤就是好盤、不強調比較
                       方位加度數顯示（東→東 90°）讓客戶直接拿指南針對著走
                       v5.3.79 E2 v2.0：加農曆晦日顯示、加月朔備案提醒 */}
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <div className="text-cream font-semibold">{timing.title}</div>
+                      <div className="text-cream font-semibold">{stripTimingMd(timing.title)}</div>
                       <div className="text-text-muted text-sm mt-0.5">
                         {formatTimingDate(timing.date)}&nbsp;&nbsp;{timing.time_start} - {timing.time_end}
                       </div>
@@ -4206,7 +4233,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {timing.zhishi_info && (
                     <div className="flex gap-3 mb-3">
                       <div className="px-3 py-1.5 rounded-lg text-xs text-blue-400" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                        {timing.zhishi_info}
+                        {stripTimingMd(timing.zhishi_info)}
                       </div>
                     </div>
                   )}
@@ -4214,18 +4241,20 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {/* 神煞警告（v3.0 新增）*/}
                   {timing.shensha_warning && (
                     <div className="mb-3 px-3 py-2 rounded-lg text-xs text-amber-400" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                      ⚠ {timing.shensha_warning}
+                      ⚠ {stripTimingMd(timing.shensha_warning)}
                     </div>
                   )}
 
                   {/* v5.3.73：盤對客戶主題的輔助（只用 AI 個人化版、不 fallback 罐頭）
-                      老闆明確要求：必須對齊客戶 TOP3 主題、針對這盤能輔助什麼寫、不准用罐頭文 */}
-                  {timing.plain_advantage && (
+                      老闆明確要求：必須對齊客戶 TOP3 主題、針對這盤能輔助什麼寫、不准用罐頭文
+                      v5.10.411(E3 審查 P0+P1):① stripTimingMd 清裸 ** (104 處實證)
+                      ② plain_advantage 與 plain_purpose 內容 100% 重複時只留 🎯 段(每卡雙段全同=疲勞主因) */}
+                  {timing.plain_advantage && !timingAdvantageDupPurpose(timing) && (
                     <div className="mb-3 px-4 py-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', borderLeft: '3px solid #22c55e' }}>
                       {/* v5.10.68 P0 修(V Gemini Vision sub-agent 抓 WCAG 對比度 < 4.5:1):
                           text-emerald-400/80 在深底色 < 4.5:1、改 text-emerald-300 全不透明、AAA 11+:1 */}
                       <div className="text-emerald-300 text-xs mb-1.5 font-medium">✨ 坐這個盤對你的輔助</div>
-                      <p className="text-text-muted text-sm leading-7">{timing.plain_advantage}</p>
+                      <p className="text-text-muted text-sm leading-7">{stripTimingMd(timing.plain_advantage)}</p>
                     </div>
                   )}
 
@@ -4237,7 +4266,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                         {timing.plain_purpose.map((p: string, idx: number) => (
                           <li key={idx} className="flex gap-2">
                             <span className="text-gold/60 flex-shrink-0">•</span>
-                            <span>{p}</span>
+                            <span>{stripTimingMd(p)}</span>
                           </li>
                         ))}
                       </ul>
@@ -5041,7 +5070,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     <div className="font-semibold tracking-wide" style={{ color: 'rgba(197,150,58,0.75)' }}>✦ 認證命理師</div>
                     <div className="text-text-muted/60">鑑源命理研究部門</div>
                     <div className="text-text-muted/45 mt-0.5">14 套系統交叉驗證</div>
-                    <div className="text-text-muted/45">扫描右側 QR 驗證真偽</div>
+                    <div className="text-text-muted/45">掃描右側 QR 驗證真偽</div>
                   </div>
                   {tk && (
                     <a href={reportUrl} className="block" aria-label="掃描 QR 驗證報告真偽">
