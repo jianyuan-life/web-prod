@@ -1035,8 +1035,8 @@ function buildGCalUrl(timing: Top5Timing, clientName: string): string {
   const calTitle = `${normalizedTitle}(${directionWithAngle.replace(/\s/g, '')})`
   const title = encodeURIComponent(calTitle)
   const description = buildCalendarDescription({
-    plainAdvantage: timing.plain_advantage,
-    plainPurpose: timing.plain_purpose,
+    plainAdvantage: stripTimingMd(timing.plain_advantage) || undefined,
+    plainPurpose: timing.plain_purpose?.map(p => stripTimingMd(p)),
     title: timing.title,
     direction: directionWithAngle,
     angle: timing.angle,
@@ -4185,7 +4185,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             </div>
 
             <div className="space-y-6 sm:space-y-8">
-              {top5Timings.map((timing, tIdx) => (
+              {(report.plan_code === 'E3' ? [...top5Timings].sort((a, b) => (a.week || 9) - (b.week || 9)) : top5Timings).map((timing, tIdx, cardArr) => (
                 <div
                   key={timing.rank}
                   className="section-card hover-lift"
@@ -4201,7 +4201,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   }}
                 >
                   {/* v5.10.411(E3 審查 P1):8 卡平鋪無週分組 = 疲勞主因之一、E3 按 timing.week 插分組標頭 */}
-                  {report.plan_code === 'E3' && timing.week && (tIdx === 0 || top5Timings[tIdx - 1]?.week !== timing.week) && (
+                  {report.plan_code === 'E3' && timing.week && (tIdx === 0 || cardArr[tIdx - 1]?.week !== timing.week) && (
                     <div className="flex items-center gap-3 mb-4 -mt-1">
                       <div className="text-gold/80 text-xs font-bold tracking-[2px]">第 {timing.week} 週</div>
                       <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(201,168,76,0.3), transparent)' }} />
@@ -4333,6 +4333,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                             .replace(/[（(][+-]\d+[）)]/g, '')
                             .replace(/\s+-\s+\*\*/g, '\n- **')
                             .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#c9a84c">$1</strong>')
+                            .replace(/\*\*/g, '')
                             .replace(/^-\s*(.+?)$/gm, '<div class="ml-1">• $1</div>')
                             .replace(/\n{2,}/g, '\n')
                             .replace(/\n/g, '')
