@@ -5,6 +5,22 @@
 
 ---
 
+### 2026-06-13(後續)| web-prod:main | v5.10.443-446(4 push)| ✅ 全面 UI+邏輯稽核 + 修
+
+老闆「全面性檢查 UI 跟所有邏輯」→ 派 2 並行稽核 agent(UI Playwright 實測 + Logic code 審):
+- **ab926892 v5.10.443**:Codex L3 P1 — G15 v4「待實測」註解更新(已 regen 驗證)
+- **f6bbeb66 v5.10.444 🔴 UI P0**:付費報告 raw markdown 外洩修(`>`/`###`/`**`/`|table|` 字面外洩給 C$89/R$59/E3$89 客戶、同 lesson #144 雙渲染器根因)。private-use sentinel(U+E000-E003)在 escapeHtml/table 轉換前包行首 markdown、後展開 <blockquote>/<h2-4>。**52 報告 97 處外洩→0**、QA Codex 98/IA Gemini 100、production C/E3 驗證外洩=0
+- **7a915b26 v5.10.445 Logic P1#1/#2**:v4 flag 讀法收斂單一 SSOT(lib/plan-flags.ts isV4())。C 從 module-const 改 access-time(防同 D/R 的時序炸彈)+ gate 全改 isV4(生成↔gate 零分歧)。verify script 證 4 方案 unset 下全 v4 無退 + kill switch 有效 + production 等價。Codex L3 P0=0
+- **3c9842ae v5.10.446 UI P1-1**:補 /jamie/finance 父路由 redirect→kpi(死路由)
+- **247fac0d v5.10.447 UI P1-2+P2-1**:報告渲染 polish — 清空 <p> 灌水(C 240→0/1)+ 清 <br> in <ol/ul>(brInOl=0)+ ol 不錯併。lib/sanitize.ts safeReportHtml(sanitize 後清結構、只合 <ul> 不合 <ol> 避錯編號)+ page.tsx tidyReportHtml。4 層審 QA100/IA99/Codex/Gemini。**production 驗證:C emptyP 240→0、brInOl=0、leak 仍 0(v444 沒壞)、內容完整**
+- 稽核報告:`_audit_ui/UI_AUDIT_2026-06-13.md`(1 P0/2 P1/5 P2)+ `LOGIC_AUDIT_2026-06-13.md`(P0=0/3 P1/4 P2、**安全面紮實**:admin/cron/webhook/PII/IDOR 全查過安全)
+- **所有 P0 + P1 全修 + 驗證**(UI P0 markdown 外洩 / Logic P1 flag 時序炸彈 / UI P1-1 死路由 / UI P1-2 ol+空p)
+- type-check 0 / build PASS / 7-page 200×全 / 無 regression
+- 剩餘(P2 polish、已記錄、未動):touch 44px / title 重複 / checkout 標題 / PRICE_MAP SSOT inline / dead code FORCE_V1_FALLBACK / analytics 空殼路由
+- 老闆驗收:⏳ 待看稽核報告
+
+---
+
 ### 2026-06-13 | web-prod:main | v5.10.438-442(5 push)| ✅ 報告 v4 4 方案 wiring 收官
 
 老闆驗 v4 D 報告發現仍 v2 → runtime debug 逐層追真因 + 修:
