@@ -295,6 +295,23 @@ html.locale-cn {
   animation: float-gentle 4s ease-in-out infinite;
 }
 
+/* v5.10.426 hero 漂浮報告預覽卡(產品前置化、雙主題自適應)
+   暗:深藍玻璃卡 + 金邊金暈;暖白:奶油羊皮卡 + 金影、不在亮底上突兀 */
+.report-float-card {
+  background: color-mix(in srgb, var(--color-bg-card, #111A30) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 28%, transparent);
+  box-shadow: 0 8px 28px -8px color-mix(in srgb, var(--color-gold) 18%, transparent);
+}
+.report-float-sys { color: var(--color-gold); }
+.report-float-line { color: var(--color-text-muted); }
+[data-theme="light"] .report-float-card {
+  background: color-mix(in srgb, #FAF6EF 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 36%, transparent);
+  box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--color-gold) 30%, transparent);
+}
+[data-theme="light"] .report-float-sys { color: #8B6914; }
+[data-theme="light"] .report-float-line { color: #5A4A38; }
+
 /* 向下箭頭浮動 */
 .animate-bounce-slow {
   animation: float-gentle 3s ease-in-out infinite;

@@ -5,6 +5,7 @@ import StarField from '@/components/StarField'
 import TrustBar from '@/components/TrustBar'
 import Astrolabe from '@/components/Astrolabe'
 import ReportPreview from '@/components/ReportPreview'
+import ReportPreviewFloat from '@/components/ReportPreviewFloat'
 import HeroCTAExperiment from '@/components/HeroCTAExperiment'
 import HomeGuided from '@/components/HomeGuided'  // v5.10.419 Phase 3 引導進場(flag off 時 no-op)
 import type { Metadata } from 'next'
@@ -80,6 +81,7 @@ export default function HomePage() {
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
         <StarField />
         <Astrolabe />
+        <ReportPreviewFloat />
 
         <div className="relative z-10 text-center max-w-[820px] mx-auto px-6 animate-[fade-up_1s_ease-out]">
           <div className="text-[13px] tracking-[0.3em] text-gold/50 mb-8" style={{ fontFamily: 'var(--font-body)' }}>
