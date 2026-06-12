@@ -352,7 +352,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">聯繫我們</h4>
-                <EmailLink className="text-text-muted hover:text-gold transition-colors" />
+                <EmailLink className="inline-flex items-center min-h-[44px] md:min-h-0 text-text-muted hover:text-gold transition-colors" />
               </div>
             </div>
             <div className="mt-12 pt-8 border-t border-gold/5 text-center text-xs text-text-muted/60">
