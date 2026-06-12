@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useId } from 'react'
-import { safeHtml } from '@/lib/sanitize'
+import { safeReportHtml } from '@/lib/sanitize'
 
 interface SectionExpanderProps {
   fullHtml: string
@@ -66,7 +66,7 @@ export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle 
         id={contentId}
         ref={contentRef}
         style={contentStyle}
-        dangerouslySetInnerHTML={{ __html: safeHtml(fullHtml) }}
+        dangerouslySetInnerHTML={{ __html: safeReportHtml(fullHtml) }}
       />
       {collapsed && (
         <button

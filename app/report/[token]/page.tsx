@@ -39,7 +39,7 @@ import ActionRecommendations from '@/components/report/ActionRecommendations'
 import SystemsAnchorList from '@/components/report/SystemsAnchorList'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
 import { groupChaptersByParts, extractTLDRAndStripped } from '@/lib/report-structure'
-import { safeHtml } from '@/lib/sanitize'
+import { safeHtml, safeReportHtml } from '@/lib/sanitize'
 import { localBazi } from '@/lib/bazi-local'
 import {
   generatePlainAdvantage,
@@ -910,6 +910,20 @@ function renderInlineMarkdown(text: string): string {
   html = html.replace(/((?:<li class="report-li">.*?<\/li>\s*(?:<br\/>)?)+)/g, '<ul>$1</ul>')
   html = html.replace(/((?:<li class="report-li-num">.*?<\/li>\s*(?:<br\/>)?)+)/g, '<ol>$1</ol>')
 
+  // v5.10.445 P1-2 修(UI 稽核 §2 P1-2 之半:`<br>` 塞 <ol>/<ul> 內 = 無效 HTML):
+  //   病灶:L909 把 list item 間的 `\n` 轉成 `<br/>`、L910/911 的包裝 regex `(?:<br\/>)?` 又把那個
+  //         `<br/>` 一起吃進 <ol>/<ul> group → `<li>…</li><br/><li>…</li>`(br 當 list 子節點、無效)。
+  //   修:刪掉 <ol>/<ul> 內緊鄰 list item 邊界 / 清單頭尾的 <br/>(item 間距改吃 .report-li margin-bottom)。
+  //   (ol 重編號 + 同型相鄰清單合併在 tidyReportHtml 處理 — 那是 renderSectionMarkdown 串接「之後」才相鄰。)
+  const stripBrInList = (listHtml: string) =>
+    listHtml
+      .replace(/<\/li>\s*(?:<br\s*\/?>\s*)+(?=<li\b)/g, '</li>')
+      .replace(/(<[ou]l>)\s*(?:<br\s*\/?>\s*)+/g, '$1')
+      .replace(/(?:<br\s*\/?>\s*)+(<\/[ou]l>)/g, '$1')
+  html = html
+    .replace(/<ul>[\s\S]*?<\/ul>/g, stripBrInList)
+    .replace(/<ol>[\s\S]*?<\/ol>/g, stripBrInList)
+
   // v5.10.444:展開行首 markdown sentinel(U+E000-E003)→ <blockquote> / <h2-h4>
   // 此時行內文字已完成 escape + 粗體/斜體等 inline 轉換、sentinel 仍完整(未被 table/`\n` 打斷)。
   // L3 Codex + L4 Gemini 共識(P2):inner 用「排除閉合符」字元類別(非 `[\s\S]*?`)、
@@ -924,6 +938,23 @@ function renderInlineMarkdown(text: string): string {
     // 只清本機制實際使用的 U+E000-E003、不擴及其他 PUA(避免誤傷罕字)。
     .replace(/[\u{E000}-\u{E003}]/gu, '')
   return html
+}
+
+// v5.10.445 報告 HTML 收尾清理(UI 稽核 §2 P1-2「<br> 塞 <ol>/<ul> 內」):
+//   在 renderSectionMarkdown「最終輸出」跑、把清單邊界(<li> 間 / 清單頭尾)殘留的 <br> 清掉。
+//   為什麼必須在這裡(sanitize 之「前」)清:sanitize-html 把 <br> 列為合法標籤、`<li>…</li><br><li>`
+//   會原樣留存(br 當 list 子節點 = 無效 HTML)、後處理清不到、必須在 renderer 端先除。
+//   ⚠️ 單一職責:只動清單邊界的 <br>、不碰文字、不碰 <p>。
+//      (空 <p> 灌水 + 同型相鄰清單合併 = sanitize「之後」才產生的 artifact、移到 safeReportHtml 一次處理、
+//       避免 pre/post 兩段重複維護 — 對應 v5.10.445 IA L2 §2「double-processing」finding。)
+function tidyReportHtml(html: string): string {
+  const stripBrInList = (s: string) => s
+    .replace(/<\/li>\s*(?:<br\s*\/?>\s*)+(?=<li\b)/g, '</li>')
+    .replace(/(<[ou]l>)\s*(?:<br\s*\/?>\s*)+/g, '$1')
+    .replace(/(?:<br\s*\/?>\s*)+(<\/[ou]l>)/g, '$1')
+  return html
+    .replace(/<ul>[\s\S]*?<\/ul>/g, stripBrInList)
+    .replace(/<ol>[\s\S]*?<\/ol>/g, stripBrInList)
 }
 
 // 彩色框樣式（與 PDF 對應）
@@ -1025,10 +1056,10 @@ function renderSectionMarkdown(content: string): string {
   const subParts = content.split(/^### /m)
   if (subParts.length <= 1) {
     // 無子章節，直接渲染
-    return stripRawMarkdown(
+    return tidyReportHtml(stripRawMarkdown(
       renderInlineMarkdown(content)
         .replace(/^# (.+)$/gm, '<h3 class="report-h3">$1</h3>')
-    )
+    ))
   }
 
   let html = ''
@@ -1071,7 +1102,7 @@ function renderSectionMarkdown(content: string): string {
   //   render 後若 raw `**` 仍殘留(AI 生成不平衡 markdown bold + renderInlineMarkdown regex 漏網)
   //   暴力清:rendered HTML 中所有 raw `**` 全刪、客戶看不到 markdown source
   //   trade-off:可能誤刪某 case 引用文中的 `**`、但 production AI 不應在引用文中保留 markdown source
-  return stripRawMarkdown(html.replace(/\*\*/g, ''))
+  return tidyReportHtml(stripRawMarkdown(html.replace(/\*\*/g, '')))
 }
 
 // Google Calendar URL 生成（純前端，不需要 API key）
@@ -4008,7 +4039,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* 如果沒有結構化數據，顯示原始內容 */}
             {personalityCard.talents.length === 0 && personalityCard.challenges.length === 0 && !personalityCard.firstImpression && !personalityCard.definition && (
-              <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: safeHtml(stripRawMarkdown(renderSectionMarkdown(personalityCard.rawContent))) }} />
+              <div className="report-p mt-2" dangerouslySetInnerHTML={{ __html: safeReportHtml(stripRawMarkdown(renderSectionMarkdown(personalityCard.rawContent))) }} />
             )}
           </div>
         )}
@@ -4162,7 +4193,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 className="glass"
                 style={{ borderLeft: '3px solid rgba(197,150,58,0.4)' }}
               >
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeHtml(renderSectionMarkdown(sec.content)) }} />
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeReportHtml(renderSectionMarkdown(sec.content)) }} />
               </CollapsibleSection>
             ))}
           </div>
@@ -4402,7 +4433,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 defaultExpanded={true}
                 style={{ background: 'rgba(197,150,58,0.06)', border: '1px solid rgba(197,150,58,0.15)' }}
               >
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeHtml(renderSectionMarkdown(sec.content)) }} />
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeReportHtml(renderSectionMarkdown(sec.content)) }} />
               </CollapsibleSection>
             ))}
           </div>
@@ -4422,7 +4453,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 defaultExpanded={true}
                 style={{ background: 'rgba(224,150,58,0.06)', border: '1px solid rgba(224,150,58,0.15)' }}
               >
-                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeHtml(renderSectionMarkdown(sec.content)) }} />
+                <div className="report-p" dangerouslySetInnerHTML={{ __html: safeReportHtml(renderSectionMarkdown(sec.content)) }} />
               </CollapsibleSection>
             ))}
           </div>
@@ -4523,7 +4554,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 {/* v5.7.45 砍「02」雙編號前綴 */}
                 {sec.title}
               </h2>
-              <div className="report-p" dangerouslySetInnerHTML={{ __html: safeHtml(renderSectionMarkdown(contentToRender)) }} />
+              <div className="report-p" dangerouslySetInnerHTML={{ __html: safeReportHtml(renderSectionMarkdown(contentToRender)) }} />
             </div>
           )
         })}
