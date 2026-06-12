@@ -1,0 +1,60 @@
+'use client'
+
+/**
+ * v5.10.416 UI 重構 Phase 1 — 報告章節進場動效驅動器(ui-ux-pro-max skill 規範)
+ *
+ * 行為:
+ * - flag:NEXT_PUBLIC_FF_REPORT_MOTION === 'true' 才啟用(default off、現有客戶零影響)
+ * - 啟用時 html 加 data-motion="on"、對 main 內各章節 section[id^="sec-"] 掛 .rv、
+ *   IntersectionObserver 進視窗時加 .rv-in(觸發 globals.css transform/opacity 過場)
+ * - stagger:同批進視窗的章節依序 +40ms(skill §7 stagger-sequence 30-50ms)
+ * - 零 CLS:動畫只用 transform/opacity(skill §7 layout-shift-avoid);
+ *   未啟用/reduced-motion 時不掛 class、與現狀 100% 相同
+ * - 防呆:只觀察一次(進場後 unobserve)、SPA 卸載時 disconnect
+ */
+import { useEffect } from 'react'
+
+export default function ReportMotion() {
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_FF_REPORT_MOTION !== 'true') return
+    if (typeof window === 'undefined') return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    document.documentElement.setAttribute('data-motion', 'on')
+    const sections = [...document.querySelectorAll<HTMLElement>('main section[id^="sec-"], main [id^="sec-"]')]
+    if (sections.length === 0) return
+
+    let batchIdx = 0
+    let batchTime = 0
+    const io = new IntersectionObserver(
+      (entries) => {
+        const now = performance.now()
+        // 同一幀批次重置 stagger 計數(skill:stagger 只對「同批出現」的元素)
+        if (now - batchTime > 120) batchIdx = 0
+        batchTime = now
+        for (const e of entries) {
+          if (!e.isIntersecting) continue
+          const el = e.target as HTMLElement
+          el.style.setProperty('--rv-delay', `${Math.min(batchIdx, 4) * 40}ms`)
+          el.classList.add('rv-in')
+          batchIdx++
+          io.unobserve(el)
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 }
+    )
+    for (const s of sections) {
+      // 已在首屏可視範圍的不做動效(避免進頁閃動、skill §7 no-blocking)
+      const r = s.getBoundingClientRect()
+      if (r.top < window.innerHeight * 0.9) continue
+      s.classList.add('rv')
+      io.observe(s)
+    }
+    return () => {
+      io.disconnect()
+      document.documentElement.removeAttribute('data-motion')
+    }
+  }, [])
+
+  return null
+}

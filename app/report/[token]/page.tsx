@@ -34,6 +34,7 @@ import ChumenjiTop3Bar from '@/components/report/ChumenjiTop3Bar'
 import DayunTimeline from '@/components/report/DayunTimeline'
 // v5.10.10 R+8 — 5 LLM Round 3 全 95+ 衝刺批次
 import { OnboardingModal, R8Toolbar, WhyThisVerdictLink } from '@/components/report/R8Enhancements'
+import ReportMotion from '@/components/report/ReportMotion'  // v5.10.416 Phase 1 動效(flag off 時 no-op)
 import ActionRecommendations from '@/components/report/ActionRecommendations'
 import SystemsAnchorList from '@/components/report/SystemsAnchorList'
 import FamilyDynamicsPanel from '@/components/FamilyDynamicsPanel'
@@ -2104,6 +2105,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         borderBottom: '1px solid rgba(197,150,58,0.18)',
         boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
       }}>
+        <ReportMotion />
         <div className="mx-auto max-w-[1600px] px-4 py-2 flex items-center justify-between gap-2 text-[12px]">
           {/* v5.10.10 R+8 #12+#13 左邊:視圖切換 / 術語小辭典 / 暗黑模式(Kimi+GPT-4o+Haiku 缺項補) */}
           {!isChumenji && !isRelationship && !isFamily ? (

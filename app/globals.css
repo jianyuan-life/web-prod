@@ -514,6 +514,39 @@ main h3 {
    - 對 a / button 加 ink-bleed 效果(hover 時 underline 從中心擴散)
    - 對 .btn-ink class 加 ::after 偽元素 ink dot 擴散
    - prefers-reduced-motion 自動關閉 */
+/* ============================================================
+   v5.10.416 UI 重構 Phase 1 — 報告閱讀引導動效(ui-ux-pro-max skill 規範)
+   - flag 控制:html[data-motion="on"] 才生效(NEXT_PUBLIC_FF_REPORT_MOTION、default off)
+   - skill 規則對齊:duration 150-300ms / transform+opacity only(不動 layout、零 CLS)
+     / ease-out 進場 / stagger 由 JS 給 --rv-delay / prefers-reduced-motion 全關
+   - 教訓對齊:逐元件 opt-in class(.rv)、禁全域 selector(v5.10.323 墨跡殺 CTA 前車之鑑)
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-motion="on"] .rv {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  html[data-motion="on"] .rv.rv-in {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity 260ms cubic-bezier(0, 0, 0.2, 1) var(--rv-delay, 0ms),
+      transform 260ms cubic-bezier(0, 0, 0.2, 1) var(--rv-delay, 0ms);
+  }
+  /* 章首速覽金句:金邊從左生長(進場一次、表「本章從這裡開始」的因果) */
+  html[data-motion="on"] .rv.rv-in blockquote {
+    animation: rv-quote-edge 420ms cubic-bezier(0, 0, 0.2, 1) both;
+  }
+}
+@keyframes rv-quote-edge {
+  from { border-left-width: 0; padding-left: 23px; }
+  to { border-left-width: 3px; padding-left: 20px; }
+}
+/* reduced-motion / flag off:完全靜態(skill §7 reduced-motion 鐵律) */
+@media (prefers-reduced-motion: reduce) {
+  .rv { opacity: 1 !important; transform: none !important; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   /* a 標籤底線從中心擴散(墨跡感、editorial)
      v5.10.408 P0 修:排除按鈕型 anchor(.btn-glow / .cta-primary-large / 任何 bg-* utility)。
