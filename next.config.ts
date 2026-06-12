@@ -16,6 +16,13 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_FF_REPORT_MOTION: process.env.NEXT_PUBLIC_FF_REPORT_MOTION ?? 'true',
     NEXT_PUBLIC_FF_HOME_GUIDED: process.env.NEXT_PUBLIC_FF_HOME_GUIDED ?? 'true',
     NEXT_PUBLIC_FF_CONSULT_ONBOARDING: process.env.NEXT_PUBLIC_FF_CONSULT_ONBOARDING ?? 'true',
+    // v5.10.434:四方案 v4 起承轉合報告格式預設啟用(老闆「新客戶開始走 v4」拍板、lesson #147)。
+    // L1 判決速覽 → L2 白話主體 → L3「### 查看命理邏輯」摺疊、4 層審查麥肯錫級、quality gate 已 v5.10.401 適配字數門檻。
+    // ?? 'true' kill switch:Vercel env 任一設 'false' 即回退該方案 v2、各方案獨立。現有舊報告不受影響(只影響新生成)。
+    USE_PLAN_V4_C: process.env.USE_PLAN_V4_C ?? 'true',
+    USE_PLAN_V4_D: process.env.USE_PLAN_V4_D ?? 'true',
+    USE_PLAN_V4_G15: process.env.USE_PLAN_V4_G15 ?? 'true',
+    USE_PLAN_V4_R: process.env.USE_PLAN_V4_R ?? 'true',
   },
   // 生產環境不暴露 Source Maps(防止原始碼被查看)
   productionBrowserSourceMaps: false,
