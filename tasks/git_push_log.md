@@ -5,6 +5,21 @@
 
 ---
 
+### 2026-06-12 | web-prod:main | v5.10.432-435(4 push)| ✅ 全 PUSH + deploy verify
+
+- **bdc1e954 v5.10.432**:報告砍術語小辭典按鈕 + QR 認證命理師區(老闆螢幕圈「沒意義」)+ LOGO 重設計「人影迎向光明的未來」(navbar hover rotate→scale+glow、?v=12 破快取)。production logo 大圖眼驗人影迎向旭日清晰。
+- **532260ac v5.10.433**:報告全面移除數字評分(老闆實測拍板「全部移除」、尊重「命不該有分數」鐵律)。5 處:命格綜合評分大徽章→命格速覽卡(留命格名+Top5天賦課題)/ 手機 SystemsAnchorList 15 系統數字表→系統名+定性+跳轉 / 桌面 SystemsRadar 雷達→去 0-100軸+點標籤+平均分、標題「評分」→「能量分布」、tooltip 質性層級 / 命盤橫幅「綜合X分」砍 / QuickSummary 查無分數。本地實測 SCORE_NUMS_REMAIN=[]。
+- **fe7a04e8 v5.10.434**:四方案 v4 啟用「嘗試1」= next.config env(老闆拍板「新客戶走 v4」)— ⚠️ **機制失效**(見下)。
+- **de207312 v5.10.435**:v4 真啟用修正。**build 輸出實證 next.config env DefinePlugin inline 不及 workflow durable runtime**(workflow chunk 仍 runtime 讀 process.env)→ 改 steps.ts module 頂層 `process.env.USE_PLAN_V4_C/D/G15/R ??= 'true'`、build chunk 確認 `??="true"`+`c_plan_v4` 選用同 chunk。kill-switch = Vercel env 設 'false'。
+- type-check:✅ 全 0;build:✅ 全 PASS
+- Vercel deploy:✅ 432/433/434/435 全 READY、footer 版號逐一確認到 435
+- 7-page verify:✅ 全 200(0×5xx、lesson #116)
+- v4 端到端:⚠️ 同步 dryRun 撞 Cloudflare 524(D 多 call >100s、async 真生成不受影響、驗證法限制非 v4 缺陷);flag 機制已 build-proven
+- 記憶:更新 `reference_jianyuan_v4_enable_mechanism.md`(next.config env ≠ workflow runtime 陷阱)
+- 老闆驗收:⏳ 待老闆看新 logo + 乾淨報告 + v4 新格式
+
+---
+
 ### 2026-05-16 | web-prod 等 6 repo | v5.10.391-394 + 文檔 | ⏳ 11+ 本地 commit 未 PUSH(卡老闆 settings)
 
 - 動作:提示詞合集真 wire(P6 危機卡→報告頁 / P5 JSON-LD→3工具 / P11 upsell→dashboard / P7 gate / P1 canary)+ ~12 真測試 + 修 2 真 bug(P7 人命安全/P9 崩潰)+ 刪 2 重造(P3/P8 資產盤點)
