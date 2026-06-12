@@ -95,6 +95,9 @@ export async function GET(req: NextRequest) {
   } catch { /* noop */ }
 
   // 損益兩平：算平均單報告毛利 → 本月固定支出要賣幾份才回本
+  // 🔴 FIXME(SSOT drift、待第二批對齊):E1/E2 此處為 v5.3.54 前舊價、真實售價 E1=$59 E2=$29(見 lib/plan-names.ts PLAN_PRICES)。
+  //   E1:89→59 / E2:99→29 會改變後台損益兩平估算數字、屬會計報表變更、需老闆確認後才改。
+  //   理想:改 import { PLAN_PRICES } from '@/lib/plan-names'(美分 ÷ 100)、缺 E3/E4 補上。
   const PLAN_PRICES: Record<string, number> = { C: 89, D: 39, G15: 59, R: 59, E1: 89, E2: 99 }
   const avgMarginPerPlan: Record<string, number> = {}
   for (const [code, price] of Object.entries(PLAN_PRICES)) {

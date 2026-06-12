@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '紫微斗數速算 免費排盤｜鑒源 JianYuan',
+  title: { absolute: '紫微斗數速算 免費排盤｜鑒源 JianYuan' },  // absolute 防 root template 再補品牌名(title 已自帶)
   description: '免費紫微斗數排盤工具——排列紫微命盤、十四主星解讀、十二宮位分析。採用紫微斗數全書傳統排法，即時出結果不需註冊。',
   keywords: '紫微斗數, 紫微排盤, 十四主星, 十二宮位, 紫微命盤, 免費紫微, 紫微斗數免費',
   openGraph: {

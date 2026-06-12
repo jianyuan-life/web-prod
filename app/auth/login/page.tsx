@@ -112,7 +112,7 @@ function LoginForm() {
               />
               <span>記住我</span>
             </label>
-            <Link href="/auth/reset-password" className="text-xs text-gold/70 hover:text-gold hover:underline">
+            <Link href="/auth/reset-password" className="inline-flex items-center min-h-[44px] text-xs text-gold/70 hover:text-gold hover:underline">
               忘記密碼？
             </Link>
           </div>
@@ -135,7 +135,7 @@ function LoginForm() {
         </div>
 
         <p className="mt-6 text-center text-sm text-text-muted">
-          還沒有帳號？ <Link href="/auth/signup" className="text-gold underline hover:no-underline">立即註冊</Link>
+          還沒有帳號？ <Link href="/auth/signup" className="inline-flex items-center min-h-[44px] align-middle text-gold underline hover:no-underline">立即註冊</Link>
         </p>
       </div>
     </div>

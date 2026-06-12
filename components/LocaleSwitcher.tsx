@@ -45,7 +45,8 @@ export default function LocaleSwitcher() {
   return (
     <button
       onClick={toggle}
-      className="text-xs text-text-muted hover:text-gold transition-colors px-2 py-1 rounded border border-gold/10 hover:border-gold/30"
+      // WCAG 2.5.5:命中區 ≥ 44×44(inline-flex 置中讓視覺大小不變、只擴大可點區域)
+      className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-xs text-text-muted hover:text-gold transition-colors px-2 py-1 rounded border border-gold/10 hover:border-gold/30"
       title={TOOLTIP[locale]}
       aria-label={TOOLTIP[locale]}
     >

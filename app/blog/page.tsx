@@ -3,7 +3,7 @@ import { BLOG_POSTS } from '@/lib/blog'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '命理知識 — 鑒源 JianYuan',
+  title: '命理知識',  // root layout template 會補「| 鑒源 JianYuan」、此處只寫純標題避免品牌名重複(openGraph.title 仍保留全名供社群分享)
   description: '深入淺出的命理入門教學：八字、紫微斗數、姓名學、西洋占星。讓命理不再神秘，用白話文帶你看懂自己的命格。',
   keywords: '命理教學, 八字入門, 紫微斗數教學, 姓名學, 上升星座, 生肖運勢, 命理知識',
   alternates: { canonical: 'https://jianyuan.life/blog' },

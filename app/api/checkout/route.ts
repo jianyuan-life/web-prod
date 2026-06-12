@@ -3,25 +3,11 @@ import crypto from 'crypto'
 import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter)
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { trackFunnelServer } from '@/lib/funnel-tracker'
-import { PLAN_NAMES } from '@/lib/plan-names'
+import { PLAN_NAMES, PRICE_MAP } from '@/lib/plan-names'  // v5.10.x:PRICE_MAP 移到 lib/plan-names SSOT(原本 inline、違反方案常數不 inline 鐵律)
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 function getSupabase() {
   return createServiceClient()
-}
-
-const PRICE_MAP: Record<string, { amount: number; name: string }> = {
-  C: { amount: 8900, name: '人生藍圖' },
-  D: { amount: 3900, name: '心之所惑' },
-  G15: { amount: 5900, name: '家族藍圖' },
-  R: { amount: 5900, name: '合否？' },
-  // v5.3.53 E 系列四方案定價（對應 pricing page 和 checkout types）
-  E1: { amount: 5900, name: '事件擇吉' },     // v5.7.6 命名統一(原「事件出門訣」)
-  E2: { amount: 2900, name: '月度單盤' },     // v5.7.6 命名統一(原「月度出門訣」)
-  E3: { amount: 8900, name: '月度精選' },     // v5.7.6 命名統一(原「週度補運」、實為當月 8 吉時)
-  E4: { amount: 27900, name: '年度全運' },    // v5.7.6 命名統一(原「年度方案」)
-  // 加人附加費（G15 已改為固定 $59，不再加人加價）
-  'R-ADD': { amount: 1900, name: '合否？加1人' },
 }
 
 export async function POST(req: NextRequest) {

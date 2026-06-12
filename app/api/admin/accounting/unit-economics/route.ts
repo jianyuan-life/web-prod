@@ -47,6 +47,9 @@ type RevenueRow = {
   amount_usd: number | string | null
 }
 
+// 🔴 FIXME(SSOT drift、待第二批對齊):E1/E2 此處為 v5.3.54 前舊價、真實售價 E1=$59 E2=$29(見 lib/plan-names.ts PLAN_PRICES)。
+//   會讓後台 unit-economics 對 E1/E2 售價/毛利高估;改值=會計報表變更、需老闆確認後才改。
+//   理想:改 import { PLAN_PRICES } from '@/lib/plan-names'(美分 ÷ 100)、缺 E3/E4 補上。
 const PLAN_PRICES: Record<string, number> = { C: 89, D: 39, G15: 59, R: 59, E1: 89, E2: 99 }
 
 function marginColor(pct: number): 'green' | 'yellow' | 'red' {

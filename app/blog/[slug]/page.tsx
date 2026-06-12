@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const post = getPostBySlug(slug)
   if (!post) return { title: '文章不存在' }
   return {
-    title: `${post.title} — 鑒源 JianYuan`,
+    title: post.title,  // root layout template 會補「| 鑒源 JianYuan」、此處只寫純標題避免品牌名重複
     description: post.description,
     keywords: post.keywords.join(', '),
     alternates: { canonical: `https://jianyuan.life/blog/${slug}` },

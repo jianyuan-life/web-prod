@@ -11,7 +11,8 @@ import HomeGuided from '@/components/HomeGuided'  // v5.10.419 Phase 3 引導進
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '鑒源 JianYuan — 十四大命理系統精準分析｜八字、紫微斗數、奇門遁甲',
+  // title 已自帶品牌名、用 absolute 不讓 root template 再補「| 鑒源 JianYuan」(避免品牌名重複)
+  title: { absolute: '鑒源 JianYuan — 十四大命理系統精準分析｜八字、紫微斗數、奇門遁甲' },
   description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十四大東西方命理系統，以 44,421+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，即時出結果。',
   keywords: '命理, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命盤, 命格分析, 免費算命, 姓名學, 風水, 人類圖, 吠陀占星, 出門訣, 運勢',
   openGraph: {

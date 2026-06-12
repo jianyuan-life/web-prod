@@ -328,26 +328,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">命理服務</h4>
                 <div className="space-y-2 text-text-muted">
-                  <Link href="/tools/bazi" className="block hover:text-gold transition-colors">免費命理速算</Link>
-                  <Link href="/pricing" className="block hover:text-gold transition-colors">方案與定價</Link>
+                  <Link href="/tools/bazi" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">免費命理速算</Link>
+                  <Link href="/pricing" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">方案與定價</Link>
                 </div>
               </div>
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">了解更多</h4>
                 <div className="space-y-2 text-text-muted">
-                  <Link href="/#systems" className="block hover:text-gold transition-colors">十四大系統</Link>
-                  <Link href="/#how" className="block hover:text-gold transition-colors">分析流程</Link>
-                  <Link href="/blog" className="block hover:text-gold transition-colors">命理知識</Link>
-                  <Link href="/about" className="block hover:text-gold transition-colors">關於鑒源</Link>
-                  <Link href="/whitepaper" className="block hover:text-gold transition-colors">技術白皮書</Link>
-                  <Link href="/faq" className="block hover:text-gold transition-colors">常見問題</Link>
+                  <Link href="/#systems" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">十四大系統</Link>
+                  <Link href="/#how" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">分析流程</Link>
+                  <Link href="/blog" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">命理知識</Link>
+                  <Link href="/about" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">關於鑒源</Link>
+                  <Link href="/whitepaper" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">技術白皮書</Link>
+                  <Link href="/faq" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">常見問題</Link>
                 </div>
               </div>
               <div>
                 <h4 className="text-gold/80 font-semibold mb-3">法律條款</h4>
                 <div className="space-y-2 text-text-muted">
-                  <Link href="/privacy" className="block hover:text-gold transition-colors">隱私政策</Link>
-                  <Link href="/terms" className="block hover:text-gold transition-colors">使用條款</Link>
+                  <Link href="/privacy" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">隱私政策</Link>
+                  <Link href="/terms" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">使用條款</Link>
                 </div>
               </div>
               <div>

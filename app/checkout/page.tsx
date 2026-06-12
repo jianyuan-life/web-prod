@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useCheckoutForm } from '@/hooks/useCheckoutForm'
 import CheckoutHeader from '@/components/checkout/CheckoutHeader'
@@ -24,6 +24,16 @@ function CheckoutForm() {
   // G15/R/家庭分支會靜默丟失 → intro 限定 C/D(note 確定送達 AI);E 系有自己的結構化事件欄、不需要。
   const consultEnabled = process.env.NEXT_PUBLIC_FF_CONSULT_ONBOARDING === 'true' && ['C', 'D'].includes(ctx.planCode)
   const [introDone, setIntroDone] = useState(!consultEnabled)
+
+  // P2-D:checkout title 帶方案名(原本八方案 title 都一樣「結帳 — 鑒源 JianYuan」、分不出)
+  //   plan 來自 searchParams、client-only、layout metadata 取不到 → 在這裡客戶端補
+  //   SSR 先顯示 layout 的「結帳 | 鑒源 JianYuan」、hydrate 後 refine 成「人生藍圖 結帳 — 鑒源 JianYuan」
+  useEffect(() => {
+    const planName = ctx.plan?.name
+    document.title = planName
+      ? `${planName} 結帳 — 鑒源 JianYuan`
+      : '結帳 — 鑒源 JianYuan'
+  }, [ctx.plan?.name])
 
   if (!ctx.authChecked) {
     return <div className="py-20 text-center text-text-muted">驗證登入狀態...</div>

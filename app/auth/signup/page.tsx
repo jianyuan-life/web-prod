@@ -253,7 +253,7 @@ function SignupForm() {
         </div>
 
         <p className="mt-6 text-center text-sm text-text-muted">
-          已有帳號？ <Link href="/auth/login" className="text-gold hover:underline">登入</Link>
+          已有帳號？ <Link href="/auth/login" className="inline-flex items-center min-h-[44px] align-middle text-gold hover:underline">登入</Link>
         </p>
       </div>
     </div>

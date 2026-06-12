@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '使用條款 — 鑒源 JianYuan',
+  title: '使用條款',  // root layout template 會補「| 鑒源 JianYuan」、此處只寫純標題避免品牌名重複
   description: '鑒源（JianYuan）使用條款：使用本服務即表示您同意以下條款，命理分析僅供參考，不構成任何醫療、投資或法律建議。',
   alternates: { canonical: 'https://jianyuan.life/terms' },
   robots: { index: true, follow: true },
