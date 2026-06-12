@@ -661,6 +661,51 @@ function renderInlineMarkdown(text: string): string {
     // 移除獨立的「評分」行
     .replace(/^\s*評分\s*[:：]?\s*\d*\s*$/gm, '')
 
+  // ── v5.10.444 P0:行首 markdown 語法早期 sentinel 包裝(解 raw `>` / `#{2,4}` 外洩)──
+  // 病灶(UI 稽核 P0-1):原 blockquote 偵測在 escapeHtml + table 轉換「之後」用 `^&gt;\s*`、
+  // 兩種情況失效 →（a）行首有前導空白（E3「   > 朝吉方…」）`^` 不匹配;
+  //（b）`>` 行緊接 table→card-stack 的 `</div>`（C 報告矩陣表後「> **矩陣計算邏輯**」）、
+  //     table 替換吃掉 `\n\n` → `&gt;` 不在行首、`gm` 的 `^` 永遠 miss → 字面 `>` 外洩給客戶。
+  // ATX 標題（`### 刻意練習一…`）同理:renderInlineMarkdown 原本完全沒處理行首 `#{2,4}`。
+  // 解法:在 escapeHtml / table 轉換「之前」逐行偵測、用私有區 sentinel(U+E000-E003、不含
+  //      <>&"' 故 escapeHtml 不動它、也不被 table/`\n` 轉換打斷)包住「該行」、行內文字照常
+  //      跑後續 inline markdown(粗體/斜體仍生效);函式結尾再把 sentinel 展開成 <blockquote>/<hN>。
+  // 只動「行首」語法、不誤傷內文的數學箭頭 `>`、單個 `*`、井號 `#`(行中不觸發)。
+  // sentinel 用顯式 codepoint 宣告(避免不可見字元被編輯器/工具誤刪):
+  //   U+E000 BQ open / U+E001 BQ close / U+E002 heading open / U+E003 heading close
+  // 🔴 隱性契約(L4 IA 提醒):本機制依賴 escapeHtml() 不轉義 / 不吞 U+E000-E003。
+  //   現行 escapeHtml 僅處理 <>&"'、安全;若未來換更嚴格 XSS 庫需同步確認此區間不被動到。
+  const BQ_OPEN = String.fromCodePoint(0xe000), BQ_CLOSE = String.fromCodePoint(0xe001)
+  const H_OPEN = (lv: number) => String.fromCodePoint(0xe002) + lv, H_CLOSE = String.fromCodePoint(0xe003)
+  cleaned = cleaned
+    // 先剝掉內文原生 sentinel 區字元(L3 QA:避免極罕見 PUA 港澳罕字被誤判;報告內文不應含 U+E000-E003)
+    .replace(/[\u{E000}-\u{E003}]/gu, '')
+    .split('\n')
+    .map((line) => {
+      // blockquote:行首 ≤3 個「半形空白」(嚴格 CommonMark:tab/4+ 空白=code block、不轉引言;
+      //   L3 QA P2:前導縮排只算半形空白、不納 tab/全形空白)+ `>` + 可有可無一個空白。
+      //   剝掉 `>` 與一個空白。(E3「   > 朝吉方」恰 3 半形空白、仍涵蓋)
+      const bq = line.match(/^ {0,3}>[ \t　]?(.*)$/)
+      if (bq) {
+        // 內層再剝一次行首 `#{1,4}`(罕見「> ## 標題」引用標題、避免 `#` 殘留在 blockquote 內)
+        const inner = bq[1].replace(/^[ \t　]*#{1,4}[ \t]+/, '').trim()
+        // 空內容(如 renderSectionMarkdown 把「> 📚 命理深析」降成空 `> `)→ 只去掉 `>`、不包框
+        if (!inner) return ''
+        return BQ_OPEN + inner + BQ_CLOSE
+      }
+      // ATX 標題:行首 ≤3 個「半形空白」(嚴格 CommonMark:tab/4+ 空白=code block、不轉標題、
+      //   避免縮排範例誤判;L3 QA P2:前導縮排只算半形空白)+ 2-4 個 `#` + 空白 + 標題。
+      //   單個 `#`(H1)維持既有 L808 移除。
+      // closing `#` 須前置空白(L3 Codex P1:`## C#` 不可吃掉內文尾端的 `#`、只剝「 ###」式收尾標記)
+      const h = line.match(/^ {0,3}(#{2,4})[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/)
+      if (h) {
+        const lv = Math.min(4, Math.max(2, h[1].length)) // ##→h2 / ###→h3 / ####→h4
+        return H_OPEN(lv) + h[2].trim() + H_CLOSE
+      }
+      return line
+    })
+    .join('\n')
+
   // 先轉義所有 HTML，再套用安全的 markdown 樣式
   let html = escapeHtml(cleaned)
     // 清理 Markdown 殘留和 prompt 結構標籤
@@ -848,6 +893,8 @@ function renderInlineMarkdown(text: string): string {
       return '<div style="padding:8px 12px;margin:6px 0;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);font-size:13px;line-height:1.8">' + parts.join(' ｜ ') + '</div>'
     })
     // 引言框（> 開頭）→ 金色左邊框 callout
+    // v5.10.444:`>` 行已在函式開頭 sentinel 包裝(見 BQ_OPEN/BQ_CLOSE)、此 regex 僅作 fallback
+    // safety-net(攔截 pipeline 中途才出現的 `&gt;`、理論上不該觸發)。
     .replace(/^&gt;\s*(.+)$/gm, '<blockquote style="border-left:3px solid rgba(197,150,58,0.6);padding:8px 16px;margin:12px 0;background:rgba(197,150,58,0.06);border-radius:0 8px 8px 0;font-style:normal;color:var(--color-gold);">$1</blockquote>')
     // 本章重點 → editorial 強調 block(v5.10.301 砍 📌 emoji、改 hairline left border)
     .replace(/^📌\s*(.+)$/gm, '<div style="border-left:3px solid rgba(197,150,58,0.7);padding:10px 16px;margin:10px 0;font-weight:600;color:var(--color-gold);font-size:0.9rem;font-family:var(--jy-font-serif, \'Noto Serif TC\'), serif">$1</div>')
@@ -862,6 +909,20 @@ function renderInlineMarkdown(text: string): string {
     .replace(/\n/g, '<br/>')
   html = html.replace(/((?:<li class="report-li">.*?<\/li>\s*(?:<br\/>)?)+)/g, '<ul>$1</ul>')
   html = html.replace(/((?:<li class="report-li-num">.*?<\/li>\s*(?:<br\/>)?)+)/g, '<ol>$1</ol>')
+
+  // v5.10.444:展開行首 markdown sentinel(U+E000-E003)→ <blockquote> / <h2-h4>
+  // 此時行內文字已完成 escape + 粗體/斜體等 inline 轉換、sentinel 仍完整(未被 table/`\n` 打斷)。
+  // L3 Codex + L4 Gemini 共識(P2):inner 用「排除閉合符」字元類別(非 `[\s\S]*?`)、
+  // 萬一 pipeline 中途遺失閉合 sentinel 也不會跨行吞掉後續全文 + 避免 lazy 回溯效能風險。
+  html = html
+    // blockquote:U+E000 ... U+E001(inner 不含 U+E001)
+    .replace(/\u{E000}([^\u{E001}]*)\u{E001}/gu, '<blockquote style="border-left:3px solid rgba(197,150,58,0.6);padding:8px 16px;margin:12px 0;background:rgba(197,150,58,0.06);border-radius:0 8px 8px 0;font-style:normal;color:var(--color-gold);">$1</blockquote>')
+    // ATX 標題:U+E002 + 級數(2-4)+ inner(不含 U+E003)+ U+E003 → <h2>/<h3>/<h4>
+    .replace(/\u{E002}([234])([^\u{E003}]*)\u{E003}/gu, (_m: string, lv: string, inner: string) =>
+      `<h${lv} class="report-h${lv}" style="color:var(--color-gold);margin-top:16px;font-weight:600;">${inner}</h${lv}>`)
+    // 安全網:清掉任何殘留孤兒 sentinel(理論上不該有、防萬一 inner 被中途截斷)。
+    // 只清本機制實際使用的 U+E000-E003、不擴及其他 PUA(避免誤傷罕字)。
+    .replace(/[\u{E000}-\u{E003}]/gu, '')
   return html
 }
 
