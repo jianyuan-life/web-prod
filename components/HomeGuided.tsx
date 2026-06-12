@@ -29,14 +29,29 @@ export default function HomeGuided() {
           io.unobserve(e.target)
         }
       },
-      { rootMargin: '0px 0px -6% 0px', threshold: 0.05 }
+      // v5.10.422 同 ReportMotion:threshold 0 + 預觸發帶 + 滾動安全網(快滾零卡死)
+      { rootMargin: '300px 0px 300px 0px', threshold: 0 }
     )
     for (const s of blocks) {
       if (s.getBoundingClientRect().top < window.innerHeight * 0.95) continue
       s.classList.add('rv')
       io.observe(s)
     }
+    let sweepTimer: ReturnType<typeof setTimeout> | null = null
+    const sweep = () => {
+      if (sweepTimer) return
+      sweepTimer = setTimeout(() => {
+        sweepTimer = null
+        for (const el of document.querySelectorAll<HTMLElement>('.rv:not(.rv-in)')) {
+          const r = el.getBoundingClientRect()
+          if (r.top < window.innerHeight * 1.1) { el.classList.add('rv-in'); io.unobserve(el) }
+        }
+      }, 150)
+    }
+    window.addEventListener('scroll', sweep, { passive: true })
     return () => {
+      window.removeEventListener('scroll', sweep)
+      if (sweepTimer) clearTimeout(sweepTimer)
       io.disconnect()
       document.documentElement.removeAttribute('data-motion')
     }

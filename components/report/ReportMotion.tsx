@@ -45,7 +45,9 @@ export default function ReportMotion() {
           io.unobserve(el)
         }
       },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 }
+      // v5.10.422:threshold 0 + 預觸發帶(production 快滾實測 11 章卡死隱形 — 快速滾動
+      // 元素可在兩幀間整個跳過視窗、threshold>0 永不滿足)
+      { rootMargin: '300px 0px 300px 0px', threshold: 0 }
     )
     for (const s of sections) {
       // 已在首屏可視範圍的不做動效(避免進頁閃動、skill §7 no-blocking)
@@ -54,7 +56,26 @@ export default function ReportMotion() {
       s.classList.add('rv')
       io.observe(s)
     }
+    // v5.10.422 安全網:scroll 後掃描「已在/曾過視窗上方」但沒進場的 .rv、強制顯示。
+    // 雙保險、保證任何滾速下零卡死隱形(客戶級不可接受風險)。
+    let sweepTimer: ReturnType<typeof setTimeout> | null = null
+    const sweep = () => {
+      if (sweepTimer) return
+      sweepTimer = setTimeout(() => {
+        sweepTimer = null
+        for (const el of document.querySelectorAll<HTMLElement>('.rv:not(.rv-in)')) {
+          const r = el.getBoundingClientRect()
+          if (r.top < window.innerHeight * 1.1) {
+            el.classList.add('rv-in')
+            io.unobserve(el)
+          }
+        }
+      }, 150)
+    }
+    window.addEventListener('scroll', sweep, { passive: true })
     return () => {
+      window.removeEventListener('scroll', sweep)
+      if (sweepTimer) clearTimeout(sweepTimer)
       io.disconnect()
       document.documentElement.removeAttribute('data-motion')
     }
