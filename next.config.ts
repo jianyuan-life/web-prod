@@ -9,6 +9,14 @@ const withBundleAnalyzer = bundleAnalyzer({
 })
 
 const nextConfig: NextConfig = {
+  // v5.10.421:UI 重構三 flag 預設啟用(老闆「全部自動化完成」拍板上線)。
+  // ?? 'true' fallback:Vercel env 日後明確設 'false' 可即時關閉(kill switch 保留)、
+  // 未設則預設開。三 flag 全為呈現層、各自獨立、可單獨關。
+  env: {
+    NEXT_PUBLIC_FF_REPORT_MOTION: process.env.NEXT_PUBLIC_FF_REPORT_MOTION ?? 'true',
+    NEXT_PUBLIC_FF_HOME_GUIDED: process.env.NEXT_PUBLIC_FF_HOME_GUIDED ?? 'true',
+    NEXT_PUBLIC_FF_CONSULT_ONBOARDING: process.env.NEXT_PUBLIC_FF_CONSULT_ONBOARDING ?? 'true',
+  },
   // 生產環境不暴露 Source Maps(防止原始碼被查看)
   productionBrowserSourceMaps: false,
   // v5.10.324(P0 perf):啟用 compress + reactStrictMode + 移除 X-Powered-By
