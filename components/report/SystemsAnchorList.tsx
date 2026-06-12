@@ -54,11 +54,11 @@ export default function SystemsAnchorList({ analyses = [] }: Props) {
         border: '1px solid rgba(122,159,207,0.25)',
       }}
       role="navigation"
-      aria-label="14 套系統能力評分快速跳轉"
+      aria-label="14 套系統快速跳轉"
     >
       <div className="flex items-center justify-between mb-3">
         <div className="text-[11px] tracking-[3px] font-semibold" style={{ color: 'rgba(122,159,207,0.85)' }}>
-          📊 14 套能力評分 · 點擊跳詳解
+          14 套系統 · 點擊跳詳解
         </div>
         <span className="text-text-muted/45 text-[9px]">{filtered.length} 套</span>
       </div>
@@ -81,46 +81,35 @@ export default function SystemsAnchorList({ analyses = [] }: Props) {
                 border: `1px solid ${bm.color}30`,
                 textDecoration: 'none',
               }}
-              aria-label={`${a.system} 評分 ${a.score} 分、${bm.label}、點擊查看詳解`}
+              aria-label={`${a.system}、${insight}、點擊查看詳解`}
             >
-              {/* v5.10.295 修字截斷:system name 砍 truncate(系統名稱重要、不可截)、insight 改 line-clamp-2 留空間 */}
-              <div className="flex items-baseline justify-between gap-2 mb-1">
+              {/* v5.10.433 砍數字評分(老闆指令)、留系統名 + 一句定性 + 跳轉箭頭、色點作 qualitative tier 標示 */}
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: bm.color }} aria-hidden />
                 <span
                   className="text-cream font-semibold text-[13px] flex-1 leading-snug"
                   style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
                 >
                   {a.system}
                 </span>
-                <span className="font-extrabold text-base flex-shrink-0" style={{ color: bm.color, fontFamily: 'var(--font-mono, monospace)' }}>
-                  {a.score}
-                </span>
+                <span className="text-text-muted/40 text-[12px] flex-shrink-0" aria-hidden>→</span>
               </div>
-              <div className="flex items-start justify-between gap-1.5 text-[10px]">
-                <span
-                  className="text-text-muted/65 flex-1 leading-snug"
-                  style={{
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    wordBreak: 'keep-all',
-                    overflowWrap: 'break-word',
-                  }}
-                >
-                  {insight}
-                </span>
-                <span className="font-semibold flex-shrink-0 pt-0.5" style={{ color: bm.color }}>
-                  {bm.label}
-                </span>
-              </div>
+              <span
+                className="text-text-muted/65 text-[10px] leading-snug block"
+                style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  wordBreak: 'keep-all',
+                  overflowWrap: 'break-word',
+                }}
+              >
+                {insight}
+              </span>
             </a>
           )
         })}
-      </div>
-      <div className="text-center mt-3 pt-2 border-t border-white/5">
-        <span className="text-text-muted/50 text-[10px] tracking-wider">
-          業界平均 65 分 · 滿分 100
-        </span>
       </div>
     </div>
   )

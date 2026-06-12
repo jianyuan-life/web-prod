@@ -2801,76 +2801,39 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           <SystemsAnchorList analyses={analysesSummary} />
         )}
 
-        {/* v5.8.2 命格總分大徽章 — 加 inline talents/challenges + 命格名(packed banner) */}
+        {/* v5.10.433 命格速覽卡(老闆「全部移除數字評分」)— 留命格名 + Top5 天賦/課題、砍評等圈/79分/percentile/挑戰度 */}
         {!isChumenji && analysesSummary.length >= 3 && (() => {
-          const avg = Math.round(analysesSummary.reduce((a, x: { score: number }) => a + (x.score || 0), 0) / analysesSummary.length)
-          const grade = avg >= 80 ? 'A' : avg >= 70 ? 'B+' : avg >= 60 ? 'B' : 'C'
-          const gradeColor = avg >= 75 ? '#6ab04c' : avg >= 65 ? '#c9a84c' : '#e0963a'
+          const systemCrossCount = analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length
           return (
             <div className="rounded-2xl px-6 py-5 mb-4" style={{
               background: 'linear-gradient(135deg, rgba(197,150,58,0.15), rgba(26,42,74,0.4))',
               border: '1px solid rgba(197,150,58,0.4)',
             }}>
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  {/* v5.10.7 R+3 主分數大字 + glow(Claude Haiku「主分數視覺強度低」issue 修)*/}
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center flex-shrink-0" style={{
-                    background: `radial-gradient(circle, ${gradeColor}55 0%, ${gradeColor}11 70%)`,
-                    border: `2.5px solid ${gradeColor}`,
-                    boxShadow: `0 0 32px ${gradeColor}44, inset 0 0 12px ${gradeColor}22`,
-                  }}>
-                    <div className="text-4xl sm:text-5xl font-extrabold" style={{ color: gradeColor, textShadow: `0 0 16px ${gradeColor}99`, letterSpacing: '-0.05em' }}>{grade}</div>
+                <div>
+                  <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 font-semibold flex items-center gap-2">
+                    <span>命 格 速 覽</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: 'rgba(197,150,58,0.20)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.45)' }}>{systemCrossCount} 套交叉</span>
                   </div>
-                  <div>
-                    <div className="text-gold/60 text-[10px] tracking-[3px] mb-1 font-semibold flex items-center gap-2">
-                      <span>命格綜合評分</span>
-                      {/* v5.10.7 R+3 加 percentile 信任信號(Claude Haiku「為何這個分數」issue 修) */}
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: 'rgba(197,150,58,0.20)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.45)' }}>14 套交叉</span>
+                  {/* v5.10.433 命格名主視覺(取代評分大字)*/}
+                  {personalityCard?.title && (
+                    <div className="text-3xl sm:text-4xl font-bold leading-tight" style={{ color: '#f5d76e', fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif', textShadow: '0 0 24px rgba(245,215,110,0.28)', letterSpacing: '-0.01em' }}>
+                      {personalityCard.title}
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      {/* 主分數 30→48px 粗體金色 */}
-                      <div className="text-5xl sm:text-6xl font-extrabold leading-none" style={{ color: '#f5d76e', fontFamily: 'var(--font-mono, monospace)', textShadow: '0 0 24px rgba(245,215,110,0.45)', letterSpacing: '-0.04em' }}>{avg}</div>
-                      <div className="text-text-muted/60 text-sm">/ 100</div>
-                      {personalityCard?.title && (
-                        <div className="ml-3 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ background: 'rgba(197,150,58,0.20)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.45)' }}>
-                          {personalityCard.title}
-                        </div>
-                      )}
-                    </div>
-                    {/* v5.10.7 R+3 percentile 信任信號(全國同型客戶分佈位置)*/}
-                    <div className="text-text-muted/65 text-[10px] mt-1 tracking-wide">
-                      對標同型客戶 ·{' '}
-                      <span className="text-gold/85 font-semibold">
-                        {avg >= 80 ? 'Top 15%' : avg >= 70 ? 'Top 35%' : avg >= 60 ? '中段 50%' : '需關注 25%'}
-                      </span>
-                      {' '}· 挑戰度 <span className={avg >= 75 ? 'text-green-400' : avg >= 65 ? 'text-gold' : 'text-orange-400'}>
-                        {avg >= 75 ? '低' : avg >= 65 ? '中等' : '中等偏高 ⚠'}
-                      </span>
-                    </div>
-                    {/* v5.8.9 加 inline 出生資訊(Claude P1「需要身份確認」修) */}
-                    {(() => {
-                      const bd = (report.birth_data || {}) as Record<string, unknown>
-                      const yr = String(bd.year || '')
-                      const mo = String(bd.month || '')
-                      const dy = String(bd.day || '')
-                      if (!yr) return null
-                      return (
-                        <div className="text-text-muted/55 text-[11px] mt-1">
-                          {yr}/{mo}/{dy} 生 · {report.client_name || ''}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                </div>
-                <div className="text-right hidden sm:block">
-                  <div className="text-text-muted/55 text-[10px] tracking-[2px] mb-1">{analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length} 套系統交叉</div>
-                  <div className="flex gap-1 items-center justify-end">
-                    {[60, 70, 80, 90, 100].map(t => (
-                      <div key={t} className="w-3 h-3 rounded-full" style={{
-                        background: avg >= t ? gradeColor : 'rgba(255,255,255,0.08)',
-                      }} />
-                    ))}
-                  </div>
+                  )}
+                  {/* 出生資訊(身份確認)*/}
+                  {(() => {
+                    const bd = (report.birth_data || {}) as Record<string, unknown>
+                    const yr = String(bd.year || '')
+                    const mo = String(bd.month || '')
+                    const dy = String(bd.day || '')
+                    if (!yr) return null
+                    return (
+                      <div className="text-text-muted/55 text-[11px] mt-2">
+                        {yr}/{mo}/{dy} 生 · {report.client_name || ''}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
               {/* v5.10.3 R2 P0-2/3 修(STRICT 4 LLM 共識):Top 3 → Top 5、移除內部滾動條
@@ -2949,7 +2912,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             if (mzM2) mingZhu = mzM2[1]
           }
           const sysCount = analysesSummary.length
-          const avgScore = sysCount > 0 ? Math.round(analysesSummary.reduce((a, x: { score: number }) => a + (x.score || 0), 0) / sysCount) : 0
           if (pillars.length < 3 && !mingGong) return null
           return (
             <div className="rounded-2xl px-6 py-5 mb-6" style={{
@@ -2976,7 +2938,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </div>
                 {sysCount > 0 && (
                   <div className="text-[11px] text-cream/60">
-                    <span className="text-gold font-bold">{Math.min(14, analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length)}</span> 套系統 · 綜合 <span className="text-gold font-bold">{avgScore}</span> 分
+                    <span className="text-gold font-bold">{Math.min(14, analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length)}</span> 套系統交叉
                   </div>
                 )}
               </div>
