@@ -6,6 +6,7 @@ import TrustBar from '@/components/TrustBar'
 import Astrolabe from '@/components/Astrolabe'
 import ReportPreview from '@/components/ReportPreview'
 import HeroCTAExperiment from '@/components/HeroCTAExperiment'
+import HomeGuided from '@/components/HomeGuided'  // v5.10.419 Phase 3 引導進場(flag off 時 no-op)
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -75,6 +76,7 @@ export default function HomePage() {
   return (
     <div>
       {/* ========== Hero — 星空 + 星盤 + 極光 ========== */}
+      <HomeGuided />
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
         <StarField />
         <Astrolabe />
