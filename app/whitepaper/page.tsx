@@ -243,9 +243,12 @@ const KEY_METRICS: Array<{ label: string; value: string; note: string }> = [
     note: '紫金山天文台官方節氣時刻表（lunar_python 底層）',
   },
   {
+    // v5.10.424 誠實性修(audit P0):runtime 實測 FLG_MOSEPH(Moshier 內建星曆、
+    // 行星 ~1 角分、月亮 ~3 角分)、DE431 .se1 檔未載入 — 原「弧秒級+DE431」屬不實聲稱。
+    // 實測:李小龍盤 vs AstroDatabank 太陽差 0.84 角分。jianyuan-truth.md 禁誇大鐵律。
     label: '行星位置精度',
-    value: '弧秒級',
-    note: 'Swiss Ephemeris DE431（NASA JPL 星曆表）',
+    value: '角分級',
+    note: 'Swiss Ephemeris 引擎（Moshier 模式，實測誤差約 1 角分）',
   },
   {
     label: '姓名學筆畫庫',
