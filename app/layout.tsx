@@ -293,6 +293,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="antialiased" suppressHydrationWarning>
+        {/* v5.10.423 a11y(skill §1 skip-links):鍵盤用戶 Tab 第一下即可跳過導航直達正文 */}
+        <a href="#main-content" className="skip-link">跳至主要內容</a>
         <Tracker />
         <ReferralHandler />
         <CookieConsent />
@@ -304,7 +306,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LocaleContent>
         <Navbar />
         {process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && <FirstVisitWarmBanner />}
-        <main className="pt-16">{children}</main>
+        <main id="main-content" className="pt-16">{children}</main>
         <GlobalBackToTop />
         <footer className="border-t border-gold/10 mt-20">
           {/* 英文/簡體翻譯覆蓋範圍：v5.3.95 起 footer 納入 LocaleContent */}

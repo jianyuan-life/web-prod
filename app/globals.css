@@ -814,6 +814,29 @@ textarea {
   border-radius: 6px;
 }
 
+/* v5.10.423 a11y(skill §1 skip-links):視覺隱藏、鍵盤聚焦時浮現 */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 10000;
+  padding: 12px 20px;
+  background: var(--color-gold);
+  color: var(--color-text-on-gold, #0A0E1A);
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 8px;
+  transition: top 200ms ease-out;
+}
+.skip-link:focus-visible {
+  top: 16px;
+}
+
+/* v5.10.423 觸控優化(skill §2 tap-delay):互動元件去 300ms 延遲 + 防雙擊縮放誤觸 */
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+
 /* Focus ring 統一（可訪問性）*/
 *:focus-visible {
   outline: 2px solid rgba(201, 168, 76, 0.55);
