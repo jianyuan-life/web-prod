@@ -164,11 +164,12 @@ function detectRoles(members: Member[], aiContent: string): Record<string, strin
 
 // 五行顏色
 const WUXING_COLORS: Record<string, string> = {
-  金: '#d4d4d4',
-  木: '#5fa671',
-  水: '#4a7fb7',
-  火: '#d97b6c',
-  土: '#c9a84c',
+  // v5.10.418 Phase 4:純五行吃全站 token(--wx-*);雙屬混色維持 hex(混色無 token 語意)
+  金: 'var(--wx-metal)',
+  木: 'var(--wx-wood)',
+  水: 'var(--wx-water)',
+  火: 'var(--wx-fire)',
+  土: 'var(--wx-earth)',
   金水: '#7a9fcf',
   木火: '#b88f5e',
 }
@@ -270,7 +271,7 @@ export default function FamilyDynamicsPanel({ members, aiContent }: FamilyDynami
                   <g key={`m${i}`}>
                     <circle
                       cx={pos.x} cy={pos.y} r={26}
-                      fill={`${color}33`}
+                      fill={`color-mix(in srgb, ${color} 20%, transparent)`}
                       stroke={color}
                       strokeWidth={2}
                     />
@@ -326,7 +327,7 @@ export default function FamilyDynamicsPanel({ members, aiContent }: FamilyDynami
                       <div className="flex-1 h-5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
                         <div className="h-full transition-all" style={{
                           width: `${percent}%`,
-                          background: `linear-gradient(90deg, ${color}99, ${color}44)`,
+                          background: `linear-gradient(90deg, color-mix(in srgb, ${color} 60%, transparent), color-mix(in srgb, ${color} 27%, transparent))`,
                         }}></div>
                       </div>
                       <span className="text-xs text-text-muted/80 w-10 text-right">{Math.round(count)} 人</span>

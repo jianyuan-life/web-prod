@@ -83,6 +83,15 @@
   --color-gold-700: #8E6F2A;
   --color-gold-glow: rgba(201, 168, 76, 0.35);
 
+  /* v5.10.418 Phase 4 — 五行色票 token(skill §6 color-semantic:語意 token、禁元件裸 hex)
+     低飽和暗調、配暗金 editorial;light 變體見 [data-theme="light"]。
+     用法:color: var(--wx-wood);底色:color-mix(in srgb, var(--wx-wood) 18%, transparent) */
+  --wx-wood: #5B8F6E;            /* 沉木綠 */
+  --wx-fire: #C26A55;            /* 陶赭紅(避大紅) */
+  --wx-earth: #C9A84C;           /* 赭金土(=品牌金) */
+  --wx-metal: #C6C2B6;           /* 鉑銀 */
+  --wx-water: #5181A8;           /* 黛水藍 */
+
   /* 文字層次(對齊 WCAG、Jamie 規格書 2.1)*/
   --color-text-primary: #E8E4DE;   /* AAA 14.2:1、對齊既有 --color-text */
   --color-text-secondary: #B3B8C5; /* AA+ 7.8:1、對齊既有 --color-text-muted */
@@ -1229,6 +1238,13 @@ a:focus-visible,
   --gold-300: #C9A864;           /* FAIL 2.10:1 ⚠️ 僅裝飾、勿作文字 */
   --gold-500: #8C5E1A;           /* AA 5.22:1 ✅ 主鎏金(NEW、取代 v0 FAIL #B8893B)*/
   --gold-700: #5C4416;           /* AAA 8.49:1 鎏金深 */
+
+  /* v5.10.418 五行 token light 變體(深一階、淺底 ≥3:1 UI 字形對比) */
+  --wx-wood: #38684B;
+  --wx-fire: #9C4632;
+  --wx-earth: #8C5E1A;           /* 對齊 gold-500 light */
+  --wx-metal: #6E6A5E;
+  --wx-water: #34618C;
 
   --line: rgba(140, 94, 26, 0.22);
   --line-strong: rgba(92, 68, 22, 0.45);

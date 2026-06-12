@@ -15,11 +15,12 @@ type WuxingValue = {
 // v5.10.299 editorial:砍西方 emoji(🌿🔥🌍⚜💧)、改漢字 + 色塊已足夠
 // 五行漢字本身就是 2000 年文化 icon、加 emoji 反而西化 + AI 感
 const ELEMENT_META: Record<string, { color: string; bg: string; desc: string }> = {
-  木: { color: '#6ab04c', bg: 'rgba(106, 176, 76, 0.18)', desc: '生長、創新、人際' },
-  火: { color: '#e74c3c', bg: 'rgba(231, 76, 60, 0.18)', desc: '熱情、表達、行動' },
-  土: { color: '#c9a84c', bg: 'rgba(201, 168, 76, 0.20)', desc: '穩定、信任、責任' },
-  金: { color: '#bdc3c7', bg: 'rgba(189, 195, 199, 0.18)', desc: '決斷、紀律、銳利' },
-  水: { color: '#3498db', bg: 'rgba(52, 152, 219, 0.18)', desc: '智慧、流動、深思' },
+  // v5.10.418 Phase 4:吃全站五行 token(globals.css --wx-*、light/dark 自動換)、禁裸 hex
+  木: { color: 'var(--wx-wood)', bg: 'color-mix(in srgb, var(--wx-wood) 18%, transparent)', desc: '生長、創新、人際' },
+  火: { color: 'var(--wx-fire)', bg: 'color-mix(in srgb, var(--wx-fire) 18%, transparent)', desc: '熱情、表達、行動' },
+  土: { color: 'var(--wx-earth)', bg: 'color-mix(in srgb, var(--wx-earth) 20%, transparent)', desc: '穩定、信任、責任' },
+  金: { color: 'var(--wx-metal)', bg: 'color-mix(in srgb, var(--wx-metal) 18%, transparent)', desc: '決斷、紀律、銳利' },
+  水: { color: 'var(--wx-water)', bg: 'color-mix(in srgb, var(--wx-water) 18%, transparent)', desc: '智慧、流動、深思' },
 }
 
 export default function WuxingEnergyBars({
