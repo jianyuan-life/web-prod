@@ -5,6 +5,19 @@
 
 ---
 
+### 2026-06-12(後續)| web-prod:main | v5.10.436-437(2 push)| ✅ 全 PUSH + deploy verify
+
+- **8502e27d v5.10.436**:報告渲染裝飾 emoji 精簡(callout ✦⚡🔑 + 5 header emoji 砍、本地+prod 實測 38→1、留功能符號+5章 emoji)。影響所有報告。
+- **2513dd37 v5.10.437**:四方案 v4 prompt 補缺口(老闆 push 按鈕、lesson #147)。audit 找 2 真缺口(呼吸短句 D/G15/R 缺、外部鏡像句 4 方案缺)+ Codex L3 修 3 finding(外部鏡像改命盤投射語氣防幻覺/呼吸短句加濫插上限/C L1 brevity guard)。4 方案在藍圖 16 項趨於一致達標。
+- 審查:L1 我 review / L3 Codex diff P0=0(P1×2 P2×1 全修)/ L4 Gemini(qa_ia IA)88;holistic QA 65=Codex 對整大檔分(含既有複雜度非本增量缺陷)
+- type-check:✅ 0;build:✅ PASS;generating=0
+- Vercel deploy:✅ 436/437 READY、footer 逐一確認
+- 7-page verify:✅ 全 200(0×5xx)
+- v4 真實報告端到端:⚠️ 仍待真單(v4 上線後 0 新單、dryRun 撞 Cloudflare)、build 已證生效
+- 老闆驗收:✅ 老闆「push」「全自動做好然後 PUSH」明確按鈕
+
+---
+
 ### 2026-06-12 | web-prod:main | v5.10.432-435(4 push)| ✅ 全 PUSH + deploy verify
 
 - **bdc1e954 v5.10.432**:報告砍術語小辭典按鈕 + QR 認證命理師區(老闆螢幕圈「沒意義」)+ LOGO 重設計「人影迎向光明的未來」(navbar hover rotate→scale+glow、?v=12 破快取)。production logo 大圖眼驗人影迎向旭日清晰。
