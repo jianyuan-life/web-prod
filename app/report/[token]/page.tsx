@@ -10,7 +10,7 @@ import ReportClientButtons from './ReportClientButtons'
 import { buildPdfDownloadUrl, buildPdfDownloadFilename } from '@/lib/pdf-download'
 import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
-import ShareCard from '@/components/ShareCard'
+// v5.10.430 ShareCard 已砍(反人性分享命盤)
 import SectionExpander from '@/components/SectionExpander'
 import CollapsibleSection from '@/components/CollapsibleSection'
 import PartSection from '@/components/PartSection'
@@ -25,7 +25,7 @@ import SidebarTOC from '@/components/SidebarTOC'
 import ReportBreadcrumb from '@/components/ReportBreadcrumb'
 import ChapterNav from '@/components/ChapterNav'
 import FiveElementsRadar from '@/components/FiveElementsRadar'
-import ShareReportButton from '@/components/ShareReportButton'
+// v5.10.430 ShareReportButton 已砍(反人性分享命盤)
 import ZiweiPalaceWheel from '@/components/ZiweiPalaceWheel'
 import InteractiveActionItem from '@/components/InteractiveActionItem'
 import SystemsRadar from '@/components/report/SystemsRadar'
@@ -2114,25 +2114,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <span className="text-text-muted/40 text-[10px]" aria-hidden>·</span>
           )}
           <div className="flex items-center gap-2">
-          {/* v5.10.50 P0 修 share-card dead anchor:sticky CTA 加同樣條件
-              真因:share-card div(L4194)只在 !isChumenji && !isRelationship && personalityCard 渲染
-                    但 sticky CTA 分享按鈕(L1668)無條件、D 方案 personalityCard=null = dead anchor
-              修補:同步加條件、D / E / R 不顯示分享按鈕 */}
-          {!isChumenji && !isRelationship && personalityCard?.title && personalityCard?.definition && (
-            <a
-              href="#share-card"
-              className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
-              style={{
-                background: 'rgba(155,89,182,0.14)',
-                border: '1px solid rgba(155,89,182,0.35)',
-                color: '#bb8fce',
-              }}
-              aria-label="分享報告"
-            >
-              <span>📤</span>
-              <span className="hidden sm:inline">分享</span>
-            </a>
-          )}
+          {/* v5.10.430 老闆指令:砍「分享」(反人性 — 沒人分享自己的私密命盤)
+              + 砍「預約諮詢」(不該有)。保留 PDF / 行事曆 = 正當功能。 */}
           {report.pdf_url && !isChumenji ? (
             <a
               href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
@@ -2162,19 +2145,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               <span className="hidden sm:inline">行事曆</span>
             </a>
           )}
-          <a
-            href={`mailto:support@jianyuan.life?subject=${encodeURIComponent(`預約諮詢 — ${report.client_name || ''}`)}&body=${encodeURIComponent(`您好,我想預約一對一諮詢,關於我的命理報告。\n\n報告編號:${(report.id || '').slice(0, 8).toUpperCase()}\n方案:${report.plan_code || ''}\n\n希望時段:\n諮詢主題:`)}`}
-            className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
-            style={{
-              background: 'rgba(106,176,76,0.16)',
-              border: '1px solid rgba(106,176,76,0.40)',
-              color: '#6ab04c',
-            }}
-            aria-label="預約諮詢"
-          >
-            <span>💬</span>
-            <span className="hidden sm:inline">預約諮詢</span>
-          </a>
           </div>
         </div>
       </div>
@@ -4870,24 +4840,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           )
         })()}
 
-        {/* v5.7.93 真分享卡(Web Share API + clipboard、Gemini #5 +2、Spotify Wrapped 範本)
-            v5.10.9 R+6 加 id="share-card"、給 sticky CTA「分享」按鈕跳轉錨點 */}
-        {!isChumenji && !isRelationship && personalityCard?.title && personalityCard?.definition && (
-          <div id="share-card" className="rounded-2xl px-6 py-5 mb-6 text-center scroll-mt-24" style={{
-            background: 'linear-gradient(135deg, rgba(155,89,182,0.10), rgba(52,152,219,0.06))',
-            border: '1px solid rgba(155,89,182,0.30)',
-          }}>
-            <div className="text-purple-300/65 text-[10px] tracking-[3px] mb-3 font-semibold">📤 分享你的命格洞察</div>
-            <div className="text-cream text-base leading-relaxed mb-4 italic">
-              「{personalityCard.definition.slice(0, 70)}{personalityCard.definition.length > 70 ? '...' : ''}」
-            </div>
-            <div className="text-gold/55 text-xs mb-4">— 鑑源命理 · {personalityCard.title}</div>
-            <ShareReportButton
-              title={`我的命格 — ${personalityCard.title}`}
-              text={`「${personalityCard.definition.slice(0, 80)}」— 我的命格是「${personalityCard.title}」、來自鑑源命理 14 套系統交叉分析`}
-            />
-          </div>
-        )}
+        {/* v5.10.430 老闆指令砍分享卡(反人性 — 沒人分享自己的私密命盤)。
+            原 #share-card「分享你的命格洞察」+ ShareReportButton 整塊移除。 */}
 
         {/* v5.7.90 立即可做的 3 件事(報告末、放大 v5.7.86 命中模式、Action 集中) */}
         {!isChumenji && !isRelationship && personalityCard?.title && (() => {
@@ -5004,15 +4958,8 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 分享精華卡片 ──── */}
-        {report.status === 'completed' && (
-          <ShareCard
-            planCode={report.plan_code}
-            clientName={report.client_name}
-            aiContent={report.report_result?.ai_content || ''}
-            top5Timings={report.report_result?.top5_timings}
-          />
-        )}
+        {/* v5.10.430 老闆指令砍「分享精華卡片」ShareCard(LINE/WhatsApp/複製連結)
+            — 反人性、沒人分享自己的私密命盤 */}
 
         {/* ──── 客戶反饋 ──── */}
         {report.status === 'completed' && (

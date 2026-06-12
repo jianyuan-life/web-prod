@@ -119,24 +119,10 @@ export function ReportToolbar({
           />
         )}
 
-        {/* Action buttons */}
-        {onShare && <ToolbarIconButton label="分享" onClick={onShare} icon="🔗" />}
+        {/* Action buttons — v5.10.430 老闆指令:砍「分享」(反人性命盤)+「預約諮詢」(不該有)
+            保留下載 PDF = 正當功能 */}
         {onDownloadPDF && (
           <ToolbarIconButton label="下載 PDF" onClick={onDownloadPDF} icon="📥" />
-        )}
-
-        {/* 預約諮詢 — primary CTA */}
-        {consultUrl && (
-          <a
-            href={consultUrl}
-            className="hidden md:inline-flex items-center h-9 px-4 rounded-lg text-sm font-semibold transition-all hover:opacity-90 focus-visible:outline-2 focus-visible:outline-[var(--jy-text-gold)] focus-visible:outline-offset-2"
-            style={{
-              background: 'linear-gradient(135deg, #D4B36A, #C9A84C)',
-              color: '#0A0E1A',
-            }}
-          >
-            預約諮詢
-          </a>
         )}
       </div>
     </header>

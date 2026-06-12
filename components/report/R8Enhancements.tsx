@@ -353,11 +353,29 @@ export function TermGlossaryButton() {
 
   useEffect(() => {
     if (!open) return
+    // v5.10.430 修手機卡死真因:modal 開啟時沒鎖 body 捲動(bodyOverflow=visible)、
+    // 手機背景在 modal 後亂捲 + touch 事件衝突 = 螢幕卡住。鎖 body + 還原捲動位置。
+    const scrollY = window.scrollY
+    const prevOverflow = document.body.style.overflow
+    const prevPosition = document.body.style.position
+    const prevTop = document.body.style.top
+    const prevWidth = document.body.style.width
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+      document.body.style.position = prevPosition
+      document.body.style.top = prevTop
+      document.body.style.width = prevWidth
+      window.scrollTo(0, scrollY)
+    }
   }, [open])
 
   return (
