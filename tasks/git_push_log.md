@@ -5,6 +5,20 @@
 
 ---
 
+### 2026-06-13 | web-prod:main | v5.10.438-442(5 push)| ✅ 報告 v4 4 方案 wiring 收官
+
+老闆驗 v4 D 報告發現仍 v2 → runtime debug 逐層追真因 + 修:
+- **f19c9fd6 v5.10.438**:plan-prompts.ts ??= import-order 修(部分、不足)
+- **ef13df9b v5.10.439 / cae2520d v5.10.440**:臨時 dbgv4 debug endpoint(`_` 開頭被 Next 當 private、改 dbgv4;讀完即刪)
+- **374e96f7 v5.10.441 🔴 真因修**:dbgv4 實證 regular route PLAN_SYSTEM_PROMPT['D']=v4 但 workflow regen 仍 v2 → **module-const 在 workflow durable runtime 於 module load 時建成 v2**(時序 ≠ regular route)。修:D/R 改 access-time getter(`get D()`/`get R()`、生成時讀 flag、`!== 'false'` 預設 on)+ 清 debug endpoint。**D regen 實測乾淨 v4**(你的問題/答案/一為什麼/二沙盤/三時機 + 3 L3 + 5750字 vs 11596)
+- **13f08cff v5.10.442**:G15 `_USE_V4_G15` → `!== 'false'`(robust)。**G15 regen 實測乾淨 v4 組織動力診斷書**(L1速覽/磁場/互動矩陣/財富傳承/精準診斷/修復戰略 + 5 L3 + 三軸關係)
+- 4 方案 v4:C ✅ / D ✅驗 / R ✅同getter / G15 ✅驗
+- type-check 0 / build PASS / 7-page 200×全 / 無 regression
+- ⚠️ regen 花費 ~$24(老闆「准」授權 + 選項1 debug)、換真落地
+- 老闆驗收:⏳ 待看收官報告
+
+---
+
 ### 2026-06-12(後續)| web-prod:main | v5.10.436-437(2 push)| ✅ 全 PUSH + deploy verify
 
 - **8502e27d v5.10.436**:報告渲染裝飾 emoji 精簡(callout ✦⚡🔑 + 5 header emoji 砍、本地+prod 實測 38→1、留功能符號+5章 emoji)。影響所有報告。
