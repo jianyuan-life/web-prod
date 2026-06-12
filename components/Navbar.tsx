@@ -90,6 +90,10 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
+  // v5.10.428:/jamie 後台有自己的 sidebar chrome、不渲染公開站 navbar
+  // (UI 100 審查 P1:後台頂部洩漏公開 navbar = 系統介紹/登入/免費註冊 對 admin 無意義)
+  if (pathname?.startsWith('/jamie')) return null
+
   return (
     <nav
       className={`fixed top-0 w-full z-50 border-b border-gold/10 transition-shadow duration-300 ${scrolled ? 'shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]' : ''}`}
