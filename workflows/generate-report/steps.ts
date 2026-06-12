@@ -19,7 +19,15 @@ import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 import * as _cV2 from '@/prompts/c_plan_v2'
 import * as _cV3 from '@/prompts/c_plan_v3'
 import * as _cV4 from '@/prompts/c_plan_v4'
-// C 人生使用說明書 v4（漸進式 L1/L2/L3、解審閱疲勞）：預設 off、staged rollout、不影響現有客戶
+// v5.10.435:workflow durable runtime 讀 process.env(next.config env DefinePlugin inline 不及 workflow chunk、
+//   v5.10.434 build 輸出實證仍 runtime 讀)。改在 module 頂層設 runtime 預設「四方案 v4 起承轉合報告」啟用
+//   (老闆「新客戶開始走 v4」拍板、lesson #147)。??= 只在「未設」時填 'true' →
+//   Vercel env 明確設 USE_PLAN_V4_X='false' 即 kill switch 回退該方案 v2、四方案各自獨立、現有舊報告不受影響。
+process.env.USE_PLAN_V4_C ??= 'true'
+process.env.USE_PLAN_V4_D ??= 'true'
+process.env.USE_PLAN_V4_G15 ??= 'true'
+process.env.USE_PLAN_V4_R ??= 'true'
+// C 人生使用說明書 v4（漸進式 L1/L2/L3、解審閱疲勞）：v5.10.435 起 runtime 預設 on、Vercel env 'false' 可關
 const _C_PROMPTS = process.env.USE_PLAN_V4_C === 'true' ? _cV4 : process.env.USE_PLAN_V3 === 'true' ? _cV3 : _cV2
 const {
   getAgeGroup,
