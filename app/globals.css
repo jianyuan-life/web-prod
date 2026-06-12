@@ -546,6 +546,10 @@ main h3 {
 @media (prefers-reduced-motion: reduce) {
   .rv { opacity: 1 !important; transform: none !important; }
 }
+/* print:未進場章節(.rv 未 .rv-in、opacity:0)必須印出全文 */
+@media print {
+  .rv { opacity: 1 !important; transform: none !important; }
+}
 
 @media (prefers-reduced-motion: no-preference) {
   /* a 標籤底線從中心擴散(墨跡感、editorial)

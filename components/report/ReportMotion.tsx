@@ -21,7 +21,11 @@ export default function ReportMotion() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     document.documentElement.setAttribute('data-motion', 'on')
-    const sections = [...document.querySelectorAll<HTMLElement>('main section[id^="sec-"], main [id^="sec-"]')]
+    // v2:選真章節容器(.section-card = CollapsibleSection 外層;.glass[id^=sec-] = 出門訣卡)。
+    // 不可用裸 [id^=sec-]:歷次 dead-anchor 修補的零尺寸 sentinel span 也叫 sec-*、
+    // threshold>0 的 IO 對零面積元素永不觸發 → .rv 掛上後永遠 opacity:0(dev 實測 39 個全隱形)。
+    const sections = [...document.querySelectorAll<HTMLElement>('main .section-card, main .glass[id^="sec-"]')]
+      .filter((el) => el.getBoundingClientRect().height > 40)
     if (sections.length === 0) return
 
     let batchIdx = 0
