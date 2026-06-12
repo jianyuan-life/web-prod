@@ -100,9 +100,13 @@ export default function Navbar() {
       style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}
     >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <img src="/logo-jianyuan.svg?v=11" alt="鑒源" className="h-9 w-9" />
-          <span className="text-gold font-serif text-lg font-semibold tracking-[3px]">鑒源</span>
+        {/* v5.10.428 logo 品牌感升級(benchmark P2:≥40px + 寬字距 + 細線分隔修飾)*/}
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <img src="/logo-jianyuan.svg?v=11" alt="鑒源" className="h-10 w-10 transition-transform duration-500 group-hover:rotate-[30deg]" />
+          <span className="flex items-baseline gap-2">
+            <span className="text-gold font-serif text-xl font-semibold tracking-[0.22em]">鑒源</span>
+            <span className="hidden sm:inline text-gold/40 text-[10px] tracking-[0.3em] font-light uppercase" style={{ fontFamily: 'var(--font-body)' }}>JianYuan</span>
+          </span>
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm">
           <Link href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</Link>
