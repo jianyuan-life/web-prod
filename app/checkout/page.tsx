@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useCheckoutForm } from '@/hooks/useCheckoutForm'
 import CheckoutHeader from '@/components/checkout/CheckoutHeader'
@@ -13,10 +13,17 @@ import PointsRedeem from '@/components/checkout/PointsRedeem'
 import FunnelPageHit from '@/components/FunnelPageHit'
 import TrustBar from '@/components/TrustBar'
 import CheckoutProgress from '@/components/checkout/CheckoutProgress'
-import TurnstileWidget from '@/components/security/TurnstileWidget'  // Phase 5 v5.10.382 老闆按鈕 #5(Turnstile bot 防護、checkout 高價值 funnel)
+import TurnstileWidget from '@/components/security/TurnstileWidget'
+import ConsultIntro from '@/components/checkout/ConsultIntro'  // v5.10.420 Phase 2(flag off 不渲染)  // Phase 5 v5.10.382 老闆按鈕 #5(Turnstile bot 防護、checkout 高價值 funnel)
 
 function CheckoutForm() {
   const ctx = useCheckoutForm()
+  // v5.10.420 Phase 2 問診式 onboarding(flag NEXT_PUBLIC_FF_CONSULT_ONBOARDING、純呈現層):
+  // intro 未完成前只顯示對話卡、完成/跳過後顯示既有完整表單(底層 state 同一份、零資料流改動)
+  // Codex L3 P2 修:customer_note 只在單人路徑(useCheckoutForm L565)進 birthData、
+  // G15/R/家庭分支會靜默丟失 → intro 限定 C/D(note 確定送達 AI);E 系有自己的結構化事件欄、不需要。
+  const consultEnabled = process.env.NEXT_PUBLIC_FF_CONSULT_ONBOARDING === 'true' && ['C', 'D'].includes(ctx.planCode)
+  const [introDone, setIntroDone] = useState(!consultEnabled)
 
   if (!ctx.authChecked) {
     return <div className="py-20 text-center text-text-muted">驗證登入狀態...</div>
@@ -39,6 +46,19 @@ function CheckoutForm() {
 
         {/* v5.6.10 R3:checkout 進度條(填表 → 確認 → 付款)+ TrustBar(Stripe/服務保證/SSL) */}
         <CheckoutProgress current={1} />
+
+        {/* v5.10.420 Phase 2:問診式對話卡(flag off=null;完成/跳過前先不攤 12 欄表單、
+            progressive disclosure;customerNote 與表單同 state、後面仍可改) */}
+        {consultEnabled && !introDone && (
+          <ConsultIntro
+            planCode={ctx.planCode}
+            planName={ctx.plan.name}
+            customerNote={ctx.customerNote}
+            setCustomerNote={ctx.setCustomerNote}
+            onDone={() => setIntroDone(true)}
+          />
+        )}
+        {(!consultEnabled || introDone) && (<>
 
         <CheckoutHeader
           planCode={ctx.planCode}
@@ -252,12 +272,12 @@ function CheckoutForm() {
             {ctx.g15Selected.length < 2 && (
               <p className="text-xs text-gold/60 text-center">請至少選擇 2 位家庭成員</p>
             )}
-            {/* v5.4.21 P0 修(Gemini UI audit):trust badges 強化(Stripe + SSL + 不滿意全額退) */}
+            {/* v5.4.21 P0 修(Gemini UI audit):trust badges(Stripe + SSL + 重試補單保障、v5.10.420 對齊退費政策) */}
             <div className="flex flex-wrap justify-center gap-3 text-[10px] text-text-muted/70 pt-1">
               <span>&#128274; Stripe 加密支付</span>
               <span>&#128737;&#65039; SSL 256-bit</span>
               <span>&#128230; PDF 永久保存</span>
-              <span>&#127919; 不滿意 7 日全額退</span>
+              <span>&#127919; 失敗自動重試 + 24 小時人工補單</span>
             </div>
             <p className="text-xs text-text-muted/60 text-center">
               報告平均需 30 分鐘以上、寫到信箱 + 線上看
@@ -309,7 +329,7 @@ function CheckoutForm() {
               <span>&#128274; Stripe 加密支付</span>
               <span>&#128737;&#65039; SSL 256-bit</span>
               <span>&#128230; PDF 永久保存</span>
-              <span>&#127919; 不滿意 7 日全額退</span>
+              <span>&#127919; 失敗自動重試 + 24 小時人工補單</span>
             </div>
             <p className="text-xs text-text-muted/60 text-center">
               報告平均需 30 分鐘以上、出門訣需 40 分鐘以上
@@ -362,6 +382,7 @@ function CheckoutForm() {
             onConfirmCheckout={ctx.confirmCheckout}
           />
         )}
+        </>)}
       </div>
     </div>
   )

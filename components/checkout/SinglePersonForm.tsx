@@ -323,7 +323,7 @@ export default function SinglePersonForm({
         <span>&#128274; Stripe 加密支付</span>
         <span>&#128737;&#65039; SSL 256-bit</span>
         <span>&#128230; PDF 永久保存</span>
-        <span>&#127919; 不滿意 7 日全額退</span>
+        <span>&#127919; 失敗自動重試 + 24 小時人工補單</span>
       </div>
       <p className="text-xs text-text-muted/60 text-center">
         付款由 Stripe 安全處理、信用卡資訊不經過鑒源伺服器
