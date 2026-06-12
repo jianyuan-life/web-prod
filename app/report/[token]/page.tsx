@@ -629,6 +629,12 @@ function sanitizeAiContentLeaks(content: string): string {
       .replace(/15\s*系統/g, '14 系統')
       .replace(/15\s*套/g, '14 套')
       .replace(/15\s*個\s*系統/g, '14 個系統')
+      // v5.10.431 報告重設計(blueprint A①):精簡內文裝飾 emoji(老闆「花俏」)。
+      // 只 strip U+1F300-1FAFF 彩色 emoji 圖案(🎯💡💰💼💝⚔✨🌿🔑📊📋📍 等裝飾、消解專業感)。
+      // 🔴 嚴禁擴到 U+2600-27BF — 那含功能符號:★(評分)✓✅⚠(狀態)☯☱☲(卦象命理內容)
+      //    ✿ → ①② 等、砍掉會傷報告內容。只動明確的彩色 emoji 區。
+      // emoji 後接 VS16(️)或一般/全形空格一併收掉、避免孤兒空白。
+      .replace(/[\u{1F300}-\u{1FAFF}]\u{FE0F}?[ 　]?/gu, '')
       // 清掉殘留的連續空行
       .replace(/\n{3,}/g, '\n\n')
   )
