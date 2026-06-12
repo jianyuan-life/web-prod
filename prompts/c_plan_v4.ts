@@ -15,7 +15,7 @@
 //
 // 保留 v2 核心護欄：性別硬規則 / 古籍真實性 / 15 系統交叉 / 婚姻硬規則 / ETHICS
 // 3-Call 介面同 v2（buildCall1/2/3Prompt + extract）、extract reuse v2
-// Feature Flag：USE_PLAN_V4_C（預設 off、不影響現有客戶）
+// Feature Flag：USE_PLAN_V4_C（v5.10.435 起**預設 on**、Vercel env 設 'false' 為 kill switch；讀法統一走 lib/plan-flags.ts isV4()）
 // ============================================================
 
 import { ETHICS_RULES } from '@/workflows/generate-report/plan-prompts'

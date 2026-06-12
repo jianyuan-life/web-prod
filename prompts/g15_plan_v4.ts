@@ -19,7 +19,7 @@
 //   特別保全：G15-6 健康章節法務免責 P0（危機轉介三地熱線）/ G15-7 嚴禁非家族成員 /
 //             G15-9 婚姻硬規則 / G15-10 跨系統幻想禁區（不串八字→心理因果鏈）
 // 3-Call 介面同 v2（buildG15Call1/2/3Prompt + extractG15* re-export）
-// Feature Flag：USE_PLAN_V4_G15（預設 off、不影響現有客戶、staged rollout）
+// Feature Flag：USE_PLAN_V4_G15（v5.10.442 起**預設 on**、Vercel env 設 'false' 為 kill switch；讀法統一走 lib/plan-flags.ts isV4()）
 // 注意：G15_SYSTEM_PROMPT 內含 🟢🟡🔵 三段式收斂、v4 明確覆寫為純文字 ● ▌ ▸（禁 emoji）
 // ============================================================
 

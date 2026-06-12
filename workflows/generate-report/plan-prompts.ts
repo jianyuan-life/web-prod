@@ -13,13 +13,15 @@ import * as _dV4 from '@/prompts/d_plan_v4'
 import * as _rV2 from '@/prompts/r_plan_v2'
 import * as _rV3 from '@/prompts/r_plan_v3'
 import * as _rV4 from '@/prompts/r_plan_v4'
+import { isV4 } from '@/lib/plan-flags'  // v5.10.444:四方案 v4 flag 單一 SSOT(!== 'false' default on)
 // 🔴 v5.10.441 P0 真因修(D/R v4 從未對真客戶生效):debug 實證 regular route 的 PLAN_SYSTEM_PROMPT['D']=v4、
 //   但 workflow durable runtime 的 regen 仍 v2 → PLAN_SYSTEM_PROMPT module-const 在 workflow runtime 於 module load 時建成 v2
 //   (workflow runtime 的 env/module 時序與 regular route 不同、與 v434 next.config env 同類問題)。
 //   修:D/R 改 access-time 選擇(PLAN_SYSTEM_PROMPT['D'/'R'] 改 getter、生成時才讀 flag、`!== 'false'` 預設 on、
 //   不依賴 module-load 時序)。kill switch 仍可用 Vercel env 設 USE_PLAN_V4_D/R='false'。
-const _useV4D = () => process.env.USE_PLAN_V4_D !== 'false'
-const _useV4R = () => process.env.USE_PLAN_V4_R !== 'false'
+// v5.10.444 P1 #2:改走 lib/plan-flags.ts isV4() 單一 SSOT(語意同 `!== 'false'`、生成端 / gate 端共用同一函式、不再 drift)
+const _useV4D = () => isV4('D')
+const _useV4R = () => isV4('R')
 const _useV3 = () => process.env.USE_PLAN_V3 === 'true'
 const _dSystem = () => _useV4D() ? _dV4.getDPlanSystemPromptV4() : _useV3() ? _dV3.getDPlanSystemPrompt() : _dV2.getDPlanSystemPrompt()
 const _dStruct = () => _useV4D() ? _dV4.getDPlanStructurePromptV4() : _useV3() ? _dV3.getDPlanStructurePrompt() : _dV2.getDPlanStructurePrompt()
@@ -670,6 +672,15 @@ const PSYCHOLOGY_RULES = `
 // 吸收文件一/二精神 — 起承轉合、交叉驗證、三大 DNA、家族動力學
 // ════════════════════════════════════════════════════════════
 
+// ⚠️ v5.10.444 P1 #3 評估結論（LOGIC_AUDIT_2026-06-13）：C / G15 此處刻意維持 v2 靜態模板、**不轉 v4 getter**。
+//   原因：C / G15 的 v4 是「多-Call 架構」(buildCall1/2/3Prompt、各 Call 只產一部分章節 + 依賴前一 Call 的摘要、
+//         明確要求「接續前文摘要 / 禁重複前文」)，**不存在**單一「v4 C/G15 完整 system prompt」。
+//   而 fallback route(generate-report/route.ts:692)對 C/G15 是**單-Call**(16000 token、Vercel 300s 限)。
+//   → 若把 .C/.G15 改成 getter 回傳任一單支 v4 Call prompt = 產出截斷 / 不完整報告(比完整 v2 更糟);
+//     串接 3 支 = 互相衝突的「只輸出第 N 章」指令 = 畸形 prompt。要 v4 化需「另寫單-Call v4 prompt + 各自 QA/regen 驗」、屬更大工程、本次不做。
+//   現況實害可控：fallback 僅在 durable workflow 失敗 / admin dryRun 觸發(低頻);觸發時產**完整且久經驗證的 v2 報告**，
+//     是比「截斷 v4」更安全的降級。D/R 能轉 getter 是因其 v4 為單一 system+structure(非多-Call)、架構天生相容。
+//   主路徑(workflow durable)的 C/G15 v4 由 steps.ts 走多-Call、已正常生效、不受此 fallback 影響。
 export const PLAN_SYSTEM_PROMPT: Record<string, string> = {
   C: `你是鑒源命理平台的首席命理顧問，精通東西方十四大命理系統。你正在為一位付費客戶撰寫「人生藍圖」報告——這是他們人生中第一份如此完整的命理分析。
 

@@ -19,24 +19,33 @@ import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 import * as _cV2 from '@/prompts/c_plan_v2'
 import * as _cV3 from '@/prompts/c_plan_v3'
 import * as _cV4 from '@/prompts/c_plan_v4'
-// v5.10.435:workflow durable runtime 讀 process.env(next.config env DefinePlugin inline 不及 workflow chunk、
-//   v5.10.434 build 輸出實證仍 runtime 讀)。改在 module 頂層設 runtime 預設「四方案 v4 起承轉合報告」啟用
-//   (老闆「新客戶開始走 v4」拍板、lesson #147)。??= 只在「未設」時填 'true' →
-//   Vercel env 明確設 USE_PLAN_V4_X='false' 即 kill switch 回退該方案 v2、四方案各自獨立、現有舊報告不受影響。
+import { isV4 } from '@/lib/plan-flags'  // v5.10.444:四方案 v4 flag 單一 SSOT(!== 'false' default on)
+// 🔴 v5.10.444 P1 #1 修(LOGIC_AUDIT_2026-06-13、與 v5.10.441 D/R 同根):
+//   原 `const _C_PROMPTS = USE_PLAN_V4_C === 'true' ? _cV4 : ...`(module-load 凍結)+ destructure、
+//   在 workflow durable runtime 的 env/模組求值時序與 regular route 不同(v434/.441 已實證)、
+//   靠 L26 `??= 'true'` + Vercel env 巧合才生效;一旦時序失準 → C 靜默退 v2、客戶付 $89 拿舊版、無 error。
+//   修:C 改 access-time(對齊 D/R 的 getter)。下方 _cPick() 每次「呼叫時」才依 flag 選版本、繞 module-load 時序。
+//   全 C 方案內部對 buildCall*/extract*/getAgeGroup/buildUserPrompt/SYSTEM_GROUPS/FORBIDDEN_WORDS 的存取都走 _cPick()。
+//   (`??=` 副作用保留作 next.config 撤回後的 D/G15 runtime 預設、見下;C 已不靠它、但 D/G15 module-const 仍需)
 process.env.USE_PLAN_V4_C ??= 'true'
 process.env.USE_PLAN_V4_D ??= 'true'
 process.env.USE_PLAN_V4_G15 ??= 'true'
 process.env.USE_PLAN_V4_R ??= 'true'
-// C 人生使用說明書 v4（漸進式 L1/L2/L3、解審閱疲勞）：v5.10.435 起 runtime 預設 on、Vercel env 'false' 可關
-const _C_PROMPTS = process.env.USE_PLAN_V4_C === 'true' ? _cV4 : process.env.USE_PLAN_V3 === 'true' ? _cV3 : _cV2
-const {
-  getAgeGroup,
-  FORBIDDEN_WORDS_BY_STAGE,
-  buildCall1Prompt, buildCall2Prompt, buildCall3Prompt,
-  buildUserPrompt, buildAppendix,
-  extractCall1Summary, extractCall1And2Summary,
-  SYSTEM_GROUPS,
-} = _C_PROMPTS
+// C 人生使用說明書 v4（漸進式 L1/L2/L3、解審閱疲勞）：access-time 選版本(v5.10.444、繞 module-load 時序)
+//   v4 → _cV4(isV4('C') default on);否則 legacy USE_PLAN_V3 → _cV3;否則 _cV2。與舊三元選擇語意完全一致、只改「何時求值」。
+function _cPick(): typeof _cV2 {
+  if (isV4('C')) return _cV4 as unknown as typeof _cV2
+  if (process.env.USE_PLAN_V3 === 'true') return _cV3
+  return _cV2
+}
+// 以下 wrapper 保留原 bare-identifier 呼叫點、但選版本延後到「呼叫時」(access-time、解 P1 #1 時序炸彈)
+const getAgeGroup: typeof _cV2.getAgeGroup = (...a) => _cPick().getAgeGroup(...a)
+const buildCall1Prompt: typeof _cV2.buildCall1Prompt = (...a) => _cPick().buildCall1Prompt(...a)
+const buildCall2Prompt: typeof _cV2.buildCall2Prompt = (...a) => _cPick().buildCall2Prompt(...a)
+const buildCall3Prompt: typeof _cV2.buildCall3Prompt = (...a) => _cPick().buildCall3Prompt(...a)
+const buildUserPrompt: typeof _cV2.buildUserPrompt = (...a) => _cPick().buildUserPrompt(...a)
+const extractCall1Summary: typeof _cV2.extractCall1Summary = (...a) => _cPick().extractCall1Summary(...a)
+const extractCall1And2Summary: typeof _cV2.extractCall1And2Summary = (...a) => _cPick().extractCall1And2Summary(...a)
 // v5.10.23 (2026-05-06) Round 2:G15 v6.0 prompt 預備接線(Feature Flag、Round 3 啟用)
 // 目前 quality gate 已用 G15_V2_QUALITY_GATE env 嚴格度切換、Round 3 將接線 buildG15Call*Prompt
 // 暫不切換 systemPrompt(避免 1-Call vs 3-Call 架構衝突、Round 3 一併處理)
@@ -2086,7 +2095,7 @@ export async function aiGenerateCall1(
 
   const ageGroup = getAgeGroup(birthData.year)
   const clientNeed = question || undefined
-  const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call1, birthData)
+  const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call1, birthData)
   const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale, birthData.year)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 1', reportId)
@@ -2106,7 +2115,7 @@ export async function aiGenerateCall2(
 
   const ageGroup = getAgeGroup(birthData.year)
   const call1Summary = extractCall1Summary(call1Content)
-  const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call2, birthData)
+  const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call2, birthData)
   const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale, birthData.year)
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 2', reportId)
@@ -2127,7 +2136,7 @@ export async function aiGenerateCall3(
 
   const ageGroup = getAgeGroup(birthData.year)
   const call1and2Summary = extractCall1And2Summary(call1Content, call2Content)
-  let userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, SYSTEM_GROUPS.call3, birthData)
+  let userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call3, birthData)
 
   if (isRetry && missingParts?.length) {
     userPrompt += `\n\n【重要提醒——你上次漏掉了以下章節，這次必須全部補上】\n${missingParts.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n不要寫任何前言，直接從章節標題開始。`
@@ -2333,11 +2342,12 @@ export async function aiGenerateG15(
   const memberCount = familyReports.length
 
   // ──────────── v4 path:組織動力診斷書(漸進式 L1/L2/L3、5 大章、解審閱疲勞)────────────
-  // flag USE_PLAN_V4_G15、預設 off、不影響現有客戶(走下方 v1 path);啟用走 v4 獨立 3-Call
+  // flag USE_PLAN_V4_G15、**預設 on**(v5.10.442 起、對齊四方案 v4 拍板);Vercel env 設 'false' 才回退 v1 path
   // 對齊 c_plan_v4/d_plan_v4 範式、字數砍半(6-8k);獨立邏輯、不繼承 v2 FORCE_V1_FALLBACK 包袱
   // v5.10.442:`!== 'false'` 預設 on(對齊 D/R getter、robust 防 workflow runtime env 時序)、kill switch 仍設 'false'
+  // v5.10.444 P1 #2:改走 isV4('G15') 單一 SSOT(語意同 `!== 'false'`、生成端 / gate 端統一)
   // ✅ 2026-06-13 已 regen 實測:G15 v4 3-Call 跑通 + status=completed + 乾淨組織動力診斷書結構(e3aa7d28、22183字、5 L3 摺疊)、quality gate 通過(原「待實測」已解、Codex L3 P1 addressed)
-  const _USE_V4_G15 = process.env.USE_PLAN_V4_G15 !== 'false'
+  const _USE_V4_G15 = isV4('G15')
   if (_USE_V4_G15) {
     const v4 = await import('@/prompts/g15_plan_v4')
     console.log(`G15 v4 啟動:組織動力診斷書 3-Call、memberCount=${memberCount}`)
@@ -2866,7 +2876,8 @@ export async function qualityGate(
     // IA round 1 抓出 P0:全當 hardFailure 會擴大 retry 攻擊面 +44%、最壞 $14 燒
     // 修法:新加 4 條集大成檢查走 [軟性]、由 5 LLM QA 兜底品質、結構檢查保留 9 老條當地基
     // v5.10.401:C v4(人生使用說明書)漸進式 5 大章不同於 v2 17 章、qualityGate 條件化(Codex P2 同類)
-    const _useV4C = process.env.USE_PLAN_V4_C === 'true'
+    // v5.10.444 P1 #2:改 isV4()(統一 !== 'false' default on)、對齊生成端、env unset 時 gate 不再套 v2 門檻誤判
+    const _useV4C = isV4('C')
     const cRequired = _useV4C ? [
       // C v4:L1 人生速覽 + 五大章(原廠設定/競爭力財富/感情磁場/精準診斷/五年戰略)+ 開運/刻意練習/寫給
       { pattern: /人生速覽|核心人生定位/, name: 'L1 人生速覽', soft: false },
@@ -2906,7 +2917,7 @@ export async function qualityGate(
     // v5.7.39 年齡段禁詞掃描(對應 9 份全球研究共識、infant 不寫戀愛 / elder 不寫壽命預測)
     if (birthData?.year) {
       const stage = getAgeGroup(birthData.year)
-      const forbidden = FORBIDDEN_WORDS_BY_STAGE[stage] || []
+      const forbidden = _cPick().FORBIDDEN_WORDS_BY_STAGE[stage] || []
       for (const word of forbidden) {
         if (reportContent.includes(word)) {
           warnings.push(`[軟性][年齡段禁詞] ${stage} 段違反禁詞「${word}」(對應 toddler/elder 倫理鐵律、9 國研究共識)`)
@@ -3281,7 +3292,8 @@ export async function qualityGate(
     // production 確認 (Supabase 撈 r_production_status.md):R 已通 4/4、待辦 #4 過期、CLAUDE.md 待關
     // 12 天 0 新單 → funnel 斷、不是 AI 問題、本 ROI 補對位表強化視覺差異化
     // v5.10.401:R v4(關係盡職調查報告)章節大綱不同於 v2、qualityGate 條件化避免 v4 fail(Codex P2)
-    const _useV4R = process.env.USE_PLAN_V4_R === 'true'
+    // v5.10.444 P1 #2:改 isV4()(統一 !== 'false' default on)、對齊生成端
+    const _useV4R = isV4('R')
     const rRequired = _useV4R ? [
       // R v4 漸進式:L1 答案層 + L2 五段(價值觀/利益/情緒/診斷/停看聽)+ 寫給
       { pattern: /你們的問題|關係描述/, name: '你們的問題', soft: false },
@@ -3343,7 +3355,8 @@ export async function qualityGate(
   // 2e. D 方案「心之所惑」必要章節檢查
   if (planCode === 'D') {
     // v5.10.401:D v4(精準診斷書)漸進式 5 段不同於 v2、qualityGate 條件化(Codex P2 同類)
-    const _useV4D = process.env.USE_PLAN_V4_D === 'true'
+    // v5.10.444 P1 #2:改 isV4()(統一 !== 'false' default on)、對齊生成端
+    const _useV4D = isV4('D')
     const dRequired = _useV4D ? [
       // D v4:L1 你的問題/你的答案 + L2 為什麼/沙盤/時機對策 + 寫給
       { pattern: /你的問題/, name: '你的問題（客戶原文引用）' },
@@ -3399,7 +3412,8 @@ export async function qualityGate(
   if (planCode === 'G15') {
     const g15V2Strict = process.env.G15_V2_QUALITY_GATE === 'true'
     // v5.10.401:v4 時(5章6-8k)v6 強制檢查(18章/22k)降軟性、避免 v4+v2_strict 同開誤 hard-fail 合法 v4 報告(IA/Codex P2)
-    const g15Prefix = (g15V2Strict && process.env.USE_PLAN_V4_G15 !== 'true') ? '' : '[軟性]'  // 空字串 = hardFailures、[軟性] = 只 log
+    // v5.10.444 P1 #2:`!== 'true'`→`!isV4('G15')`(統一 default on)、env unset 時視為 v4、不誤套 v6 hard 門檻
+    const g15Prefix = (g15V2Strict && !isV4('G15')) ? '' : '[軟性]'  // 空字串 = hardFailures、[軟性] = 只 log
     const g15LegacyPrefix = '[軟性]'  // 既有 v1 grep 永遠 [軟性](保留向後相容)
 
     // ── 既有 v1 互動比例(≥ 35% [軟性]、保留向後相容)──
@@ -3416,7 +3430,8 @@ export async function qualityGate(
     }
 
     // ── 必要章節(v5.10.401:G15 v4 組織動力診斷書 5 大章不同於 v2 18 章、條件化、Codex P2 同類)──
-    const _useV4G15 = process.env.USE_PLAN_V4_G15 === 'true'
+    // v5.10.444 P1 #2:改 isV4()(統一 !== 'false' default on)、對齊生成端 _USE_V4_G15
+    const _useV4G15 = isV4('G15')
     const g15Required = _useV4G15 ? [
       // G15 v4:L1 速覽 + 磁場/互動矩陣/財富傳承/精準診斷/修復戰略 + 寫給這個家 + 法務免責(G15-6)
       { pattern: /家族能量|能量速覽|能量全貌/, name: '家族能量速覽' },
@@ -3578,7 +3593,8 @@ export async function qualityGate(
   }
 
   // 2f. C 方案字數下限（v2 預期 20,000+；v4 漸進式 12-15k 目標、門檻調降避免 v4 一開 flag 即 fail、QA P1+Codex P2）
-  const _cV4Len = process.env.USE_PLAN_V4_C === 'true'
+  // v5.10.444 P1 #2:改 isV4()(統一 !== 'false' default on)、env unset 時 v4 報告不被 v2 的 20k 門檻誤判偏短
+  const _cV4Len = isV4('C')
   if (planCode === 'C' && reportContent.length < (_cV4Len ? 11000 : 20000)) {
     warnings.push(`人生藍圖內容偏短: ${reportContent.length} 字（期望 > ${_cV4Len ? 11000 : 20000} 字）`)
   }
@@ -3616,7 +3632,8 @@ export async function qualityGate(
   if (planCode === 'C') {
     const cV2Strict = process.env.C_V2_QUALITY_GATE === 'true'
     // v5.10.401:v4(漸進式 5 章、無「三階段行動計畫/給您的一句話」)時降軟性、避免 v4+C_V2_QUALITY_GATE 同開誤擋 v2 章節(QA/IA P2)
-    const cPrefix = (cV2Strict && process.env.USE_PLAN_V4_C !== 'true') ? '' : '[軟性]'
+    // v5.10.444 P1 #2:`!== 'true'`→`!isV4('C')`(統一 default on)、env unset 時視為 v4、不誤擋 v4 缺的 v2 章節
+    const cPrefix = (cV2Strict && !isV4('C')) ? '' : '[軟性]'
 
     const C_CHAPTER_MIN_LEN: Array<{ pattern: RegExp; name: string; minLen: number }> = [
       // C 方案章節編號是「十五、刻意練習」(C prompt L1404 寫「十六」、實際 render 重編後變十五)

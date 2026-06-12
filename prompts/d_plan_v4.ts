@@ -16,7 +16,7 @@
 //
 // 完整保留 v2 全部防幻覺護欄（D-3 系統最少呼叫 / D-4 古籍黑白名單 /
 //    D-5 結尾單段 / 婚姻硬規則 / 禁宿命論）— 透過 import v2 system + append
-// Feature Flag：USE_PLAN_V4_D（預設 off、不影響現有客戶、staged rollout）
+// Feature Flag：USE_PLAN_V4_D（v5.10.435 起**預設 on**、Vercel env 設 'false' 為 kill switch；讀法統一走 lib/plan-flags.ts isV4()）
 // 注意：本檔輸出指示「絕對不用 emoji」（ETHICS_RULES 第 -2 條 + lesson #134）、
 //      視覺色彩由前端 report 渲染、prompt 層只用純文字 bold + unicode geometric
 // ============================================================

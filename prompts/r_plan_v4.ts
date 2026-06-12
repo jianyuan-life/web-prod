@@ -17,7 +17,7 @@
 // 完整保留 v2 全部護欄（SCHOOL_LOCK / ETHICS_RULES / 婚姻硬規則 v5.10.5 /
 //   反幻覺鐵律 v5.10.70 / ETHICS_RULES_R 家暴 SOP + LGBTQ+ / R-3 7 合盤系統最少呼叫）
 //   —— 透過 import v2 system + append v4 漸進式原則達成、一條護欄不丟
-// Feature Flag：USE_PLAN_V4_R（預設 off、不影響現有客戶、staged rollout）
+// Feature Flag：USE_PLAN_V4_R（v5.10.435 起**預設 on**、Vercel env 設 'false' 為 kill switch；讀法統一走 lib/plan-flags.ts isV4()）
 // 注意：本檔輸出指示「絕對不用 emoji」（ETHICS_RULES 第 -2 條 + lesson #134）、
 //      視覺色彩由前端 report 渲染、prompt 層只用純文字 bold + unicode geometric
 // ============================================================
