@@ -13,27 +13,18 @@ import * as _dV4 from '@/prompts/d_plan_v4'
 import * as _rV2 from '@/prompts/r_plan_v2'
 import * as _rV3 from '@/prompts/r_plan_v3'
 import * as _rV4 from '@/prompts/r_plan_v4'
-// 🔴 v5.10.438 P0 修(D/R v4 從未生效真因):本 module 在「module 頂層」讀 USE_PLAN_V4_D/R 並選 prompt。
-//   import hoisting → 本 module 求值早於 steps.ts module body 的 `??=` 預設(v5.10.435)→ 讀到 undefined → D/R 永遠走 v2。
-//   修:在本 module 自己的讀取「之前」設 runtime 預設、確保 D/R v4 真接上(workflow + fallback 兩路皆然)。
-//   kill switch 仍可用 Vercel env 設 'false'。(C 在 steps.ts body 讀、已生效;G15 見 steps.ts L2331。)
-process.env.USE_PLAN_V4_C ??= 'true'
-process.env.USE_PLAN_V4_D ??= 'true'
-process.env.USE_PLAN_V4_G15 ??= 'true'
-process.env.USE_PLAN_V4_R ??= 'true'
-const _USE_V3 = process.env.USE_PLAN_V3 === 'true'
-// D 精準診斷書 v4（漸進式 L1/L2/L3、解審閱疲勞）：預設 off、staged rollout、不影響現有客戶
-const _USE_V4_D = process.env.USE_PLAN_V4_D === 'true'
-// R 關係盡職調查報告 v4（漸進式 L1/L2/L3、解審閱疲勞）：預設 off、staged rollout、不影響現有客戶
-const _USE_V4_R = process.env.USE_PLAN_V4_R === 'true'
-const { getDPlanSystemPrompt, getDPlanStructurePrompt } = _USE_V4_D
-  ? { getDPlanSystemPrompt: _dV4.getDPlanSystemPromptV4, getDPlanStructurePrompt: _dV4.getDPlanStructurePromptV4 }
-  : _USE_V3 ? _dV3 : _dV2
-const { getRPlanSystemPrompt, getRPlanStructurePrompt } = _USE_V4_R
-  ? { getRPlanSystemPrompt: _rV4.getRPlanSystemPromptV4, getRPlanStructurePrompt: _rV4.getRPlanStructurePromptV4 }
-  : _USE_V3
-  ? { getRPlanSystemPrompt: _rV3.getRPlanSystemPromptV3, getRPlanStructurePrompt: _rV3.getRPlanStructurePromptV3 }
-  : _rV2
+// 🔴 v5.10.441 P0 真因修(D/R v4 從未對真客戶生效):debug 實證 regular route 的 PLAN_SYSTEM_PROMPT['D']=v4、
+//   但 workflow durable runtime 的 regen 仍 v2 → PLAN_SYSTEM_PROMPT module-const 在 workflow runtime 於 module load 時建成 v2
+//   (workflow runtime 的 env/module 時序與 regular route 不同、與 v434 next.config env 同類問題)。
+//   修:D/R 改 access-time 選擇(PLAN_SYSTEM_PROMPT['D'/'R'] 改 getter、生成時才讀 flag、`!== 'false'` 預設 on、
+//   不依賴 module-load 時序)。kill switch 仍可用 Vercel env 設 USE_PLAN_V4_D/R='false'。
+const _useV4D = () => process.env.USE_PLAN_V4_D !== 'false'
+const _useV4R = () => process.env.USE_PLAN_V4_R !== 'false'
+const _useV3 = () => process.env.USE_PLAN_V3 === 'true'
+const _dSystem = () => _useV4D() ? _dV4.getDPlanSystemPromptV4() : _useV3() ? _dV3.getDPlanSystemPrompt() : _dV2.getDPlanSystemPrompt()
+const _dStruct = () => _useV4D() ? _dV4.getDPlanStructurePromptV4() : _useV3() ? _dV3.getDPlanStructurePrompt() : _dV2.getDPlanStructurePrompt()
+const _rSystem = () => _useV4R() ? _rV4.getRPlanSystemPromptV4() : _useV3() ? _rV3.getRPlanSystemPromptV3() : _rV2.getRPlanSystemPrompt()
+const _rStruct = () => _useV4R() ? _rV4.getRPlanStructurePromptV4() : _useV3() ? _rV3.getRPlanStructurePromptV3() : _rV2.getRPlanStructurePrompt()
 
 // ── 論述倫理硬性規則（全方案共用，絕對不可違反）──
 // v5.10.110 加第 0 條:markdown bold 必平衡(全 plan c/d/r/g15 共用、long-standing AI imbalance root fix)
@@ -820,8 +811,9 @@ ${PSYCHOLOGY_RULES}
 ${ETHICS_RULES}`,
 
   // T14+T15 v5.10.367:D / R 從 module import、本檔加 NARRATIVE_FLOW_RULES inject 給 D / R prompt
-  D: getDPlanSystemPrompt() + '\n\n' + NARRATIVE_FLOW_RULES + '\n\n' + getDPlanStructurePrompt(),
-  R: getRPlanSystemPrompt() + '\n\n' + NARRATIVE_FLOW_RULES + '\n\n' + getRPlanStructurePrompt(),
+  // v5.10.441:改 access-time getter(workflow runtime 生成時才讀 v4 flag、繞 module-const 時序、見上方 _dSystem 註)
+  get D() { return _dSystem() + '\n\n' + NARRATIVE_FLOW_RULES + '\n\n' + _dStruct() },
+  get R() { return _rSystem() + '\n\n' + NARRATIVE_FLOW_RULES + '\n\n' + _rStruct() },
 
   G15: `你是鑒源命理平台的首席家族命理顧問。客戶購買了「家族藍圖」（$59）——前提是每位家人都已購買「人生藍圖」，個人分析已經完成。你的任務是分析「人與人之間」的化學反應。
 
