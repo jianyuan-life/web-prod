@@ -13,6 +13,14 @@ import * as _dV4 from '@/prompts/d_plan_v4'
 import * as _rV2 from '@/prompts/r_plan_v2'
 import * as _rV3 from '@/prompts/r_plan_v3'
 import * as _rV4 from '@/prompts/r_plan_v4'
+// 🔴 v5.10.438 P0 修(D/R v4 從未生效真因):本 module 在「module 頂層」讀 USE_PLAN_V4_D/R 並選 prompt。
+//   import hoisting → 本 module 求值早於 steps.ts module body 的 `??=` 預設(v5.10.435)→ 讀到 undefined → D/R 永遠走 v2。
+//   修:在本 module 自己的讀取「之前」設 runtime 預設、確保 D/R v4 真接上(workflow + fallback 兩路皆然)。
+//   kill switch 仍可用 Vercel env 設 'false'。(C 在 steps.ts body 讀、已生效;G15 見 steps.ts L2331。)
+process.env.USE_PLAN_V4_C ??= 'true'
+process.env.USE_PLAN_V4_D ??= 'true'
+process.env.USE_PLAN_V4_G15 ??= 'true'
+process.env.USE_PLAN_V4_R ??= 'true'
 const _USE_V3 = process.env.USE_PLAN_V3 === 'true'
 // D 精準診斷書 v4（漸進式 L1/L2/L3、解審閱疲勞）：預設 off、staged rollout、不影響現有客戶
 const _USE_V4_D = process.env.USE_PLAN_V4_D === 'true'
