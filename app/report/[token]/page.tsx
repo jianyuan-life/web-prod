@@ -5036,28 +5036,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <span style={{ color: 'rgba(245,240,232,0.30)' }}>·</span>
                   <span>本報告由 AI 引擎依命理古籍生成</span>
                 </p>
-                {/* v5.10.9 R+6 信任基礎(Haiku P1):認證命理師簽核 + QR 驗證真偽 */}
-                <div className="my-3 flex items-center justify-center gap-4 flex-wrap">
-                  <div className="text-left text-[10px] leading-snug" style={{ color: 'rgba(197,150,58,0.55)' }}>
-                    <div className="font-semibold tracking-wide" style={{ color: 'rgba(197,150,58,0.75)' }}>✦ 認證命理師</div>
-                    <div className="text-text-muted/60">鑑源命理研究部門</div>
-                    {/* v5.10.413(E2 審查 P2):E 系=純奇門、掛 14 套交叉徽章失實 */}
-                    <div className="text-text-muted/45 mt-0.5">{isChumenji ? '奇門遁甲擇日驗證' : '14 套系統交叉驗證'}</div>
-                    <div className="text-text-muted/45">掃描右側 QR 驗證真偽</div>
-                  </div>
-                  {tk && (
-                    <a href={reportUrl} className="block" aria-label="掃描 QR 驗證報告真偽">
-                      <img
-                        src={qrSrc}
-                        alt={`報告 ${reportIdShort} QR 驗證碼`}
-                        width={80}
-                        height={80}
-                        style={{ display: 'block', borderRadius: '4px', background: 'rgba(255,255,255,0.04)', padding: '4px' }}
-                        loading="lazy"
-                      />
-                    </a>
-                  )}
-                </div>
+                {/* v5.10.432 老闆指令砍「認證命理師 + QR 驗證真偽」區(沒意義、客戶不會掃 QR 驗自己的報告) */}
                 {reportHash && report.client_name && (
                   <p className="mb-1.5 flex items-center justify-center gap-2 flex-wrap text-[10px]" style={{ color: 'rgba(245,240,232,0.22)', fontFamily: 'var(--font-mono, monospace)' }}>
                     <span>Hash: {reportHash}</span>

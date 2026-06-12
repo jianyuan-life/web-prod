@@ -542,10 +542,10 @@ export function WhyThisVerdictLink({
 // warm-light 報告遷移 sprint 完成後:移除 forcedTheme + 還原本行 <DarkModeToggle />。
 // ============================================================
 export function R8Toolbar() {
+  // v5.10.432 老闆指令砍術語按鈕(沒意義)。只留精簡/完整版切換。
   return (
     <div className="flex items-center gap-2">
       <ViewModeToggle />
-      <TermGlossaryButton />
     </div>
   )
 }

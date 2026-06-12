@@ -1,51 +1,54 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- v5.10.432 LOGO 重設計（老闆指令）：「一個人影迎向光明的未來」
+       概念：旭日光明(未來) + 人影邁步迎向它(希望、方向、回到源頭走向光) -->
   <defs>
     <linearGradient id="goldRing" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#e8c87a"/>
       <stop offset="100%" stop-color="#a07830"/>
     </linearGradient>
-    <clipPath id="circle">
-      <circle cx="100" cy="100" r="90"/>
-    </clipPath>
-    <radialGradient id="glow" cx="0.8" cy="0.35" r="0.65">
-      <stop offset="0%" stop-color="#e8c87a" stop-opacity="1"/>
-      <stop offset="35%" stop-color="#c9a84c" stop-opacity="0.8"/>
-      <stop offset="70%" stop-color="#a07830" stop-opacity="0.3"/>
+    <clipPath id="circle"><circle cx="100" cy="100" r="90"/></clipPath>
+    <radialGradient id="sun" cx="0.62" cy="0.42" r="0.5">
+      <stop offset="0%" stop-color="#fbe7b0" stop-opacity="1"/>
+      <stop offset="30%" stop-color="#e8c87a" stop-opacity="0.92"/>
+      <stop offset="62%" stop-color="#c9a84c" stop-opacity="0.45"/>
       <stop offset="100%" stop-color="#0a0e1a" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0a0e1a"/>
+      <stop offset="100%" stop-color="#1a1408"/>
+    </linearGradient>
   </defs>
 
-  <!-- 金色外圈 -->
   <circle cx="100" cy="100" r="94" fill="none" stroke="url(#goldRing)" stroke-width="2"/>
-
-  <!-- 深色背景 -->
   <circle cx="100" cy="100" r="90" fill="#0a0e1a"/>
 
-  <!-- 右側金色光芒（大面積放射） -->
-  <circle cx="100" cy="100" r="90" fill="url(#glow)" clip-path="url(#circle)"/>
+  <g clip-path="url(#circle)">
+    <!-- 旭日光暈（光明的未來） -->
+    <circle cx="100" cy="100" r="90" fill="url(#sun)"/>
+    <circle cx="124" cy="84" r="20" fill="#fbe7b0" opacity="0.95"/>
+    <circle cx="124" cy="84" r="20" fill="none" stroke="#fff6d8" stroke-width="1" opacity="0.6"/>
+    <g stroke="#f5d98a" stroke-width="2.2" stroke-linecap="round" opacity="0.5">
+      <line x1="124" y1="50" x2="124" y2="40"/>
+      <line x1="150" y1="58" x2="158" y2="50"/>
+      <line x1="160" y1="84" x2="172" y2="84"/>
+      <line x1="150" y1="110" x2="158" y2="118"/>
+      <line x1="98" y1="60" x2="90" y2="52"/>
+    </g>
 
-  <!-- 沉思者剪影 — 極簡粗線條，只有頭+肩 -->
-  <!-- 策略：用大色塊不用細線，36px 也清楚 -->
-  <path clip-path="url(#circle)" fill="#0a0e1a" d="
-    M 15,195
-    C 15,170 25,155 40,148
-    C 50,143 58,140 62,136
-    L 62,125
-    C 55,118 50,108 48,96
-    C 46,84 48,72 54,62
-    C 60,52 68,44 78,38
-    C 84,34 90,32 98,32
-    C 106,32 112,36 116,42
-    C 120,48 122,56 122,64
-    C 122,70 120,76 116,80
-    C 114,82 114,86 118,90
-    C 120,92 120,96 116,98
-    C 114,100 112,104 114,110
-    C 115,114 112,116 108,116
-    C 105,117 103,120 102,126
-    C 100,136 94,146 86,155
-    C 78,164 72,174 68,186
-    L 65,195
-    Z
-  "/>
+    <!-- 地平線 / 前路 -->
+    <path d="M -10,158 Q 100,150 210,158 L 210,210 L -10,210 Z" fill="url(#ground)"/>
+    <path d="M -10,158 Q 100,150 210,158" fill="none" stroke="#c9a84c" stroke-width="1" opacity="0.3"/>
+
+    <!-- 人影：側身朝右、昂首挺胸、一腳前跨邁向光明 -->
+    <g fill="#05080f">
+      <!-- 頭 -->
+      <circle cx="86" cy="70" r="9"/>
+      <!-- 軀幹 + 後腿 -->
+      <path d="M 84,80 C 80,82 78,86 79,92 L 82,112 C 82,116 81,120 79,124 L 70,150 C 69,153 70,156 73,157 C 76,158 79,156 80,153 L 88,130 L 90,130 L 90,114 C 95,112 98,107 97,101 C 96,96 92,93 87,93 L 88,82 Z"/>
+      <!-- 前跨腿（邁步向前、向光） -->
+      <path d="M 90,116 L 98,134 L 110,154 C 112,157 110,160 107,160 C 104,160 102,159 101,156 L 90,134 Z"/>
+      <!-- 前伸手臂（迎向光） -->
+      <path d="M 90,94 L 108,90 C 111,89 113,91 113,94 C 113,97 111,98 108,99 L 92,103 Z"/>
+    </g>
+  </g>
 </svg>
