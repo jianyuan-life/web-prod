@@ -867,10 +867,11 @@ function renderInlineMarkdown(text: string): string {
 
 // 彩色框樣式（與 PDF 對應）
 // 品牌一致性：三色框均為「深藍/金/綠」系，caution 改為深藍（而非橙色）避免品牌衝突
+// v5.10.436 emoji 精簡(老闆「花俏 emoji」報告重設計)：callout 圖示 ✦⚡🔑 砍、色框 + titleColor 已足夠分類、editorial 去裝飾
 const SUB_BOX_STYLES: Record<string, { bg: string; border: string; titleColor: string; icon: string }> = {
-  positive:    { bg: 'rgba(106,176,76,0.07)',  border: '1.5px solid rgba(106,176,76,0.25)',  titleColor: '#6ab04c', icon: '✦' },
-  caution:     { bg: 'rgba(26,42,74,0.22)',    border: '1.5px solid rgba(122,159,207,0.32)', titleColor: '#7a9fcf', icon: '⚡' },
-  improvement: { bg: 'rgba(197,150,58,0.07)',  border: '1.5px solid rgba(197,150,58,0.25)', titleColor: '#c9a84c', icon: '🔑' },
+  positive:    { bg: 'rgba(106,176,76,0.07)',  border: '1.5px solid rgba(106,176,76,0.25)',  titleColor: '#6ab04c', icon: '' },
+  caution:     { bg: 'rgba(26,42,74,0.22)',    border: '1.5px solid rgba(122,159,207,0.32)', titleColor: '#7a9fcf', icon: '' },
+  improvement: { bg: 'rgba(197,150,58,0.07)',  border: '1.5px solid rgba(197,150,58,0.25)', titleColor: '#c9a84c', icon: '' },
 }
 
 function classifySubSection(title: string): 'positive' | 'caution' | 'improvement' | 'detail' | 'general' {
@@ -995,7 +996,7 @@ function renderSectionMarkdown(content: string): string {
       html += `
         <div style="background:${style.bg};border:${style.border};border-radius:8px;padding:12px 16px;margin:12px 0;">
           <div style="font-size:0.82rem;font-weight:700;color:${style.titleColor};margin-bottom:8px;letter-spacing:0.03em;">
-            ${style.icon} ${subTitle}
+            ${style.icon ? style.icon + ' ' : ''}${subTitle}
           </div>
           <div style="font-size:0.88rem;line-height:1.7;color:var(--color-text-muted);">${renderInlineMarkdown(subBody)}</div>
         </div>`
@@ -2412,7 +2413,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                        何宣逸 case:report_result.analyses=null、紫微 regex 抓不到、走此卡 */}
                   {!mingGong && wuxingTop3.length > 0 && (
                     <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(155,89,182,0.10)', border: '1px solid rgba(155,89,182,0.30)' }}>
-                      <div className="text-purple-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">⚡ 五行 · 用神</div>
+                      <div className="text-purple-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">五行 · 用神</div>
                       <div className="flex items-center gap-1 flex-wrap">
                         {wuxingTop3.map(([wx, cnt], i) => (
                           <span key={i} className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{
@@ -2430,7 +2431,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   {/* 兜底:無紫微也無五行(極端 fallback) */}
                   {!mingGong && wuxingTop3.length === 0 && (
                     <div className="px-3 py-2.5 rounded-lg" style={{ background: 'rgba(122,159,207,0.08)', border: '1px solid rgba(122,159,207,0.25)' }}>
-                      <div className="text-blue-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">⚡ 命格摘要</div>
+                      <div className="text-blue-300/55 text-[9px] tracking-[2px] mb-1 font-semibold">命格摘要</div>
                       <div className="text-cream/85 text-[11px] leading-tight">{(personalityCard.firstImpression || '14 套系統交叉').slice(0, 20)}</div>
                     </div>
                   )}
@@ -2755,7 +2756,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               border: '1px solid rgba(197,150,58,0.30)',
             }}>
               <div className="text-gold/65 text-[11px] tracking-[3px] mb-3 font-semibold flex items-center justify-between report-fade-in">
-                <span>⚡ 命格 5 大核心洞察</span>
+                <span>命格 5 大核心洞察</span>
                 <span className="text-text-muted/45 text-[9px]">14 套系統交叉 · 點卡跳詳解</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -4698,7 +4699,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   if (!hint) return null
                   return (
                     <div className="mt-5 px-4 py-3 rounded-lg" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.2)' }}>
-                      <div className="text-green-400/70 text-[10px] tracking-[2px] mb-2 font-semibold">💡 這對你的意義</div>
+                      <div className="text-green-400/70 text-[10px] tracking-[2px] mb-2 font-semibold">這對你的意義</div>
                       <div className="text-cream/85 text-sm leading-relaxed">{hint}</div>
                     </div>
                   )
@@ -4825,7 +4826,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               border: '2px solid rgba(106,176,76,0.35)',
             }}>
               <div className="text-center mb-5">
-                <div className="text-green-400/70 text-[11px] tracking-[3px] mb-2 font-semibold">⚡ 看完報告後 立即可做的 3 件事</div>
+                <div className="text-green-400/70 text-[11px] tracking-[3px] mb-2 font-semibold">看完報告後 立即可做的 3 件事</div>
                 <div className="text-cream text-base font-medium">把命格洞察轉化為今晚就能執行的 action</div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
