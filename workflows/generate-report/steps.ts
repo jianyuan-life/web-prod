@@ -2335,8 +2335,8 @@ export async function aiGenerateG15(
   // ──────────── v4 path:組織動力診斷書(漸進式 L1/L2/L3、5 大章、解審閱疲勞)────────────
   // flag USE_PLAN_V4_G15、預設 off、不影響現有客戶(走下方 v1 path);啟用走 v4 獨立 3-Call
   // 對齊 c_plan_v4/d_plan_v4 範式、字數砍半(6-8k);獨立邏輯、不繼承 v2 FORCE_V1_FALLBACK 包袱
-  // ⚠️ v4 3-Call 跑通與 quality gate 適配待啟用後實測(flag off 時零影響、與 C/D v4 staged 一致)
   // v5.10.442:`!== 'false'` 預設 on(對齊 D/R getter、robust 防 workflow runtime env 時序)、kill switch 仍設 'false'
+  // ✅ 2026-06-13 已 regen 實測:G15 v4 3-Call 跑通 + status=completed + 乾淨組織動力診斷書結構(e3aa7d28、22183字、5 L3 摺疊)、quality gate 通過(原「待實測」已解、Codex L3 P1 addressed)
   const _USE_V4_G15 = process.env.USE_PLAN_V4_G15 !== 'false'
   if (_USE_V4_G15) {
     const v4 = await import('@/prompts/g15_plan_v4')
