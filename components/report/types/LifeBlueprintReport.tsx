@@ -1,3 +1,7 @@
+'use client'
+// 報告重構 2026-06-23:加 'use client' 修 server→client 傳 function showstorpper
+//   (ReportToolbar 是 client、收 onShare/onDownloadPDF function props;此元件原為 server → render crash、
+//    結構化渲染器從沒上線故未被發現。報告本為互動頁、client 合理。其餘 3 報告同病、port 時一併修)
 // v5.10.203 Sprint 1 step 5 — LifeBlueprintReport(接 data prop、real render)
 // Schema 對應:types/report-schemas.ts LifeBlueprintReport
 // Sprint 1:render hero + actions2026 + card5(其餘 sections 待 Sprint 2+ 加)
@@ -30,6 +34,8 @@ import { Stagger, StaggerItem } from '@/components/effects/Stagger'
 import { StickyTOC, type TOCItem } from '@/components/report/shared/StickyTOC'
 // v5.10.312 editorial 3 component(Gemini market research finding):DropCap / PullQuote / ExecutiveSummary
 import { PullQuote, ExecutiveSummary } from '@/components/report/shared/DropCap'
+// 報告重構 2026-06-23:速覽層大卡(research apps #1/#3、prototype_C_v1 spec)
+import { ReportSnapshot } from '@/components/report/shared/ReportSnapshot'
 import type { LifeBlueprintReport as LifeBlueprintData } from '@/types/report-schemas'
 
 // v5.10.310 C 報告 12 章節 TOC items
@@ -149,6 +155,28 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         </section>
 
         <GoldDivider className="my-12" />
+
+        {/* 報告重構 2026-06-23:速覽層 — 三大重點大卡(一螢幕一念、Spotify/CliftonStrengths 借鏡)
+            從現有 schema 衍生(hero / actions2026 / risksTop5)、不新增 schema 欄位 */}
+        <ReportSnapshot
+          items={[
+            {
+              label: '你是誰',
+              headline: data.hero.subtitle || data.hero.title || '14 套系統交叉指向的核心定位',
+              sub: data.hero.keyword?.length ? `關鍵詞　${data.hero.keyword.join('　·　')}` : undefined,
+            },
+            {
+              label: '2026 主軸',
+              headline: (data.actions2026?.fullYear?.text || data.actions2026?.q1q2?.text || '啟動 → 留意 → 整合三階段').slice(0, 48),
+              sub: data.actions2026?.q1q2?.text ? `上半年　${data.actions2026.q1q2.text.slice(0, 40)}` : undefined,
+            },
+            {
+              label: '最該把握',
+              headline: data.risksTop5?.[0]?.title || '把節奏練好、別把力氣用錯地方',
+              sub: data.risksTop5?.[0]?.prevention?.slice(0, 44),
+            },
+          ]}
+        />
 
         {/* v5.10.312 ExecutiveSummary「一分鐘看懂」box(McKinsey pattern、結論先行、Gemini market research) */}
         <ExecutiveSummary
