@@ -49,6 +49,8 @@ import {
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 // 報告重構 2026-06-23:命盤綜合量化卡(deterministic 真實五行/四柱、full_charts 有才顯)
 import { ChartSummaryCard } from '@/components/report/ChartSummaryCard'
+// 報告重構 2026-06-23:命格綜合卡(命格原型+天賦/課題、narrative_summary、黃金驗證過)
+import { ReportNarrativeCard } from '@/components/report/ReportNarrativeCard'
 import { validateAccessToken } from '@/lib/security/token-validator'
 // T13 v5.10.362(Master Plan Sprint 7、lesson #144 雙渲染器分裂修):
 // 把 Sprint 1 editorial 4 component wire 進 production legacy renderer
@@ -2272,6 +2274,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         <div className="text-center mb-2 no-print">
           <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
         </div>
+
+        {/* 報告重構 2026-06-23:命格綜合卡(命格原型+一句話+天賦/課題、答案先行)
+            narrative_summary 有才渲染(新報告 v5.10.454+ 才有、Gemini 忠於原文黃金驗證、舊報告/出門訣 null) */}
+        {!isChumenji && (
+          <ReportNarrativeCard narrative={(report.report_result as Record<string, unknown> | undefined)?.narrative_summary} />
+        )}
 
         {/* 報告重構 2026-06-23:命盤綜合量化卡(deterministic 真實五行/四柱、零幻覺零 contamination)
             full_charts 有才渲染(新報告 v5.10.452+ 才有、舊報告/出門訣自動 null、零影響) */}

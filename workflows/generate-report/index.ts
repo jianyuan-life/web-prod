@@ -24,6 +24,7 @@ import {
   contentModerationStep,
   generatePDF,
   saveReportToSupabase,
+  aiExtractNarrative,
   sendReportEmail,
   markReportFailed,
   markReportNeedsHumanReview,
@@ -983,9 +984,20 @@ export async function generateReportWorkflow(reportId: string) {
     console.error('extractFullCharts 失敗（不阻塞、full_charts 略過）:', fcErr)
   }
 
+  // 報告重構 2026-06-23:敘事綜合萃取(命格原型/天賦/課題、Gemini 忠於原文、黃金驗證過)
+  //   step 內已 try/catch、失敗回 null;C/D/G15/R 敘事報告才萃、出門訣跳過(無命格名片敘事)
+  let narrative: unknown = undefined
+  if (!isChumenjiPlan(planCode)) {
+    try {
+      narrative = await aiExtractNarrative(reportContent)
+    } catch (nErr) {
+      console.error('aiExtractNarrative 失敗（不阻塞、narrative 略過）:', nErr)
+    }
+  }
+
   // Step 5: 儲存到 Supabase
   try {
-    await saveReportToSupabase(reportId, reportContent, aiModelUsed, analysesSummary, pdfUrl, top5Timings, fullCharts)
+    await saveReportToSupabase(reportId, reportContent, aiModelUsed, analysesSummary, pdfUrl, top5Timings, fullCharts, narrative)
   } catch (e) {
     const errMsg3 = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
     await markReportFailed(reportId, `儲存報告失敗: ${errMsg3.slice(0, 500)}`)

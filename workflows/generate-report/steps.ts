@@ -4060,11 +4060,55 @@ export async function contentModerationStep(
 contentModerationStep.maxRetries = 1
 
 // ── Step 4: 更新 Supabase 報告狀態為 completed ──
+// ── 報告重構 2026-06-23:敘事綜合萃取(命格原型/天賦/課題、Gemini、忠於原文)──
+//   黃金驗證 2026-06-23 通過(12 份 C/D/G15/R、平均可追溯率 1.0、0 flagged、見 golden_validation_2026-06-23.md)。
+//   只取報告「已寫」的內容、不發明;失敗回 null(非阻塞、card 不顯)。供 ReportNarrativeCard 用。
+export async function aiExtractNarrative(reportContent: string): Promise<unknown> {
+  "use step";
+  if (!reportContent || reportContent.length < 800) return null
+  const GK = process.env.GEMINI_API_KEY
+  if (!GK) return null
+  const prompt = `你是嚴謹資料萃取器。以下是命理報告全文。**只萃取報告「已明確寫出」的內容、絕對不得推斷/發明/誇大。每個欄位用詞盡量用報告原句片語。報告沒寫的填 null/空陣列。**
+
+只輸出 JSON:
+{
+  "archetype": "命格原型/封號(報告命格名片有寫的、如「太陽之火」,否則 null)",
+  "oneLiner": "報告對此人的一句話核心定位(用報告原句、否則 null)",
+  "talentsTop3": ["報告明確指出的天賦/優勢、最多3、每條用報告原文關鍵片語"],
+  "risksTop3": ["報告明確指出的課題/風險、最多3、每條用報告原文關鍵片語"]
+}
+
+報告全文:
+${reportContent.slice(0, 48000)}`
+  try {
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), 60000)
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent', {
+      method: 'POST',
+      headers: { 'x-goog-api-key': GK, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, responseMimeType: 'application/json' } }),
+      signal: ctrl.signal,
+    })
+    clearTimeout(to)
+    const j = await r.json()
+    const t = j?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).filter(Boolean).join('')
+    if (!t) return null
+    const parsed = JSON.parse(t)
+    // 防呆:至少要有 archetype 或 talents、否則視為無效
+    if (!parsed || (!parsed.archetype && !(parsed.talentsTop3 && parsed.talentsTop3.length))) return null
+    return parsed
+  } catch (e) {
+    console.error('aiExtractNarrative 失敗（不阻塞、narrative 略過）:', e instanceof Error ? e.message : e)
+    return null
+  }
+}
+
 export async function saveReportToSupabase(
   reportId: string, reportContent: string, aiModel: string,
   analyses: Array<{ system: string; score: number }>, pdfUrl: string | null,
   top5Timings?: unknown,
   fullCharts?: unknown, // 報告重構 2026-06-23:deterministic 排盤結構化(五行/四柱/大運)、供綜合量化視覺;undefined 則不存(向後相容)
+  narrative?: unknown, // 報告重構 2026-06-23:敘事綜合萃取(命格原型/天賦/課題、Gemini 忠於原文、黃金驗證過);undefined 則不存
 ) {
   "use step";
   await emitProgress({ step: '儲存報告', progress: 90, message: '正在儲存報告...' })
@@ -4088,6 +4132,10 @@ export async function saveReportToSupabase(
   // 報告重構 2026-06-23:存 deterministic 排盤結構化(綜合量化視覺用、零幻覺)
   if (fullCharts && typeof fullCharts === 'object' && Object.keys(fullCharts as object).length > 0) {
     reportResult.full_charts = fullCharts
+  }
+  // 報告重構 2026-06-23:存敘事綜合萃取(命格原型/天賦/課題、Gemini 忠於原文、黃金驗證過)
+  if (narrative && typeof narrative === 'object') {
+    reportResult.narrative_summary = narrative
   }
 
   const supabase = getSupabase()
