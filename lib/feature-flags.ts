@@ -114,7 +114,7 @@ const REGISTRY: Record<string, FlagDef> = {
   //    移除不實「精華5分/完整版28分/內容未刪減」字樣。對應研究三層 + MASTER 藍圖 A1-A4。
   // 預設 false(現有客戶零影響);dev /devpreview 4 方案截圖驗證後才 flip。
   FF_REPORT_SINGLE_COLLAPSE: {
-    default: false,
+    default: true, // v5.10.456 flip ON(老闆「全部都做」授權):主體永遠可見、廢假摺疊/不實字樣
     owner: 'jamie',
     retireBy: '2026-Q4',
     description: '報告體驗單一摺疊架構(主體永遠可見、廢 simple/expert 截斷、只摺命理邏輯)',
