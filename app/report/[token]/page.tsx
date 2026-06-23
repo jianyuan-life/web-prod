@@ -3905,122 +3905,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
             )}
 
-            {/* v5.7.62 今日指引動態小卡(Gemini 標 +7 分、Co-Star 範本、Personal Dashboard 概念) */}
-            {personalityCard.title && (
-              <div className="mb-5 px-5 py-4 rounded-xl text-center" style={{
-                background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(106,176,76,0.06))',
-                border: '1px solid rgba(197,150,58,0.3)',
-              }}>
-                <div className="text-gold/60 text-[10px] tracking-[3px] mb-2 font-semibold">📅 今日指引(實時更新)</div>
-                <div className="text-cream/90 text-sm leading-relaxed">
-                  {(() => {
-                    const t = personalityCard.title || ''
-                    const today = new Date()
-                    const day = today.getDay()
-                    const m = today.getMonth() + 1
-                    const d = today.getDate()
-                    const monthEle = m >= 3 && m <= 5 ? '春木旺' : m >= 6 && m <= 8 ? '夏火旺' : m >= 9 && m <= 11 ? '秋金旺' : '冬水旺'
-                    const dayEle = ['子水','丑土','寅木','卯木','辰土','巳火','午火','未土','申金','酉金','戌土','亥水'][day]
-                    const advice = [
-                      `${m}月${d}日(${dayEle})— 「${t}」逢${monthEle}、適合${day % 2 === 0 ? '主動推進、能量上升' : '靜心觀察、整理思緒'}`,
-                      `${m}月${d}日 ${dayEle}日 — 「${t}」本能是${day < 3 ? '突破' : '收斂'}、${monthEle}加持、今日宜對自己溫柔`,
-                      `${m}月${d}日(${monthEle}/${dayEle})— 今天「${t}」能量在${day === 0 || day === 6 ? '休養恢復' : '聚焦執行'}、給自己 10 分鐘獨處`,
-                    ][day % 3]
-                    return advice
-                  })()}
-                </div>
-              </div>
-            )}
+            {/* v5.10.455 今日指引偽個人化卡已移除(day%2 假建議、零命理依據、A8 零幻覺鐵律) */}
 
             {/* v5.7.79 信任 badge 簡化(原 3 條過 prominent + 重複、改 1 條 inline 不佔空間) */}
             <div className="mb-5 text-center text-[10px] text-text-muted/55 tracking-wider">
               ✓ 14 套命理系統交叉驗證 · 不準確免費重新生成
             </div>
 
-            {/* v5.7.79 12 月決策日曆(Claude 共識 #5 +4-6 分、Google Calendar 範本) */}
-            {personalityCard.title && (
-              <div className="mb-5 px-5 py-4 rounded-xl" style={{
-                background: 'linear-gradient(135deg, rgba(155,89,182,0.08), rgba(52,152,219,0.04))',
-                border: '1px solid rgba(155,89,182,0.20)',
-              }}>
-                <div className="text-purple-300/65 text-[10px] tracking-[3px] mb-3 font-semibold flex items-center gap-2">
-                  <span>📅</span>
-                  <span>2026 年度決策日曆 — 12 月份能量指數</span>
-                </div>
-                <div className="grid grid-cols-6 sm:grid-cols-12 gap-1">
-                  {(() => {
-                    // 用 personalityCard.title hash 生成穩定的偽隨機 12 月能量
-                    const seed = (personalityCard.title || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-                    const months = Array.from({ length: 12 }, (_, i) => {
-                      const v = ((seed * (i + 7) + i * i * 13) % 100)
-                      const energy = 40 + (v % 50)  // 40-90
-                      return { m: i + 1, e: energy }
-                    })
-                    return months.map(({ m, e }) => {
-                      const color = e >= 75 ? '#6ab04c' : e >= 55 ? '#c9a84c' : '#e0963a'
-                      // v5.10.10 R+8 #7 三色背景分化(順流綠 / 平衡黃 / 調整橘)+ 數字放大 12→16px
-                      const bgColor = e >= 75 ? 'rgba(106,176,76,0.30)' : e >= 55 ? 'rgba(197,150,58,0.25)' : 'rgba(224,150,58,0.28)'
-                      const label = e >= 75 ? '順流' : e >= 55 ? '平衡' : '調整'
-                      return (
-                        <div
-                          key={m}
-                          className="calendar-heatmap-cell text-center px-1 py-2 rounded"
-                          style={{ background: bgColor, border: `1.5px solid ${color}60` }}
-                          title={`${m} 月 · 能量 ${e} · ${label}`}
-                          aria-label={`${m} 月能量 ${e} 分、${label}`}
-                        >
-                          <div className="heatmap-month text-cream/65">{m}月</div>
-                          <div className="heatmap-value mt-0.5" style={{ color }}>{e}</div>
-                        </div>
-                      )
-                    })
-                  })()}
-                </div>
-                <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-purple-500/15 text-[9px] text-text-muted/55">
-                  <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#6ab04c'}}/>順流 75+</div>
-                  <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#c9a84c'}}/>平衡 55-75</div>
-                  <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#e0963a'}}/>調整 &lt; 55</div>
-                </div>
-
-                {/* v5.7.95 本月關鍵日期 + 具體行動(從當月推、Claude #5 加強) */}
-                {(() => {
-                  const today = new Date()
-                  const month = today.getMonth() + 1
-                  const year = today.getFullYear()
-                  const lastDay = new Date(year, month, 0).getDate()
-                  // 簡易節氣:春分/夏至/秋分/冬至 對應 21
-                  const jiqi = month === 3 ? '春分(3/20-21)' : month === 6 ? '夏至(6/21-22)' : month === 9 ? '秋分(9/22-23)' : month === 12 ? '冬至(12/21-22)' : null
-                  // 推 3 個關鍵日期(初一/十五/月底前)
-                  const keyDays = [
-                    { d: 1, label: '月初', advice: '宜啟動新計畫、訂月度目標' },
-                    { d: 15, label: '月中', advice: '檢視進度、調整節奏' },
-                    { d: lastDay - 2, label: '月末', advice: '收斂結算、規劃下月' },
-                  ]
-                  return (
-                    <div className="mt-4 pt-4 border-t border-purple-500/15">
-                      <div className="text-purple-300/65 text-[10px] tracking-[2px] mb-3 font-semibold">📍 本月({month}月)關鍵日期</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {keyDays.map((kd, i) => (
-                          <div key={i} className="px-3 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(155,89,182,0.20)' }}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-purple-300/85 font-bold text-sm">{month}/{kd.d}</span>
-                              <span className="text-purple-300/55 text-[9px] tracking-wider">{kd.label}</span>
-                            </div>
-                            <div className="text-cream/85 text-[11px] leading-tight">{kd.advice}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {jiqi && (
-                        <div className="mt-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(197,150,58,0.10)', border: '1px solid rgba(197,150,58,0.30)' }}>
-                          <span className="text-gold/80 text-[11px] font-semibold">★ 重要節氣:{jiqi}</span>
-                          <span className="text-text-muted/65 text-[10px] ml-2">能量轉換點、宜靜心覺察</span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-            )}
+            {/* v5.10.455 12月決策日曆已移除(charCodeAt 偽隨機假能量、零命理依據、A8 零幻覺鐵律) */}
 
             {/* v5.7.59 五行能量雷達圖(4/4 LLM 共識最高 ROI、+6-15 分) */}
             {(() => {
@@ -4746,7 +4638,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     hint = null
                   }
                   // ===== 系統章節(原有 12 條)=====
-                  else if (/八字|四柱|十神|五行/.test(t)) hint = '本章節展現你「先天能量結構」— 看完後對照「2026 月份決策日曆」找出順流月份、安排重要決策'
+                  else if (/八字|四柱|十神|五行/.test(t)) hint = '本章節展現你「先天能量結構」— 看清五行強弱與順流月份、據此安排重要決策的節奏'
                   else if (/紫微|宮位|命宮|主星/.test(t)) hint = '本章節揭示你的「人生劇本」— 重點看「事業/財帛/夫妻」三宮、對應這 3 個面向的人生節奏'
                   else if (/奇門|出門|擇吉|吉時/.test(t)) hint = '本章節提供「精確時辰」工具 — 重大決策(簽約/求職/告白)前對照吉時方位、提升成功率'
                   else if (/大運|歲運|轉折/.test(t)) hint = '本章節標示你的「人生轉折點」— 提前 1-2 年準備、避免在低能量期做大決策'
@@ -4960,7 +4852,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     <div className="text-gold text-[10px] tracking-[2px] font-semibold">順流今月節氣</div>
                   </div>
                   <div className="text-cream text-sm leading-relaxed mb-2">{monthAdvice}—「{t}」本月最該做的:對應這個節氣模式調整節奏</div>
-                  <div className="text-text-muted/60 text-[10px]">→ 對照 12 月決策日曆</div>
                 </div>
               </div>
             </div>
