@@ -1,3 +1,5 @@
+'use client'
+// 報告重構 2026-06-23:加 'use client' 修 server→client 傳 function showstopper(同 LifeBlueprintReport、ReportToolbar onShare/onDownloadPDF)
 // v5.10.212 — FamilyBlueprintReport(對齊 schema、用本 session 元件 + 5 年流年卡)
 import { Eyebrow } from '@/components/ui/Eyebrow'
 import { HeroBlock } from '@/components/report/shared/HeroBlock'

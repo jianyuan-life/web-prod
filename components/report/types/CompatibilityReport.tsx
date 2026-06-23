@@ -1,3 +1,5 @@
+'use client'
+// 報告重構 2026-06-23:加 'use client' 修 server→client 傳 function showstopper(同 LifeBlueprintReport、ReportToolbar onShare/onDownloadPDF)
 // v5.10.211 Sprint 1 — CompatibilityReport(對齊 schema、用 VerdictBadge + 雙人 hero + 7 系統 + 三年流年)
 import { Eyebrow } from '@/components/ui/Eyebrow'
 import { Card } from '@/components/ui/Card'

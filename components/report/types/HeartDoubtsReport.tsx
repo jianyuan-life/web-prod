@@ -1,3 +1,5 @@
+'use client'
+// 報告重構 2026-06-23:加 'use client' 修 server→client 傳 function showstopper(同 LifeBlueprintReport、ReportToolbar onShare/onDownloadPDF)
 // v5.10.210 Sprint 1 — HeartDoubtsReport(對齊 schema、用 ScoreCircle / EvidenceList / 整合 wave 1+2 元件)
 import { Eyebrow } from '@/components/ui/Eyebrow'
 import { Card } from '@/components/ui/Card'
