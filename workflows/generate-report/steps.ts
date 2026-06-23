@@ -4064,6 +4064,7 @@ export async function saveReportToSupabase(
   reportId: string, reportContent: string, aiModel: string,
   analyses: Array<{ system: string; score: number }>, pdfUrl: string | null,
   top5Timings?: unknown,
+  fullCharts?: unknown, // 報告重構 2026-06-23:deterministic 排盤結構化(五行/四柱/大運)、供綜合量化視覺;undefined 則不存(向後相容)
 ) {
   "use step";
   await emitProgress({ step: '儲存報告', progress: 90, message: '正在儲存報告...' })
@@ -4084,6 +4085,10 @@ export async function saveReportToSupabase(
     ai_tokens: cleanContent.length,
   }
   if (top5Timings) reportResult.top5_timings = top5Timings
+  // 報告重構 2026-06-23:存 deterministic 排盤結構化(綜合量化視覺用、零幻覺)
+  if (fullCharts && typeof fullCharts === 'object' && Object.keys(fullCharts as object).length > 0) {
+    reportResult.full_charts = fullCharts
+  }
 
   const supabase = getSupabase()
 

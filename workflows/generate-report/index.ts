@@ -3,6 +3,8 @@
 // 每個 step 自動持久化、自動重試、崩潰後自動恢復
 // ============================================================
 
+// 報告重構 2026-06-23:deterministic 排盤結構化萃取(綜合量化視覺用、零幻覺)
+import { extractFullCharts } from './extract-full-charts'
 import {
   loadReportRecord,
   callPythonCalculate,
@@ -973,9 +975,17 @@ export async function generateReportWorkflow(reportId: string) {
     console.log('E3 月度訂閱：跳過 PDF 生成（v5.3.75 新策略）')
   }
 
+  // 報告重構 2026-06-23:deterministic 排盤結構化(五行/四柱/大運)、try/catch 包、失敗不阻塞
+  let fullCharts: unknown = undefined
+  try {
+    fullCharts = extractFullCharts(calcResult)
+  } catch (fcErr) {
+    console.error('extractFullCharts 失敗（不阻塞、full_charts 略過）:', fcErr)
+  }
+
   // Step 5: 儲存到 Supabase
   try {
-    await saveReportToSupabase(reportId, reportContent, aiModelUsed, analysesSummary, pdfUrl, top5Timings)
+    await saveReportToSupabase(reportId, reportContent, aiModelUsed, analysesSummary, pdfUrl, top5Timings, fullCharts)
   } catch (e) {
     const errMsg3 = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
     await markReportFailed(reportId, `儲存報告失敗: ${errMsg3.slice(0, 500)}`)
