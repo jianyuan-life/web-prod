@@ -78,7 +78,12 @@ export function ChartSummaryCard({ fullCharts }: { fullCharts?: unknown }) {
       {(bazi.yongshen || bazi.day_master) && (
         <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--jy-text-secondary, #B3B8C5)' }}>
           {bazi.day_master ? <>日主 <span style={{ color: 'var(--jy-text-gold, #C9A84C)' }}>{bazi.day_master}</span>　</> : null}
-          {bazi.yongshen ? <>用神 <span style={{ color: 'var(--jy-text-gold, #C9A84C)' }}>{bazi.yongshen}</span></> : null}
+          {/* yongshen 值本身可能已含「用神」前綴(如「用神水，喜神木」)→ 去重避免「用神 用神水」;無前綴則補「用神 」 */}
+          {bazi.yongshen ? (() => {
+            const v = String(bazi.yongshen).trim()
+            const display = /^用神/.test(v) ? v.replace(/^用神[：:\s]*/, '用神 ') : `用神 ${v}`
+            return <span style={{ color: 'var(--jy-text-gold, #C9A84C)' }}>{display}</span>
+          })() : null}
         </p>
       )}
     </section>
