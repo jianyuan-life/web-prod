@@ -99,12 +99,13 @@ export function BackToTopButton() {
 // v5.7.65 修 Gemini P2「339 分鐘語意不明」:reading speed 450→1000 chars/min(中文輕度閱讀)、完整版 cap 120 分鐘
 // v5.10.29 R+8 P0 修(7 LLM 共識「8 分 / 25 分單位不清」):加「分鐘」單位、避免被誤讀為「8/100 滿意度」
 // 範本:「精華 10 分鐘 · 完整 N 分鐘」雙入口呈現,降低閱讀門檻
-export function ReadingTime({ textLength }: { textLength: number }) {
+export function ReadingTime({ textLength, singleCollapse = false }: { textLength: number; singleCollapse?: boolean }) {
   const rawMin = Math.max(5, Math.ceil(textLength / 1000))  // 1000 chars/min realistic 中文輕讀
   const minutes = Math.min(120, rawMin)  // cap 120 min(避免 339 等不切實際數)
   // v5.10.413(E1/E2 審查 P2):短報告「精華 8 分 · 完整 5 分」邏輯反轉/「8 分 · 8 分」重複 —
   // 精華下限 8 分鐘對短報告無意義;完整 ≤ 12 分鐘直接單一數字、雙入口只給長報告
-  if (minutes <= 12) {
+  // v5.10.456 A1:單一摺疊架構下只有一個完整版、不再「精華/完整版」雙入口、顯單一時間
+  if (singleCollapse || minutes <= 12) {
     return <span className="text-text-muted/60 text-xs">約 {minutes} 分鐘讀完</span>
   }
   const essenceMin = Math.min(minutes - 1, Math.min(15, Math.max(5, Math.round(minutes / 8))))

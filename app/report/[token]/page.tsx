@@ -1848,6 +1848,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const crisisLocale = report.birth_data?.locale === 'zh-CN' ? 'zh-CN' : 'zh-TW'
   const crisisCountry =
     report.birth_data?.locale === 'zh-CN' ? 'CN' : 'TW'
+  const singleCollapse = isFlagEnabled('FF_REPORT_SINGLE_COLLAPSE') // v5.10.456 A1:報告單一摺疊架構(主體永遠可見、廢 simple/expert)
   const crisisScan = isFlagEnabled('FF_CRISIS_CARD')
     ? scanForCrisis(aiContent)
     : { crisis: false, categories: [] as string[], matchedTerms: [] as string[] }
@@ -2211,7 +2212,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         <ReportMotion />
         <div className="mx-auto max-w-[1600px] px-4 py-2 flex items-center justify-between gap-2 text-[12px]">
           {/* v5.10.10 R+8 #12+#13 左邊:視圖切換 / 術語小辭典 / 暗黑模式(Kimi+GPT-4o+Haiku 缺項補) */}
-          {!isChumenji && !isRelationship && !isFamily ? (
+          {!isChumenji && !isRelationship && !isFamily && !singleCollapse ? (
             <R8Toolbar />
           ) : (
             <span className="text-text-muted/40 text-[10px]" aria-hidden>·</span>
@@ -3224,7 +3225,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               return `${y}年${Number(m)}月${Number(dd)}日`
             })()}</span>
             <span className="text-text-muted/20">|</span>
-            <ReadingTime textLength={report.report_result?.ai_content?.length || 0} />
+            <ReadingTime textLength={report.report_result?.ai_content?.length || 0} singleCollapse={singleCollapse} />
           </div>
 
           {/* v5.7.45 砍掉首屏破冰 slogan(Gemini visual eval 2 客戶 4 視口都標 P1-P2 廢話、客戶已付費不需再被推銷)
@@ -4558,7 +4559,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   </h2>
                   {tldrNode}
                   <div className="report-p mt-2">
-                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} />
+                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} singleCollapse={singleCollapse} />
                   </div>
                 </div>
               )
@@ -4579,7 +4580,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 >
                   {tldrNode}
                   <div className="report-p">
-                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} />
+                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} singleCollapse={singleCollapse} />
                   </div>
                 </CollapsibleSection>
               )
@@ -4621,7 +4622,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 >
                   {tldrNode}
                   <div className="report-p">
-                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} />
+                    <SectionExpander fullHtml={renderSectionMarkdown(cleanedContent)} sectionTitle={sec.title} singleCollapse={singleCollapse} />
                   </div>
                 {/* v5.8.6 撤回 v5.8.3 章節 mini bar / v5.7.86 章節末「💡 這對你的意義」自動 callout */}
                 {/* v5.10.78 P0 真修(5-LLM strict eval 共識:Claude QA + IA + GPT-4o + Gemini + Codex 全 FAIL 95+、共識 P0 #2 callout fallback ×9 重複)

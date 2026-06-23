@@ -6,6 +6,7 @@ import { safeReportHtml } from '@/lib/sanitize'
 interface SectionExpanderProps {
   fullHtml: string
   sectionTitle: string
+  singleCollapse?: boolean // v5.10.456 A1(FF_REPORT_SINGLE_COLLAPSE):ON=主體永遠全展開、不截斷、不顯假展開鍵
 }
 
 // v5.10.406 #2 修(老闆登入 UI 抓「精簡版沒用好 + 觀看疲勞 44.6 螢幕」):
@@ -15,7 +16,7 @@ interface SectionExpanderProps {
 //     · 完整版(expert、預設):全展開(維持現有客戶體驗)
 //     · 精簡版(simple):章節內文截斷 300px + 漸層遮罩 + 「展開本章」按鈕(抓重點、不疲勞)
 //   SSR safe:初始全展開避免 hydration 閃爍、mounted 後依 view-mode 同步 + MutationObserver 即時切換。
-export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle }: SectionExpanderProps) {
+export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle, singleCollapse = false }: SectionExpanderProps) {
   // v5.10.408(L4 Gemini P0 修):simpleMode 初始 null = 「未知」、首幀 inline style
   // 完全不設、交給 layout.tsx inline script 已寫好的 html[data-view-mode] + globals.css
   // 摺疊規則決定 — 任何 inline 值(300px 或 none)在首幀都會對另一群用戶造成 CLS:
@@ -44,12 +45,14 @@ export default function SectionExpander({ fullHtml, sectionTitle: _sectionTitle 
     return () => obs.disconnect()
   }, [])
 
-  const collapsed = simpleMode === true && !userExpanded && !tooShort
+  const collapsed = !singleCollapse && simpleMode === true && !userExpanded && !tooShort
   const contentId = useId()
 
   // 互動後的 inline style:收合=與 CSS 同值(無視覺變化)、用戶展開/短章=none 蓋過 CSS、
   // 未知(null)/expert=undefined 交給 CSS(expert 時 attr 不匹配、自然全文)。
-  const contentStyle = collapsed
+  const contentStyle = singleCollapse
+    ? { maxHeight: 'none', overflow: 'visible' as const, WebkitMaskImage: 'none', maskImage: 'none' }
+    : collapsed
     ? {
         maxHeight: '300px',
         overflow: 'hidden' as const,

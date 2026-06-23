@@ -108,6 +108,18 @@ const REGISTRY: Record<string, FlagDef> = {
     description: '/transparency 公開 MRR 頁(One-way door、需老闆書面同意)',
     scope: 'both',
   },
+
+  // ── 全棧重構 軌一 A1:報告體驗單一摺疊架構(2026-06-24)──
+  // ON:主體永遠可見(廢 300px 截斷 + simple/expert 二元 toggle)、只摺 L2 命理邏輯、
+  //    移除不實「精華5分/完整版28分/內容未刪減」字樣。對應研究三層 + MASTER 藍圖 A1-A4。
+  // 預設 false(現有客戶零影響);dev /devpreview 4 方案截圖驗證後才 flip。
+  FF_REPORT_SINGLE_COLLAPSE: {
+    default: false,
+    owner: 'jamie',
+    retireBy: '2026-Q4',
+    description: '報告體驗單一摺疊架構(主體永遠可見、廢 simple/expert 截斷、只摺命理邏輯)',
+    scope: 'server',
+  },
 } as const
 
 export type FlagName = keyof typeof REGISTRY
