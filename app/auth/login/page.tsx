@@ -103,15 +103,7 @@ function LoginForm() {
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
-          <div className="flex justify-between items-center">
-            <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
-              <input
-                type="checkbox"
-                defaultChecked
-                className="w-3.5 h-3.5 rounded border-gold/20 bg-white/5 text-gold focus:ring-gold/30"
-              />
-              <span>記住我</span>
-            </label>
+          <div className="flex justify-end items-center">
             <Link href="/auth/reset-password" className="inline-flex items-center min-h-[44px] text-xs text-gold/70 hover:text-gold hover:underline">
               忘記密碼？
             </Link>

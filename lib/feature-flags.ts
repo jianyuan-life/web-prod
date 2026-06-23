@@ -31,14 +31,6 @@ interface FlagDef {
 //   3. 驗收完成 → 開 prod env(.env.production)
 //   4. 完全穩定 → 移除 flag(把 if (isFlagEnabled(...)) 包的 code 變預設)
 const REGISTRY: Record<string, FlagDef> = {
-  // 範例:之後實際加新 flag 時放這裡
-  FF_EXAMPLE_NEW_FEATURE: {
-    default: false,
-    owner: 'jamie',
-    retireBy: '2026-Q3',
-    description: '範例 flag、實際使用時刪除這條',
-    scope: 'both',
-  },
 
   // ── 提示詞合集 Prompt 1:Anthropic Prompt Caching ──
   // 付費報告 claudeStreamingCall 把 system prompt(角色+語氣鐵律+知識庫、
