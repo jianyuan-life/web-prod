@@ -3898,8 +3898,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   const rrAny = (report.report_result || {}) as Record<string, unknown>
                   const ziweiAna = ((rrAny.analyses || {}) as Record<string, unknown>)?.ziwei as Record<string, unknown> | undefined
                   const ziweiRaw = (ziweiAna?.raw_data || {}) as Record<string, unknown>
-                  const mg = String(ziweiRaw.ming_gong || mgM?.[1] || '')
-                  const mz = String(ziweiRaw.ming_zhu || mzM?.[1] || '')
+                  // v5.10.457 D4 修(P0-10):ziweiRaw.ming_gong/ming_zhu 可能是 dict、String(dict)='[object Object]' 裸露 → 取結構化欄位
+                  const pickStr = (v: unknown, keys: string[]): string => {
+                    if (v && typeof v === 'object') { const o = v as Record<string, unknown>; for (const k of keys) if (typeof o[k] === 'string' && o[k]) return o[k] as string; return '' }
+                    return v == null ? '' : String(v)
+                  }
+                  const mg = pickStr(ziweiRaw.ming_gong, ['dizhi', 'branch', 'gong']) || mgM?.[1] || ''
+                  const mz = pickStr(ziweiRaw.ming_zhu, ['main_star', 'name', 'star', 'ming_zhu']) || mzM?.[1] || ''
                   if (!mg && !mz) return null
                   return <ZiweiPalaceWheel mingGong={mg} mingZhu={mz} />
                 })()}

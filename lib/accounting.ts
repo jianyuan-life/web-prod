@@ -293,7 +293,7 @@ export async function calcPeriodPnL(
     + (expByCategory['api_credit_topup'] || 0)
     + (expByCategory['font_license'] || 0)
     + (expByCategory['external_service'] || 0)
-    + (expByCategory['stripe_fee'] || 0)   // TODO：上線後要去重，不要和 revenue_log.stripe_fee_usd 雙計
+    // v5.10.457 C2 修(P0-16):stripe_fee 移除 — net_revenue_usd 已扣過一次 fee、此處再加 = 雙計(原 TODO 自承)
     + (expByCategory['other'] || 0)
 
   // 防止退款雙計：expense_log.refund 和 revenue_log.refunded_amount_usd 可能同時有
