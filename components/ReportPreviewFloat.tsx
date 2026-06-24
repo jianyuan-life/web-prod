@@ -3,11 +3,10 @@
 //   讓訪客「付費前感受報告深度」。鑒源原 hero 純文字無預覽 = 2025 已落後。
 // 設計:hero 四角漂浮的半透明報告節選卡、像在星空中飄浮的命理碎片。md+ 才顯(手機不擠)。
 //   reduced-motion 由 globals.css .animate-float 自動停。
+// v5.10.457 UI 收斂(老闆「朝 nano-banana 乾淨方向」):4 張散落卡 → 2 張對角、增留白減雜
 const FRAGMENTS = [
-  { sys: '八字命理', line: '日主庚金生於巳月，財官印俱全，宜借勢而非硬拼。', pos: 'top-[14%] left-[3%]', delay: '0s' },
-  { sys: '紫微斗數', line: '命宮天府坐守，一生不缺貴人，但需學會開口求援。', pos: 'top-[22%] right-[3%]', delay: '0.8s' },
-  { sys: '奇門遁甲', line: '今年值符落離宮，東南方為你的能量出口。', pos: 'bottom-[18%] left-[5%]', delay: '1.6s' },
-  { sys: '西洋占星', line: '土星正過你的事業宮，一場遲來的肯定正在路上。', pos: 'bottom-[24%] right-[4%]', delay: '0.4s' },
+  { sys: '八字命理', line: '日主庚金生於巳月，財官印俱全，宜借勢而非硬拼。', pos: 'top-[16%] left-[4%]', delay: '0s' },
+  { sys: '西洋占星', line: '土星正過你的事業宮，一場遲來的肯定正在路上。', pos: 'bottom-[22%] right-[4%]', delay: '0.8s' },
 ]
 
 export default function ReportPreviewFloat() {
