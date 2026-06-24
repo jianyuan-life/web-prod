@@ -12,6 +12,8 @@ import { validateReportAgainstData } from '@/workflows/generate-report/steps'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { PLAN_SYSTEM_PROMPT } from '@/workflows/generate-report/plan-prompts'  // v5.10.399:fallback 用 SSOT(含 v2/v4 wire + v5.10.x 全修補)、取代本檔脫節 inline 舊版
+import { buildSingleCallV4C } from '@/prompts/c_plan_v4'  // v5.10.458:C fallback / dryRun 改吐乾淨 v4 單-Call(解教科書根因 lesson #163)
+import { isV4 } from '@/lib/plan-flags'  // v5.10.458:USE_PLAN_V4_C !== 'false' default on
 import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
@@ -689,7 +691,9 @@ ${analyses.length}套系統排盤完整數據：
         try {
           // Fallback route 受 Vercel 300s 限制，4 call 順序執行可能超時
           // 改為單次 generic prompt 呼叫，確保在時限內完成
-          const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+          const systemPrompt = isV4('C')
+            ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
+            : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
           const genericUserPrompt = buildGenericUserPrompt()
           const rawResult = await callClaudeStreaming(systemPrompt, genericUserPrompt, 16000, 200000, {
             reportId, planCode, callStage: 'C_fallback_single',
@@ -711,7 +715,9 @@ ${analyses.length}套系統排盤完整數據：
       if (!reportContent && CLAUDE_API_KEY) {
         try {
           console.info('C 方案 Sonnet fallback:嘗試 Claude Sonnet 4.6...')
-          const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+          const systemPrompt = isV4('C')
+            ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
+            : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
           const rawResult = await callClaudeStreaming(systemPrompt, buildGenericUserPrompt(), 16000, 200000, {
             reportId, planCode, callStage: 'C_fallback_sonnet',
           }, 'claude-sonnet-4-6')
@@ -729,7 +735,9 @@ ${analyses.length}套系統排盤完整數據：
       // Claude 全失敗或 key 未設定 → fallback DeepSeek(legacy 最後 backup、Sprint 2.x 移除)
       if (!reportContent) {
         try {
-          const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+          const systemPrompt = isV4('C')
+            ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
+            : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
           reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt()))
           aiModelUsed = 'deepseek-chat'
           console.info(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
