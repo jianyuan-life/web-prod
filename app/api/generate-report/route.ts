@@ -13,7 +13,8 @@ import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { PLAN_SYSTEM_PROMPT } from '@/workflows/generate-report/plan-prompts'  // v5.10.399:fallback 用 SSOT(含 v2/v4 wire + v5.10.x 全修補)、取代本檔脫節 inline 舊版
 import { buildSingleCallV4C } from '@/prompts/c_plan_v4'  // v5.10.458:C fallback / dryRun 改吐乾淨 v4 單-Call(解教科書根因 lesson #163)
-import { isV4 } from '@/lib/plan-flags'  // v5.10.458:USE_PLAN_V4_C !== 'false' default on
+import { buildSingleCallV4G15 } from '@/prompts/g15_plan_v4'  // v5.10.458:G15 fallback 同 C 修(static v2 → v4 單-Call)
+import { isV4 } from '@/lib/plan-flags'  // v5.10.458:USE_PLAN_V4_C/G15 !== 'false' default on
 import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
@@ -753,7 +754,10 @@ ${analyses.length}套系統排盤完整數據：
       // ============================================================
       // 其他方案（D/R/G15/E1/E2/E3/E4）：Claude 單次呼叫，失敗 fallback DeepSeek
       // ============================================================
-      const systemPrompt = localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+      // v5.10.458:G15 static v2 → v4 單-Call(解教科書、同 C);D/R 的 PLAN_SYSTEM_PROMPT 已是 v4 getter、走 else
+      const systemPrompt = (planCode === 'G15' && isV4('G15'))
+        ? buildSingleCallV4G15(3, birthData.locale)
+        : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
       const userPrompt = buildGenericUserPrompt()
 
       // 先嘗試 Claude
