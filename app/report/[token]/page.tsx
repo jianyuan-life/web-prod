@@ -2335,7 +2335,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           const baziRaw = (baziAna.raw_data || {}) as Record<string, unknown>
           const ziweiRaw = (ziweiAna.raw_data || {}) as Record<string, unknown>
           const fp = (baziRaw.four_pillars || {}) as Record<string, { gan?: string; zhi?: string }>
-          let pillars = String(cd.bazi || '').trim().split(/\s+/).filter(p => p.length === 2).slice(0, 4)
+          // R-01/R-05/R-08 修(2026-06-24、Codex P1):優先讀 full_charts.bazi.four_pillars(deterministic SSOT、三卡同源);不完整(<3 柱)才 fall-through client_data/AI regex/localBazi
+          const fcFp = ((rr.full_charts as { bazi?: { four_pillars?: Record<string, { gan?: string; zhi?: string }> } } | undefined)?.bazi)?.four_pillars
+          let pillars: string[] = fcFp
+            ? [fcFp.year, fcFp.month, fcFp.day, fcFp.hour].map(p => p ? `${p.gan || ''}${p.zhi || ''}` : '').filter(p => p.length === 2)
+            : []
+          if (pillars.length < 3) pillars = String(cd.bazi || '').trim().split(/\s+/).filter(p => p.length === 2).slice(0, 4)
           if (pillars.length < 3 && fp.year && fp.month && fp.day) {
             pillars = [
               `${fp.year.gan || ''}${fp.year.zhi || ''}`,
@@ -2991,7 +2996,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           const ziweiRaw = (ziweiAna.raw_data || {}) as Record<string, unknown>
           const fp = (baziRaw.four_pillars || {}) as Record<string, { gan?: string; zhi?: string }>
           const baziStr = String(cd.bazi || '')
-          let pillars = baziStr.trim().split(/\s+/).filter(p => p.length === 2).slice(0, 4)
+          // R-01/R-05/R-08 修(2026-06-24、Codex P1):頂部摘要卡也優先 full_charts.bazi.four_pillars(三卡同源);不完整(<3 柱)才 fall-through 既有 fallback
+          const fcFp = ((rr.full_charts as { bazi?: { four_pillars?: Record<string, { gan?: string; zhi?: string }> } } | undefined)?.bazi)?.four_pillars
+          let pillars: string[] = fcFp
+            ? [fcFp.year, fcFp.month, fcFp.day, fcFp.hour].map(p => p ? `${p.gan || ''}${p.zhi || ''}` : '').filter(p => p.length === 2)
+            : []
+          if (pillars.length < 3) pillars = baziStr.trim().split(/\s+/).filter(p => p.length === 2).slice(0, 4)
           if (pillars.length < 3 && fp.year && fp.month && fp.day) {
             pillars = [
               `${fp.year.gan || ''}${fp.year.zhi || ''}`,
@@ -3737,9 +3747,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
                 // v5.7.69 八字四柱:多源 fallback + AI 內容 regex(實測 HJN 客戶 client_data.bazi=null/raw_data 空、必加 AI 內容掃描)
                 let pillars: string[] = []
+                // R-01/R-05 修(2026-06-24):八字四柱優先讀 full_charts.bazi.four_pillars(deterministic SSOT、與 ChartSummaryCard 同源、避免「庚午 vs 庚戌」同頁不一致);無 full_charts 才退既有 fallback
+                const fcFp = ((rr.full_charts as { bazi?: { four_pillars?: Record<string, { gan?: string; zhi?: string }> } } | undefined)?.bazi)?.four_pillars
                 const baziStr = String(cd.bazi || '')
                 const baziSplit = baziStr.trim().split(/\s+/).filter(p => p.length === 2)
-                if (baziSplit.length >= 3) {
+                // Codex P1:先算 full_charts 柱數、>=3 才採用、否則 fall-through 既有 fallback(不短路)
+                const fcPillars = fcFp
+                  ? [fcFp.year, fcFp.month, fcFp.day, fcFp.hour].map(p => p ? `${p.gan || ''}${p.zhi || ''}` : '').filter(p => p.length === 2)
+                  : []
+                if (fcPillars.length >= 3) {
+                  pillars = fcPillars
+                } else if (baziSplit.length >= 3) {
                   pillars = baziSplit.slice(0, 4)
                 } else if (fp.year && fp.month && fp.day) {
                   pillars = [
@@ -3922,9 +3940,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
             {/* v5.7.59 五行能量雷達圖(4/4 LLM 共識最高 ROI、+6-15 分) */}
             {(() => {
-              const cd = (report.report_result as Record<string, unknown>)?.client_data as Record<string, unknown> | undefined
-              const fe = cd?.five_elements as Record<string, number> | undefined
-              if (!fe) return null
+              // R-01 修(2026-06-24):五行改讀 full_charts.bazi.five_elements(SSOT、與 ChartSummaryCard 同源);
+              //   舊讀 client_data.five_elements 在 production 0/83 報告有此欄位 → 雷達圖從未顯示過。client_data 保留為 legacy fallback。
+              const rr = report.report_result as Record<string, unknown> | undefined
+              const fcBazi = (rr?.full_charts as { bazi?: { five_elements?: Record<string, number> } } | undefined)?.bazi
+              const cd = rr?.client_data as Record<string, unknown> | undefined
+              const fcFe = fcBazi?.five_elements
+              // Codex P1:full_charts.five_elements 為空物件時不可壓掉 legacy fallback、要 fall 回 client_data
+              const fe = (fcFe && Object.keys(fcFe).length > 0) ? fcFe : (cd?.five_elements as Record<string, number> | undefined)
+              if (!fe || Object.keys(fe).length === 0) return null
               return <FiveElementsRadar data={{ wood: fe['木'] || fe.wood, fire: fe['火'] || fe.fire, earth: fe['土'] || fe.earth, metal: fe['金'] || fe.metal, water: fe['水'] || fe.water }} />
             })()}
 
