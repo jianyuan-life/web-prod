@@ -29,7 +29,7 @@ function wrap(inner: string, ctx: DripCtx): string {
   return `<div style="font-family:system-ui,'Noto Sans TC',sans-serif;max-width:560px;margin:0 auto;color:#222;line-height:1.8">
 ${inner}
 <p style="margin-top:24px"><a href="${site}/report/${ctx.reportToken}" style="display:inline-block;background:#B33A2E;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none">開啟我的報告</a></p>
-<p style="color:#999;font-size:12px;margin-top:22px">鑑源命理平台 · ${site}${ctx.unsubscribeHtml ? ' · ' + ctx.unsubscribeHtml : ''}</p></div>`
+<p style="color:#999;font-size:12px;margin-top:22px">鑒源命理平台 · ${site}${ctx.unsubscribeHtml ? ' · ' + ctx.unsubscribeHtml : ''}</p></div>`
 }
 
 /** 產生 5 封 drip(utm 已帶);呼叫端依 step 排程寄 */

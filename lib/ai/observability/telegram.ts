@@ -172,7 +172,7 @@ export async function notifyDaily(summary: DailySummary): Promise<boolean> {
   const notesText = summary.notes ? `\n<i>${esc(summary.notes)}</i>` : ''
 
   const msg =
-    `📊 <b>鑑源每日摘要 ${esc(summary.date)}</b>\n\n` +
+    `📊 <b>鑒源每日摘要 ${esc(summary.date)}</b>\n\n` +
     `<b>報告總數：</b>${summary.totalReports}\n` +
     `<b>成功 / 失敗：</b>${summary.successReports} / ${summary.failedReports}（${successRate}%）\n` +
     `<b>AI 總成本：</b>${fmtUsd(summary.totalCostUsd)}\n` +

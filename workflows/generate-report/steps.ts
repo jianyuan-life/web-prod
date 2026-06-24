@@ -281,7 +281,7 @@ function cleanAIResponse(text: string): string {
   cleaned = cleaned.replace(/^(關鍵發現[：:]\s*)(.+)$/gm, '$1**$2**')
 
   // 8. 品牌名
-  cleaned = cleaned.replace(/鑑源/g, '鑒源')
+  cleaned = cleaned.replace(/鑒源/g, '鑒源')
 
   // 9. P0-2 修復（2026-04-17）：R 方案「026」年份 bug
   // AI 把「丙午（2026-2028）」輸出成「丙午026-2028」（可能是 AI 把 2 當成上一段的尾數）

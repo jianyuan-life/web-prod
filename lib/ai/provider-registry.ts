@@ -1,5 +1,5 @@
 // ============================================================
-// 鑑源 AI 團隊 — Provider Registry + Circuit Breaker + Cost Log
+// 鑒源 AI 團隊 — Provider Registry + Circuit Breaker + Cost Log
 // ============================================================
 // 統一管理所有 LLM provider
 // 內建熔斷器：連續失敗自動停用、失敗自動降級

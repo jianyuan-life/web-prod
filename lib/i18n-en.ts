@@ -70,7 +70,6 @@ export const EN_SYSTEM_NAMES: Record<string, string> = {
 export const EN_UI: Record<string, string> = {
   // Brand & nav
   '鑒源': 'JianYuan',
-  '鑑源': 'JianYuan',
   '系統介紹': 'Systems',
   '方案定價': 'Pricing',
   '免費速算': 'Free Tools',
@@ -361,7 +360,7 @@ export const EN_UI: Record<string, string> = {
   '什麼是出門訣？': 'What is a Direction Guide?',
   '古法奇門遁甲記載：「吉門吉方即行，凶門凶方即止。」天地能量每兩小時輪轉一次，八方吉凶隨之改變。 出門訣的本質——在對的時間，走向對的方位，讓天時地利的能量灌注到您身上。':
     'Classical Qi Men Dun Jia states: "When gates and directions are auspicious, proceed; when inauspicious, stop." The energy of heaven and earth rotates every two hours, and the fortunes of the eight directions change accordingly. The essence of the Direction Guide: at the right time, walk toward the right direction, drawing in the energy of heaven and earth.',
-  '鑑源的出門訣引擎採用古法 25 層評分體系——三吉門旺衰、三奇配門、八神吉凶、九星旺衰、天地盤干五行生剋、 九遁格局、28 種吉凶格局判斷、神煞方位過濾——每一層都有古籍理論支撐。 最終套入您的個人年命宮交叉驗證，確保推薦的每個吉時都是專屬於您的。':
+  '鑒源的出門訣引擎採用古法 25 層評分體系——三吉門旺衰、三奇配門、八神吉凶、九星旺衰、天地盤干五行生剋、 九遁格局、28 種吉凶格局判斷、神煞方位過濾——每一層都有古籍理論支撐。 最終套入您的個人年命宮交叉驗證，確保推薦的每個吉時都是專屬於您的。':
     'JianYuan’s Direction Guide engine uses a classical 25-layer scoring system — strength of the three auspicious gates, pairing of the three wonders, the eight spirits, strength of the nine stars, the five-element interactions between heaven and earth stems, the nine-escape formations, 28 auspicious/inauspicious patterns, and spirit-direction filters — each layer grounded in classical theory. Finally, results are cross-checked with your personal Life Palace, ensuring every recommended hour is unique to you.',
   '操作方式：': 'How to use:',
   '1. 在推薦的吉時準時出門，朝吉方走出 500 公尺以上': '1. At the recommended hour, walk at least 500m in the auspicious direction',
@@ -383,22 +382,22 @@ export const EN_UI: Record<string, string> = {
 
   // Whitepaper page
   'For Professionals · 給專業人士看的研究': 'For Professionals · Research for experts',
-  '鑑源命理學術白皮書': 'JianYuan Metaphysics Research Whitepaper',
+  '鑒源命理學術白皮書': 'JianYuan Metaphysics Research Whitepaper',
   '14 系統交叉驗證方法論與工業級排盤引擎技術報告': '14-System Cross-Validation Methodology and Industrial-Grade Chart Engine Technical Report',
-  '版本 v1.0 · 2026 年 4 月 17 日 · 鑑源命理研究部門編纂': 'Version v1.0 · 17 April 2026 · Compiled by the JianYuan Metaphysics Research Department',
+  '版本 v1.0 · 2026 年 4 月 17 日 · 鑒源命理研究部門編纂': 'Version v1.0 · 17 April 2026 · Compiled by the JianYuan Metaphysics Research Department',
   '下載 PDF（免費提供，21 頁）': 'Download PDF (free, 21 pages)',
   '線上閱讀摘要': 'Read Summary Online',
   '為什麼寫這份白皮書？': 'Why this whitepaper?',
   '命理服務長期面臨四個工程學上的挑戰：排盤基礎不一致、規則隱性化、報告模板化、精度不透明。 市面多數平台未公開其排盤結果與權威文獻的一致率，使用者無從判斷可靠度。':
     'Metaphysics services have long faced four engineering challenges: inconsistent chart fundamentals, implicit rules, templated reports, and opaque precision. Most platforms do not publish the consistency rate between their charts and authoritative literature, leaving users unable to judge reliability.',
-  '本白皮書記錄鑑源命理研究部門為了將東方命理系統產品化、工業化、可驗證化所採用的研究方法、 排盤引擎架構與驗證流程。我們主張的差異不在「比古人更準」或「AI 取代師父」，而來自工程方法論：':
+  '本白皮書記錄鑒源命理研究部門為了將東方命理系統產品化、工業化、可驗證化所採用的研究方法、 排盤引擎架構與驗證流程。我們主張的差異不在「比古人更準」或「AI 取代師父」，而來自工程方法論：':
     'This whitepaper documents the research methods, chart-engine architecture, and verification processes the JianYuan Metaphysics Research Department uses to productize, industrialize, and validate Eastern metaphysical systems. Our claimed differentiation is not "more accurate than the ancients" or "AI replaces masters" — it comes from an engineering methodology:',
   '規則導向、交叉驗證、回歸測試、誠實揭露限制': 'Rule-driven, cross-validated, regression-tested, and transparent about limitations',
   '本文件適合命理從業人員、媒體與記者、技術投資人、學術研究者閱讀。所有數字、案例、引用皆可追溯到 GitHub 公開倉庫的驗證腳本與驗證報告。':
     'This document is intended for metaphysics practitioners, media and journalists, technology investors, and academic researchers. All numbers, cases, and citations can be traced to the verification scripts and reports in our public GitHub repository.',
   '關鍵數據摘要': 'Key Metrics',
   '以上所有數值皆可於白皮書附錄 B 的引擎精度實測表中追溯到對應的驗證腳本（例如': 'All values above can be traced to the corresponding verification scripts in Appendix B of the whitepaper (e.g. ',
-  '），並由鑑源命理研究部門公開於 GitHub 倉庫。': '), which are published by the JianYuan Research Department on GitHub.',
+  '），並由鑒源命理研究部門公開於 GitHub 倉庫。': '), which are published by the JianYuan Research Department on GitHub.',
   '白皮書目錄': 'Whitepaper Contents',
   // Whitepaper TOC items
   '摘要（Executive Summary）': 'Executive Summary',

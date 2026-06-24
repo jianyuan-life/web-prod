@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: '鑑源命理學術白皮書 | 14 系統交叉驗證方法論',
+  title: '鑒源命理學術白皮書 | 14 系統交叉驗證方法論',
   description:
-    '44,421+ 條規則來源盤點、365 天 Windada 驗證、12 位中港台客戶八字一致率 100%、16 位紫微 3-way 驗證、20 組奇門時辰盤局數一致率 100%。鑑源命理研究部門公開發布。',
+    '44,421+ 條規則來源盤點、365 天 Windada 驗證、12 位中港台客戶八字一致率 100%、16 位紫微 3-way 驗證、20 組奇門時辰盤局數一致率 100%。鑒源命理研究部門公開發布。',
   keywords: [
     '命理學術白皮書',
     '命理方法論',
@@ -16,19 +16,19 @@ export const metadata: Metadata = {
     'Windada',
     'lunar_python',
     '命理工程化',
-    '鑑源 jianyuan',
+    '鑒源 jianyuan',
   ],
   openGraph: {
-    title: '鑑源命理學術白皮書 v1.0',
+    title: '鑒源命理學術白皮書 v1.0',
     description:
-      '給專業人士看的研究：鑑源如何把 14 套命理系統做到可交叉驗證、可追溯、可回歸測試。',
+      '給專業人士看的研究：鑒源如何把 14 套命理系統做到可交叉驗證、可追溯、可回歸測試。',
     type: 'article',
     url: 'https://jianyuan.life/whitepaper',
     images: ['/logo-full.svg'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: '鑑源命理學術白皮書 v1.0',
+    title: '鑒源命理學術白皮書 v1.0',
     description: '14 系統交叉驗證方法論與工業級排盤引擎技術報告。',
   },
   alternates: {
@@ -46,13 +46,13 @@ export default function WhitepaperPage() {
         </div>
         {/* v5.10.193 P0 mobile responsive(QA Agent L1 抓 HOLD finding 2/2、同類修) */}
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gradient-gold mb-6 leading-tight text-balance break-words">
-          鑑源命理學術白皮書
+          鑒源命理學術白皮書
         </h1>
         <p className="text-lg md:text-xl text-text-muted max-w-2xl mx-auto leading-relaxed">
           14 系統交叉驗證方法論與工業級排盤引擎技術報告
         </p>
         <div className="mt-6 text-sm text-text-muted">
-          版本 v1.0 · 2026 年 4 月 17 日 · 鑑源命理研究部門編纂
+          版本 v1.0 · 2026 年 4 月 17 日 · 鑒源命理研究部門編纂
         </div>
 
         {/* 下載按鈕 */}
@@ -85,7 +85,7 @@ export default function WhitepaperPage() {
             市面多數平台未公開其排盤結果與權威文獻的一致率，使用者無從判斷可靠度。
           </p>
           <p>
-            本白皮書記錄鑑源命理研究部門為了將東方命理系統產品化、工業化、可驗證化所採用的研究方法、
+            本白皮書記錄鑒源命理研究部門為了將東方命理系統產品化、工業化、可驗證化所採用的研究方法、
             排盤引擎架構與驗證流程。我們主張的差異不在「比古人更準」或「AI 取代師父」，而來自工程方法論：
             <strong className="text-white">規則導向、交叉驗證、回歸測試、誠實揭露限制</strong>。
           </p>
@@ -117,7 +117,7 @@ export default function WhitepaperPage() {
           以上所有數值皆可於白皮書附錄 B 的引擎精度實測表中追溯到對應的驗證腳本（例如{' '}
           <code className="text-gold">test_qimen_windada20.py</code>、
           <code className="text-gold">test_ziwei_16_clients.py</code>
-          ），並由鑑源命理研究部門公開於 GitHub 倉庫。
+          ），並由鑒源命理研究部門公開於 GitHub 倉庫。
         </p>
       </section>
 
@@ -147,8 +147,8 @@ export default function WhitepaperPage() {
           如何引用
         </h2>
         <div className="rounded-lg border border-white/10 bg-white/5 p-5 font-mono text-sm text-text leading-relaxed">
-          鑑源命理研究部門（2026）。《鑑源命理學術白皮書：14
-          系統交叉驗證方法論與工業級排盤引擎技術報告》（v1.0）。鑑源命理平台。
+          鑒源命理研究部門（2026）。《鑒源命理學術白皮書：14
+          系統交叉驗證方法論與工業級排盤引擎技術報告》（v1.0）。鑒源命理平台。
           <br />
           <span className="text-text-muted">
             https://jianyuan.life/whitepaper
@@ -165,7 +165,7 @@ export default function WhitepaperPage() {
           歡迎同業、學界、媒體查證、質疑、並提供改進意見。研究部門對白皮書的每項數據負責，且保留未來版本修訂權。
         </p>
         <a
-          href="mailto:support@jianyuan.life?subject=關於鑑源命理學術白皮書"
+          href="mailto:support@jianyuan.life?subject=關於鑒源命理學術白皮書"
           className="inline-block px-8 py-3 rounded-full bg-gold text-dark font-semibold hover:opacity-90 transition"
         >
           聯繫研究部門

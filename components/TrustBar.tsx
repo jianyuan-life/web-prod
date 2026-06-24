@@ -61,7 +61,7 @@ export default function TrustBar({ variant = 'pricing' }: { variant?: Variant })
             icon={<ShieldIcon />}
             title="Stripe 加密"
             sub="PCI-DSS 認證付款"
-            tooltip="信用卡資訊不經過鑑源伺服器、由 Stripe 全程加密處理"
+            tooltip="信用卡資訊不經過鑒源伺服器、由 Stripe 全程加密處理"
           />
           <TrustItem
             icon={<LockIcon />}

@@ -11,7 +11,7 @@
 import { isFlagEnabled } from '@/lib/feature-flags'
 
 export const metadata = {
-  title: '鑑源 · 透明化',
+  title: '鑒源 · 透明化',
   description: 'Building in Public',
 }
 
@@ -49,7 +49,7 @@ export default async function TransparencyPage() {
   const s = await loadPublicStats()
   return (
     <main style={{ background: '#0A0A0A', color: '#fff', minHeight: '70vh', padding: '56px 24px' }}>
-      <h1 style={{ fontSize: 30, textAlign: 'center' }}>鑑源 · Building in Public</h1>
+      <h1 style={{ fontSize: 30, textAlign: 'center' }}>鑒源 · Building in Public</h1>
       <div
         style={{
           display: 'grid',

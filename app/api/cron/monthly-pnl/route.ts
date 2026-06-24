@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
     .join('\n')
 
   const text = `
-<b>📊 鑑源月結報表 ${ym}</b>
+<b>📊 鑒源月結報表 ${ym}</b>
 
 <b>營收</b>
 • 總收入：$${pnl.revenue.total_usd}

@@ -1,4 +1,4 @@
-// Feature Flag 系統 — 鑑源 web
+// Feature Flag 系統 — 鑒源 web
 // 2026-04-26 | 網頁製作部門
 //
 // 設計原則(對齊 PDF《Claude Code 業界共識自動化工作流 SOP》v1.0 Section 4):

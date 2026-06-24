@@ -1,5 +1,5 @@
 // ============================================================
-// 鑑源 RAG 檢索層 — Voyage AI embedding + Supabase pgvector
+// 鑒源 RAG 檢索層 — Voyage AI embedding + Supabase pgvector
 // ============================================================
 // 用途：AI 寫報告前，先從 rules_library 檢索相關古籍規則，
 //       把真實規則注入 prompt，避免「憑訓練記憶寫」。

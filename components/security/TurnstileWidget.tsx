@@ -62,7 +62,7 @@ export default function TurnstileWidget({
   onVerify,
   onError,
   onExpired,
-  theme = 'dark',  // 鑑源 dark UI
+  theme = 'dark',  // 鑒源 dark UI
   size = 'normal',
   appearance = 'always',
 }: TurnstileWidgetProps) {

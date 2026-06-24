@@ -234,7 +234,7 @@ export default function AccountingPage() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">完整會計系統</h1>
-          <p className="text-xs text-gray-400">整個鑑源項目：收入、支出、淨利、月結</p>
+          <p className="text-xs text-gray-400">整個鑒源項目：收入、支出、淨利、月結</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {([

@@ -1,6 +1,6 @@
 // Hero 漂浮報告預覽卡(v5.10.426、UI 100 分 P0 — 產品前置化)
 // 競品對標(tasks/ui_visual_benchmark_2026-06-12.md):The Pattern/Nebula 都在首屏 show 報告片段、
-//   讓訪客「付費前感受報告深度」。鑑源原 hero 純文字無預覽 = 2025 已落後。
+//   讓訪客「付費前感受報告深度」。鑒源原 hero 純文字無預覽 = 2025 已落後。
 // 設計:hero 四角漂浮的半透明報告節選卡、像在星空中飄浮的命理碎片。md+ 才顯(手機不擠)。
 //   reduced-motion 由 globals.css .animate-float 自動停。
 const FRAGMENTS = [

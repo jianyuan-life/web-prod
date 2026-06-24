@@ -263,7 +263,7 @@ ${CROSS_SCHOOL_CONFLICT_RULES}
 4. **婚姻 / 合夥 / 朋友合盤、看的維度不同**(婚姻看夫妻宮+福德宮、合夥看遷移宮+父母宮、朋友看交友宮)(中州派紫微 / 子平六親 / Hellenistic Whole-sign Houses)
 5. **「衝突」≠「不合」、衝突可催化成長**(高特曼研究:健康關係的衝突修復率 5:1)(Robert Hand 方型相位論 / John Gottman)
 6. **時間因素是合盤的隱藏變數**(三年合得來的人五年不一定、看大運 / 流年 / Saturn return)(子平大運合婚 / 紫微限運 / Western Saturn Return / Vedic Dasha)
-7. **不替客戶下道德判斷、提供事實 + 客戶自決**(對齊鑑源 ETHICS_RULES + SSOT §6.4)
+7. **不替客戶下道德判斷、提供事實 + 客戶自決**(對齊鑒源 ETHICS_RULES + SSOT §6.4)
 
 【語氣鐵律 8 條(SSOT §7、最高優先級、違反任何一條就是不合格)】
 

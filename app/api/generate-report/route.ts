@@ -102,7 +102,7 @@ function cleanAIResponse(text: string): string {
   cleaned = cleaned.replace(/^(好的|收到|我將|我會|讓我|以下是|沒問題|當然)[^\n]*\n+/i, '')
 
   // 確保品牌名統一為「鑒源」
-  cleaned = cleaned.replace(/鑑源/g, '鑒源')
+  cleaned = cleaned.replace(/鑒源/g, '鑒源')
 
   return cleaned.trim()
 }

@@ -63,7 +63,7 @@ export default async function KpiPage({
 
   return (
     <main style={{ padding: 40, fontFamily: 'system-ui', maxWidth: 880, margin: '0 auto' }}>
-      <h1>鑑源財務 KPI(過去 90 天)</h1>
+      <h1>鑒源財務 KPI(過去 90 天)</h1>
       <p style={{ color: '#666' }}>SSR · 公式對齊 ChartMogul/Bessemer · 數據自 Supabase 真實訂單</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, margin: '20px 0' }}>
         {[

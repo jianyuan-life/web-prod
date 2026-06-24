@@ -2,7 +2,7 @@
 // 提示詞合集 Prompt 3 任務 A — 4 大保證 icon 區塊
 // ============================================================
 // Pricing 頁信任強化。4 保證對齊根 CLAUDE.md「退費 policy(v5.7.8)」SSOT。
-// 鑑源黑 #0A0A0A 底 + 朱漆紅 #B33A2E accent;< 380px 自動 stack。
+// 鑒源黑 #0A0A0A 底 + 朱漆紅 #B33A2E accent;< 380px 自動 stack。
 //
 // additive 元件,由 app/pricing/page.tsx 或 PricingCards 自行 import。
 // 本檔不自動 wire(避免動既有 pricing 渲染 = P1 需驗證)。
@@ -30,7 +30,7 @@ export default function GuaranteeBlock() {
           letterSpacing: 1,
         }}
       >
-        鑑源 4 大保證
+        鑒源 4 大保證
       </h2>
       <div
         style={{

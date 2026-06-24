@@ -4,7 +4,7 @@
  * v5.10.145 DS4 #2 麵包屑導航 — 客戶位置感(連貫性 +10)
  *
  * 跟 ScrollSpy 連動:讀 .toc-link[data-active="true"] 的 textContent 顯示當前章節
- * sticky 在 page top 之下、滾到第 N 章時自動顯示「鑑源 / 第 N 章」
+ * sticky 在 page top 之下、滾到第 N 章時自動顯示「鑒源 / 第 N 章」
  *
  * 業界共識:Stripe / Linear / Notion 全用 sticky breadcrumb 給客戶位置感
  */
@@ -41,7 +41,7 @@ export default function ReportBreadcrumb({ planName }: { planName: string }) {
       }}
       aria-label="頁面位置"
     >
-      <span className="text-gold/65">鑑源</span>
+      <span className="text-gold/65">鑒源</span>
       <span className="text-gold/40">/</span>
       <span className="text-gold/65">{planName}</span>
       <span className="text-gold/40">/</span>

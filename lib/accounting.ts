@@ -1,4 +1,4 @@
-// 鑑源完整會計系統 lib（v5.3.3 2026-04-18）
+// 鑒源完整會計系統 lib（v5.3.3 2026-04-18）
 //
 // 用途：
 //   1. revenue_log 寫入（Stripe webhook 付款成功時）
@@ -17,7 +17,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 // Types
 // ============================================================
 
-// v5.3.5 擴充到 12 類，完整覆蓋鑑源所有支出
+// v5.3.5 擴充到 12 類，完整覆蓋鑒源所有支出
 export type ExpenseCategory =
   | 'ai_cost'             // AI 模型 API（變動成本，由 ai_cost_log trigger 鏡像）
   | 'hosting_monthly'     // Vercel/Supabase/Fly.io/Cloudflare/Upstash/Resend/Sentry/LangFuse 月費

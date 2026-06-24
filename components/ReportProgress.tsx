@@ -456,7 +456,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
           <div className="mt-2 pl-3 border-l-2 border-gold/20 space-y-2 text-text-muted/85">
             <p className="leading-relaxed">
               {isChumenjiPlan(planCode) ? (
-                <>鑑源古法奇門遁甲占事派擇吉——{
+                <>鑒源古法奇門遁甲占事派擇吉——{
                   planCode === 'E4' ? '需排算一年 8,760 小時全局盤 + 12 張月盤'
                     : planCode === 'E3' ? '需排算未來 4 週、共 672 個時辰'
                     : planCode === 'E2' ? '需排算 360 個時辰'

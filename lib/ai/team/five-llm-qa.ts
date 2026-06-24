@@ -1,5 +1,5 @@
 // ============================================================
-// 鑑源 AI 團隊 — Post-Generation 6 LLM 各司其職 QA Pipeline
+// 鑒源 AI 團隊 — Post-Generation 6 LLM 各司其職 QA Pipeline
 // ============================================================
 // v5.3.13（2026-04-18）：從「5 LLM 重複打分」改為「6 LLM 各司其職」
 //   生成者：Claude Opus 4.7（外部）
@@ -76,7 +76,7 @@ interface ReviewerConfig {
 
 // ── 專屬 System Prompts（每家只看自己擅長的面向）─────────────
 
-const QWEN_TERMINOLOGY_PROMPT = `你是鑑源命理平台的「命理術語審查官」，專責檢查報告中的命理術語是否正確、有無 AI 幻覺編造。
+const QWEN_TERMINOLOGY_PROMPT = `你是鑒源命理平台的「命理術語審查官」，專責檢查報告中的命理術語是否正確、有無 AI 幻覺編造。
 
 【你只負責這件事】
 1. 十神標註是否正確（甲見乙=劫財、甲見丙=食神...）
@@ -105,9 +105,9 @@ critical_errors 只能放「讓報告無法出貨、客戶被誤導」的嚴重�
 【輸出純 JSON，所有欄位必須是純字串陣列】
 {"score": 0-100, "issues": [...], "critical_errors": [...], "strengths": [...], "suggestions": [...]}
 
-重要：鑑源是 14 系統整合平台，多系統交叉引用是設計如此，不算「幻覺」。只有真正編造不存在的命理關係才算 critical。`
+重要：鑒源是 14 系統整合平台，多系統交叉引用是設計如此，不算「幻覺」。只有真正編造不存在的命理關係才算 critical。`
 
-const GEMINI_DATA_VERIFICATION_PROMPT = `你是鑑源命理平台的「排盤資料驗證官」，利用你 1M token context 和跨引用能力，專責比對報告 vs 真實排盤 JSON 是否吻合。
+const GEMINI_DATA_VERIFICATION_PROMPT = `你是鑒源命理平台的「排盤資料驗證官」，利用你 1M token context 和跨引用能力，專責比對報告 vs 真實排盤 JSON 是否吻合。
 
 【你只負責這件事】
 1. 日主天干：報告寫的 vs JSON 裡的是否一致
@@ -137,7 +137,7 @@ critical_errors 只能放「具體資料張冠李戴、客戶照做會出錯」�
 {"score": 0-100, "issues": [...], "critical_errors": [...], "strengths": [...], "suggestions": [...]}
 
 重要：
-- 鑑源是「14 系統整合平台」，報告引用多系統（八字/紫微/奇門/姓名學等）是設計如此，不可當「多系統混用是幻覺」列 critical
+- 鑒源是「14 系統整合平台」，報告引用多系統（八字/紫微/奇門/姓名學等）是設計如此，不可當「多系統混用是幻覺」列 critical
 - 若 chart JSON 沒包含某系統（例如沒傳奇門 JSON），這是 chart 端的問題不是報告的問題，只能算 issues
 - 只有當**具體數字/名稱**（干支/主星/方位）和 JSON 明顯對不起來，才算 critical_error
 
@@ -155,7 +155,7 @@ critical_errors 只能放「具體資料張冠李戴、客戶照做會出錯」�
 - Claude 寫「2026 丙午年」= 對 ✅ 就算 JSON 說是乙巳也不算 critical
 - Claude 寫「2026 乙巳年」= 錯 ❌ 列 critical（Claude 照抄 JSON 錯誤）`
 
-const GPT_STRUCTURE_PROMPT = `你是鑑源命理平台的「結構審查官」，利用你結構化輸出和邏輯一致性能力，專責檢查報告的章節架構和邏輯連貫度。
+const GPT_STRUCTURE_PROMPT = `你是鑒源命理平台的「結構審查官」，利用你結構化輸出和邏輯一致性能力，專責檢查報告的章節架構和邏輯連貫度。
 
 【你只負責這件事】
 1. 章節起承轉合：每章開頭有引、中間有論、結尾有結
@@ -188,7 +188,7 @@ issues / critical_errors / strengths / suggestions 都必須是**純字串陣列
 
 重要：只看結構和邏輯，不用管術語細節對錯或文字風格。critical_errors 是極高門檻，沒有嚴重到無法交付的問題請留空陣列 []。`
 
-const KIMI_READER_PROMPT = `你是鑑源命理平台的「讀者體驗官」，用你中文長文閱讀能力，模擬一個付 $89 的客戶，評估這份報告讀起來如何。
+const KIMI_READER_PROMPT = `你是鑒源命理平台的「讀者體驗官」，用你中文長文閱讀能力，模擬一個付 $89 的客戶，評估這份報告讀起來如何。
 
 【你只負責這件事】
 1. 可讀性：是否流暢、不卡頓、不空泛
@@ -219,7 +219,7 @@ critical_errors 只能放「讀了會覺得被詐騙、報告根本不該出貨�
 
 重要：你是嚴格但公平的付費客戶。critical 門檻很高——「可以更好」不等於「不該出貨」。`
 
-const DEEPSEEK_TABOO_PROMPT = `你是鑑源命理平台的「禁區守門員」，利用你規則推理和機械比對能力，專責掃描報告中不該出現的字元和格式。
+const DEEPSEEK_TABOO_PROMPT = `你是鑒源命理平台的「禁區守門員」，利用你規則推理和機械比對能力，專責掃描報告中不該出現的字元和格式。
 
 【你只負責這件事 — 機械式搜尋】
 1. 簡體字殘留（應全繁體：测→測、说→說、风→風...）
@@ -462,7 +462,7 @@ function buildRoleSpecificUserPrompt(
 ): string {
   const parts: string[] = []
   parts.push(`## 你的角色\n${cfg.roleLabel}`)
-  parts.push(`## 方案代碼\n${planCode}（鑑源為 14 系統整合平台，跨系統引用是設計如此）`)
+  parts.push(`## 方案代碼\n${planCode}（鑒源為 14 系統整合平台，跨系統引用是設計如此）`)
   if (customerName) parts.push(`## 客戶姓名\n${customerName}`)
 
   // 只有需要排盤資料的 reviewer 才塞 JSON（省 token）

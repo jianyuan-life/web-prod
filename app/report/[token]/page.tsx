@@ -1633,7 +1633,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   })()
 
   // v5.6.10 R5-2:從 ai_content 解析五行能量分布(對應 Gemini「致命傷」第二招)
-  // 鑑源 prompt 通常會生「五行能量分布:木 30% / 火 20% / 土 25% / 金 15% / 水 10%」格式
+  // 鑒源 prompt 通常會生「五行能量分布:木 30% / 火 20% / 土 25% / 金 15% / 水 10%」格式
   const wuxingData = (() => {
     if (!aiContent) return []
     // 匹配多種格式:「木 30%」「木:30%」「木 30」(無 %)
@@ -2273,7 +2273,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
         {/* 品牌標題 v5.8.5 縮 mb-3 → mb-2 */}
         <div className="text-center mb-2 no-print">
-          <span className="text-gold/70 text-xs tracking-[4px]">鑑 源 命 理</span>
+          <span className="text-gold/70 text-xs tracking-[4px]">鑒 源 命 理</span>
         </div>
 
         {/* 報告重構 2026-06-23:命格綜合卡(命格原型+一句話+天賦/課題、答案先行)
@@ -4964,7 +4964,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               color: '#c9a84c',
               transform: 'rotate(-8deg)',
               userSelect: 'none',
-            }}>鑑源</span>
+            }}>鑒源</span>
           </div>
           <div className="relative z-10">
           {(() => {
