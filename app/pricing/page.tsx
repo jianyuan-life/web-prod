@@ -103,7 +103,7 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
             </div>
             <ul className="space-y-2 mb-6 flex-1">
               {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs text-text">
+                <li key={f} className="flex items-start gap-2 text-xs text-text leading-[1.8] tracking-[0.02em]">
                   <span className="text-gold mt-0.5">&#10003;</span>{f}
                 </li>
               ))}

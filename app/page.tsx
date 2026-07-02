@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import PricingCards from '@/components/PricingCards'
-import LiveCounter from '@/components/LiveCounter'
 import StarField from '@/components/StarField'
 import TrustBar from '@/components/TrustBar'
 import Astrolabe from '@/components/Astrolabe'
@@ -84,8 +83,8 @@ export default function HomePage() {
         <Astrolabe />
         <ReportPreviewFloat />
 
-        {/* v5.10.457 hero 中央暖金放射光暈(nano-banana UI 方向、提升質感、不蓋互動) */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden style={{ background: 'radial-gradient(ellipse 52% 46% at 50% 44%, rgba(201,168,76,0.13) 0%, rgba(201,168,76,0.045) 38%, transparent 72%)' }} />
+        {/* v5.10.460 hero 中央暖金放射光暈(nano-banana UI 方向;theme 化 class、light 用深暖金才可見) */}
+        <div className="absolute inset-0 pointer-events-none hero-gold-glow" aria-hidden />
 
         <div className="relative z-10 text-center max-w-[820px] mx-auto px-6 animate-[fade-up_1s_ease-out]">
           <div className="text-[13px] tracking-[0.3em] text-gold/50 mb-8" style={{ fontFamily: 'var(--font-body)' }}>
@@ -118,15 +117,14 @@ export default function HomePage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
           </div>
+          {/* v5.10.460:移除 hero「N 人已體驗」弱社會證明(GeminiPro+liveaudit 雙源:數字小反削信任、
+              沒證明好過弱證明;tools 頁「N 份付費報告交付」保留、那個數字有力) */}
           <p className="text-xs text-text-muted/60 tracking-wide flex items-center justify-center gap-3 flex-wrap">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              <LiveCounter /> 人已體驗
-            </span>
+            <span>30 秒免費速算</span>
             <span className="text-text-muted/30">·</span>
             <span>不需註冊</span>
             <span className="text-text-muted/30">·</span>
-            <span>完全免費</span>
+            <span>不需信用卡</span>
           </p>
         </div>
 
@@ -221,7 +219,7 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">差異</span>
           </div>
-          <h2 className="text-2xl md:text-3xl text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.035em] text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             市面上的命理服務，和鑒源有什麼不同？
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -260,7 +258,7 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">核心優勢</span>
           </div>
-          <h2 className="text-2xl md:text-3xl text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.035em] text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             四個理由，讓命理真正有用
           </h2>
           <p className="text-center text-text-muted text-sm mb-12">不只是算命，而是一次對自己的深度認識</p>
@@ -316,7 +314,7 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">十四大系統</span>
           </div>
-          <h2 className="text-2xl md:text-3xl text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.035em] text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             東方古典智慧 &middot; 西方占星體系
           </h2>
           <p className="text-center text-text-muted text-sm mb-4">每套系統各司其職，交叉驗證給你最完整的答案</p>
@@ -354,7 +352,7 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">源流</span>
           </div>
-          <h2 className="text-2xl md:text-3xl mb-6 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.035em] mb-6 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             植根經典 &middot; 融合科技
           </h2>
           <p className="text-base text-text-muted leading-[2] max-w-2xl mx-auto mb-10">
@@ -383,20 +381,31 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">流程</span>
           </div>
-          <h2 className="text-2xl md:text-3xl text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.035em] text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             五步完成命格分析
           </h2>
+          {/* v5.10.460:五步加東方線條 SVG icon(GeminiPro:純文字數字簡陋、缺視覺錨;保留壹-伍) */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {[
-              { step: '壹', title: '免費體驗', desc: '輸入出生資料，即時查看八字排盤與性格分析' },
-              { step: '貳', title: '選擇方案', desc: '8 種方案 · 4 大類別、從 $29 起' },
-              { step: '參', title: '填寫資料', desc: '姓名、出生日期時間、性別，簡單三步' },
-              { step: '肆', title: '深度分析', desc: '專業規則逐系統交叉分析' },
-              { step: '伍', title: '查看報告', desc: '線上閱讀 + PDF 永久保存，隨時回顧' },
+              { step: '壹', title: '免費體驗', desc: '輸入出生資料，即時查看八字排盤與性格分析',
+                icon: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></> },
+              { step: '貳', title: '選擇方案', desc: '8 種方案 · 4 大類別、從 $29 起',
+                icon: <><rect x="3" y="4" width="8" height="8" rx="1.5" /><rect x="13" y="4" width="8" height="8" rx="1.5" /><rect x="3" y="14" width="8" height="8" rx="1.5" /><rect x="13" y="14" width="8" height="8" rx="1.5" /></> },
+              { step: '參', title: '填寫資料', desc: '姓名、出生日期時間、性別，簡單三步',
+                icon: <path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" /> },
+              { step: '肆', title: '深度分析', desc: '專業規則逐系統交叉分析',
+                icon: <><circle cx="9" cy="12" r="6" /><circle cx="15" cy="12" r="6" /></> },
+              { step: '伍', title: '查看報告', desc: '線上閱讀 + PDF 永久保存，隨時回顧',
+                icon: <><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /><path d="M9 7h7M9 11h5" /></> },
             ].map((item, i) => (
               <div key={item.step} className="relative text-center">
-                {i < 4 && <div className="hidden md:block absolute top-6 left-[60%] w-[80%] h-px bg-gradient-to-r from-gold/20 to-transparent" />}
-                <div className="text-2xl text-gold/80 mb-2" style={{ fontFamily: 'var(--font-sans)' }}>{item.step}</div>
+                {i < 4 && <div className="hidden md:block absolute top-7 left-[62%] w-[76%] h-px bg-gradient-to-r from-gold/20 to-transparent" />}
+                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gold/[0.06] border border-gold/12 flex items-center justify-center relative">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                    {item.icon}
+                  </svg>
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gold/15 border border-gold/25 text-[10px] text-gold flex items-center justify-center" style={{ fontFamily: 'var(--font-sans)' }}>{item.step}</span>
+                </div>
                 <h3 className="font-semibold text-cream text-sm mb-1">{item.title}</h3>
                 <p className="text-xs text-text-muted leading-relaxed">{item.desc}</p>
               </div>
@@ -411,7 +420,7 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">方案</span>
           </div>
-          <h2 className="text-2xl md:text-3xl text-center mb-2 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.035em] text-center mb-2 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             選擇適合您的方案
           </h2>
           <p className="text-center text-text-muted mb-12 text-sm">從 $29 起，每份報告都包含網頁展示 + PDF 永久保存</p>
@@ -565,7 +574,7 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">用戶心聲</span>
           </div>
-          <h2 className="text-2xl md:text-3xl text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.035em] text-center mb-4 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             使用情境
           </h2>
           <p className="text-center text-text-muted text-sm mb-12">以下為使用情境參考，展示鑒源報告可以如何幫助您</p>
@@ -617,7 +626,7 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">常見問題</span>
           </div>
-          <h2 className="text-2xl md:text-3xl text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-[0.035em] text-center mb-12 text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
             您可能想知道
           </h2>
           {[
@@ -649,21 +658,24 @@ export default function HomePage() {
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">開始</span>
           </div>
-          <h2 className="text-3xl md:text-[40px] mb-4 text-cream leading-[1.4]" style={{ fontFamily: 'var(--font-sans)' }}>
+          <h2 className="text-3xl md:text-[40px] font-semibold tracking-[0.03em] mb-4 text-cream leading-[1.4]" style={{ fontFamily: 'var(--font-sans)' }}>
             知命者不惑，識運者不憂
           </h2>
           <p className="text-text-muted mb-10 leading-[1.9] text-base">
             用 30 秒做一次免費命理速算，<br />
             看看十四套系統如何解讀你的命格密碼。
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-5">
+          {/* v5.10.460:雙 CTA 主次分明(3 家視覺 LLM 共識:原兩鈕視覺等重、用戶困惑降轉化)
+              主=免費速算(低摩擦微承諾)、次=降為文字連結 */}
+          <div className="flex flex-col items-center gap-4 mb-5">
             <Link href="/tools/bazi"
-              className="inline-block px-10 py-4 bg-gold text-dark font-bold rounded-lg text-lg btn-glow">
+              className="inline-block px-12 py-4 bg-gold text-dark font-bold rounded-lg text-lg btn-glow">
               開始認識你自己
             </Link>
+            {/* no-ink:退出 main a 墨跡底線規則(QA P2:否則 hover 雙金線) */}
             <Link href="/pricing"
-              className="inline-block px-10 py-4 glass text-cream font-semibold rounded-lg text-lg hover:bg-surface-hover transition-colors">
-              我已經準備好了
+              className="no-ink inline-flex items-center min-h-[44px] px-4 text-sm text-gold/70 hover:text-gold underline underline-offset-4 transition-colors">
+              我已經準備好了，直接看方案 →
             </Link>
           </div>
           <p className="text-xs text-text-muted/50">不需註冊 &middot; 不需信用卡 &middot; 完全免費</p>

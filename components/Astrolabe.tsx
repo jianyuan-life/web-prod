@@ -5,7 +5,7 @@
 export default function Astrolabe() {
   return (
     <div
-      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[640px] pointer-events-none max-md:w-[min(380px,92vw)] max-md:h-[min(380px,92vw)]"
+      className="astrolabe-root absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[640px] pointer-events-none max-md:w-[min(380px,92vw)] max-md:h-[min(380px,92vw)]"
       aria-hidden
     >
       {/* 星雲輝光背景 — 給星盤景深與「能量場」感(暗:金紫暈;暖白:柔金暈) */}

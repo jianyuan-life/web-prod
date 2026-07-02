@@ -674,6 +674,40 @@ html:not([data-theme="light"]) .text-text-muted\/70 { color: rgb(179 184 197 / 0
     0 0 60px rgba(74, 122, 255, 0.1);
   transform: translateY(-1px);
 }
+/* v5.10.460 dark 金 CTA 光澤材質(3 家視覺 LLM 共識「扁平金顯廉價」;
+   background-image 疊在 bg-gold 之上、不動 background-color;light 有自己的
+   朱砂 background shorthand override(L1406+)會蓋掉此層、互不干擾。
+   Codex L3 P1 修:排除 bg-gradient-* 型 CTA(如 FreemiumPaywall from-gold to-amber-500、
+   其唯一填色就是 background-image、被 sheen 蓋掉會變透明購買鍵) */
+html:not([data-theme="light"]) .btn-glow:not([class*="bg-gradient"]) {
+  background-image: linear-gradient(150deg, rgba(248, 241, 222, 0.30) 0%, rgba(248, 241, 222, 0.06) 42%, rgba(10, 14, 26, 0.10) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 20px rgba(201, 168, 76, 0.25);
+}
+html:not([data-theme="light"]) .btn-glow:not([class*="bg-gradient"]):hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 6px 30px rgba(201, 168, 76, 0.4),
+    0 0 60px rgba(74, 122, 255, 0.1);
+}
+
+/* v5.10.460 hero 中央光暈 theme 化(原 inline 金 0.13 在 light 米白底無感、
+   且未 scope 連 dark 一起套;抽 class:dark 保持金暈、light 用較深暖金+微朱砂才可見) */
+.hero-gold-glow {
+  background: radial-gradient(ellipse 52% 46% at 50% 44%, rgba(201, 168, 76, 0.13) 0%, rgba(201, 168, 76, 0.045) 38%, transparent 72%);
+}
+[data-theme="light"] .hero-gold-glow {
+  background:
+    radial-gradient(ellipse 52% 46% at 50% 44%, rgba(140, 94, 26, 0.10) 0%, rgba(140, 94, 26, 0.035) 40%, transparent 72%),
+    radial-gradient(ellipse 30% 24% at 50% 42%, rgba(192, 57, 43, 0.05) 0%, transparent 70%);
+}
+
+/* v5.10.460 星盤 light 可見度(v425 提亮後 dark luminous、但淡金線在米白底仍近隱形;
+   light 壓暗成古銅調 → 對比可辨、nebula 暈同步變沉穩) */
+[data-theme="light"] .astrolabe-root {
+  filter: brightness(0.62) saturate(1.15);
+}
 
 /* 古典分隔線 */
 .divider-ornament {
