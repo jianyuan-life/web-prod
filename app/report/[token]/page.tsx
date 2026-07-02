@@ -2918,7 +2918,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
         {/* v5.10.433 命格速覽卡(老闆「全部移除數字評分」)— 留命格名 + Top5 天賦/課題、砍評等圈/79分/percentile/挑戰度 */}
         {!isChumenji && analysesSummary.length >= 3 && (() => {
-          const systemCrossCount = analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length
+          // v5.10.461:cap 14(對外清零 15→14 鐵律 v5.3.95;測試報告實測 badge 吐「15 套交叉」=
+          // 南洋 filter 漏接舊命名變體、與 legacy 命盤一覽卡 Math.min(14,·) 同規格對齊)
+          const systemCrossCount = Math.min(14, analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length)
           return (
             <div className="rounded-2xl px-6 py-5 mb-4" style={{
               background: 'linear-gradient(135deg, rgba(197,150,58,0.15), rgba(26,42,74,0.4))',
@@ -3032,6 +3034,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             if (mzM2) mingZhu = mzM2[1]
           }
           const sysCount = analysesSummary.length
+          // v5.10.461 C3 修(production 實測 C/D 首屏八字重複):
+          //   ChartSummaryCard(v452、full_charts.bazi.five_elements 有才渲染)已含 四柱+五行+日主用神;
+          //   本 legacy 卡與其同屏時只留「非重複」資訊(紫微命宮/五行局)、砍四柱/日主/五行解讀。
+          //   舊報告(無 full_charts)不受影響、legacy 卡完整保留。
+          const fcBazi = (rr.full_charts as { bazi?: { five_elements?: Record<string, number> } } | undefined)?.bazi
+          const chartCardShown = !!(fcBazi && fcBazi.five_elements && Object.keys(fcBazi.five_elements).length > 0)
+          if (chartCardShown && !mingGong && !wuxingJu) return null
           if (pillars.length < 3 && !mingGong) return null
           return (
             <div className="rounded-2xl px-6 py-5 mb-6" style={{
@@ -3066,7 +3075,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   v5.10.7 R+4 Bento Box 升級(Codex P0「7 張等權重排」+ Gemini「Bento 60/40」共識):
                   desktop 改 7 欄但每張卡比例一致用 grid-cols-7、加 hover 微動效強化質感 */}
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center [&>div]:transition-all [&>div]:duration-200 [&>div:hover]:scale-[1.02] [&>div:hover]:-translate-y-0.5">
-                {pillars.map((p, i) => {
+                {!chartCardShown && pillars.map((p, i) => {
                   // v5.10.7 R+3 加五行色彩錨點(Claude Haiku mobile P3「缺視覺化元素」修)
                   const gan = p[0] || ''
                   const wuxingMap: Record<string, { name: string; color: string }> = {
@@ -3087,13 +3096,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                     </div>
                   )
                 })}
-                {pillars.length === 3 && (
+                {!chartCardShown && pillars.length === 3 && (
                   <div className="px-2 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.15)', border: '1px dashed rgba(197,150,58,0.18)' }}>
                     <div className="text-gold/40 text-[9px] tracking-[1px] mb-1">時柱</div>
                     <div className="text-cream/40 text-[10px]">時辰未明</div>
                   </div>
                 )}
-                {dayMaster && (
+                {!chartCardShown && dayMaster && (
                   <div className="px-2 py-2 rounded-lg" style={{ background: 'rgba(106,176,76,0.10)', border: '1px solid rgba(106,176,76,0.25)' }}>
                     <div className="text-green-400/60 text-[9px] tracking-[1px] mb-1">日主</div>
                     <div className="text-cream font-bold text-sm">{dayMaster}</div>
@@ -3113,7 +3122,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 )}
               </div>
               {/* v5.10.7 R+3 加八字 insight 行(Claude Haiku mobile #1「八字下方納音五行/insight」修)*/}
-              {dayMaster && (() => {
+              {!chartCardShown && dayMaster && (() => {
                 const wxByGan: Record<string, string> = {
                   '甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
                   '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水',
@@ -4723,8 +4732,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   // v5.10.134 P1 修(L1 round 2 R2-2 fallback 殘 2 處):
                   else if (/人生藍圖/.test(t)) hint = '本章節是你「整份人生地圖」的縮影 — 對照各系統章節、找出最影響你的 3 條主線、其他先放一邊'
                   else if (/你們的問題|你們(?:之間)?(?:的)?問題|問題(?:的)?(?:剖析|根源)/.test(t)) hint = '本章節直接點出「你們關係中最該處理的點」— 不是表面爭執、是底層能量結構的拉扯'
-                  // ===== fallback(預期 < 5% 觸發)=====
-                  else hint = '本章節結論建議跟其他章節交叉對照、轉化為本週可執行的 1-2 條具體行動'
+                  // ===== fallback =====
+                  // v5.10.461 C2 修(production 實測:v4 單-Call 重生的 C 報告 5 核心章標題
+                  // 全不匹配上方 pattern → 此通用句每章重複出現 = 模板廢話、零個人化價值。
+                  // 改:匹配不到 → 不顯示 hint 框(原句「跟其他章節交叉對照…」對客戶是噪音)
+                  else hint = ''
 
                   if (!hint) return null
                   return (

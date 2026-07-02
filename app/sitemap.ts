@@ -11,9 +11,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }))
 
+  // v5.10.461 D8 修(bizaudit P1):
+  //   - 移除 checkout / auth/*(robots.ts PRIVATE_PATHS 已 disallow、sitemap 再收錄 = 對搜尋引擎自相矛盾)
+  //   - 補 about / faq(公開內容頁、原漏收錄、傷內容行銷)
   return [
     { url: base, lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
     { url: `${base}/pricing`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${base}/faq`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
     { url: `${base}/tools/bazi`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/tools/name`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${base}/tools/ziwei`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
@@ -21,9 +26,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/blog`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
     { url: `${base}/whitepaper`, lastModified: new Date('2026-04-17'), changeFrequency: 'monthly', priority: 0.8 },
     ...blogEntries,
-    { url: `${base}/checkout`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${base}/auth/login`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.4 },
-    { url: `${base}/auth/signup`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.4 },
     { url: `${base}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
     { url: `${base}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
   ]

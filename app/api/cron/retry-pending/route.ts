@@ -9,9 +9,10 @@
 // 4. 觸發新 workflow 前先搶佔狀態，防止多個 cron 實例競爭
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { checkCronAuth } from '@/lib/cron-auth'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
+import { sendApologyIfFinalFailure } from '@/lib/report/apology-email'  // v5.10.461 P0-3:終局失敗補寄致歉信
 
 // Vercel Cron 最長執行時間 60 秒
 export const maxDuration = 60
@@ -65,6 +66,15 @@ export async function GET(req: NextRequest) {
         }).eq('id', report.id)
         console.info(`⚠️ 報告 ${report.id} 超過重試上限，標記為 failed`)
       }
+      // v5.10.461 P0-3 修(bizaudit):此路徑原本繞過 markReportFailed → 承諾的「24h 人工接手」
+      // 致歉信從沒寄。補寄(lib 自帶 guard:終局+有 email+未寄過)。
+      // L4 Gemini P0 修:原 Promise.race 12s 超時後變 floating promise、serverless 回應後被凍結
+      // → 信可能已寄但 email_send_log 沒寫 → 下輪 cron 重複寄。改 next/server after():
+      // response 後平台(Vercel waitUntil 語意)保活執行完、零 cron 佔時、寄信與 log 完整落地。
+      after(() =>
+        sendApologyIfFinalFailure(report.id, 'cron-retry-exhausted')
+          .catch((e) => console.error('apology(after) 失敗(不阻塞):', e))
+      )
       continue
     }
 
@@ -156,6 +166,12 @@ export async function GET(req: NextRequest) {
       }).eq('id', report.id).eq('status', 'generating')
       timedOutCount++
       console.info(`⏰ 報告 ${report.id} 生成超時（60 分鐘+無活動），標記為 failed`)
+      // v5.10.461 P0-3 修:超時終局也補寄致歉信(retry<3 時 lib guard 會 skip、等 Part A 重試)
+      // 同上:after() 避免 floating promise 凍結(L4 Gemini P0)
+      after(() =>
+        sendApologyIfFinalFailure(report.id, 'cron-generating-timeout')
+          .catch((e) => console.error('apology(after) 失敗(不阻塞):', e))
+      )
     } else {
       const elapsed = Math.round((Date.now() - startedTime) / 1000)
       console.info(`⏳ 報告 ${report.id} 正在生成中（已 ${elapsed} 秒），不干預`)

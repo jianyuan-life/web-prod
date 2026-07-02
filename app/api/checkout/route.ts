@@ -80,9 +80,21 @@ export async function POST(req: NextRequest) {
         )
       }
     }
-    const customerEmail = (verifiedEmail || bodyEmail).toLowerCase()
+    const customerEmail = (verifiedEmail || bodyEmail).toLowerCase().trim()
     if (!customerEmail) {
       return NextResponse.json({ error: '請提供 email 或先登入' }, { status: 400 })
+    }
+    // v5.10.461 D4 修(bizaudit P1:結帳不驗 email 格式 → 打錯信箱付了錢收不到報告):
+    //   基本 RFC 格式驗證(qaia P2-2:先 trim、手機自動填字尾端空白不誤擋)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(customerEmail)) {
+      return NextResponse.json({ error: 'Email 格式不正確、請確認後再試(報告將寄到此信箱)' }, { status: 400 })
+    }
+    // 拋棄式信箱黑名單(qaia P2-3:只擋訪客新輸入;已登入客戶 email 是既成帳號、擋了無 recourse)
+    if (!verifiedEmail) {
+      const { isDisposableEmail } = await import('@/lib/disposable-email-domains')
+      if (isDisposableEmail(customerEmail)) {
+        return NextResponse.json({ error: '請使用常用信箱(暫時性信箱可能收不到報告與後續服務)' }, { status: 400 })
+      }
     }
 
     const stripeKey = process.env.STRIPE_SECRET_KEY

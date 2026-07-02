@@ -9,6 +9,8 @@ import {
   SYSTEM_GROUPS,
 } from '@/prompts/c_plan_v2'
 import { validateReportAgainstData } from '@/workflows/generate-report/steps'
+import { extractFullCharts } from '@/workflows/generate-report/extract-full-charts'  // v5.10.461 P0-4:fallback 補接 deterministic 排盤結構化
+import { extractNarrativeFromContent } from '@/lib/report/extract-narrative'  // v5.10.461 P0-4:fallback 補接敘事綜合萃取
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { PLAN_SYSTEM_PROMPT } from '@/workflows/generate-report/plan-prompts'  // v5.10.399:fallback 用 SSOT(含 v2/v4 wire + v5.10.x 全修補)、取代本檔脫節 inline 舊版
@@ -898,6 +900,28 @@ ${analyses.length}套系統排盤完整數據：
       })
     }
 
+    // v5.10.461(P0-4 修):fallback path 補接 full_charts + narrative_summary
+    //   根因:兩者原本只接在 durable workflow path(index.ts)、fallback 重生的報告
+    //   (如 6/24 C/G15)兩欄全空 → 命盤綜合量化卡 + 命格綜合卡(v452/v454 招牌)不渲染。
+    //   qaia IA P1-1:萃取不可同步串在存檔前(C fallback 生成 100-200s + 60s 萃取 + PDF
+    //   逼近 maxDuration 300s → timeout-before-save 燒錢、lesson #058 同根)。
+    //   改:與 PDF **並行** 跑 + timeout 縮 25s;沒趕上 → admin backfill-narrative 事後補、不影響交付。
+    let narrativePromise: Promise<unknown> | null = null
+    if (!isChumenjiPlan(planCode)) {
+      try {
+        const fullCharts = extractFullCharts(calcResult)
+        if (fullCharts && typeof fullCharts === 'object' && Object.keys(fullCharts as object).length > 0) {
+          reportResult.full_charts = fullCharts
+        }
+      } catch (fcErr) {
+        console.error('fallback extractFullCharts 失敗(不阻塞、full_charts 略過):', fcErr)
+      }
+      narrativePromise = extractNarrativeFromContent(reportContent, 25000).catch((nErr) => {
+        console.error('fallback narrative 萃取失敗(不阻塞、narrative 略過):', nErr)
+        return null
+      })
+    }
+
     const planName = PLAN_NAMES[planCode] || '命理分析報告'
 
     // Step 4.5: 生成 PDF（非出門訣方案、E1-E4 全跳過）
@@ -981,6 +1005,12 @@ ${analyses.length}套系統排盤完整數據：
       } catch (pdfErr) {
         console.error('PDF 生成錯誤:', pdfErr)
       }
+    }
+
+    // 收割與 PDF 並行的 narrative 萃取(25s cap、已在跑一陣子、此處 await 幾乎不加時)
+    if (narrativePromise) {
+      const narrative = await narrativePromise
+      if (narrative) reportResult.narrative_summary = narrative
     }
 
     const { error: dbError } = await getSupabase().from('paid_reports').update({

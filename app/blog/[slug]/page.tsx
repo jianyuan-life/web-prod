@@ -29,6 +29,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       type: 'article',
       publishedTime: post.date,
       authors: [post.author],
+      // v5.10.461 D8 修(bizaudit P1:頁面自定義 openGraph 會整組取代 layout 的 → images 掉了、
+      // 社群分享無預覽圖傷 CTR;補回品牌 OG 圖)
+      images: [{ url: '/og-default.png', width: 1200, height: 630, alt: post.title }],
     },
   }
 }

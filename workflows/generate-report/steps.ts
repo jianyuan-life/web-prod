@@ -10,8 +10,10 @@ import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { isFlagEnabled } from '@/lib/feature-flags'  // Prompt 1: FF_AI_PROMPT_CACHE
 import { recordEmailSend } from '@/lib/email-send-log'
-import { notifyEmailFailed } from '@/lib/ai/observability/telegram'
+import { notifyEmailFailed, notifyNeedsHumanReview } from '@/lib/ai/observability/telegram'
 import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
+import { extractNarrativeFromContent } from '@/lib/report/extract-narrative'  // v5.10.461 P0-4:敘事萃取 SSOT 抽 lib
+import { buildApologyEmail, hasApologyBeenSent } from '@/lib/report/apology-email'  // v5.10.461 P0-3:致歉信模板 SSOT 抽 lib + email_send_log 防重寄
 // v5.10.88 Stage 1 USE_PLAN_V3 feature flag(SOP `tasks/prompt_v3_switch_sop_2026-05-08.md`):
 //   c_plan v2 vs v3 export 同 11 個 symbol 同 signature(已 grep 驗證)、namespace import 後 flag 切
 //   預設 false → production 仍走 v2、零風險;Vercel env `USE_PLAN_V3=true` → trigger redeploy 即生效 v3
@@ -4065,42 +4067,9 @@ contentModerationStep.maxRetries = 1
 //   只取報告「已寫」的內容、不發明;失敗回 null(非阻塞、card 不顯)。供 ReportNarrativeCard 用。
 export async function aiExtractNarrative(reportContent: string): Promise<unknown> {
   "use step";
-  if (!reportContent || reportContent.length < 800) return null
-  const GK = process.env.GEMINI_API_KEY
-  if (!GK) return null
-  const prompt = `你是嚴謹資料萃取器。以下是命理報告全文。**只萃取報告「已明確寫出」的內容、絕對不得推斷/發明/誇大。每個欄位用詞盡量用報告原句片語。報告沒寫的填 null/空陣列。**
-
-只輸出 JSON:
-{
-  "archetype": "命格原型/封號(報告命格名片有寫的、如「太陽之火」,否則 null)",
-  "oneLiner": "報告對此人的一句話核心定位(用報告原句、否則 null)",
-  "talentsTop3": ["報告明確指出的天賦/優勢、最多3、每條用報告原文關鍵片語"],
-  "risksTop3": ["報告明確指出的課題/風險、最多3、每條用報告原文關鍵片語"]
-}
-
-報告全文:
-${reportContent.slice(0, 48000)}`
-  try {
-    const ctrl = new AbortController()
-    const to = setTimeout(() => ctrl.abort(), 60000)
-    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent', {
-      method: 'POST',
-      headers: { 'x-goog-api-key': GK, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, responseMimeType: 'application/json' } }),
-      signal: ctrl.signal,
-    })
-    clearTimeout(to)
-    const j = await r.json()
-    const t = j?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).filter(Boolean).join('')
-    if (!t) return null
-    const parsed = JSON.parse(t)
-    // 防呆:至少要有 archetype 或 talents、否則視為無效
-    if (!parsed || (!parsed.archetype && !(parsed.talentsTop3 && parsed.talentsTop3.length))) return null
-    return parsed
-  } catch (e) {
-    console.error('aiExtractNarrative 失敗（不阻塞、narrative 略過）:', e instanceof Error ? e.message : e)
-    return null
-  }
+  // v5.10.461(P0-4 修):邏輯抽到 lib/report/extract-narrative.ts 共用
+  // (fallback generate-report route + admin backfill 也要用、"use step" 函式無法直接進 route)
+  return extractNarrativeFromContent(reportContent)
 }
 
 export async function saveReportToSupabase(
@@ -4428,9 +4397,14 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
   const supabase = getSupabase()
 
   // 先查報告資料（供致歉信使用 + 判斷是否達最終失敗）
+  // v5.10.461 🔴 P0 真因修(2026-07-03 production 實測):paid_reports 根本沒有 apology_sent_at 欄位
+  //   (42703 column does not exist)→ 原 select 含它 = 整句 400 → reportData 一直是 null →
+  //   告警 Email 全「未知」+ 客戶致歉信從未寄出過(guard 讀不到 customer_email)。
+  //   修:select 去掉該欄位;防重寄改查 email_send_log(hasApologyBeenSent、表確定存在)。
+  //   migration(supabase/migrations/add_apology_sent_at.sql)待老闆 apply 後、欄位作第二防線。
   const { data: reportData } = await supabase
     .from('paid_reports')
-    .select('customer_email, plan_code, retry_count, birth_data, apology_sent_at')
+    .select('customer_email, plan_code, retry_count, birth_data')
     .eq('id', reportId)
     .maybeSingle()
 
@@ -4511,65 +4485,22 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
   // 客戶致歉信：僅在達最終失敗（retry_count >= 3）且尚未寄過時發送
   const retryCount = (reportData?.retry_count as number | undefined) ?? 0
   const customerEmailFailed = reportData?.customer_email as string | undefined
-  const alreadySent = !!reportData?.apology_sent_at
+  // v5.10.461:防重寄改查 email_send_log(原 apology_sent_at 欄位不存在、guard 永遠 false)
+  const alreadySent = customerEmailFailed && retryCount >= 3 ? await hasApologyBeenSent(reportId) : false
 
   if (customerEmailFailed && retryCount >= 3 && !alreadySent) {
     try {
       const planCode = (reportData?.plan_code as string | undefined) || ''
-      // v5.7.13:改 PLAN_NAMES from lib/plan-names
-      const planName = PLAN_NAMES[planCode] || '命理報告'
-
       const birthDataObj = (reportData?.birth_data || {}) as Record<string, unknown>
       const rawLocale = typeof birthDataObj['locale'] === 'string'
         ? String(birthDataObj['locale'])
         : 'zh-TW'
-      const isCN = rawLocale === 'zh-CN'
-      const emailFont = isCN
-        ? "'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif"
-        : "'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif"
-      const emailLang = isCN ? 'zh-CN' : 'zh-TW'
 
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-      // v5.7.6:鑒源依電子商品慣例不支援退款、移除 refund link、改強化客服路徑
-      const supportEmail = 'support@jianyuan.life'
-      const supportMailtoSubject = encodeURIComponent((isCN ? '报告处理协助 ' : '報告處理協助 ') + reportId.slice(0, 8))
-      const supportMailtoUrl = `mailto:${supportEmail}?subject=${supportMailtoSubject}&body=${encodeURIComponent('您好、我的報告生成失敗、煩請協助補開新單。報告編號:' + reportId.slice(0, 8))}`
-      const subject = isCN
-        ? `关于您的${planName}报告 — 我们正在处理`
-        : `關於您的${planName}報告 — 我們正在處理`
-      const from = isCN ? '鉴源命理 <reports@jianyuan.life>' : '鑒源命理 <reports@jianyuan.life>'
-
-      const apologyHtml = isCN ? `
-      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">您好，</p>
-      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">很抱歉通知您，您的<strong style="color:#c9a84c;">${planName}</strong>报告在生成过程中遇到技术问题，系统经多次自动重试仍未能完成。</p>
-      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">我们的团队已收到告警并介入处理：</p>
-      <ul style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 20px 0;padding-left:20px;">
-        <li><strong style="color:#c9a84c;">24 小时内</strong>客服将协助您补开新单（不会多扣款）</li>
-        <li>报告已进入优先处理队列、由人工接手生成</li>
-        <li>请留意您的邮箱、若有任何疑问随时联系客服</li>
-      </ul>
-      ` : `
-      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">您好，</p>
-      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">很抱歉通知您，您的<strong style="color:#c9a84c;">${planName}</strong>報告在生成過程中遇到技術問題，系統經多次自動重試仍未能完成。</p>
-      <p style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 16px 0;">我們的團隊已收到告警並介入處理：</p>
-      <ul style="color:#d1d5db;font-size:15px;line-height:1.9;margin:0 0 20px 0;padding-left:20px;">
-        <li><strong style="color:#c9a84c;">24 小時內</strong>客服將協助您補開新單(不會多扣款)</li>
-        <li>報告已進入優先處理佇列、由人工接手生成</li>
-        <li>請留意您的信箱、若有任何疑問隨時聯繫客服</li>
-      </ul>
-      `
-
-      // v5.7.8:不退款、改「聯繫客服補開」單一 CTA(原變數名 ctaRefund 改 ctaSupport 對齊政策)
-      const ctaSupport = isCN ? '联系客服补开' : '聯繫客服補開'
-      const ctaContact = isCN ? '联系客服' : '聯繫客服'
-      const refIdLabel = isCN ? '报告编号' : '報告編號'
-      const brand = isCN ? '鉴 源' : '鑒 源'
-      const subtitle = isCN ? 'JIANYUAN · 东西方命理整合平台' : 'JIANYUAN · 東西方命理整合平台'
-      const notice = isCN ? '✦ 报告处理通知' : '✦ 報告處理通知'
-      const titleText = isCN ? '您的报告正在人工处理中' : '您的報告正在人工處理中'
-      const copyright = isCN ? '© 2026 鉴源命理平台 · jianyuan.life' : '© 2026 鑒源命理平台 · jianyuan.life'
-      const footer = isCN ? '如有任何疑问，请联系' : '如有任何疑問，請聯繫'
-
+      // v5.10.461 P0-3:致歉信模板抽 lib/report/apology-email.ts SSOT
+      // (cron retry-pending 兩條終局失敗路徑共用同一模板、勿再 inline 複製)
+      const { subject, from, html } = buildApologyEmail({
+        reportId, planCode, customerEmail: customerEmailFailed, locale: rawLocale,
+      })
       const unsubscribeUrlApology = getUnsubscribeUrl(customerEmailFailed)
 
       let apologyResId: string | null = null
@@ -4587,33 +4518,7 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
         subject,
-        html: `<!DOCTYPE html>
-<html lang="${emailLang}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#0d1117;font-family:${emailFont};">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <div style="text-align:center;margin-bottom:32px;">
-      <div style="color:#c9a84c;font-size:24px;font-weight:700;letter-spacing:4px;">${brand}</div>
-      <div style="color:#6b7280;font-size:12px;margin-top:4px;">${subtitle}</div>
-    </div>
-    <div style="background:linear-gradient(135deg,#1a2a4a,#0d1a2e);border:1px solid #2a3a5a;border-radius:16px;padding:32px;margin-bottom:24px;">
-      <div style="color:#c9a84c;font-size:13px;letter-spacing:2px;margin-bottom:8px;">${notice}</div>
-      <h1 style="color:#ffffff;font-size:22px;margin:0 0 16px 0;">${titleText}</h1>
-      ${apologyHtml}
-      <div style="margin-top:24px;">
-        <a href="${supportMailtoUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 8px 4px 0;">${ctaSupport}</a>
-        <a href="mailto:${supportEmail}?subject=${encodeURIComponent((isCN ? '报告处理询问 ' : '報告處理詢問 ') + reportId.slice(0, 8))}" style="display:inline-block;background:transparent;color:#c9a84c;border:1px solid #c9a84c;font-weight:700;font-size:14px;padding:11px 24px;border-radius:8px;text-decoration:none;letter-spacing:1px;margin:4px 0;">${ctaContact}</a>
-      </div>
-      <p style="color:#6b7280;font-size:12px;margin:20px 0 0 0;">${refIdLabel}：${reportId.slice(0, 8)}</p>
-    </div>
-    <div style="text-align:center;color:#4b5563;font-size:12px;line-height:1.8;">
-      <p>${footer} <a href="mailto:${supportEmail}" style="color:#c9a84c;">${supportEmail}</a></p>
-      <p style="margin-top:8px;">${copyright}</p>
-      ${getUnsubscribeHtml(customerEmailFailed)}
-    </div>
-  </div>
-</body>
-</html>`,
+        html,
       })
         // T12b v5.10.370 — sendEmailWithRetry 已自動 record + dead-letter
         if (apologyOutcome.success) {
@@ -4725,6 +4630,22 @@ export async function markReportNeedsHumanReview(
       fallbackPayload.report_result = { ai_content: reportContent }
     }
     await supabase.from('paid_reports').update(fallbackPayload).eq('id', reportId)
+  }
+
+  // v5.10.461 P0-2 修(bizaudit「needs_human_review 卡死零通知」):
+  //   notifyNeedsHumanReview 自定義以來從未被接線 → 客戶付了錢報告卡死、ops 不知道。
+  //   補接 Telegram 告警(失敗不阻塞)。
+  try {
+    const { data: row } = await supabase.from('paid_reports').select('plan_code').eq('id', reportId).single()
+    await notifyNeedsHumanReview(
+      reportId,
+      row?.plan_code || 'unknown',
+      fiveLLMSnapshot ? 3 : 0,
+      fiveLLMSnapshot?.avg ?? 0,
+      fiveLLMSnapshot?.criticalErrors || [],
+    )
+  } catch (tgErr) {
+    console.warn('needs_human_review Telegram 告警失敗(不阻塞):', tgErr)
   }
 
   console.error(`報告 ${reportId} 標記為 needs_human_review: ${reason}（含 ${reportContent?.length ?? 0} 字 AI 內容）`)

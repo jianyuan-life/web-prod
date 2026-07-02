@@ -58,7 +58,8 @@ export default function PartHighlights({ part, sections }: PartHighlightsProps) 
             >
               {i + 1}
             </span>
-            <span>{h}</span>
+            {/* 渲染點雙保險:任何來源殘留 * 一律不給客戶看(v5.10.461 C1) */}
+            <span>{h.replace(/\*+/g, '')}</span>
           </li>
         ))}
       </ul>
@@ -160,8 +161,15 @@ function extractHighlights(sections: ContentSectionLite[]): string[] {
       const t = s.trim()
       return t.length >= 20 && t.length <= 120
     })
-    if (firstSentence && !highlights.includes(firstSentence.trim())) {
-      highlights.push(firstSentence.trim())
+    // v5.10.461 C1 修(production 實測 G15/R 速覽卡直印 `> **主角家庭**：`/`▸ **核心契合度…**`):
+    //   G15/R v4 的結構標籤粗體全 < 15 字 → 上方 bold 路 {15,80} 抓不到 → 掉進此 fallback、
+    //   原字直印(React text node 不解析 markdown)。修:比照 bold 路清 `*`(不成對星號用 \*+ 較穩)
+    //   + 剝行首 blockquote/幾何記號、清完仍 ≥15 字才收。
+    if (firstSentence) {
+      const cleanFS = firstSentence.trim().replace(/^[>▸●▌•·\-\s]+/, '').replace(/\*+/g, '').trim()
+      if (cleanFS.length >= 15 && !highlights.includes(cleanFS)) {
+        highlights.push(cleanFS)
+      }
     }
   }
   return highlights

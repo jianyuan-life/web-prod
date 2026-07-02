@@ -350,19 +350,23 @@ function DashboardContent() {
     const value = latestReport?.amount_usd || 0
     const planCode = latestReport?.plan_code || ''
     const planName = PLAN_NAMES[planCode] || planCode
+    // v5.10.461 D2 修(bizaudit P1:purchase 缺 transaction_id → 重整頁面重複計轉換、ROAS 失真)
+    //   用 stripe session_id(優先、跨 session 去重)或 report id 當 transaction_id、GA4 自動去重
+    const txId = stripeSessionId || latestReport?.id || ''
     // GA4 purchase 事件
     gtag.event('purchase', {
+      transaction_id: txId,
       currency: 'USD',
       value,
       plan_code: planCode,
       plan_name: planName,
     })
-    // Meta Pixel Purchase 事件
+    // Meta Pixel Purchase 事件(eventID 供 CAPI 去重、Meta 端同 ID 只計一次)
     fbpixel.trackEvent('Purchase', {
       currency: 'USD',
       value,
       content_name: planName,
-    })
+    }, txId ? { eventID: txId } : undefined)
   }, [paymentSuccess, loading, reports])
 
   // 付款成功後輪詢等待報告生成（5秒間隔，60分鐘上限）
@@ -696,6 +700,15 @@ function DashboardContent() {
                           </button>
                         )}
                       </div>
+                    ) : r.status === 'needs_human_review' ? (
+                      // v5.10.461 P0-2 修:needs_human_review 原顯「狀態異常」紅字 = 客戶恐慌且無路可走。
+                      // 改誠實引導(對齊 4 大保證:人工接手、不多扣款)。Codex P2:只對此 status、
+                      // 其他狀態(refunded 等)不可誤標「把關中」。
+                      <span className="text-xs text-amber-400" title="報告已進入人工品質把關、完成後會 Email 通知您">
+                        人工品質把關中 · 有問題請聯繫 support@jianyuan.life
+                      </span>
+                    ) : r.status === 'refunded' ? (
+                      <span className="text-xs text-text-muted">已退款處理</span>
                     ) : (
                       <span className="text-xs text-red-400">狀態異常</span>
                     )}
