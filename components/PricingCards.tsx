@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import PriceTag from './PriceTag'
 
 const PLANS = [
@@ -33,11 +34,11 @@ export default function PricingCards() {
               </li>
             ))}
           </ul>
-          <a href={`/checkout?plan=${plan.code}`}
+          <Link href={`/checkout?plan=${plan.code}`}
             className={`flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all ${plan.popular ? 'bg-gold text-dark btn-glow hover:scale-[1.02]' : 'border border-gold/35 text-gold hover:bg-gold/10 hover:border-gold/70'}`}>
             選擇方案
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-          </a>
+          </Link>
         </div>
       ))}
     </div>

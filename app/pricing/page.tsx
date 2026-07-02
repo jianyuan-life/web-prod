@@ -288,12 +288,14 @@ export default function PricingPage() {
 
         {/* v5.4.21 P1 Gemini UI audit:Social Proof + Trust Bar */}
         <div className="max-w-4xl mx-auto mt-12 mb-8">
+          {/* v5.10.459 誠實化修(jianyuan-truth 鐵律):原「真實客戶的選擇 + 4.8/5.0 滿意度」無數據源
+              (transparency avgRating=null、全站無評分聚合)= 假見證;改可驗證事實 + 使用情境參考標注(對齊首頁 v4.8.0 先例) */}
           <div className="glass rounded-2xl p-6 border border-gold/20">
-            <p className="text-center text-xs text-cream/80 mb-4 font-semibold">真實客戶的選擇</p>
+            <p className="text-center text-xs text-cream/80 mb-4 font-semibold">為什麼客戶選擇鑒源</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
-                <div className="text-xl font-bold text-gold mb-1">4.8 / 5.0</div>
-                <div className="text-[10px] text-text-muted">客戶滿意度</div>
+                <div className="text-xl font-bold text-gold mb-1">44,421+</div>
+                <div className="text-[10px] text-text-muted">條專業規則</div>
               </div>
               <div>
                 <div className="text-xl font-bold text-gold mb-1">3 次</div>
@@ -304,22 +306,22 @@ export default function PricingPage() {
                 <div className="text-[10px] text-text-muted">交叉驗證</div>
               </div>
               <div>
-                <div className="text-xl font-bold text-gold mb-1">📦 PDF</div>
+                <div className="text-xl font-bold text-gold mb-1">PDF</div>
                 <div className="text-[10px] text-text-muted">永久保存</div>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
               <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
                 「比我預期的精準很多、看完知道下一步該做什麼。」
-                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 何小姐 / 人生藍圖</div>
+                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 人生藍圖 · 使用情境參考</div>
               </blockquote>
               <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
                 「合否報告幫我看清關係的核心動力、不是糾結對錯。」
-                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 林女士 / 合否？</div>
+                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 合否？ · 使用情境參考</div>
               </blockquote>
               <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
                 「出門訣讓我面試當天信心很足、果然順利錄取。」
-                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 張先生 / 事件擇吉</div>
+                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 事件擇吉 · 使用情境參考</div>
               </blockquote>
             </div>
           </div>

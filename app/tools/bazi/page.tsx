@@ -738,14 +738,21 @@ export default function FreeToolPage() {
 
               </>
 
+              {/* v5.10.459 CTA 修(3 家視覺 LLM 共識):「請填寫完整資料」是狀態描述非行動呼籲;
+                  且 bg-white/10 在 light theme 米白底上近隱形。改常駐行動文案 + 可見 disabled 樣式 + 缺項提示 */}
               <button type="submit" disabled={loading || !form.name.trim() || form.cityLat === 0}
                 className={`w-full py-4 font-bold rounded-xl text-lg transition-all ${
                   form.name.trim() && form.cityLat !== 0
                     ? 'bg-gold text-dark btn-glow disabled:opacity-50'
-                    : 'bg-white/10 text-text-muted cursor-not-allowed'
+                    : 'border border-gold/30 bg-gold/10 text-gold/60 cursor-not-allowed'
                 }`}>
-                {!form.name.trim() || form.cityLat === 0 ? '請填寫完整資料' : '開始命理分析'}
+                開始命理分析
               </button>
+              {(!form.name.trim() || form.cityLat === 0) && (
+                <p className="text-xs text-text-muted/70 text-center mt-2">
+                  填寫{!form.name.trim() ? '姓名' : ''}{!form.name.trim() && form.cityLat === 0 ? '與' : ''}{form.cityLat === 0 ? '出生地區' : ''}後即可開始
+                </p>
+              )}
               {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
             </form>
           </div>

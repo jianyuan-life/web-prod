@@ -115,7 +115,8 @@ export default function CookieConsent() {
       role="dialog"
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-desc-short"
-      className={`${positionClass} p-3 sm:p-4 bg-dark/95 backdrop-blur-xl border border-gold/30 rounded-xl shadow-2xl`}
+      // v5.10.459 mobile 瘦身(production 實測:mobile 卡壓住 /tools/bazi 表單「出生時間」欄 = funnel 入口功能阻擋)
+      className={`${positionClass} p-2.5 sm:p-4 bg-dark/95 backdrop-blur-xl border border-gold/30 rounded-xl shadow-2xl`}
       style={{ animation: 'slideUp 0.3s ease-out' }}
     >
       <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
@@ -127,12 +128,12 @@ export default function CookieConsent() {
           保留 GDPR 3 選項(自訂/必要/全接受) */}
       <div>
         {!showCustom ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 sm:gap-3">
             <div>
-              <h3 id="cookie-consent-title" className="text-cream font-bold text-sm mb-1">
-                🍪 Cookie 與隱私偏好
+              <h3 id="cookie-consent-title" className="text-cream font-bold text-[13px] sm:text-sm mb-0.5 sm:mb-1">
+                Cookie 與隱私偏好
               </h3>
-              <p id="cookie-desc-short" className="text-text-muted text-xs leading-relaxed">
+              <p id="cookie-desc-short" className="text-text-muted text-[11px] sm:text-xs leading-relaxed">
                 使用 Cookie 改善體驗、可自訂偏好。詳見{' '}
                 <a href="/privacy" className="text-gold underline hover:text-gold/80">
                   隱私政策
@@ -140,22 +141,23 @@ export default function CookieConsent() {
                 。
               </p>
             </div>
+            {/* mobile min-h-[44px] 保 Apple HIG 觸控區(v5.3.56 全站鐵律)、視覺仍比原版瘦 */}
             <div className="flex flex-row gap-2 shrink-0">
               <button
                 onClick={() => setShowCustom(true)}
-                className="px-4 py-2 text-sm rounded-lg border border-gold/40 text-gold hover:bg-gold/10 transition-colors"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg border border-gold/40 text-gold hover:bg-gold/10 transition-colors"
               >
                 自訂偏好
               </button>
               <button
                 onClick={acceptNecessary}
-                className="px-4 py-2 text-sm rounded-lg border border-cream/30 text-cream hover:bg-cream/5 transition-colors"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg border border-cream/30 text-cream hover:bg-cream/5 transition-colors"
               >
                 僅必要 Cookie
               </button>
               <button
                 onClick={acceptAll}
-                className="px-5 py-2 text-sm rounded-lg bg-gold text-dark font-bold hover:bg-gold/90 transition-colors"
+                className="px-4 py-1.5 sm:px-5 sm:py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg bg-gold text-dark font-bold hover:bg-gold/90 transition-colors"
               >
                 全部接受
               </button>
@@ -163,7 +165,7 @@ export default function CookieConsent() {
           </div>
         ) : (
           <div>
-            <h3 className="text-cream font-bold text-base mb-3">🍪 自訂 Cookie 偏好</h3>
+            <h3 className="text-cream font-bold text-base mb-3">自訂 Cookie 偏好</h3>
             <div className="space-y-3 mb-4">
               <label className="flex items-start gap-3 cursor-not-allowed opacity-70">
                 <input type="checkbox" checked disabled className="mt-1" />

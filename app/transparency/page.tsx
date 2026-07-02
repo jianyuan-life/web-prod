@@ -10,9 +10,15 @@
 
 import { isFlagEnabled } from '@/lib/feature-flags'
 
-export const metadata = {
-  title: '鑒源 · 透明化',
-  description: 'Building in Public',
+// v5.10.459:flag off = 「即將推出」佔位頁 → noindex 避免收錄空頁;
+// flag on(老闆 sign-off 上線)→ 自動恢復可索引(Codex L3 P2:noindex 必須隨 flag 條件化)
+export function generateMetadata() {
+  const enabled = isFlagEnabled('FF_TRANSPARENCY_PAGE')
+  return {
+    title: '鑒源 · 透明化',
+    description: 'Building in Public',
+    ...(enabled ? {} : { robots: { index: false, follow: false } }),
+  }
 }
 
 async function loadPublicStats(): Promise<{ mrr: number; reports: number; avgRating: number | null } | null> {

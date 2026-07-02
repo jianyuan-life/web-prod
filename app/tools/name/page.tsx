@@ -458,14 +458,18 @@ export default function NameToolPage() {
                 )}
               </div>
 
+              {/* v5.10.459 CTA 修(同 /tools/bazi):常駐行動文案 + light theme 可見 disabled 樣式 */}
               <button type="submit" disabled={loading || !form.surname.trim() || !form.givenName.trim() || form.cityLat === 0}
                 className={`w-full py-4 font-bold rounded-xl text-lg transition-all ${
                   form.surname.trim() && form.givenName.trim() && form.cityLat !== 0
                     ? 'bg-gold text-dark btn-glow disabled:opacity-50'
-                    : 'bg-white/10 text-text-muted cursor-not-allowed'
+                    : 'border border-gold/30 bg-gold/10 text-gold/60 cursor-not-allowed'
                 }`}>
-                {!form.surname.trim() || !form.givenName.trim() || form.cityLat === 0 ? '請填寫完整資料' : '開始姓名分析'}
+                開始姓名分析
               </button>
+              {(!form.surname.trim() || !form.givenName.trim() || form.cityLat === 0) && (
+                <p className="text-xs text-text-muted/70 text-center mt-2">填寫姓名與出生地區後即可開始</p>
+              )}
               {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
             </form>
 

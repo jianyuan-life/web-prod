@@ -42,7 +42,8 @@ function renderMarkdown(md: string) {
 
   function flushTable() {
     if (!tableRows.length) return
-    const rows = tableRows.filter(r => !r.match(/^\|[\s:-]+\|$/))
+    // v5.10.459:分隔列過濾補內部 |(多欄 GFM 分隔列如 |:---:|:---:| 原本濾不掉、`:---:` 洩漏成資料列、production blog 實測)
+    const rows = tableRows.filter(r => !r.match(/^\|[\s:|-]+\|$/))
     if (rows.length > 0) {
       html.push('<div class="overflow-x-auto my-6"><table class="w-full text-sm">')
       rows.forEach((row, i) => {

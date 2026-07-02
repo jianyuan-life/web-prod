@@ -84,6 +84,9 @@ export default function HomePage() {
         <Astrolabe />
         <ReportPreviewFloat />
 
+        {/* v5.10.457 hero 中央暖金放射光暈(nano-banana UI 方向、提升質感、不蓋互動) */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden style={{ background: 'radial-gradient(ellipse 52% 46% at 50% 44%, rgba(201,168,76,0.13) 0%, rgba(201,168,76,0.045) 38%, transparent 72%)' }} />
+
         <div className="relative z-10 text-center max-w-[820px] mx-auto px-6 animate-[fade-up_1s_ease-out]">
           <div className="text-[13px] tracking-[0.3em] text-gold/50 mb-8" style={{ fontFamily: 'var(--font-body)' }}>
             鑒源 &middot; JianYuan
@@ -137,10 +140,10 @@ export default function HomePage() {
 
       {/* ========== 共情段落 — 接住用戶情緒 ========== */}
       <section className="py-24 relative">
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.10) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(74, 122, 255, 0.06) 0%, transparent 50%)' }} />
+        {/* v5.10.459:inline 深藍 radial 抽 class(light 給暖色變體、解濁灰帶) */}
+        <div className="absolute inset-0 pointer-events-none home-glow" />
         <div className="max-w-[800px] mx-auto px-6">
-          <div className="glass rounded-[20px] p-12 md:p-14 text-center border border-gold/[0.06]" style={{ background: 'rgba(15, 22, 40, 0.3)' }}>
+          <div className="glass rounded-[20px] p-12 md:p-14 text-center border border-gold/[0.06]" style={{ background: 'var(--jy-bg-deep-glass)' }}>
             <div className="text-6xl text-gold/15 mb-2" style={{ fontFamily: 'var(--font-sans)' }}>&ldquo;</div>
             <p className="text-[17px] leading-[2.2] text-cream/80 max-w-[560px] mx-auto">
               也許你正在經歷一段不容易的時光。<br />
@@ -213,7 +216,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== 差異化對比 ========== */}
-      <section className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(20, 16, 48, 0.25) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
+      <section className="py-24 home-band">
         <div className="max-w-5xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">差異</span>
@@ -252,7 +255,7 @@ export default function HomePage() {
 
       {/* ========== 四大核心優勢 ========== */}
       <section className="py-24 relative">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 20% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 50%), radial-gradient(ellipse at 80% 30%, rgba(74, 122, 255, 0.05) 0%, transparent 45%)' }} />
+        <div className="absolute inset-0 pointer-events-none home-glow-alt" />
         <div className="max-w-5xl mx-auto px-6 relative z-[1]">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">核心優勢</span>
@@ -308,7 +311,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== 十四大系統（帶圖示） ========== */}
-      <section id="systems" className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(18, 14, 45, 0.25) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
+      <section id="systems" className="py-24 home-band">
         <div className="max-w-6xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">十四大系統</span>
@@ -375,7 +378,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== 分析流程 ========== */}
-      <section id="how" className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(16, 14, 42, 0.25) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
+      <section id="how" className="py-24 home-band">
         <div className="max-w-5xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">流程</span>
@@ -557,7 +560,7 @@ export default function HomePage() {
       </section>
 
       {/* ========== 用戶評價 ========== */}
-      <section className="py-24" style={{ background: 'linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(20, 16, 48, 0.2) 50%, rgba(15, 22, 40, 0.3) 100%)' }}>
+      <section className="py-24 home-band">
         <div className="max-w-5xl mx-auto px-6">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">用戶心聲</span>
@@ -641,9 +644,7 @@ export default function HomePage() {
 
       {/* ========== Final CTA ========== */}
       <section className="py-28 relative">
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse at 50% 100%, var(--jy-gold-alpha-06) 0%, transparent 50%), radial-gradient(ellipse at 30% 50%, var(--jy-violet-alpha-10) 0%, transparent 40%), radial-gradient(ellipse at 70% 30%, var(--jy-blue-alpha-08) 0%, transparent 45%)',
-        }} />
+        <div className="absolute inset-0 pointer-events-none home-glow-cta" />
         <div className="relative z-10 max-w-2xl mx-auto px-6 text-center">
           <div className="divider-ornament text-gold/30 mb-6 justify-center">
             <span className="text-xs tracking-[0.2em]">開始</span>

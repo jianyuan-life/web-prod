@@ -733,6 +733,54 @@ select, option {
   color: #e8eaf0;
 }
 
+/* v5.10.459 light theme select 變體(production 實測:/tools/bazi 月/日/時辰下拉在暖米色頁面上
+   仍是深藍控件 = 上方 Windows 修復寫死深色、light 無 override、破壞 Warm Light 一致性) */
+[data-theme="light"] select,
+[data-theme="light"] option {
+  background-color: #FFFBF2; /* 對齊 --bg-card */
+  color: #2A1F18;            /* 對齊 --text-primary */
+}
+
+/* =================================================================
+ * v5.10.459 首頁 section 帶狀背景 theme 化
+ * 根因(production light 實測 home_mid_d.png):page.tsx inline 深藍
+ * linear/radial 漸層在暖米底上渲染成大片濁灰帶(五步流程/差異化/評價區)
+ * = Warm Light「顯髒」最大單一原因。抽 class、light 給暖紙/淡金/朱砂變體。
+ * ================================================================= */
+.home-band {
+  background: linear-gradient(180deg, rgba(15, 22, 40, 0.3) 0%, rgba(20, 16, 48, 0.25) 50%, rgba(15, 22, 40, 0.3) 100%);
+}
+.home-glow {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(74, 122, 255, 0.06) 0%, transparent 50%);
+}
+.home-glow-alt {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(74, 122, 255, 0.05) 0%, transparent 45%);
+}
+.home-glow-cta {
+  background:
+    radial-gradient(ellipse at 50% 100%, var(--jy-gold-alpha-06) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 50%, var(--jy-violet-alpha-10) 0%, transparent 40%),
+    radial-gradient(ellipse at 70% 30%, var(--jy-blue-alpha-08) 0%, transparent 45%);
+}
+[data-theme="light"] .home-band {
+  background: linear-gradient(180deg, rgba(201, 168, 76, 0.05) 0%, rgba(240, 224, 184, 0.16) 50%, rgba(201, 168, 76, 0.05) 100%);
+}
+[data-theme="light"] .home-glow,
+[data-theme="light"] .home-glow-alt {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(192, 57, 43, 0.045) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(201, 168, 76, 0.07) 0%, transparent 50%);
+}
+[data-theme="light"] .home-glow-cta {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(201, 168, 76, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 50%, rgba(192, 57, 43, 0.05) 0%, transparent 40%);
+}
+
 /* v5.3.56 手機觸控最小高度（Apple HIG 44×44）
    所有 input/select 強制 ≥44px 高、避免手機觸控過小 */
 input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]),
@@ -1176,6 +1224,10 @@ a:focus-visible,
  *   修補:刪除 cream 覆蓋(永遠保持淺色)+ 加 inline 註解警告
  *   保留:dark/light → text 主色用 --color-text 系列(已切換)、cream 永遠淺色不切換 */
 [data-theme="light"] {
+  /* v5.10.459:deep-glass token light 變體(原 rgba(15,22,40,·) 深藍玻璃在暖米底渲染成濁灰卡、
+     首頁共情卡/免費工具卡/出門訣卡實測全灰;light 改暖紙玻璃) */
+  --jy-bg-deep-glass: rgba(255, 251, 242, 0.55);
+  --jy-bg-deep-glass-40: rgba(250, 241, 222, 0.60);
   --color-dark: #f5f3ee;
   --color-dark-light: #e8e4de;
   --color-text: #1a2340;
