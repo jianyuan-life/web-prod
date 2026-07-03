@@ -1454,12 +1454,19 @@ a:focus-visible,
  * 受 NEXT_PUBLIC_FF_WARM_LIGHT_THEME 控制(JS 端 FF off 時 [data-theme] 預設 dark = 不生效)
  * ================================================================= */
 
-/* 5.2 Hero — light 模式 CTA 漸層改朱砂(避純金底白字對暖白底對比不足)*/
+/* 5.2 Hero — light 模式 CTA 漸層改朱砂(避純金底白字對暖白底對比不足)
+   v5.10.464 E3(GeminiPro r4「朱砂填色單薄、缺漆器/印泥厚度光澤」):
+   頂部高光 + 三段深化漸層 + inset 高光線 = 漆器質感 */
 [data-theme="light"] .btn-glow,
 [data-theme="light"] .cta-primary-large {
-  background: linear-gradient(135deg, var(--vermillion-500) 0%, var(--vermillion-700) 100%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, #CE4636 0%, var(--vermillion-500) 45%, var(--vermillion-700) 100%);
   color: var(--text-on-gold);
-  box-shadow: 0 6px 20px rgba(192, 57, 43, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 6px 20px rgba(192, 57, 43, 0.28),
+    0 2px 6px rgba(142, 42, 30, 0.18);
 }
 [data-theme="light"] .btn-glow:hover,
 [data-theme="light"] .cta-primary-large:hover {

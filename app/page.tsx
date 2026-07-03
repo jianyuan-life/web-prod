@@ -111,8 +111,9 @@ export default function HomePage() {
           <div className="flex flex-wrap gap-4 justify-center mb-6">
             {/* A/B 測試：Hero CTA 文案（experimentKey: hero_cta_20260417） */}
             <HeroCTAExperiment />
+            {/* v5.10.464(GeminiPro r4:次 CTA 視覺份量過輕、未承接想了解更多者):邊框/字色升一階 */}
             <Link href="/pricing"
-              className="inline-flex items-center gap-2 px-8 py-3.5 border border-gold/40 text-gold font-semibold rounded-[10px] text-[15px] hover:bg-gold/10 hover:border-gold/70 transition-all">
+              className="inline-flex items-center gap-2 px-8 py-3.5 border border-gold/55 bg-gold/[0.06] text-gold font-semibold rounded-[10px] text-[15px] hover:bg-gold/15 hover:border-gold/80 transition-all">
               探索完整方案
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
             </Link>
@@ -407,8 +408,8 @@ export default function HomePage() {
                   </svg>
                   <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gold/15 border border-gold/25 text-[10px] text-gold flex items-center justify-center" style={{ fontFamily: 'var(--font-sans)' }}>{item.step}</span>
                 </div>
-                <h3 className="font-semibold text-cream text-sm mb-1">{item.title}</h3>
-                <p className="text-xs text-text-muted leading-relaxed">{item.desc}</p>
+                <h3 className="font-semibold text-cream text-sm mb-1.5">{item.title}</h3>
+                <p className="text-xs text-text-muted leading-[1.9]">{item.desc}</p>
               </div>
             ))}
           </div>

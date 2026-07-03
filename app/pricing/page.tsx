@@ -67,18 +67,15 @@ const PLANS = {
 
 type Plan = { code: string; name: string; price: number; desc: string; features: string[]; systems?: number; popular?: boolean; locked?: boolean; seasonal?: boolean; hasQuestion?: boolean; addPrice?: number; suitableFor?: string; valueHint?: string }
 
-// v5.10.462 B8(3 家視覺 LLM + liveaudit P2-5:mobile 比較表 4-5 欄擠進 390px 難讀):
-// row 資料抽 const、desktop 保留表格、mobile 改 per-plan 摺疊卡
+// v5.10.462 B8:row 資料抽 const、desktop 表格、mobile 摺疊卡
+// v5.10.464 E3(GeminiPro r4「規格書式資訊過載=分析癱瘓、-2 商業說服力」):
+// 砍零訊號列(PDF 全 ✓/性格事業感情近似變體/年命宮+行事曆全 ✓)→ 只留真差異、footnote 補共通項
 const COMPARE_ROWS = [
   { feature: '分析系統數', d: '3–5 套（依問題類別）', c: '14套', r: '4–6 套（關係系統）', g: '14套' },
-  { feature: '性格天賦分析', d: '聚焦選定面向', c: '&#10003;', r: '--', g: '&#10003;' },
-  { feature: '事業財運分析', d: '單面向', c: '&#10003;', r: '--', g: '&#10003;' },
-  { feature: '感情婚姻分析', d: '單面向', c: '&#10003;', r: '&#10003;', g: '&#10003;' },
   { feature: '大運流年走勢', d: '--', c: '&#10003;', r: '--', g: '&#10003;' },
   { feature: '專項問題深度剖析', d: '&#10003;', c: '--', r: '&#10003;', g: '--' },
   { feature: '多人互動分析', d: '--', c: '--', r: '&#10003;', g: '&#10003;' },
   { feature: '家庭動力學', d: '--', c: '--', r: '--', g: '&#10003;' },
-  { feature: 'PDF 完整報告', d: '&#10003;', c: '&#10003;', r: '&#10003;', g: '&#10003;' },
   { feature: '報告字數', d: '5,000字+', c: '30,000字+', r: '8,000字+', g: '每人8,000字+' },
 ] as const
 const CHUMENJI_ROWS = [
@@ -86,10 +83,15 @@ const CHUMENJI_ROWS = [
   { feature: '吉時數', e1: 'Top3', e2: '當月 1 個', e3: '當月 8 個（4 週×Top2）', e4: '年盤＋12 月盤' },
   { feature: '主題用神', e1: '自由描述', e2: '無', e3: '可選 1-3 個', e4: '無' },
   { feature: '時間單位', e1: '時盤（兩小時）', e2: '月盤', e3: '時盤（8 個）', e4: '年盤＋月盤' },
-  { feature: '年命宮驗證', e1: '&#10003;', e2: '&#10003;', e3: '&#10003;', e4: '&#10003;' },
-  { feature: '行事曆邀約', e1: '&#10003;', e2: '&#10003;', e3: '&#10003;', e4: '&#10003;' },
   { feature: '販售限制', e1: '隨時', e2: '晦日 21:00 前當月', e3: '隨時', e4: '立春前 30 天限時' },
 ] as const
+
+// 表格 cell(✓ → 品牌四芒星、-- → 細槓;取代 dangerouslySetInnerHTML、對齊 GoldMark)
+function CellValue({ v }: { v: string }) {
+  if (v === '&#10003;') return <GoldMark className="w-3.5 h-3.5" />
+  if (v === '--') return <span className="text-text-muted/40">—</span>
+  return <>{v}</>
+}
 
 // mobile 摺疊卡的值顯示(entity → 符號)
 function cellText(v: string): string {
@@ -296,15 +298,16 @@ export default function PricingPage() {
                 {COMPARE_ROWS.map((row) => (
                   <tr key={row.feature} className="border-b border-gold/5 hover:bg-white/3">
                     <td className="p-3.5 text-cream">{row.feature}</td>
-                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.d.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3.5 text-center text-text-muted bg-gold/5" dangerouslySetInnerHTML={{ __html: row.c.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.r.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.g.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.d} /></td>
+                    <td className="p-3.5 text-center text-text-muted bg-gold/5"><CellValue v={row.c} /></td>
+                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.r} /></td>
+                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.g} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <p className="text-center text-[11px] text-text-muted/70 mt-3">四方案皆含 PDF 完整報告與性格 / 事業 / 感情核心分析 — 差異在深度與聚焦、詳見各方案卡</p>
         </div>
 
         {/* 出門訣對比表 */}
@@ -337,15 +340,16 @@ export default function PricingPage() {
                 {CHUMENJI_ROWS.map((row) => (
                   <tr key={row.feature} className="border-b border-gold/5 hover:bg-white/3">
                     <td className="p-3.5 text-cream">{row.feature}</td>
-                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e1.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e2.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3.5 text-center text-text-muted bg-gold/5" dangerouslySetInnerHTML={{ __html: row.e3.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e4.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.e1} /></td>
+                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.e2} /></td>
+                    <td className="p-3.5 text-center text-text-muted bg-gold/5"><CellValue v={row.e3} /></td>
+                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.e4} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <p className="text-center text-[11px] text-text-muted/70 mt-3">四方案皆含個人年命宮交叉驗證與行事曆邀約一鍵加入</p>
         </div>
 
         {/* v5.4.21 P1 Gemini UI audit:Social Proof + Trust Bar */}
