@@ -364,10 +364,11 @@ export default function HomePage() {
             每一條分析規則，皆有典籍出處，絕非憑空推演。
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* v5.10.462(GeminiPro:標籤雲單調如 Bootstrap 預設):左金髮絲線 + 字距 + hover 提亮、書目感 */}
             {['《滴天髓》', '《紫微斗數全書》', '《窮通寶鑑》', '《奇門遁甲統宗》',
               '《子平真詮》', '《青囊經》', '《沈氏玄空學》', '《煙波釣叟歌》'
             ].map(book => (
-              <div key={book} className="glass rounded-lg py-3 px-4 text-sm text-gold/80" style={{ fontFamily: 'var(--font-sans)' }}>
+              <div key={book} className="glass rounded-lg py-3 px-4 text-sm text-gold/80 border-l-2 border-gold/30 tracking-[0.08em] transition-colors hover:border-gold/60 hover:text-gold" style={{ fontFamily: 'var(--font-sans)' }}>
                 {book}
               </div>
             ))}
@@ -484,7 +485,8 @@ export default function HomePage() {
           <div className="glass rounded-2xl p-8 md:p-12">
             <div className="text-gold/60 text-4xl mb-4" style={{ fontFamily: 'var(--font-sans)' }}>&ldquo;</div>
 
-            <div className="space-y-5 text-base text-text leading-[2]">
+            {/* v5.10.462 B9(手機 24 屏):故事手機只顯前 4 段、餘導 /about 全文(founder-story CSS) */}
+            <div className="founder-story space-y-5 text-base text-text leading-[2]">
               <p>
                 我是個極度重視邏輯與數據的人。<br />
                 身為金融從業者，我做的每一個決定，都需要依據、推理，以及完整的分析。
@@ -553,6 +555,9 @@ export default function HomePage() {
               </p>
             </div>
 
+            <Link href="/about" className="no-ink md:hidden inline-flex items-center min-h-[44px] mt-2 text-sm text-gold/80 hover:text-gold underline underline-offset-4">
+              閱讀創辦人完整故事 →
+            </Link>
             <div className="text-gold/60 text-4xl text-right mt-4" style={{ fontFamily: 'var(--font-sans)' }}>&rdquo;</div>
 
             <div className="mt-8 pt-6 border-t border-gold/10">
@@ -592,8 +597,9 @@ export default function HomePage() {
                 text: '跟女友交往兩年一直在猶豫要不要結婚。報告不只分析了我們的相容性，還點出我在感情裡總是害怕「不夠好」所以不敢承諾。那段話讓我紅了眼眶——原來我猶豫的不是她對不對，而是我配不配。看完報告那天晚上就決定買戒指了。' },
               { name: '黃女士', location: '溫哥華', plan: '人生藍圖', color: 'bg-green-500/20',
                 text: '移民後事業一直不順，看了很多命理都說「再等等」。鑒源的報告不一樣——它沒有叫我等，而是告訴我「你的命格其實更適合自由業，你一直在用不適合的方式生活」。讀完整份報告的感覺像是被一個很懂你的老朋友聊了一整夜。現在已經開始籌備自己的工作室了。' },
-            ].map((t) => (
-              <div key={t.name} className="glass rounded-2xl p-6">
+            ].map((t, ti) => (
+              // v5.10.462 B9(liveaudit P1-4 手機 24 屏):情境卡手機只顯前 3、md+ 全 6(-2.5 屏)
+              <div key={t.name} className={`glass rounded-2xl p-6 ${ti >= 3 ? 'hidden md:block' : ''}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex gap-0.5">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -605,13 +611,14 @@ export default function HomePage() {
                 <blockquote className="text-sm text-text leading-[1.9] mb-5 italic">
                   &ldquo;{t.text}&rdquo;
                 </blockquote>
+                {/* v5.10.462(GeminiPro:頭像通用缺真實感):金環 + 襯線首字、對齊品牌印章感 */}
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full ${t.color} flex items-center justify-center text-gold text-sm font-semibold`}>
+                  <div className={`w-10 h-10 rounded-full ${t.color} border border-gold/30 ring-1 ring-gold/10 flex items-center justify-center text-gold text-sm font-semibold`} style={{ fontFamily: 'var(--font-sans)' }}>
                     {t.name[0]}
                   </div>
                   <div>
                     <div className="text-[13px] font-medium text-cream">{t.name}</div>
-                    <div className="text-[11px] text-text-muted">{t.location}</div>
+                    <div className="text-[11px] text-text-muted">{t.location} · 使用情境參考</div>
                   </div>
                 </div>
               </div>

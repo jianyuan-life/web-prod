@@ -18,7 +18,8 @@ export default function ReportPreviewFloat() {
           className={`absolute ${f.pos} w-[244px] animate-float`}
           style={{ animationDelay: f.delay }}
         >
-          <div className="report-float-card rounded-2xl p-4 backdrop-blur-md">
+          {/* v5.10.462(GeminiPro:圓角過大+陰影生硬像貼上去的補丁):rounded-xl(12px)貼近內容密度 */}
+          <div className="report-float-card rounded-xl p-4 backdrop-blur-md">
             <div className="flex items-center gap-2 mb-2">
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-gold)' }} />
               <span className="report-float-sys text-[11px] tracking-[0.18em]" style={{ fontFamily: 'var(--font-body)' }}>

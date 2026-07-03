@@ -66,6 +66,67 @@ const PLANS = {
 
 type Plan = { code: string; name: string; price: number; desc: string; features: string[]; systems?: number; popular?: boolean; locked?: boolean; seasonal?: boolean; hasQuestion?: boolean; addPrice?: number; suitableFor?: string; valueHint?: string }
 
+// v5.10.462 B8(3 家視覺 LLM + liveaudit P2-5:mobile 比較表 4-5 欄擠進 390px 難讀):
+// row 資料抽 const、desktop 保留表格、mobile 改 per-plan 摺疊卡
+const COMPARE_ROWS = [
+  { feature: '分析系統數', d: '3–5 套（依問題類別）', c: '14套', r: '4–6 套（關係系統）', g: '14套' },
+  { feature: '性格天賦分析', d: '聚焦選定面向', c: '&#10003;', r: '--', g: '&#10003;' },
+  { feature: '事業財運分析', d: '單面向', c: '&#10003;', r: '--', g: '&#10003;' },
+  { feature: '感情婚姻分析', d: '單面向', c: '&#10003;', r: '&#10003;', g: '&#10003;' },
+  { feature: '大運流年走勢', d: '--', c: '&#10003;', r: '--', g: '&#10003;' },
+  { feature: '專項問題深度剖析', d: '&#10003;', c: '--', r: '&#10003;', g: '--' },
+  { feature: '多人互動分析', d: '--', c: '--', r: '&#10003;', g: '&#10003;' },
+  { feature: '家庭動力學', d: '--', c: '--', r: '--', g: '&#10003;' },
+  { feature: 'PDF 完整報告', d: '&#10003;', c: '&#10003;', r: '&#10003;', g: '&#10003;' },
+  { feature: '報告字數', d: '5,000字+', c: '30,000字+', r: '8,000字+', g: '每人8,000字+' },
+] as const
+const CHUMENJI_ROWS = [
+  { feature: '對象', e1: '單一事件', e2: '當月入門', e3: '當月密集', e4: '整年佈局' },
+  { feature: '吉時數', e1: 'Top3', e2: '當月 1 個', e3: '當月 8 個（4 週×Top2）', e4: '年盤＋12 月盤' },
+  { feature: '主題用神', e1: '自由描述', e2: '無', e3: '可選 1-3 個', e4: '無' },
+  { feature: '時間單位', e1: '時盤（兩小時）', e2: '月盤', e3: '時盤（8 個）', e4: '年盤＋月盤' },
+  { feature: '年命宮驗證', e1: '&#10003;', e2: '&#10003;', e3: '&#10003;', e4: '&#10003;' },
+  { feature: '行事曆邀約', e1: '&#10003;', e2: '&#10003;', e3: '&#10003;', e4: '&#10003;' },
+  { feature: '販售限制', e1: '隨時', e2: '晦日 21:00 前當月', e3: '隨時', e4: '立春前 30 天限時' },
+] as const
+
+// mobile 摺疊卡的值顯示(entity → 符號)
+function cellText(v: string): string {
+  if (v === '&#10003;') return '✓ 包含'
+  if (v === '--') return '—'
+  return v
+}
+
+// mobile per-plan 摺疊卡(details/summary、零 JS)
+function MobileCompareCards({ plans, rows }: {
+  plans: Array<{ key: string; name: string; price: number; highlight?: boolean }>
+  rows: ReadonlyArray<Record<string, string>>
+}) {
+  return (
+    <div className="sm:hidden space-y-3">
+      {plans.map((p) => (
+        <details key={p.key} className={`glass rounded-xl group ${p.highlight ? 'border border-gold/30' : ''}`} open={p.highlight}>
+          <summary className="p-4 cursor-pointer flex justify-between items-center min-h-[44px]">
+            <span className="font-semibold text-cream text-sm">{p.name}</span>
+            <span className="flex items-center gap-3">
+              <span className="text-xs text-gold">${p.price}</span>
+              <span className="text-gold group-open:rotate-45 transition-transform">+</span>
+            </span>
+          </summary>
+          <div className="px-4 pb-4 space-y-2 border-t border-gold/10 pt-3">
+            {rows.map((row) => (
+              <div key={row.feature} className="flex justify-between gap-3 text-xs leading-[1.7]">
+                <span className="text-text-muted shrink-0">{row.feature}</span>
+                <span className={`text-right ${row[p.key] === '&#10003;' ? 'text-gold' : 'text-cream/85'}`}>{cellText(row[p.key])}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      ))}
+    </div>
+  )
+}
+
 function Section({ title, subtitle, plans }: { title: string; subtitle: string; plans: Plan[] }) {
   return (
     <div className="mb-16">
@@ -209,7 +270,17 @@ export default function PricingPage() {
             <span className="text-xs tracking-[0.2em]">方案比較</span>
           </div>
           <p className="text-center text-text-muted text-sm mb-8">一目了然，找到最適合你的方案</p>
-          <div className="glass rounded-xl overflow-hidden overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+          {/* v5.10.462 B8:mobile 改 per-plan 摺疊卡(4 欄表擠 390px 難讀)、desktop 保留表格 */}
+          <MobileCompareCards
+            plans={[
+              { key: 'c', name: '人生藍圖', price: 89, highlight: true },
+              { key: 'd', name: '心之所惑', price: 39 },
+              { key: 'r', name: '合否？', price: 59 },
+              { key: 'g', name: '家族藍圖', price: 59 },
+            ]}
+            rows={COMPARE_ROWS}
+          />
+          <div className="hidden sm:block glass rounded-xl overflow-hidden overflow-x-auto sm:mx-0 sm:px-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gold/10">
@@ -221,18 +292,7 @@ export default function PricingPage() {
                 </tr>
               </thead>
               <tbody className="text-xs">
-                {[
-                  { feature: '分析系統數', d: '3–5 套（依問題類別）', c: '14套', r: '4–6 套（關係系統）', g: '14套' },
-                  { feature: '性格天賦分析', d: '聚焦選定面向', c: '&#10003;', r: '--', g: '&#10003;' },
-                  { feature: '事業財運分析', d: '單面向', c: '&#10003;', r: '--', g: '&#10003;' },
-                  { feature: '感情婚姻分析', d: '單面向', c: '&#10003;', r: '&#10003;', g: '&#10003;' },
-                  { feature: '大運流年走勢', d: '--', c: '&#10003;', r: '--', g: '&#10003;' },
-                  { feature: '專項問題深度剖析', d: '&#10003;', c: '--', r: '&#10003;', g: '--' },
-                  { feature: '多人互動分析', d: '--', c: '--', r: '&#10003;', g: '&#10003;' },
-                  { feature: '家庭動力學', d: '--', c: '--', r: '--', g: '&#10003;' },
-                  { feature: 'PDF 完整報告', d: '&#10003;', c: '&#10003;', r: '&#10003;', g: '&#10003;' },
-                  { feature: '報告字數', d: '5,000字+', c: '30,000字+', r: '8,000字+', g: '每人8,000字+' },
-                ].map((row) => (
+                {COMPARE_ROWS.map((row) => (
                   <tr key={row.feature} className="border-b border-gold/5 hover:bg-white/3">
                     <td className="p-3 text-cream">{row.feature}</td>
                     <td className="p-3 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.d.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
@@ -252,7 +312,16 @@ export default function PricingPage() {
             <span className="text-xs tracking-[0.2em]">出門訣比較</span>
           </div>
           <p className="text-center text-text-muted text-sm mb-8">四個出門訣方案，覆蓋從單事件到全年的擇吉需求</p>
-          <div className="glass rounded-xl overflow-hidden overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+          <MobileCompareCards
+            plans={[
+              { key: 'e1', name: '事件擇吉 E1', price: 59, highlight: true },
+              { key: 'e2', name: '月度單盤 E2', price: 29 },
+              { key: 'e3', name: '月度精選 E3', price: 89 },
+              { key: 'e4', name: '年度全運 E4', price: 279 },
+            ]}
+            rows={CHUMENJI_ROWS}
+          />
+          <div className="hidden sm:block glass rounded-xl overflow-hidden overflow-x-auto sm:mx-0 sm:px-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gold/10">
@@ -264,15 +333,7 @@ export default function PricingPage() {
                 </tr>
               </thead>
               <tbody className="text-xs">
-                {[
-                  { feature: '對象', e1: '單一事件', e2: '當月入門', e3: '當月密集', e4: '整年佈局' },
-                  { feature: '吉時數', e1: 'Top3', e2: '當月 1 個', e3: '當月 8 個（4 週×Top2）', e4: '年盤＋12 月盤' },
-                  { feature: '主題用神', e1: '自由描述', e2: '無', e3: '可選 1-3 個', e4: '無' },
-                  { feature: '時間單位', e1: '時盤（兩小時）', e2: '月盤', e3: '時盤（8 個）', e4: '年盤＋月盤' },
-                  { feature: '年命宮驗證', e1: '&#10003;', e2: '&#10003;', e3: '&#10003;', e4: '&#10003;' },
-                  { feature: '行事曆邀約', e1: '&#10003;', e2: '&#10003;', e3: '&#10003;', e4: '&#10003;' },
-                  { feature: '販售限制', e1: '隨時', e2: '晦日 21:00 前當月', e3: '隨時', e4: '立春前 30 天限時' },
-                ].map((row) => (
+                {CHUMENJI_ROWS.map((row) => (
                   <tr key={row.feature} className="border-b border-gold/5 hover:bg-white/3">
                     <td className="p-3 text-cream">{row.feature}</td>
                     <td className="p-3 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e1.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />

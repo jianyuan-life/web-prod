@@ -299,8 +299,12 @@ html.locale-cn {
    暗:深藍玻璃卡 + 金邊金暈;暖白:奶油羊皮卡 + 金影、不在亮底上突兀 */
 .report-float-card {
   background: color-mix(in srgb, var(--color-bg-card, #111A30) 72%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-gold) 28%, transparent);
-  box-shadow: 0 8px 28px -8px color-mix(in srgb, var(--color-gold) 18%, transparent);
+  /* v5.10.462(GeminiPro 批次 E:「陰影生硬、像後貼補丁」):半透明光暈邊 + 雙層柔和陰影(近層定位+遠層景深)、與 hero 融合 */
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:
+    0 4px 15px rgba(0, 0, 0, 0.10),
+    0 10px 40px rgba(0, 0, 0, 0.22),
+    0 8px 28px -8px color-mix(in srgb, var(--color-gold) 14%, transparent);
 }
 .report-float-sys { color: var(--color-gold); }
 .report-float-line { color: var(--color-text-muted); }
@@ -662,6 +666,14 @@ html:not([data-theme="light"]) .text-text-muted\/70 { color: rgb(179 184 197 / 0
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+/* v5.10.462(GeminiPro「主標題在複雜背景不夠突出、缺王者氣勢」根因):
+   淡金漸層字壓米白底 = 低對比;light 換深鎏金漸層(對齊 --gold-500 light #8C5E1A AA 5.22:1) */
+[data-theme="light"] .text-gradient-gold {
+  background: linear-gradient(135deg, #8C5E1A, #B8893B, #8C5E1A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
 /* 按鈕光暈——帶有科技感的擴散效果 */
 .btn-glow {
@@ -690,6 +702,12 @@ html:not([data-theme="light"]) .btn-glow:not([class*="bg-gradient"]):hover {
     inset 0 1px 0 rgba(255, 255, 255, 0.32),
     0 6px 30px rgba(201, 168, 76, 0.4),
     0 0 60px rgba(74, 122, 255, 0.1);
+}
+
+/* v5.10.462 B9:首頁創辦人故事手機收斂(手機 24 屏文字牆最長單塊;前 4 段留、餘藏、
+   md+ 全顯;全文在 /about、手機補「閱讀完整故事」連結) */
+@media (max-width: 767px) {
+  .founder-story > *:nth-child(n+5) { display: none; }
 }
 
 /* v5.10.460 hero 中央光暈 theme 化(原 inline 金 0.13 在 light 米白底無感、
