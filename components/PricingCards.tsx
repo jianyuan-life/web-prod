@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import PriceTag from './PriceTag'
+import GoldMark from './GoldMark'
 
 const PLANS = [
   { code: 'D', name: '心之所惑', price: 39, desc: '依問題類別精選 3–5 套系統(八字 + 紫微 + 占星)聚焦深度剖析', features: ['財運/事業/感情/健康/學業/搬家', '描述你最想釐清的困惑（200字）', '依主題精選 3–5 套系統交叉分析', '好的/注意/改善三大建議'], cta: '入門首選' },
@@ -24,13 +25,13 @@ export default function PricingCards() {
           <h3 className="text-xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
           <p className="text-xs text-text-muted mt-1">{plan.desc}</p>
           <div className="my-5">
-            <PriceTag usd={plan.price} size="lg" />
+            <PriceTag usd={plan.price} size="md" />
             <span className="text-sm text-text-muted ml-1">/ 份</span>
           </div>
           <ul className="space-y-2.5 mb-7 flex-1">
             {plan.features.map((f) => (
               <li key={f} className="flex items-start gap-2 text-sm text-text">
-                <span className="text-gold mt-0.5 text-xs">&#10003;</span>{f}
+                <GoldMark className="w-3.5 h-3.5 mt-0.5" />{f}
               </li>
             ))}
           </ul>

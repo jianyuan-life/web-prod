@@ -6,6 +6,7 @@ import SocialProof from '@/components/SocialProof'
 import FreeTryBanner from '@/components/FreeTryBanner'
 import FunnelPageHit from '@/components/FunnelPageHit'
 import TrustBar from '@/components/TrustBar'
+import GoldMark from '@/components/GoldMark'  // v5.10.463 E2:品牌四芒星勾號
 
 const PLANS = {
   personal: [
@@ -147,7 +148,7 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-700 text-white text-[10px] font-bold rounded-full">立春前 30 天限時</div>
             )}
             <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
-            <h3 className="text-lg font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
+            <h3 className="text-xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
             <p className="text-xs text-text-muted mt-1 mb-2">{plan.desc}</p>
             {plan.suitableFor && (
               <p className="text-[10px] text-gold/70 mb-4 flex items-start gap-1">
@@ -157,7 +158,7 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
             )}
             <div className="mb-4">
               <PromotionPrice planCode={plan.code} originalPrice={plan.price}>
-                <PriceTag usd={plan.price} size="lg" />
+                <PriceTag usd={plan.price} size="md" />
               </PromotionPrice>
               {plan.addPrice && <span className="text-xs text-text-muted ml-2">加人 +${plan.addPrice}/人</span>}
               {plan.valueHint && <div className="text-[10px] text-gold/60 mt-1">{plan.valueHint}</div>}
@@ -165,7 +166,7 @@ function Section({ title, subtitle, plans }: { title: string; subtitle: string; 
             <ul className="space-y-2 mb-6 flex-1">
               {plan.features.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-xs text-text leading-[1.8] tracking-[0.02em]">
-                  <span className="text-gold mt-0.5">&#10003;</span>{f}
+                  <GoldMark className="w-3.5 h-3.5 mt-1" />{f}
                 </li>
               ))}
             </ul>
@@ -239,7 +240,7 @@ export default function PricingPage() {
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-700 text-white text-[10px] font-bold rounded-full">立春前限時</div>
                 )}
                 <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
-                <h3 className="text-lg font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
+                <h3 className="text-xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
                 <p className="text-xs text-text-muted mt-1 mb-2">{plan.desc}</p>
                 {plan.suitableFor && (
                   <p className="text-[10px] text-gold/70 mb-3 flex items-start gap-1">
@@ -248,13 +249,13 @@ export default function PricingPage() {
                   </p>
                 )}
                 <div className="mb-4">
-                  <PriceTag usd={plan.price} size="lg" />
+                  <PriceTag usd={plan.price} size="md" />
                   {plan.valueHint && <div className="text-[10px] text-gold/60 mt-1">{plan.valueHint}</div>}
                 </div>
                 <ul className="space-y-2 mb-6 flex-1">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-xs text-text">
-                      <span className="text-gold mt-0.5">&#10003;</span>{f}
+                      <GoldMark className="w-3.5 h-3.5 mt-1" />{f}
                     </li>
                   ))}
                 </ul>
@@ -291,14 +292,14 @@ export default function PricingPage() {
                   <th className="p-4 text-gold text-center font-semibold">家族藍圖<br/><span className="text-xs text-text-muted font-normal">$59</span></th>
                 </tr>
               </thead>
-              <tbody className="text-xs">
+              <tbody className="text-[13px] leading-[1.7]">
                 {COMPARE_ROWS.map((row) => (
                   <tr key={row.feature} className="border-b border-gold/5 hover:bg-white/3">
-                    <td className="p-3 text-cream">{row.feature}</td>
-                    <td className="p-3 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.d.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3 text-center text-text-muted bg-gold/5" dangerouslySetInnerHTML={{ __html: row.c.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.r.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.g.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-cream">{row.feature}</td>
+                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.d.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-center text-text-muted bg-gold/5" dangerouslySetInnerHTML={{ __html: row.c.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.r.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.g.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
                   </tr>
                 ))}
               </tbody>
@@ -332,14 +333,14 @@ export default function PricingPage() {
                   <th className="p-4 text-gold text-center font-semibold">年度全運 E4<br/><span className="text-xs text-text-muted font-normal">$279</span></th>
                 </tr>
               </thead>
-              <tbody className="text-xs">
+              <tbody className="text-[13px] leading-[1.7]">
                 {CHUMENJI_ROWS.map((row) => (
                   <tr key={row.feature} className="border-b border-gold/5 hover:bg-white/3">
-                    <td className="p-3 text-cream">{row.feature}</td>
-                    <td className="p-3 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e1.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e2.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3 text-center text-text-muted bg-gold/5" dangerouslySetInnerHTML={{ __html: row.e3.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
-                    <td className="p-3 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e4.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-cream">{row.feature}</td>
+                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e1.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e2.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-center text-text-muted bg-gold/5" dangerouslySetInnerHTML={{ __html: row.e3.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
+                    <td className="p-3.5 text-center text-text-muted" dangerouslySetInnerHTML={{ __html: row.e4.replace('&#10003;', '<span class="text-gold">&#10003;</span>') }} />
                   </tr>
                 ))}
               </tbody>

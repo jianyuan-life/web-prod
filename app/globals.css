@@ -1484,8 +1484,11 @@ a:focus-visible,
 /* 5.2 Hero — Light 模式 .glass 卡片(取消重 backdrop-blur、改實底 + 微 shadow、Apple TW 風)*/
 [data-theme="light"] .glass {
   background: var(--bg-card);
-  border: 1px solid var(--line);
-  box-shadow: 0 2px 8px rgba(42, 31, 24, 0.06);
+  /* v5.10.463 E2(GemFlash r3「卡片邊框生硬、缺柔和陰影」):邊框降一階 + 雙層柔影(近層貼合+遠層景深) */
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  box-shadow:
+    0 1px 3px rgba(42, 31, 24, 0.05),
+    0 10px 30px -12px rgba(42, 31, 24, 0.10);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
