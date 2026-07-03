@@ -120,11 +120,12 @@ export default function HomePage() {
           </div>
           {/* v5.10.460:移除 hero「N 人已體驗」弱社會證明(GeminiPro+liveaudit 雙源:數字小反削信任、
               沒證明好過弱證明;tools 頁「N 份付費報告交付」保留、那個數字有力) */}
-          <p className="text-xs text-text-muted/60 tracking-wide flex items-center justify-center gap-3 flex-wrap">
+          {/* v5.10.465(GemFlash r5:reassurance 行過小難辨、降低信任建立):字級/對比升一階 */}
+          <p className="text-[13px] text-text-muted/80 tracking-wide flex items-center justify-center gap-3 flex-wrap">
             <span>30 秒免費速算</span>
-            <span className="text-text-muted/30">·</span>
+            <span className="text-text-muted/40">·</span>
             <span>不需註冊</span>
-            <span className="text-text-muted/30">·</span>
+            <span className="text-text-muted/40">·</span>
             <span>不需信用卡</span>
           </p>
         </div>
