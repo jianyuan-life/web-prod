@@ -13,6 +13,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { checkCronAuth } from '@/lib/cron-auth'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 import { sendApologyIfFinalFailure } from '@/lib/report/apology-email'  // v5.10.461 P0-3:終局失敗補寄致歉信
+import { sendCompletionEmailIfMissing } from '@/lib/report/completion-fallback-email'  // v5.10.466 D5:完成信全失敗補寄
 
 // Vercel Cron 最長執行時間 60 秒
 export const maxDuration = 60
@@ -178,11 +179,36 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Part C(v5.10.466 D5):completed 但完成信從未寄成(email_sent_at null)→ fallback 補寄 ──
+  //   bizaudit P1:此前沒有任何 cron 撈這群、客戶付錢+報告完成卻永遠不知道。
+  //   lib 自帶 guard(completed/未寄過/滿 15 分緩衝/email_send_log 雙防線);after() 不佔 cron 時間。
+  let emailBackfillCount = 0
+  try {
+    const { data: unnotified } = await supabase
+      .from('paid_reports')
+      .select('id')
+      .eq('status', 'completed')
+      .is('email_sent_at', null)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(3)
+    for (const r of (unnotified || [])) {
+      emailBackfillCount++
+      after(() =>
+        sendCompletionEmailIfMissing(r.id, 'cron-completion-fallback')
+          .catch((e) => console.error('completion fallback(after) 失敗(不阻塞):', e))
+      )
+    }
+  } catch (e) {
+    console.error('Part C 完成信補寄查詢失敗(不阻塞):', e)
+  }
+
   return NextResponse.json({
     message: '重試完成',
     retriedCount,
     generatingCount,
     timedOutCount,
+    emailBackfillCount,
     totalPending: pendingReports?.length || 0,
   })
 }

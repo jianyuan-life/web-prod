@@ -480,6 +480,9 @@ export async function POST(req: NextRequest) {
     //   → 避免「老公刷卡幫老婆買」→ 報告記到老公 email → 個資外洩給老公
     if (customerEmail) {
       params.set('customer_email', customerEmail)
+      // v5.10.466 D3(bizaudit P1「無含金額收據、客訴舉證弱」):
+      // Stripe 原生收據(含金額/卡末四碼)自動寄給客戶、Live 模式生效
+      params.set('payment_intent_data[receipt_email]', customerEmail)
     }
     params.set('metadata[plan_code]', planCode)
     // v5.3.22：審計軌跡 — 記錄登入用戶的 email 和 user_id 到 Stripe metadata

@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 
 export type EmailType =
   | 'report_ready'
+  | 'report_completed_fallback' // v5.10.466 D5 — 完成信全失敗 cron 補寄(輕量版)
   | 'report_failed_apology'
   | 'referral_reward'
   | 'refund_notice'

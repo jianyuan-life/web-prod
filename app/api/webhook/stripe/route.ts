@@ -203,6 +203,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Supabase connection error' }, { status: 500 })
     }
 
+    // v5.10.466 D6 修(bizaudit P1):birthData 缺失原本「靜默不生成」— 客戶已付款、
+    // 報告永遠不開始、無人知道(cron 只重試 pending、birth_data 缺失重試也救不了)。
+    // 補 Telegram 人工介入告警(不阻塞 webhook 回 200、避免 Stripe 重送)。
+    if (!birthData && reportId) {
+      try {
+        const { notify } = await import('@/lib/ai/observability/telegram')
+        await notify(
+          '🚨 Webhook 缺 birthData、報告無法生成(需人工介入)',
+          `report ${String(reportId).slice(0, 8)} / plan ${planCode} / ${customerEmail}\n` +
+          `Stripe session ${session.id.slice(0, 28)}…\n` +
+          `checkout_drafts 讀取失敗或 metadata 缺失 — 請人工補 birth_data 後重觸發`,
+        )
+      } catch (tgErr) {
+        console.error('birthData 缺失告警失敗(不阻塞):', tgErr)
+      }
+    }
+
     // 呼叫 Fly.io 異步報告生成 Pipeline（無超時限制，完整排盤數據）
     if (birthData && reportId) {
       try {
