@@ -19,7 +19,7 @@ export function ReadingProgressBar() {
   }, [])
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-40 h-1 no-print" style={{ background: 'rgba(255,255,255,0.05)' }}>
+    <div className="fixed top-0 left-0 right-0 z-40 h-1 no-print" style={{ background: 'rgba(255,255,255,0.05)' }}>
       <div
         className="h-full transition-all duration-150"
         style={{

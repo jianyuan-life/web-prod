@@ -34,18 +34,18 @@ export default function ReportError({
   }, [error])
 
   return (
-    <main
-      className="min-h-[80vh] flex items-center justify-center px-6"
-      role="main"
+    <section
+      className="jy-page jy-state-page min-h-[80vh] flex items-center justify-center px-6"
+      aria-labelledby="report-error-title"
       aria-live="assertive"
     >
       <div className="text-center max-w-lg">
         {/* v5.10.304 editorial:6xl 📜 → hairline divider + serif heading */}
-        <div className="h-px w-16 bg-[var(--jy-text-gold)]/40 mx-auto mb-6" aria-hidden />
-        <h1 className="text-2xl font-normal text-[var(--jy-text-primary)] mb-3" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
+        <div className="h-px w-16 bg-gold/40 mx-auto mb-6" aria-hidden />
+        <h1 id="report-error-title" className="text-2xl font-normal mb-3" style={{ fontFamily: 'var(--font-sans)' }}>
           報告載入失敗
         </h1>
-        <p className="text-[var(--jy-text-secondary)] mb-6 leading-relaxed">
+        <p className="text-text-muted mb-6 leading-relaxed">
           很抱歉、您的報告暫時無法顯示。可能是網路波動或暫時性的伺服器問題。
         </p>
 
@@ -65,13 +65,13 @@ export default function ReportError({
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={() => reset()}
-            className="px-6 py-3 rounded-xl bg-[var(--jy-text-gold)] text-[var(--jy-bg-deep)] font-bold hover:opacity-90 transition-opacity focus-visible:outline-2 focus-visible:outline-[var(--jy-text-gold)] focus-visible:outline-offset-2"
+            className="jy-button jy-button--primary"
           >
             重新載入報告
           </button>
           <Link
             href="/dashboard"
-            className="px-6 py-3 rounded-xl border border-[var(--jy-border-soft)] text-[var(--jy-text-secondary)] hover:bg-white/5 hover:text-[var(--jy-text-primary)] transition-all"
+            className="jy-button jy-button--secondary"
           >
             回到我的報告
           </Link>
@@ -92,6 +92,6 @@ export default function ReportError({
           )}
         </p>
       </div>
-    </main>
+    </section>
   )
 }

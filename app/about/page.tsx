@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="py-20">
+    <div className="jy-page jy-public-page jy-about-page py-20">
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-6 text-center mb-16">
         <div className="text-xs tracking-[0.3em] text-gold/60 mb-4">ABOUT JIANYUAN</div>
@@ -27,9 +27,9 @@ export default function AboutPage() {
 
       {/* 創辦人故事 — 主軸 */}
       <section className="max-w-3xl mx-auto px-6 mb-20">
-        <div className="divider-ornament text-gold/30 mb-6 justify-center">
+        <h2 className="divider-ornament text-gold/80 mb-6 justify-center">
           <span className="text-xs tracking-[0.2em]">創辦人的話</span>
-        </div>
+        </h2>
 
         <div className="glass rounded-2xl p-8 md:p-12">
           <div className="text-gold/60 text-4xl mb-4" style={{ fontFamily: 'var(--font-sans)' }}>&ldquo;</div>
@@ -119,13 +119,13 @@ export default function AboutPage() {
 
       {/* 鑒源 3 大承諾 */}
       <section className="max-w-4xl mx-auto px-6 mb-20">
-        <div className="divider-ornament text-gold/30 mb-6 justify-center">
+        <h2 className="divider-ornament text-gold/80 mb-6 justify-center">
           <span className="text-xs tracking-[0.2em]">鑒源 3 大承諾</span>
-        </div>
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="glass rounded-2xl p-6 border border-gold/15 text-center">
             <div className="text-gold mb-3 flex justify-center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10" aria-hidden="true" focusable="false">
                 <path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
               </svg>
             </div>
@@ -136,7 +136,7 @@ export default function AboutPage() {
           </div>
           <div className="glass rounded-2xl p-6 border border-gold/15 text-center">
             <div className="text-gold mb-3 flex justify-center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10" aria-hidden="true" focusable="false">
                 <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
               </svg>
             </div>
@@ -147,7 +147,7 @@ export default function AboutPage() {
           </div>
           <div className="glass rounded-2xl p-6 border border-gold/15 text-center">
             <div className="text-gold mb-3 flex justify-center">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10" aria-hidden="true" focusable="false">
                 <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
               </svg>
             </div>

@@ -42,7 +42,7 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
         reportTitle={`心之所惑 · ${data.meta.name}`}
         onDownloadPDF={() => { window.location.href = `/api/r/heart-doubts/${data.meta.id}/pdf` }}
       />
-      <main
+      <article
         className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden"
         style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
       >
@@ -376,14 +376,14 @@ export function HeartDoubtsReport({ id, data }: HeartDoubtsReportProps) {
         </Stagger>
         </div>
         <BackToTop />
-      </main>
+      </article>
     </>
   )
 }
 
 function SkeletonView({ id }: { id: string }) {
   return (
-    <main className="min-h-screen text-[var(--jy-text-primary)]" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
+    <article className="min-h-screen text-[var(--jy-text-primary)]" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
       <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8">
         <Eyebrow>HEART DOUBTS · 心之所惑</Eyebrow>
         <h1 className="mt-8 font-bold" style={{ fontFamily: 'var(--jy-font-display)', fontSize: 'clamp(48px, 6vw, 88px)', lineHeight: 1.05 }}>心之所惑</h1>
@@ -394,6 +394,6 @@ function SkeletonView({ id }: { id: string }) {
           <p className="mt-3 text-sm text-[var(--jy-text-tertiary)]">Sprint 1 demo 路徑:<code>/r/heart-doubts/he-xuan-yi</code></p>
         </Card>
       </div>
-    </main>
+    </article>
   )
 }

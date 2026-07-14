@@ -32,20 +32,19 @@ export function ChartSummaryCard({ fullCharts }: { fullCharts?: unknown }) {
 
   return (
     <section
-      aria-label="命盤綜合量化"
+      className="report-evidence-summary"
+      aria-labelledby="report-evidence-summary-title"
       style={{
-        background: 'linear-gradient(160deg, var(--jy-bg-card, #111A30), var(--jy-bg-raised, #0E1428))',
-        border: '1px solid var(--jy-border, rgba(201,168,76,0.16))',
-        borderRadius: '18px', padding: '28px 26px', margin: '0 0 40px',
+        padding: '28px 26px', margin: '0 0 40px',
       }}
     >
-      <p style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC", serif)', fontSize: '0.8rem', letterSpacing: '0.24em', color: 'var(--jy-text-gold-300, #E0C679)', marginBottom: '18px' }}>
-        命 盤 綜 合 量 化
+      <p id="report-evidence-summary-title" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC", serif)', fontSize: '0.8rem', letterSpacing: '0.24em', color: 'var(--jy-text-gold-300, #E0C679)', marginBottom: '18px' }}>
+        排 盤 資 料 摘 要
       </p>
 
       {/* 四柱 */}
       {hasPillars && (
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '22px' }}>
+        <div className="report-evidence-summary__pillars" style={{ gap: '10px', marginBottom: '22px' }}>
           {([['年', pillars!.year], ['月', pillars!.month], ['日', pillars!.day], ['時', pillars!.hour]] as const).map(([label, p]) =>
             p?.gan ? (
               <div key={label} style={{ flex: '1 1 70px', textAlign: 'center', background: 'var(--jy-bg-sunken, #060912)', borderRadius: '12px', padding: '12px 8px', border: label === '日' ? '1px solid var(--jy-text-gold, #C9A84C)' : '1px solid transparent' }}>
@@ -59,7 +58,7 @@ export function ChartSummaryCard({ fullCharts }: { fullCharts?: unknown }) {
       )}
 
       {/* 五行能量條 */}
-      <div>
+      <div className="report-evidence-summary__elements" aria-label="五行比例">
         {WX_ORDER.map((k) => {
           const v = Number(fe[k]) || 0
           const pct = Math.round((v / total) * 100)
@@ -74,6 +73,10 @@ export function ChartSummaryCard({ fullCharts }: { fullCharts?: unknown }) {
           )
         })}
       </div>
+
+      <p className="report-evidence-summary__note">
+        五行比例依本報告四柱資料的五行計數正規化呈現，供閱讀命盤結構時對照；解讀仍以正文脈絡為準。
+      </p>
 
       {(bazi.yongshen || bazi.day_master) && (
         <p style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--jy-text-secondary, #B3B8C5)' }}>

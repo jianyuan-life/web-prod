@@ -112,23 +112,26 @@ export default function PointsRedeem({
   if (!loading && balance <= 0) return null
 
   return (
-    <div className={`${hasCoupon ? 'opacity-30 pointer-events-none' : ''}`}>
+    <div className={`${hasCoupon ? 'opacity-30 pointer-events-none' : ''}`} aria-disabled={hasCoupon}>
       {loading ? (
-        <p className="text-text-muted text-xs">載入點數...</p>
+        <p className="text-text-muted text-xs" role="status">載入點數...</p>
       ) : pointsUsed > 0 ? (
         <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2">
-          <span className="text-green-400 text-sm">✓ 已折抵 {pointsUsed} 點（-${pointsUsed}）</span>
+          <span className="text-green-400 text-sm" role="status">✓ 已折抵 {pointsUsed} 點（− USD {pointsUsed}）</span>
           <button type="button" onClick={removePoints} className="text-xs text-text-muted/50 hover:text-red-400 transition-colors ml-2">取消</button>
         </div>
       ) : (
         <>
-          <label className="flex items-center gap-1 text-[11px] text-text-muted/70 mb-1">
+          <label htmlFor="checkout-points" className="flex items-center gap-1 text-[11px] text-text-muted/70 mb-1">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
-            積分折抵（1 點 = 1 美元，共 {balance} 點可用）
+            積分折抵（1 點 = USD 1，共 {balance} 點可用）
           </label>
           <div className="flex gap-2">
             <input
+              id="checkout-points"
               type="number" min={1} max={maxPoints}
+              aria-invalid={!!error}
+              aria-describedby={error ? 'checkout-points-error' : undefined}
               placeholder={`最多 ${maxPoints} 點`}
               value={pointsInput}
               onChange={(e) => { setPointsInput(e.target.value); setError('') }}
@@ -149,7 +152,7 @@ export default function PointsRedeem({
                   : '折抵'}
             </button>
           </div>
-          {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+          {error && <p id="checkout-points-error" className="text-red-400 text-xs mt-1" role="alert">{error}</p>}
           {/* T10 v5.10.353 L1 QA 抓 ux 補:倒數 UI 即時顯示 */}
           {!isReady && (
             <p className="text-amber-400/70 text-xs mt-1" role="status" aria-live="polite">

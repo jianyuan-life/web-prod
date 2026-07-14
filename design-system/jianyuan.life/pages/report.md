@@ -1,41 +1,55 @@
-# Report Page(`/report/[token]`)Overrides
+# 正式私人報告 `/report/[token]` — 呈現覆寫
 
-> **PROJECT:** jianyuan.life
-> **Updated:** 2026-06-12(v5.10.422 基線)
-> ⚠️ 本檔規則**覆寫** `../MASTER.md`;未列項目一律照 Master。
+> 本頁規則覆寫 `../MASTER.md`；只限制 presentation，不修改任何命理資料、推導或生成內容。
 
----
+**更新：** 2026-07-13
+**正式 renderer：** legacy `/report/[token]`
+**不可替代來源：** `/r/*` 與 `lib/pdf/*` 目前仍屬 beta／POC
 
-## 主題(最重要的覆寫)
+## Chrome
 
-- **強制 dark**:next-themes `forcedTheme="dark"`(ThemeProvider 依 pathname `/report/` 判斷、**不寫 localStorage**、不污染其他頁偏好)。
-- layout inline script 首繪即 dark(零閃白);navbar/footer/toolbar/banner 共 4 個主題切換入口在本頁隱藏(footer 語言切換保留)。
-- **解禁條件**:warm-light 報告遷移 sprint 完成(殼 token 化 + 326 處正文色遷移、R8Enhancements 內有還原點註解)後才可恢復切換。
+- 隱藏公開 Navbar、Footer 與全站 Back to top；只保留報告閱讀所需工具。
+- 閱讀進度條與 toolbar 從 viewport `top: 0` 開始，不堆疊多層 fixed chrome。
+- 工具列最多：目錄、閱讀模式／字級、下載／列印、回報錯誤。
+- 本頁暫時由 ThemeProvider 強制 dark；完成全部 legacy 內容 token 化與對比 QA 後才解除。
 
 ## 排版
 
-- 正文 wrapper **max 880px 置中**(非 Master 1200px;v406 解「字擠左、右大留白」)、17px Noto Sans TC、行高 1.8。
-- 左側浮動目錄 **≥1400px 才顯示**;1280 檔用流內 mobile-toc(浮層遮正文教訓)。
-- 章首金句:22px Noto Serif TC + 金色左條;`blockquote` 金邊生長動效 420ms。
+- `.report-reading-column` 最大 48rem；純正文 `.report-p` 以 18px／1.8／約 36em 為目標。
+- H1/H2 用 serif；H3 與正文用 sans。H3 在 mobile 不得小於正文。
+- 資料表、命盤、時間線可 breakout，但正文寬度不可隨之擴張。
+- `.section-card` 與 `.glass` 在報告 scope 內不得 hover lift 或 backdrop blur。
+- 靜態段落不可同時由外內兩層 `.report-p` 疊加 margin。
 
-## 閱讀模式(v408 P1 + v407)
+## 閱讀架構
 
-- **預設精簡版**(首屏 ~18 螢幕、-62%):SectionExpander 內文截 300px + 「展開本章全文」鍵 + 「內容未刪減」microcopy。
-- 短章 scrollHeight ≤340px 免摺疊(防空殼展開鍵);`useState<boolean|null>(null)` null 首幀防 CLS(Gemini P0 教訓)。
-- 已存偏好(localStorage view-mode)雙向尊重;print 一律全文 `!important`。
+- 正式起點只能有一個：封面／身份 → Executive Brief → 限制 → TOC → 正文。
+- 不得用「速覽、5 件套、3 層洞察、5 大洞察、命格名片」反覆包裝同一批結論。
+- 核心章節依「起／承／轉／合」展開；術語、算法與 14 系統矩陣移至證據／附錄。
+- TOC 只能列實際存在的 id；desktop、mobile 與正文使用同一份 immutable normalized list。
+- 核心內容預設展開。摺疊只用於補充證據，且 print 必須全文。
 
-## 動效(ReportMotion、flag `NEXT_PUBLIC_FF_REPORT_MOTION`)
+## 真實性
 
-- 觀察對象:`main .section-card, main .glass[id^="sec-"]` 過濾 `height>40` — **禁裸 `[id^="sec-"]`**(會抓到 39 個零尺寸 dead-anchor sentinel span、IO 永不觸發 = 章節永久隱形、v417 P0)。
-- IO 參數與 scroll 安全網照 Master §3(threshold 0 + 300px band + 150ms sweep)。
+- 禁止 UI 自行生成分數、百分位、「同型客戶比例」或未由引擎提供的交叉驗證數。
+- 明確標示「計算事實／詮釋／建議」；資料缺口以「資料完整／部分受限／需核對」呈現，不用假精確 confidence score。
+- 缺欄位就不 render；不得 fallback 到 mock。
 
-## 內容清洗(渲染層防線)
+## PDF
 
-- 入口級 `sanitizeAiContentLeaks()`:sectioning 前一刀切(截斷 timing JSON / SELF-CHECK / raw_data 計算式 / 15→14)、所有下游渲染路徑免疫。
-- E 系徽章:`isChumenji` → 「奇門遁甲擇日驗證」(純奇門報告禁掛「14 套系統交叉驗證」)。
-- 行事曆標題格式 `天心+天禽+休門(東90°)` 為老闆 v5.3.75 拍板、**禁止「人話化」改動**。
+- 正式 PDF 是 Python ReportLab pipeline，不是 React PDF POC。
+- presentation flags（header/footer、TOC、cover style、locale）必須從 request 接到 renderer。
+- A4 建議 18–20mm margin、正文 10.5–11pt、serif 章題、sans 正文、heading keep-with-next。
+- 表格重複表頭；寬表重排而非縮成不可讀小字；不得產生無內容內頁。
+- PDF 修改後以 C／D／R／G15 golden fixture 驗證所有數字、日期、四柱與判定完全一致。
 
-## 方案差異
+## 發布檢查
 
-- E1/E2/E3/E4(出門訣):無 PDF 鍵、無 Email、吉時卡片 + 行事曆按鈕為主交付;E3 卡按 `timing.week` 排序 + 週標頭分組。
-- C/D/G15/R:PDF 保留;30 秒懶人包錨點 plan-aware(D 用前 4 章真 `#sec-N`)。
+```text
+□ 1440 / 1280 / 768 / 390 無 body overflow
+□ 全部 TOC anchor 存在且不被 sticky toolbar 遮住
+□ 正文 measure、heading hierarchy、keyboard focus
+□ print 全文、操作 chrome 隱藏
+□ C / D / R / G15 data parity 100%
+□ PDF 無空白內頁、無 orphan heading、跨頁表格有表頭
+```

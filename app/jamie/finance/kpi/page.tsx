@@ -32,20 +32,20 @@ export default async function KpiPage({
   const adminKey = process.env.ADMIN_KEY || ''
   if (!adminKey || sp.key !== adminKey) {
     return (
-      <main style={{ padding: 48, fontFamily: 'system-ui' }}>
+      <section style={{ padding: 48, fontFamily: 'system-ui' }}>
         <h1>403</h1>
         <p>需有效 ADMIN_KEY:/jamie/finance/kpi?key=…</p>
-      </main>
+      </section>
     )
   }
 
   const rows = await load()
   if (!rows) {
     return (
-      <main style={{ padding: 48, fontFamily: 'system-ui' }}>
+      <section style={{ padding: 48, fontFamily: 'system-ui' }}>
         <h1>KPI 儀表板</h1>
         <p>無法讀取 Supabase(需 server env)。腳本/頁面就緒,env 齊備即顯示。</p>
-      </main>
+      </section>
     )
   }
 
@@ -62,7 +62,7 @@ export default async function KpiPage({
   const ltv = orders ? revenue / orders : 0 // 簡化:平均客單(回購維度待 user 去重資料)
 
   return (
-    <main style={{ padding: 40, fontFamily: 'system-ui', maxWidth: 880, margin: '0 auto' }}>
+    <section style={{ padding: 40, fontFamily: 'system-ui', maxWidth: 880, margin: '0 auto' }}>
       <h1>鑒源財務 KPI(過去 90 天)</h1>
       <p style={{ color: '#666' }}>SSR · 公式對齊 ChartMogul/Bessemer · 數據自 Supabase 真實訂單</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, margin: '20px 0' }}>
@@ -100,6 +100,6 @@ export default async function KpiPage({
         Churn/LTV:CAC 需訂閱資料(P15 訂閱化後)+ 廣告花費(P14 billing_daily)接入後完整;
         現為 MVP 客單版,公式就緒。
       </p>
-    </main>
+    </section>
   )
 }

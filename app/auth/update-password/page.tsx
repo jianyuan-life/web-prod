@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import AuthShell from '@/components/auth/AuthShell'
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('')
@@ -36,57 +37,41 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-6">
-      <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center text-white mb-2">設定新密碼</h1>
-        <p className="text-center text-text-muted text-sm mb-8">
-          請輸入你的新密碼
-        </p>
-
-        {done ? (
-          <div className="glass rounded-2xl p-6 text-center space-y-4">
-            <div className="text-4xl text-green-400">&#10003;</div>
-            <p className="text-cream font-semibold">密碼已更新</p>
-            <p className="text-sm text-text-muted">你的密碼已成功重設，現在可以用新密碼登入。</p>
-            <Link href="/auth/login"
-              className="inline-block mt-4 px-6 py-2.5 bg-gold text-dark font-bold rounded-xl btn-glow">
-              前往登入
-            </Link>
+    <AuthShell
+      eyebrow="SECURE PASSWORD UPDATE"
+      title={done ? '密碼已更新' : '設定新密碼'}
+      description={done ? '你的私人報告與訂單維持不變。' : '請設定至少 8 個字元的新密碼。'}
+      contextTitle="更新憑證，不改動你的報告"
+      contextBody="新密碼只用於保護帳號；既有報告內容、訂單與生成進度不受影響。"
+    >
+      {done ? (
+        <div className="jy-auth-status" role="status">
+          <span className="jy-auth-status__icon" style={{ color: 'var(--jy-ui-success)' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
+          </span>
+          <h2>更新完成</h2>
+          <p>現在可以使用新密碼登入鑑源帳號。</p>
+          <Link href="/auth/login" className="jy-button jy-button--primary">前往登入</Link>
+        </div>
+      ) : (
+        <form onSubmit={handleUpdate} className="jy-auth-form">
+          <div className="jy-field">
+            <label htmlFor="new-password">新密碼</label>
+            <input id="new-password" name="new-password" type="password" required placeholder="至少 8 個字元" minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
-        ) : (
-          <form onSubmit={handleUpdate} className="glass rounded-2xl p-6 space-y-4">
-            <div>
-              <label htmlFor="new-password" className="block text-xs text-text-muted mb-1">新密碼</label>
-              <input
-                id="new-password"
-                name="new-password"
-                type="password" required placeholder="至少 8 個字元" minLength={8}
-                autoComplete="new-password"
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label htmlFor="confirm-new-password" className="block text-xs text-text-muted mb-1">確認新密碼</label>
-              <input
-                id="confirm-new-password"
-                name="confirm-new-password"
-                type="password" required placeholder="再輸入一次" minLength={8}
-                autoComplete="new-password"
-                value={confirm} onChange={(e) => setConfirm(e.target.value)}
-                className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
-              />
-            </div>
+          <div className="jy-field">
+            <label htmlFor="confirm-new-password">確認新密碼</label>
+            <input id="confirm-new-password" name="confirm-new-password" type="password" required placeholder="再輸入一次" minLength={8} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-invalid={Boolean(confirm && password !== confirm)} />
+            {confirm && password !== confirm && <p className="jy-field-help jy-field-help--danger">兩次輸入的密碼不一致。</p>}
+          </div>
 
-            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          {error && <p className="jy-alert jy-alert--danger" role="alert">{error}</p>}
 
-            <button type="submit" disabled={loading}
-              className="w-full py-3 bg-gold text-dark font-bold rounded-xl btn-glow disabled:opacity-50">
-              {loading ? '更新中...' : '確認更新密碼'}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+          <button type="submit" disabled={loading} className="jy-button jy-button--primary">
+            {loading ? '更新中...' : '確認更新密碼'}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   )
 }

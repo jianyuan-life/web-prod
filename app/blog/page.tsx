@@ -24,7 +24,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function BlogListPage() {
   return (
-    <div className="min-h-screen pt-24 pb-16">
+    <div className="jy-page jy-public-page jy-blog-index min-h-screen pt-24 pb-16">
       <div className="max-w-4xl mx-auto px-6">
         {/* 標題 */}
         <div className="text-center mb-14">

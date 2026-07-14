@@ -1,6 +1,5 @@
 'use client'
 
-import PriceTag from '@/components/PriceTag'
 import { PLAN_DESCRIPTIONS } from './types'
 
 interface CheckoutHeaderProps {
@@ -17,6 +16,7 @@ interface CheckoutHeaderProps {
   totalPrice: number
   finalPrice: number
   couponApplied: { discountAmount: number } | null
+  pointsDiscount: number
   planSystems: number
 }
 
@@ -24,82 +24,80 @@ export default function CheckoutHeader({
   planCode, planName, isFamilyPlan, isRelationPlan, isG15Plan,
   extraMemberCount, extraPrice, rExtraCount,
   familyCount, rCount,
-  totalPrice, finalPrice, couponApplied, planSystems,
+  totalPrice, finalPrice, couponApplied, pointsDiscount, planSystems,
 }: CheckoutHeaderProps) {
+  const planDetail = isG15Plan
+    ? '家族互動分析（需每位成員已購人生藍圖）'
+    : isFamilyPlan
+      ? `基礎 2 人 USD 159，每加一人一次性加收 USD ${extraPrice}`
+      : isRelationPlan
+        ? '含兩人分析，每加 1 人一次性加收 USD 19'
+        : planCode === 'D' ? '精選相關系統聚焦分析'
+        : planCode === 'E1' ? '單事件 Top 3 吉時方案'
+        : planCode === 'E2' ? '當月主吉方＋吉時、單次執行'
+        : planCode === 'E3' ? '4 週 × 每週 Top 2 = 8 吉時'
+        : planCode === 'E4' ? '年盤 ＋ 12 月盤、全年擇吉'
+        : `${planSystems} 套系統分析`
+
   return (
-    <>
-      <h1 className="text-3xl font-bold text-center mb-2">
-        <span className="text-gradient-gold">確認訂單</span>
-      </h1>
-      <p className="text-center text-text-muted mb-5">{PLAN_DESCRIPTIONS[planCode] || '填寫出生資料，完成付款後自動生成報告'}</p>
+    <section className="checkout-order-card" aria-labelledby="checkout-order-title">
+      <header className="checkout-order-heading">
+        <p className="checkout-order-kicker">Commission summary</p>
+        <h2 id="checkout-order-title">委託摘要</h2>
+        <p className="checkout-order-description">
+          {PLAN_DESCRIPTIONS[planCode] || '填寫出生資料，完成付款後自動生成報告'}
+        </p>
+      </header>
 
-      {/* 步驟進度指示器（4 步，含 ARIA 無障礙） */}
-      <ol aria-label="結帳流程進度" className="flex items-center justify-center gap-1.5 sm:gap-2 mb-6 text-[11px]">
-        {[
-          { n: 1, label: '選方案', active: false, done: true },
-          { n: 2, label: '填資料', active: true, done: false },
-          { n: 3, label: '安全付款', active: false, done: false },
-          { n: 4, label: '收到報告', active: false, done: false },
-        ].map((s, i, arr) => (
-          <li key={s.n} className="flex items-center" aria-current={s.active ? 'step' : undefined}>
-            <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold transition-all ${
-              s.done ? 'bg-gold text-dark' : s.active ? 'bg-gold/25 text-gold ring-2 ring-gold/70 ring-offset-1 ring-offset-[#0a0e1a]' : 'bg-white/5 text-text-muted/50'
-            }`} aria-label={s.done ? `已完成：${s.label}` : s.active ? `當前步驟：${s.label}` : `尚未開始：${s.label}`}>
-              {s.done ? '✓' : s.n}
-            </span>
-            <span className={`ml-1 mr-1 ${s.active ? 'text-gold font-semibold' : s.done ? 'text-text-muted' : 'text-text-muted/50'}`}>{s.label}</span>
-            {i < arr.length - 1 && <span aria-hidden="true" className={`w-3 sm:w-6 h-px mx-0.5 ${s.done ? 'bg-gold/40' : 'bg-white/10'}`} />}
-          </li>
-        ))}
-      </ol>
+      <div className="checkout-order-body">
+        <div className="checkout-plan-code">方案 {planCode}</div>
+        <div className="checkout-plan-name">{planName}</div>
+        <p className="checkout-plan-detail">{planDetail}</p>
 
-      {/* 安全保證 */}
-      <div className="flex flex-wrap justify-center gap-4 mb-8 text-[10px] text-text-muted/60">
-        <span className="flex items-center gap-1"><span className="text-green-400">&#9679;</span> SSL 加密傳輸</span>
-        <span className="flex items-center gap-1"><span className="text-green-400">&#9679;</span> Stripe 安全付款</span>
-        <span className="flex items-center gap-1"><span className="text-green-400">&#9679;</span> 資料隱私保護</span>
-      </div>
+        {(isFamilyPlan && extraMemberCount > 0) && (
+          <p className="checkout-plan-detail">
+            目前 {familyCount} 人；額外 {extraMemberCount} 人 × USD {extraPrice} = USD {extraMemberCount * extraPrice}
+          </p>
+        )}
+        {(isRelationPlan && rExtraCount > 0) && (
+          <p className="checkout-plan-detail">
+            目前 {rCount} 人；額外 {rExtraCount} 人 × USD 19 = USD {rExtraCount * 19}
+          </p>
+        )}
 
-      {/* 方案摘要（手機直排、桌面水平） */}
-      <div className="glass rounded-xl p-5 mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="text-xs text-gold font-mono mb-1">方案 {planCode}</div>
-          <div className="text-lg font-bold text-white whitespace-nowrap">{planName}</div>
-          <div className="text-xs text-text-muted mt-1">
-            {isG15Plan
-              ? '家族互動分析（需每位成員已購人生藍圖）'
-              : isFamilyPlan
-              ? `基礎 2 人 $159，每加一人 +$${extraPrice}`
-              : isRelationPlan
-              ? '含兩人分析，每加1人 +$19/人'
-              : planCode === 'D' ? '精選相關系統聚焦分析'
-              : planCode === 'E1' ? '單事件 Top3 吉時方案'
-              : planCode === 'E2' ? '當月主吉方＋吉時、單次執行'
-              : planCode === 'E3' ? '4 週 × 每週 Top 2 = 8 吉時'
-              : planCode === 'E4' ? '年盤 ＋ 12 月盤、全年擇吉'
-              : `${planSystems} 套系統分析`}
+        <dl className="checkout-order-lines">
+          <div className="checkout-order-line">
+            <dt>訂單金額</dt>
+            <dd>USD {totalPrice}</dd>
           </div>
-          {isFamilyPlan && extraMemberCount > 0 && (
-            <div className="text-xs text-gold mt-1">
-              目前 {familyCount} 人，額外 {extraMemberCount} 人 × ${extraPrice} = +${extraMemberCount * extraPrice}
-            </div>
-          )}
-          {isRelationPlan && rExtraCount > 0 && (
-            <div className="text-xs text-gold mt-1">
-              目前 {rCount} 人，額外 {rExtraCount} 人 × $19 = +${rExtraCount * 19}
-            </div>
-          )}
-        </div>
-        <div className="text-left sm:text-right shrink-0">
           {couponApplied && (
-            <div className="text-xs text-green-400 line-through mb-0.5">${totalPrice}</div>
+            <div className="checkout-order-line is-discount">
+              <dt>優惠折抵</dt>
+              <dd>− USD {couponApplied.discountAmount}</dd>
+            </div>
           )}
-          <PriceTag usd={finalPrice} size="lg" />
-          {couponApplied && finalPrice === 0 && (
-            <div className="text-xs text-green-400 font-bold mt-0.5">免費體驗</div>
+          {pointsDiscount > 0 && (
+            <div className="checkout-order-line is-discount">
+              <dt>積分折抵</dt>
+              <dd>− USD {pointsDiscount}</dd>
+            </div>
           )}
-        </div>
+        </dl>
+
+        <dl className="checkout-order-total">
+          <dt>
+            今日應付
+            <span>一次性付款，不是訂閱</span>
+          </dt>
+          <dd>USD {finalPrice}</dd>
+        </dl>
       </div>
-    </>
+
+      <p className="checkout-order-footnote">
+        {finalPrice === 0
+          ? '此訂單目前無需付款；送出後將按既有流程建立報告。'
+          : '下一步會前往 Stripe 的安全付款頁面；本頁不會收取或保存卡片資料。'}
+      </p>
+    </section>
   )
 }

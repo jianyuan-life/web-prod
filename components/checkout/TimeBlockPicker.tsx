@@ -30,8 +30,8 @@ export default function TimeBlockPicker({ eSelectedBlocks, setESelectedBlocks }:
   const currentShichen = getCurrentShichen()
 
   return (
-    <div className="border-t border-gold/10 pt-4 space-y-3">
-      <p className="text-sm font-semibold text-gold">可配合出行的時辰 *</p>
+    <fieldset className="border-t border-gold/10 pt-4 space-y-3">
+      <legend className="text-sm font-semibold text-gold">可配合出行的時辰 *</legend>
       <p className="text-xs text-text-muted leading-relaxed">
         奇門遁甲以兩小時為一個時辰計算。請勾選您方便出門的時辰，系統將只在這些時段內為您找出最佳吉時。
         <span className="text-gold/70 ml-1">目前是{TIME_BLOCKS[currentShichen]?.label.split(' ')[0]}（{TIME_BLOCKS[currentShichen]?.label.split(' ')[1]}）</span>
@@ -40,7 +40,7 @@ export default function TimeBlockPicker({ eSelectedBlocks, setESelectedBlocks }:
         {TIME_BLOCKS.map((block, i) => {
           const isCurrent = i === currentShichen
           return (
-            <label key={block.label} className={`flex items-center gap-2 cursor-pointer rounded-lg border px-2.5 py-2 transition-all text-center ${
+            <label key={block.label} className={`checkout-choice flex items-center gap-2 cursor-pointer rounded-lg border px-2.5 py-2 transition-all text-center ${
               eSelectedBlocks[i]
                 ? 'border-gold/40 bg-gold/10'
                 : 'border-gold/10 bg-white/5 hover:bg-white/8'
@@ -71,9 +71,10 @@ export default function TimeBlockPicker({ eSelectedBlocks, setESelectedBlocks }:
         <button type="button" onClick={() => setESelectedBlocks(new Array(12).fill(true))} className="text-[10px] text-gold/60 hover:text-gold">全選</button>
         <button type="button" onClick={() => setESelectedBlocks(new Array(12).fill(false))} className="text-[10px] text-gold/60 hover:text-gold">清除</button>
       </div>
+      <p className="sr-only" role="status" aria-live="polite">已選 {eSelectedBlocks.filter(Boolean).length} 個時辰</p>
       {!eSelectedBlocks.some(b => b) && (
-        <p className="text-[10px] text-red-400/80">請至少勾選一個時辰</p>
+        <p className="text-[10px] text-red-400/80" role="alert">請至少勾選一個時辰</p>
       )}
-    </div>
+    </fieldset>
   )
 }

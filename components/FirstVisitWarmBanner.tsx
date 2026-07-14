@@ -34,7 +34,12 @@ export function FirstVisitWarmBanner() {
   const [mounted, setMounted] = useState(false)
   // v5.10.408:/report/* forcedTheme=dark(報告 light 適配未完成)、此 banner 在報告頁
   // 宣傳「暖白閱讀主題」與實際深色閱讀區矛盾、且點切換對閱讀區無效 → 報告頁不顯示。
-  const onReport = pathname?.startsWith('/report/') ?? false
+  const onPrivateChrome = Boolean(
+    pathname?.startsWith('/report/')
+    || pathname?.startsWith('/r/')
+    || pathname?.startsWith('/dashboard')
+    || pathname?.startsWith('/jamie'),
+  )
 
   useEffect(() => {
     setMounted(true)
@@ -42,7 +47,7 @@ export function FirstVisitWarmBanner() {
     // v5.10.408(L1 QA P2-1 + L3 Codex P3 雙家):報告頁 banner 不渲染、effect 也不可
     // 發 warm_banner_shown(否則 GA 記到從未顯示的 impression、且 dismiss 狀態錯亂)。
     // onReport 來自 usePathname、首載固定、不需進 deps。
-    if (onReport) return
+    if (onPrivateChrome) return
     try {
       const dismissed = window.localStorage.getItem(DISMISS_KEY)
       const themeSet = window.localStorage.getItem('theme')
@@ -61,7 +66,7 @@ export function FirstVisitWarmBanner() {
     } catch {
       /* ignore */
     }
-  }, [])
+  }, [onPrivateChrome])
 
   const dismiss = (action: 'switch_light' | 'switch_dark' | 'dismiss') => {
     setVisible(false)
@@ -78,7 +83,7 @@ export function FirstVisitWarmBanner() {
     }
   }
 
-  if (!mounted || !visible || onReport) return null
+  if (!mounted || !visible || onPrivateChrome) return null
 
   const isLight = resolvedTheme === 'light'
 

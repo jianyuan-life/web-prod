@@ -81,7 +81,7 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
           window.location.href = `/api/r/life-blueprint/${data.meta.id}/pdf`
         }}
       />
-      <main
+      <article
         className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden"
         style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
       >
@@ -688,14 +688,14 @@ export function LifeBlueprintReport({ id, data }: LifeBlueprintReportProps) {
         </div>{/* /content column */}
         </div>{/* /xl grid */}
         <BackToTop />
-      </main>
+      </article>
     </>
   )
 }
 
 function SkeletonView({ id }: { id: string }) {
   return (
-    <main
+    <article
       className="min-h-screen text-[var(--jy-text-primary)]"
       style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}
     >
@@ -722,7 +722,7 @@ function SkeletonView({ id }: { id: string }) {
           </p>
         </Card>
       </div>
-    </main>
+    </article>
   )
 }
 

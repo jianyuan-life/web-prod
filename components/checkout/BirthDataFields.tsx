@@ -27,8 +27,9 @@ export default function BirthDataFields({
     <>
       {/* 姓名 */}
       <div>
-        <label className="block text-xs text-text-muted mb-1">姓名 *</label>
+        <label htmlFor="checkout-name" className="block text-xs text-text-muted mb-1">姓名 *</label>
         <input
+          id="checkout-name"
           type="text" required placeholder="請輸入您的全名"
           value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
           className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
@@ -36,40 +37,42 @@ export default function BirthDataFields({
       </div>
 
       {/* 國曆/農曆切換 */}
-      <div>
-        <label className="block text-xs text-text-muted mb-1">曆法</label>
-        <div className="flex rounded-lg overflow-hidden border border-gold/20">
+      <fieldset>
+        <legend className="block text-xs text-text-muted mb-1">曆法</legend>
+        <div className="flex rounded-lg overflow-hidden border border-gold/20" role="group" aria-label="選擇曆法">
           {([{ v: 'solar' as const, l: '國曆（西曆）' }, { v: 'lunar' as const, l: '農曆' }]).map(({ v, l }) => (
             <button key={v} type="button"
               onClick={() => setForm(f => ({ ...f, calendarType: v, lunarLeap: false }))}
+              aria-pressed={form.calendarType === v}
               className={`flex-1 py-2.5 text-sm font-medium transition-all ${form.calendarType === v ? 'bg-gold/20 text-gold' : 'bg-white/5 text-text-muted hover:bg-white/5'}`}>
               {l}
             </button>
           ))}
         </div>
         {form.calendarType === 'lunar' && (
-          <label className="flex items-center gap-2 mt-2 cursor-pointer">
+          <label className="checkout-choice flex items-center gap-2 mt-2 cursor-pointer">
             <input type="checkbox" checked={form.lunarLeap}
               onChange={(e) => setForm(f => ({ ...f, lunarLeap: e.target.checked }))}
               className="accent-gold" />
             <span className="text-xs text-text-muted">閏月</span>
           </label>
         )}
-      </div>
+      </fieldset>
 
       {/* 年月日 */}
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs text-text-muted mb-1">出生年</label>
+          <label htmlFor="checkout-birth-year" className="block text-xs text-text-muted mb-1">出生年</label>
           <input
+            id="checkout-birth-year"
             type="number" min="1920" max="2030"
             value={form.year} onChange={(e) => setForm(f => ({ ...f, year: e.target.value }))}
             className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
           />
         </div>
         <div>
-          <label className="block text-xs text-text-muted mb-1">{form.calendarType === 'lunar' ? '農曆月' : '月'}</label>
-          <select value={form.month} onChange={(e) => setForm(f => ({ ...f, month: e.target.value }))}
+          <label htmlFor="checkout-birth-month" className="block text-xs text-text-muted mb-1">{form.calendarType === 'lunar' ? '農曆月' : '月'}</label>
+          <select id="checkout-birth-month" value={form.month} onChange={(e) => setForm(f => ({ ...f, month: e.target.value }))}
             className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
             {Array.from({ length: 12 }, (_, i) => (
               <option key={i + 1} value={i + 1}>
@@ -81,8 +84,8 @@ export default function BirthDataFields({
           </select>
         </div>
         <div>
-          <label className="block text-xs text-text-muted mb-1">{form.calendarType === 'lunar' ? '農曆日' : '日'}</label>
-          <select value={form.day} onChange={(e) => setForm(f => ({ ...f, day: e.target.value }))}
+          <label htmlFor="checkout-birth-day" className="block text-xs text-text-muted mb-1">{form.calendarType === 'lunar' ? '農曆日' : '日'}</label>
+          <select id="checkout-birth-day" value={form.day} onChange={(e) => setForm(f => ({ ...f, day: e.target.value }))}
             className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
             {Array.from({ length: form.calendarType === 'lunar' ? 30 : 31 }, (_, i) => (
               <option key={i + 1} value={i + 1}>
@@ -105,25 +108,25 @@ export default function BirthDataFields({
       />
 
       {/* 性別 */}
-      <div>
-        <label className="block text-xs text-text-muted mb-1">性別</label>
+      <fieldset>
+        <legend className="block text-xs text-text-muted mb-1">性別</legend>
         <div className="flex gap-6">
           {[{ v: 'M', l: '男' }, { v: 'F', l: '女' }].map(({ v, l }) => (
-            <label key={v} className="flex items-center gap-2 cursor-pointer">
+            <label key={v} className="checkout-choice flex items-center gap-2 cursor-pointer">
               <input type="radio" name="gender" value={v} checked={form.gender === v}
                 onChange={(e) => setForm(f => ({ ...f, gender: e.target.value }))} className="accent-gold" />
               <span className="text-sm text-text">{l}</span>
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* v5.10.5 婚姻狀況(C/D/G15/R 感情段個性化、避免對已婚客戶寫「該找對象」誤導)*/}
-      <div>
-        <label className="block text-xs text-text-muted mb-1">婚姻狀況 <span className="text-red-400">*</span></label>
+      <fieldset>
+        <legend className="block text-xs text-text-muted mb-1">婚姻狀況 <span className="text-red-400">*</span></legend>
         <div className="flex gap-6">
           {[{ v: 'unmarried' as const, l: '未婚' }, { v: 'married' as const, l: '已婚' }].map(({ v, l }) => (
-            <label key={v} className="flex items-center gap-2 cursor-pointer">
+            <label key={v} className="checkout-choice flex items-center gap-2 cursor-pointer">
               <input type="radio" name="marital_status" value={v} checked={form.marital_status === v}
                 onChange={() => setForm(f => ({ ...f, marital_status: v }))} className="accent-gold" />
               <span className="text-sm text-text">{l}</span>
@@ -131,27 +134,34 @@ export default function BirthDataFields({
           ))}
         </div>
         <p className="text-[10px] text-text-muted/60 mt-1">影響感情/家庭運勢段的詮釋方向(已婚聚焦婚姻品質、未婚聚焦擇偶與桃花)</p>
-      </div>
+      </fieldset>
 
       {/* 出生地區 */}
       <div className="relative">
-        <label className="block text-xs text-text-muted mb-1">出生地區 <span className="text-red-400">*</span></label>
+        <label htmlFor="checkout-birth-city" className="block text-xs text-text-muted mb-1">出生地區 <span className="text-red-400">*</span></label>
         {needCityForCountry && (
           <p className="text-xs text-gold/80 mb-1">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
         )}
         <input
+          id="checkout-birth-city"
           type="text"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={cityResults.length > 0}
+          aria-controls="checkout-city-results"
           placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'}
           value={form.birthCity}
           onChange={(e) => onCitySearch(e.target.value)}
           className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
         />
         {cityResults.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-dark border border-gold/20 rounded-lg overflow-hidden shadow-xl max-h-48 overflow-y-auto">
+          <div id="checkout-city-results" className="absolute z-10 w-full mt-1 bg-dark border border-gold/20 rounded-lg overflow-hidden shadow-xl max-h-48 overflow-y-auto" role="listbox" aria-label="出生地區搜尋結果">
             {cityResults.map((r, idx) => r.type === 'country' ? (
               <button key={`country-${r.country.name}`} type="button"
                 className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 flex justify-between items-center"
                 onClick={() => onCountrySelect?.(r.country, r.isMultiTz)}
+                role="option"
+                aria-selected="false"
               >
                 <span>{r.country.name}</span>
                 <span className="text-[10px] text-text-muted/60">
@@ -162,6 +172,8 @@ export default function BirthDataFields({
               <button key={`city-${r.city.name_en}-${idx}`} type="button"
                 className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 flex justify-between items-center"
                 onClick={() => onCitySelect(r.city)}
+                role="option"
+                aria-selected="false"
               >
                 <span>{r.city.name}（{r.city.country}）</span>
                 <span className="text-[10px] text-text-muted/60">UTC{r.city.tz >= 0 ? '+' : ''}{r.city.tz}</span>

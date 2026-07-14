@@ -31,9 +31,9 @@ export default function PriceTag({
 
   return (
     <span className={className}>
-      <span className={`${sizeClass} font-extrabold text-gradient-gold`}>{display}</span>
+      <span className={`${sizeClass} font-bold text-[color:var(--jy-ui-ink,var(--color-cream))]`} style={{ fontFamily: 'var(--font-sans)' }}>{display}</span>
       {currency !== 'USD' && (
-        <span className="text-xs text-text-muted ml-1">(≈${usd} USD)</span>
+        <span className="text-xs text-[color:var(--jy-ui-ink-subtle,var(--color-text-muted))] ml-1">(≈${usd} USD)</span>
       )}
     </span>
   )

@@ -80,17 +80,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!authed) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0f0f0f' }}>
-        <div className="bg-[#1a1a1a] rounded-2xl p-8 w-full max-w-sm border border-white/10">
-          <h1 className="text-xl font-bold text-white mb-2">鑒源管理後台</h1>
-          <p className="text-sm text-gray-400 mb-6">請輸入管理密碼</p>
-          <input type="password" placeholder="密碼" value={keyInput}
+      <div data-admin-shell className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: '#0f0f0f' }}>
+        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#1a1a1a] p-8 shadow-2xl shadow-black/30">
+          <div aria-hidden="true" className="mb-6 flex h-11 w-11 items-center justify-center rounded-full border border-amber-400/35 bg-amber-400/10 font-serif text-lg text-amber-300">鑒</div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300/80">Private operations</p>
+          <h1 className="mb-2 text-xl font-bold text-white">鑒源管理後台</h1>
+          <p id="admin-login-help" className="mb-6 text-sm leading-6 text-gray-400">僅供獲授權的營運人員使用。請輸入管理密碼繼續。</p>
+          <label htmlFor="admin-access-key" className="mb-2 block text-sm font-medium text-gray-200">管理密碼</label>
+          <input id="admin-access-key" name="admin-access-key" type="password" autoComplete="current-password" placeholder="輸入管理密碼" value={keyInput}
+            aria-describedby={`admin-login-help${loginError ? ' admin-login-error' : ''}`}
             onChange={(e) => { setKeyInput(e.target.value); setLoginError('') }}
             onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white mb-4 focus:border-amber-500 focus:outline-none" />
-          {loginError && <p className="text-red-400 text-sm mb-3">{loginError}</p>}
+            className="mb-4 min-h-12 w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-gray-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20" />
+          {loginError && <p id="admin-login-error" role="alert" className="mb-3 text-sm text-red-300">{loginError}</p>}
           <button onClick={handleLogin} disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-[#1a1a1a] font-bold rounded-lg hover:from-amber-400 hover:to-yellow-400 disabled:opacity-50 transition-all">
+            className="min-h-12 w-full rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 py-3 font-bold text-[#1a1a1a] transition-all hover:from-amber-400 hover:to-yellow-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a] disabled:cursor-wait disabled:opacity-50">
             {loading ? '驗證中...' : '進入後台'}
           </button>
         </div>
@@ -100,24 +104,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <AdminAuthContext.Provider value={{ authed, adminKey, setAuthed, setAdminKey }}>
-      <div className="min-h-screen flex" style={{ background: '#0f0f0f', color: '#e5e5e5' }}>
+      <div data-admin-shell className="min-h-screen flex" style={{ background: '#0f0f0f', color: '#e5e5e5' }}>
         {/* 側邊導航 */}
         <aside className={`${sidebarCollapsed ? 'w-16' : 'w-56'} shrink-0 border-r border-white/5 bg-[#141414] transition-all duration-200 flex flex-col max-md:hidden`}>
           <div className="p-4 border-b border-white/5 flex items-center justify-between">
             {!sidebarCollapsed && <span className="text-sm font-bold text-amber-400">鑒源後台</span>}
             <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="text-gray-500 hover:text-white p-1">
+              aria-label={sidebarCollapsed ? '展開側邊導覽' : '收合側邊導覽'}
+              aria-expanded={!sidebarCollapsed}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-gray-400 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d={sidebarCollapsed ? 'M9 18l6-6-6-6' : 'M15 18l-6-6 6-6'} />
               </svg>
             </button>
           </div>
-          <nav className="flex-1 py-2">
+          <nav aria-label="後台主要導覽" className="flex-1 overflow-y-auto py-2">
             {NAV_ITEMS.map(item => {
               const active = pathname === item.href || (item.href !== '/jamie' && pathname.startsWith(item.href))
               return (
                 <Link key={item.href} href={item.href}
-                  className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-all ${
+                  aria-current={active ? 'page' : undefined}
+                  title={sidebarCollapsed ? item.label : undefined}
+                  className={`flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 ${
                     active ? 'text-amber-400 bg-amber-500/10 border-r-2 border-amber-400' : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
@@ -130,25 +138,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </nav>
           <div className="p-4 border-t border-white/5">
             <button onClick={() => { setAuthed(false); setAdminKey(''); try { sessionStorage.removeItem('admin_key') } catch {} }}
-              className={`text-xs text-gray-500 hover:text-red-400 ${sidebarCollapsed ? 'text-center w-full' : ''}`}>
+              aria-label="登出管理後台"
+              className={`min-h-11 rounded-lg px-3 text-xs text-gray-400 hover:bg-red-500/10 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 ${sidebarCollapsed ? 'w-full text-center' : ''}`}>
               {sidebarCollapsed ? 'X' : '登出'}
             </button>
           </div>
         </aside>
 
         {/* 主內容 */}
-        <main className="flex-1 overflow-auto pb-16 md:pb-0">
+        <div className="min-w-0 flex-1 overflow-auto pb-20 md:pb-0">
           {children}
-        </main>
+        </div>
 
         {/* 手機版底部導航（可橫向滾動） */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#141414] border-t border-white/10 z-50">
+        <nav aria-label="後台手機導覽" className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#141414] md:hidden">
           <div className="flex overflow-x-auto py-2 px-1 gap-1 scrollbar-hide">
             {NAV_ITEMS.map(item => {
               const active = pathname === item.href || (item.href !== '/jamie' && pathname.startsWith(item.href))
               return (
                 <Link key={item.href} href={item.href}
-                  className={`flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] shrink-0 ${active ? 'text-amber-400' : 'text-gray-500'}`}>
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex min-h-[52px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 ${active ? 'text-amber-400' : 'text-gray-400'}`}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d={item.icon} />
                   </svg>

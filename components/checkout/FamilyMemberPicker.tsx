@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useId } from 'react'
 import { supabase } from '@/lib/supabase'
 import { reportClientFailure } from '@/lib/security/client-audit'
 import { internalGet } from '@/lib/api'  // T10b v5.10.375(timeout + 429 handling)
@@ -15,6 +15,7 @@ export default function FamilyMemberPicker({ onSelect }: FamilyMemberPickerProps
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [authToken, setAuthToken] = useState('')
+  const listId = useId()
 
   useEffect(() => {
     async function init() {
@@ -66,6 +67,8 @@ export default function FamilyMemberPicker({ onSelect }: FamilyMemberPickerProps
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={listId}
         className="w-full flex items-center justify-between px-4 py-3 glass rounded-xl border border-gold/20 hover:border-gold/40 transition-colors"
       >
         <span className="text-sm text-gold font-medium">&#128101; 從已儲存的家人選擇</span>
@@ -75,7 +78,7 @@ export default function FamilyMemberPicker({ onSelect }: FamilyMemberPickerProps
       </button>
 
       {open && (
-        <div className="mt-2 space-y-1.5">
+        <div id={listId} className="mt-2 space-y-1.5" aria-label="已儲存的家人">
           {members.map((m) => (
             <button
               key={m.id}

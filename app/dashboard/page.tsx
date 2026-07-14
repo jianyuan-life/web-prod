@@ -13,6 +13,24 @@ import ReferralCard from '@/components/ReferralCard'
 import { PLAN_NAMES, CHUMENJI_CODES } from '@/lib/plan-names'
 import UpsellModal from '@/components/UpsellModal'  // P11
 import { isFlagEnabled } from '@/lib/feature-flags'  // P11 FF_UPSELL_MODAL
+import {
+  Archive,
+  ArrowRight,
+  BookOpenText,
+  Check,
+  CheckCircle2,
+  Clock3,
+  Copy,
+  Download,
+  FileText,
+  LockKeyhole,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react'
 
 type Report = {
   id: string
@@ -49,6 +67,16 @@ const PLAN_SYSTEMS: Record<string, number> = {
   C: 14, D: 0, G15: 14, R: 0, E1: 1, E2: 1, E3: 1, E4: 1,
 }
 
+const getReportStatus = (status: string) => {
+  if (status === 'completed') return { label: '可閱讀', tone: 'ready', icon: CheckCircle2 }
+  if (status === 'pending') return { label: '等待分析', tone: 'pending', icon: Clock3 }
+  if (status === 'generating') return { label: '深度分析中', tone: 'pending', icon: Clock3 }
+  if (status === 'failed') return { label: '需要處理', tone: 'failed', icon: TriangleAlert }
+  if (status === 'needs_human_review') return { label: '人工把關中', tone: 'review', icon: LockKeyhole }
+  if (status === 'refunded') return { label: '已退款處理', tone: 'muted', icon: FileText }
+  return { label: '狀態待確認', tone: 'failed', icon: TriangleAlert }
+}
+
 function DashboardContent() {
   const params = useSearchParams()
   const paymentSuccess = params.get('payment') === 'success'
@@ -72,6 +100,7 @@ function DashboardContent() {
   const purchaseTracked = useRef(false)
   // 已送過推播的報告 ID（避免重複通知）
   const [notifiedIds] = useState<Set<string>>(() => new Set())
+  const [copiedReportId, setCopiedReportId] = useState<string | null>(null)
 
   // 推播通知：報告完成時通知用戶
   const sendNotification = (report: Report) => {
@@ -305,6 +334,18 @@ function DashboardContent() {
     }
   }
 
+  const handleCopyPrivateLink = async (report: Report) => {
+    if (!report.access_token) return
+    const url = `${window.location.origin}/report/${report.access_token}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedReportId(report.id)
+      setTimeout(() => setCopiedReportId(current => current === report.id ? null : current), 1800)
+    } catch {
+      window.prompt('複製這份報告的私密連結：', url)
+    }
+  }
+
   // 判斷 pending 是否超過 30 分鐘
   const isPendingTooLong = (r: Report) => {
     if (r.status !== 'pending' && r.status !== 'generating') return false
@@ -470,123 +511,149 @@ function DashboardContent() {
     ? (reports?.find(r => r.status === 'completed')?.plan_code || '')
     : ''
 
+  const readyCount = reports.filter(r => r.status === 'completed').length
+  const processingCount = reports.filter(r => r.status === 'pending' || r.status === 'generating').length
+  const attentionCount = reports.filter(r => r.status === 'failed' || r.status === 'needs_human_review').length
+
   return (
-    <div className="py-20">
+    <div className="dashboard-vault">
+      <div className="dashboard-vault__atmosphere" aria-hidden="true" />
       {upsellSourcePlan && <UpsellModal sourcePlan={upsellSourcePlan} />}
-      <div className="max-w-5xl mx-auto px-6">
-        {/* 付款成功提示 */}
-        {paymentSuccess && (
-          <div className="glass rounded-xl p-5 mb-6 border-l-2 border-green-500/50">
-            <div className="flex items-center gap-3">
-              <span className="text-green-400 text-xl">&#10003;</span>
-              <div>
-                <p className="text-cream font-semibold">付款成功，命理分析啟動中</p>
-                <p className="text-sm text-text-muted">
-                  系統已開始為您進行命理排盤與深度解析。
-                  <strong className="text-gold/80"> 每位成員的完整報告平均需要 30 分鐘以上，出門訣計算需 40 分鐘以上</strong>，
-                  請耐心等候——我們寧可多花時間，也要確保每份報告的準確性與深度。
-                  完成後此頁面將自動更新，無需手動刷新。
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>我的報告</h1>
-            <p className="text-sm text-text-muted">查看和下載已生成的命理報告</p>
-          </div>
-          <Link href="/pricing" className="px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-sm btn-glow">
-            + 新的探索
-          </Link>
+      <div className="dashboard-vault__shell">
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {loading
+            ? '正在載入您的私人報告檔案庫'
+            : fetchError
+              ? '目前無法載入報告'
+              : `已載入 ${reports.length} 份報告，其中 ${readyCount} 份可以閱讀、${processingCount} 份處理中、${attentionCount} 份需要留意。`}
         </div>
-
-        {/* v5.6.10 R7:Daily Dashboard 雛形 placeholder(對應 Gemini 致命傷「無動態 dashboard」) */}
-        {!loading && reports.length > 0 && (
-          <div className="glass rounded-2xl p-5 mb-6 border border-gold/15" aria-labelledby="daily-section-title">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                {/* v5.10.304 editorial:🌅 → hairline accent + 純中文標題 */}
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="h-px w-4 bg-gold/60" aria-hidden />
-                  <h2 id="daily-section-title" className="text-base font-medium text-cream" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC"), serif' }}>
-                    您的今日能量
-                  </h2>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-gold/15 text-gold font-bold">即將推出</span>
-                </div>
-                <p className="text-xs text-text-muted leading-relaxed">
-                  鑒源即將推出「每日能量」雛形 — 基於您的八字命盤、奇門時盤、紫微流日、生物節律四大維度、即時計算當天最有利的行動方向、吉時、避忌方位。
-                  <br className="hidden sm:block" />
-                  與您的「人生藍圖」「出門訣」報告深度整合、每天 10 秒看完、永久回訪。
-                </p>
-              </div>
-              <div className="shrink-0 hidden sm:flex flex-col items-end gap-1">
-                <div className="text-[10px] text-text-muted">{new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })}</div>
-                <div className="text-[10px] text-gold/70">v5.7 規劃中</div>
-              </div>
+        {/* Stripe 回跳只代表付款流程返回；待伺服器資料同步後再以報告狀態為準。 */}
+        {paymentSuccess && (
+          <div className="dashboard-payment-check" role="status" aria-live="polite">
+            <div className="dashboard-payment-check__icon" aria-hidden="true">
+              <RefreshCw size={19} />
+            </div>
+            <div>
+              <p className="dashboard-payment-check__title">正在核對付款與報告資料</p>
+              <p className="dashboard-payment-check__copy">
+                付款流程資訊已送回鑒源，系統正在安全同步訂單與報告狀態。以下方報告清單為準；同步完成後會自動更新，請勿重複付款。
+              </p>
             </div>
           </div>
         )}
 
-        {/* 出門訣推廣 banner — 只對已有其他方案報告但沒有出門訣報告的用戶顯示 */}
-        {!loading && reports.length > 0 &&
-          reports.some(r => r.status === 'completed' && !CHUMENJI_CODES.has(r.plan_code)) &&
-          !reports.some(r => CHUMENJI_CODES.has(r.plan_code)) && (
-          <div className="glass rounded-xl p-5 mb-6 flex flex-col sm:flex-row items-center gap-4" style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.06), rgba(15,22,40,0.3))', border: '1px solid rgba(201,168,76,0.15)' }}>
-            <div className="text-3xl shrink-0">&#9788;</div>
-            <div className="flex-1">
-              <p className="text-sm text-cream font-semibold">想讓命理能量真正落地？</p>
-              <p className="text-xs text-text-muted mt-1">您已完成命格分析，下一步可以試試「出門訣」——根據奇門遁甲找出最適合您的出行吉時與方位，採取行動把握最佳時機。</p>
+        <header className="dashboard-hero">
+          <div className="dashboard-hero__copy">
+            <div className="dashboard-eyebrow">
+              <Archive size={15} aria-hidden="true" />
+              <span>PRIVATE ARCHIVE · 私人檔案庫</span>
             </div>
-            <Link href="/pricing" className="shrink-0 px-4 py-2 bg-gold text-dark font-semibold rounded-lg text-xs btn-glow">
-              了解出門訣
-            </Link>
+            <h1>我的報告檔案庫</h1>
+            <p>查看製作進度、安全開啟完成的報告，並管理只屬於您的私人資料。</p>
           </div>
+          <Link href="/pricing" className="dashboard-primary-action">
+            <Plus size={18} aria-hidden="true" />
+            <span>開始新的探索</span>
+          </Link>
+        </header>
+
+        {!loading && reports.length > 0 && (
+          <section className="dashboard-index" aria-label="報告狀態摘要">
+            <div className="dashboard-index__intro">
+              <span className="dashboard-index__label">檔案索引</span>
+              <strong>{reports.length}</strong>
+              <span>份私人報告</span>
+            </div>
+            <dl className="dashboard-index__states">
+              <div className="dashboard-index__state dashboard-index__state--ready">
+                <dt><CheckCircle2 size={15} aria-hidden="true" /> 可閱讀</dt>
+                <dd>{readyCount}</dd>
+              </div>
+              <div className="dashboard-index__state dashboard-index__state--pending">
+                <dt><Clock3 size={15} aria-hidden="true" /> 製作中</dt>
+                <dd>{processingCount}</dd>
+              </div>
+              <div className="dashboard-index__state dashboard-index__state--attention">
+                <dt><TriangleAlert size={15} aria-hidden="true" /> 需留意</dt>
+                <dd>{attentionCount}</dd>
+              </div>
+            </dl>
+          </section>
         )}
 
         {loading ? (
-          <div className="glass rounded-2xl p-16 text-center">
-            <div className="w-8 h-8 border-2 border-gold/50 border-t-gold rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-text-muted">載入中...</p>
-          </div>
+          <section className="dashboard-state-panel" role="status" aria-live="polite" aria-busy="true">
+            <div className="dashboard-loader" aria-hidden="true" />
+            <h2>正在開啟私人檔案庫</h2>
+            <p>正在安全讀取您的報告狀態。</p>
+          </section>
         ) : authFailed && !stripeSessionId ? (
-          <div className="glass rounded-2xl p-10 text-center">
-            <div className="text-4xl mb-4">&#128274;</div>
-            <h3 className="text-lg font-semibold text-cream mb-2">登入狀態已過期</h3>
-            <p className="text-sm text-text-muted mb-2">
+          <section className="dashboard-state-panel dashboard-state-panel--auth" role="alert">
+            <div className="dashboard-state-panel__icon" aria-hidden="true"><LockKeyhole size={24} /></div>
+            <h2>需要重新確認會員身分</h2>
+            <p>
               {paymentSuccess
-                ? '付款已成功！但從 Stripe 返回時登入狀態中斷。'
+                ? '我們已收到付款流程的返回資訊，但目前無法確認會員身分。'
                 : '您的登入憑證已過期，或需要重新登入才能看到報告。'}
             </p>
-            <p className="text-sm text-text-muted mb-6">
-              請重新登入即可查看您的報告，報告資料完全保留。
+            <p>
+              請重新登入後查看最新的訂單與報告狀態；系統不會要求您再次付款。
             </p>
             <Link href="/auth/login?redirect=/dashboard"
-              className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow inline-block">
+              className="dashboard-primary-action">
+              <LockKeyhole size={17} aria-hidden="true" />
               重新登入查看報告
             </Link>
-          </div>
+          </section>
         ) : reports.length > 0 ? (
-          <div className="space-y-4">
-            {reports.map((r) => (
-              <div key={r.id} className={`glass rounded-xl p-5 transition-all hover:border-gold/30 ${justCompletedIds.has(r.id) ? 'ring-2 ring-green-500/50 animate-pulse' : ''}`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center text-gold font-bold text-lg shrink-0" style={{ fontFamily: 'var(--font-sans)' }}>
+          <section className="dashboard-library" aria-labelledby="dashboard-library-title">
+            <div className="dashboard-library__heading">
+              <div>
+                <span>REPORT ARCHIVE</span>
+                <h2 id="dashboard-library-title">報告檔案</h2>
+              </div>
+              <p>完成的報告會保留在這裡；製作中的報告會自動更新。</p>
+            </div>
+            <div className="dashboard-report-list">
+            {reports.map((r, index) => {
+              const statusMeta = getReportStatus(r.status)
+              const StatusIcon = statusMeta.icon
+              return (
+              <article
+                key={r.id}
+                className={`dashboard-report dashboard-report--${statusMeta.tone} ${justCompletedIds.has(r.id) ? 'dashboard-report--just-completed' : ''}`}
+                aria-labelledby={`report-title-${r.id}`}
+              >
+                <div className="dashboard-report__spine" aria-hidden="true">
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                </div>
+                <div className="dashboard-report__body">
+                <div className="dashboard-report__header">
+                  <div className="dashboard-report__identity">
+                    <div className="dashboard-report__seal" aria-hidden="true">
                       {(r.client_name && r.client_name.length > 0) ? r.client_name[0] : '?'}
                     </div>
-                    <div className="min-w-0">
+                    <div>
                       {/* v5.10.297:砍 truncate(客戶名重要、不可截)、加 CJK keep-all */}
                       <h3
-                        className="font-semibold text-cream leading-snug"
+                        id={`report-title-${r.id}`}
                         style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
                       >
                         {r.client_name}
                       </h3>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted mt-1">
-                        <span>{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</span>
-                        <span>
+                      <p className="dashboard-report__plan">{PLAN_NAMES[r.plan_code] || `方案 ${r.plan_code}`}</p>
+                    </div>
+                  </div>
+                  <div className={`dashboard-status-badge dashboard-status-badge--${statusMeta.tone}`}>
+                    <StatusIcon size={15} aria-hidden="true" />
+                    <span>{statusMeta.label}</span>
+                  </div>
+                </div>
+
+                <dl className="dashboard-report__metadata">
+                  <div>
+                    <dt>分析範圍</dt>
+                    <dd>
                           {CHUMENJI_CODES.has(r.plan_code)
                             ? (r.plan_code === 'E1' ? '事件擇吉 Top3'
                               : r.plan_code === 'E2' ? '月度單盤'
@@ -597,216 +664,268 @@ function DashboardContent() {
                                 const count = r.report_result?.systems_count ?? PLAN_SYSTEMS[r.plan_code] ?? 0
                                 return count > 0 ? `${count} 套系統` : r.plan_code === 'D' ? '深度主題分析' : '關係合盤分析'
                               })()}
-                        </span>
-                        <span>${r.amount_usd}</span>
-                        <span>{new Date(r.created_at).toLocaleDateString('zh-TW')}</span>
-                      </div>
-                    </div>
+                    </dd>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div>
+                    <dt>付款紀錄</dt>
+                    <dd>${Number(r.amount_usd).toFixed(2)} USD</dd>
+                  </div>
+                  <div>
+                    <dt>建立日期</dt>
+                    <dd><time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('zh-TW')}</time></dd>
+                  </div>
+                </dl>
+
+                <div className="dashboard-report__controls">
+                  <div className="dashboard-report__actions">
                     {r.status === 'completed' ? (
                       <>
-                        <div className="flex gap-2">
-                          {r.access_token && (
-                            <a href={`/report/${r.access_token}`}
-                              className="px-3 py-1.5 bg-gold/15 border border-gold/30 rounded-lg text-xs text-gold hover:bg-gold/25 transition-colors font-medium">
-                              查看報告
-                            </a>
-                          )}
-                          {r.access_token && (
+                        {r.access_token ? (
+                          <>
+                            <Link href={`/report/${r.access_token}`} className="dashboard-report-action dashboard-report-action--primary">
+                              <BookOpenText size={17} aria-hidden="true" />
+                              <span>開啟報告</span>
+                            </Link>
                             <button
-                              onClick={(e) => {
-                                const btn = e.currentTarget
-                                const url = `${window.location.origin}/report/${r.access_token}`
-                                navigator.clipboard.writeText(url).then(() => {
-                                  const original = btn.textContent
-                                  btn.textContent = '已複製 ✓'
-                                  btn.classList.add('text-green-400', 'bg-green-500/10')
-                                  setTimeout(() => {
-                                    btn.textContent = original
-                                    btn.classList.remove('text-green-400', 'bg-green-500/10')
-                                  }, 1500)
-                                }).catch(() => {
-                                  window.prompt('複製此連結分享：', url)
-                                })
-                              }}
-                              className="px-3 py-1.5 glass rounded-lg text-xs text-text-muted hover:text-gold hover:bg-gold/10 transition-colors"
-                              title="複製報告連結"
+                              type="button"
+                              onClick={() => handleCopyPrivateLink(r)}
+                              className="dashboard-report-action"
+                              aria-describedby={`private-link-note-${r.id}`}
                             >
-                              分享
+                              {copiedReportId === r.id ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
+                              <span>{copiedReportId === r.id ? '已複製私密連結' : '複製私密連結'}</span>
                             </button>
-                          )}
-                          {r.pdf_url && !CHUMENJI_CODES.has(r.plan_code) && (
-                            <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
-                              className="px-3 py-1.5 glass rounded-lg text-xs text-gold hover:bg-gold/10 transition-colors">
-                              下載 PDF
-                            </a>
-                          )}
-                        </div>
+                          </>
+                        ) : (
+                          <p className="dashboard-status-context">報告連結正在準備，請稍後重新整理。</p>
+                        )}
+                        {r.pdf_url && !CHUMENJI_CODES.has(r.plan_code) && (
+                          <a href={r.pdf_url} target="_blank" rel="noopener noreferrer" className="dashboard-report-action">
+                            <Download size={17} aria-hidden="true" />
+                            <span>下載 PDF</span>
+                          </a>
+                        )}
                       </>
                     ) : (r.status === 'pending' || r.status === 'generating') ? (
-                      <div className="flex items-center gap-2">
-                        {isPendingTooLong(r) ? (
-                          <div className="text-right">
-                            <span className="text-xs text-amber-400 block">處理時間較長</span>
-                            <span className="text-[10px] text-text-muted/50">
-                              報告仍在生成中，請耐心等候
-                            </span>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />
-                            <div className="text-right">
-                              <span className="text-xs text-gold/70 block">{r.status === 'generating' ? '深度分析中' : '分析中'}</span>
-                              <span className="text-[10px] text-text-muted/50">
-                                {r.plan_code === 'E1' ? '約 5-10 分鐘'
-                                  : r.plan_code === 'E2' ? '約 10-20 分鐘'
-                                  : r.plan_code === 'E3' ? '約 20-40 分鐘'
-                                  : r.plan_code === 'E4' ? '約 30-60 分鐘'
-                                  : '約 30 分鐘以上'}
-                              </span>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      <p className={`dashboard-status-context ${isPendingTooLong(r) ? 'dashboard-status-context--attention' : ''}`}>
+                        {isPendingTooLong(r)
+                          ? '處理時間較長，系統仍在追蹤這份報告。完成後此處會自動更新。'
+                          : '報告正在製作，您可以離開此頁；完成後會在檔案庫中開放閱讀。'}
+                      </p>
                     ) : r.status === 'failed' ? (
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <span className="text-xs text-red-400 block">生成失敗</span>
-                          {/* v5.10.297:error message 加 title fallback、不再純 truncate */}
-                          <span
-                            className="text-[10px] text-text-muted/50 block"
-                            style={{
-                              maxWidth: '200px',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              wordBreak: 'keep-all',
-                              overflowWrap: 'break-word',
-                            }}
-                            title={r.error_message || '未知錯誤'}
-                          >
-                            {r.error_message || '未知錯誤'}
+                      <>
+                        <p className="dashboard-status-context dashboard-status-context--error">
+                          <strong>這份報告尚未完成。</strong>
+                          <span>系統目前無法完成這份報告。您可以重新嘗試；若問題持續，請聯繫客服並提供下方參考碼。</span>
+                          <span className="mt-2 font-mono text-[0.72rem] tracking-wide">
+                            報告參考碼：{r.id.slice(0, 8).toUpperCase()}
                           </span>
-                        </div>
+                        </p>
                         {(r.retry_count ?? 0) < 3 && (
                           <button
+                            type="button"
                             onClick={() => handleRetry(r.id)}
                             disabled={retryingId === r.id}
-                            className="px-3 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-lg text-xs text-amber-400 hover:bg-amber-500/25 transition-colors font-medium disabled:opacity-50"
+                            className="dashboard-report-action dashboard-report-action--retry"
                           >
-                            {retryingId === r.id ? '重試中...' : '重試'}
+                            <RotateCcw size={17} aria-hidden="true" />
+                            <span>{retryingId === r.id ? '正在重試' : '重新嘗試'}</span>
                           </button>
                         )}
-                      </div>
+                      </>
                     ) : r.status === 'needs_human_review' ? (
                       // v5.10.461 P0-2 修:needs_human_review 原顯「狀態異常」紅字 = 客戶恐慌且無路可走。
                       // 改誠實引導(對齊 4 大保證:人工接手、不多扣款)。Codex P2:只對此 status、
                       // 其他狀態(refunded 等)不可誤標「把關中」。
-                      <span className="text-xs text-amber-400" title="報告已進入人工品質把關、完成後會 Email 通知您">
-                        人工品質把關中 · 有問題請聯繫 support@jianyuan.life
-                      </span>
+                      <p className="dashboard-status-context dashboard-status-context--attention">
+                        報告已進入人工品質把關；完成後會以 Email 通知。需要協助可聯繫{' '}
+                        <a href="mailto:support@jianyuan.life">support@jianyuan.life</a>。
+                      </p>
                     ) : r.status === 'refunded' ? (
-                      <span className="text-xs text-text-muted">已退款處理</span>
+                      <p className="dashboard-status-context">這筆報告已進入退款處理狀態。</p>
                     ) : (
-                      <span className="text-xs text-red-400">狀態異常</span>
+                      <p className="dashboard-status-context dashboard-status-context--error">目前無法辨識報告狀態，請稍後重新整理或聯繫客服。</p>
                     )}
+                  </div>
                     {/* 刪除按鈕 */}
                     <button
+                      type="button"
                       onClick={() => setConfirmId(confirmId === r.id ? null : r.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted/50 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                      title="刪除報告"
+                      className="dashboard-report-action dashboard-report-action--icon dashboard-report-action--remove"
+                      aria-label={`從清單移除 ${r.client_name} 的報告`}
+                      aria-expanded={confirmId === r.id}
+                      aria-controls={`remove-report-${r.id}`}
+                      title="從報告清單移除"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                      </svg>
+                      <Trash2 size={17} aria-hidden="true" />
                     </button>
                   </div>
-                </div>
+                {r.status === 'completed' && r.access_token && (
+                  <p id={`private-link-note-${r.id}`} className="dashboard-private-link-note">
+                    <LockKeyhole size={14} aria-hidden="true" />
+                    此連結即為報告存取憑證；持有連結者可閱讀內容，請只傳給您信任的人。
+                  </p>
+                )}
                 {/* 剛完成的報告提示 */}
                 {justCompletedIds.has(r.id) && (
-                  <div className="mt-3 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2.5 flex items-center gap-2">
-                    <span className="text-green-400">&#10003;</span>
-                    <span className="text-sm text-green-300">報告已完成！點擊「查看報告」閱讀完整分析結果。</span>
+                  <div className="dashboard-completed-note" role="status" aria-live="polite">
+                    <CheckCircle2 size={17} aria-hidden="true" />
+                    <span>這份報告已完成，現在可以開啟閱讀。</span>
                   </div>
                 )}
                 {/* pending 時顯示進度條 */}
                 {(r.status === 'pending' || r.status === 'generating') && (
-                  <ReportProgress createdAt={r.created_at} planCode={r.plan_code} generationProgress={r.generation_progress} />
+                  <div className="dashboard-report__progress">
+                    <ReportProgress createdAt={r.created_at} planCode={r.plan_code} generationProgress={r.generation_progress} />
+                  </div>
                 )}
                 {/* v5.3.15：移除「更新出生地」— 我們沒有重算功能，不該讓客戶以為可以 */}
-                {/* 刪除確認 — 強調不可復原 + 隱私保護 */}
+                {/* 僅描述目前 API 的 soft-delete 行為，不承諾永久清除。 */}
                 {confirmId === r.id && (
-                  <div className="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl px-5 py-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <span className="text-red-400 text-lg mt-0.5">&#9888;</span>
-                      <div className="space-y-1.5">
-                        <p className="text-sm font-semibold text-red-300">確定要永久刪除這份報告嗎？</p>
-                        <p className="text-xs text-red-300/70 leading-relaxed">
-                          刪除後將<strong className="text-red-300">無法復原</strong>——報告內容、PDF 檔案都會被永久移除。
-                          <br/>我們重視您的隱私，刪除即代表所有相關數據將從伺服器上完全清除。
+                  <div
+                    id={`remove-report-${r.id}`}
+                    className="dashboard-remove-confirm"
+                    role="group"
+                    aria-labelledby={`remove-report-title-${r.id}`}
+                  >
+                    <div className="dashboard-remove-confirm__copy">
+                      <TriangleAlert size={19} aria-hidden="true" />
+                      <div>
+                        <p id={`remove-report-title-${r.id}`}>從帳號清單移除這份報告？</p>
+                        <p>
+                          移除後，這份報告不再顯示於您的帳號清單，也無法在此頁自行復原。相關訂單與資料會依隱私政策及適用的保存要求處理。
                         </p>
                       </div>
                     </div>
-                    <div className="flex justify-end gap-2">
+                    <div className="dashboard-remove-confirm__actions">
                       <button
+                        type="button"
                         onClick={() => { setConfirmId(null); setFinalConfirmId(null) }}
-                        className="px-4 py-1.5 text-xs text-text-muted border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
+                        className="dashboard-report-action"
                       >
                         取消
                       </button>
                       {finalConfirmId === r.id ? (
                         <button
+                          type="button"
                           onClick={() => handleDelete(r.id)}
                           disabled={deletingId === r.id}
-                          className="px-4 py-1.5 text-xs text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 animate-pulse"
+                          className="dashboard-report-action dashboard-report-action--danger"
                         >
-                          {deletingId === r.id ? '刪除中...' : '最終確認：永久刪除'}
+                          {deletingId === r.id ? '正在移除' : '再次確認：從清單移除'}
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => setFinalConfirmId(r.id)}
-                          className="px-4 py-1.5 text-xs text-white bg-red-500/80 rounded-lg hover:bg-red-500 transition-colors"
+                          className="dashboard-report-action dashboard-report-action--danger"
                         >
-                          確認永久刪除
+                          確認從清單移除
                         </button>
                       )}
                     </div>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+              </article>
+              )
+            })}
+            </div>
+          </section>
         ) : fetchError ? (
           /* v5.3.1：API 失敗時顯示具體錯誤，避免客戶誤以為報告消失 */
-          <div className="glass rounded-2xl p-16 text-center border border-red-500/30">
-            <div className="text-4xl mb-4">&#9888;</div>
-            <h3 className="text-lg font-semibold text-cream mb-2">暫時無法載入您的報告</h3>
-            <p className="text-sm text-text-muted mb-6 max-w-md mx-auto">{fetchError}</p>
+          <section className="dashboard-state-panel dashboard-state-panel--error" role="alert">
+            <div className="dashboard-state-panel__icon" aria-hidden="true"><TriangleAlert size={24} /></div>
+            <h2>暫時無法載入您的報告</h2>
+            <p>{fetchError}</p>
             <button
+              type="button"
               onClick={() => { setLoading(true); setFetchError(null); fetchReports().then(setReports).catch(() => {}).finally(() => setLoading(false)) }}
-              className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow"
+              className="dashboard-primary-action"
             >
+              <RefreshCw size={17} aria-hidden="true" />
               重新整理
             </button>
-          </div>
+          </section>
         ) : (
-          <div className="glass rounded-2xl p-16 text-center">
-            <div className="text-4xl mb-4" style={{ fontFamily: 'var(--font-sans)' }}>&#9788;</div>
-            <h3 className="text-lg font-semibold text-cream mb-2">還沒有報告</h3>
-            <p className="text-sm text-text-muted mb-6">選擇一個方案，開始你的命理探索之旅</p>
-            <Link href="/tools/bazi" className="px-6 py-2.5 bg-gold text-dark font-semibold rounded-lg btn-glow">
-              先免費體驗
-            </Link>
-          </div>
+          <section className="dashboard-state-panel dashboard-state-panel--empty" role={paymentSuccess ? 'status' : undefined} aria-live={paymentSuccess ? 'polite' : undefined}>
+            <div className="dashboard-state-panel__icon" aria-hidden="true">
+              {paymentSuccess ? <RefreshCw size={24} /> : <Archive size={24} />}
+            </div>
+            <h2>{paymentSuccess ? '正在同步您的報告檔案' : '檔案庫目前是空的'}</h2>
+            <p>
+              {paymentSuccess
+                ? '目前還沒有可顯示的報告。系統仍在核對付款與建立檔案，請稍後重新整理；請勿重複付款。'
+                : '完成第一次探索後，報告與製作進度會安全保存在這裡。'}
+            </p>
+            {paymentSuccess ? (
+              <button
+                type="button"
+                onClick={() => { setLoading(true); fetchReports().then(setReports).catch(() => {}).finally(() => setLoading(false)) }}
+                className="dashboard-secondary-action"
+              >
+                <RefreshCw size={17} aria-hidden="true" />
+                再次檢查
+              </button>
+            ) : (
+              <Link href="/tools/bazi" className="dashboard-primary-action">
+                <Sparkles size={17} aria-hidden="true" />
+                先免費體驗
+              </Link>
+            )}
+          </section>
         )}
 
-        {/* 推薦與點數 */}
-        <ReferralCard />
+        {/* 次要內容在報告檔案之後，避免搶走等待／失敗狀態的注意力。 */}
+        {!loading && reports.length > 0 && (
+          <aside className="dashboard-preview" aria-labelledby="daily-section-title">
+            <div className="dashboard-preview__content">
+              <div className="dashboard-preview__copy">
+                <div className="dashboard-preview__heading">
+                  <Sparkles size={16} aria-hidden="true" />
+                  <h2 id="daily-section-title">您的今日能量</h2>
+                  <span>即將推出</span>
+                </div>
+                <p>
+                  鑒源正在規劃「每日能量」功能，預計整合八字命盤、奇門時盤、紫微流日與生物節律，整理當日的行動方向、吉時與避忌方位。
+                </p>
+              </div>
+              <div className="dashboard-preview__date" aria-label="今日日期">
+                {new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'short' })}
+              </div>
+            </div>
+          </aside>
+        )}
 
-        {/* 我的家人 */}
-        <FamilyMembersManager />
+        {/* 出門訣推廣 — 只對已有其他完成報告、但沒有出門訣報告的會員顯示。 */}
+        {!loading && reports.length > 0 &&
+          reports.some(r => r.status === 'completed' && !CHUMENJI_CODES.has(r.plan_code)) &&
+          !reports.some(r => CHUMENJI_CODES.has(r.plan_code)) && (
+          <aside className="dashboard-next-step" aria-label="下一步探索">
+            <div className="dashboard-next-step__mark" aria-hidden="true">方</div>
+            <div className="dashboard-next-step__copy">
+              <p className="dashboard-next-step__label">下一步探索</p>
+              <h2>把分析帶進日常行動</h2>
+              <p>您已完成命格分析；「出門訣」會依奇門遁甲整理適合的出行吉時與方位。</p>
+            </div>
+            <Link href="/pricing" className="dashboard-secondary-action">
+              <span>了解出門訣</span>
+              <ArrowRight size={17} aria-hidden="true" />
+            </Link>
+          </aside>
+        )}
+
+        <div className="dashboard-support-grid">
+          {/* 推薦與點數 */}
+          <section id="referral" aria-label="推薦與點數">
+            <ReferralCard />
+          </section>
+
+          {/* 我的家人 */}
+          <section aria-label="家人資料">
+            <FamilyMembersManager />
+          </section>
+        </div>
       </div>
     </div>
   )
@@ -814,7 +933,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="py-20 text-center text-text-muted">載入中...</div>}>
+    <Suspense fallback={<div className="dashboard-suspense" role="status">正在開啟私人檔案庫…</div>}>
       <DashboardContent />
     </Suspense>
   )

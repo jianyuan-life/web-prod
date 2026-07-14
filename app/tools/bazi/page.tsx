@@ -9,7 +9,6 @@ import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(time
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
-import LiveCounter from '@/components/LiveCounter'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
 import { buildFreeToolJsonLd } from '@/lib/seo/free-tool-schema'  // P5 SEO 三層 JSON-LD
 
@@ -21,7 +20,13 @@ const SHICHEN = [
   { label: '申時 (15:00-17:00)', value: 16 }, { label: '酉時 (17:00-19:00)', value: 18 },
   { label: '戌時 (19:00-21:00)', value: 20 }, { label: '亥時 (21:00-23:00)', value: 22 },
 ]
-const WX_COLORS: Record<string,string> = { 木:'#22c55e', 火:'#ef4444', 土:'#eab308', 金:'#f59e0b', 水:'#3b82f6' }
+const WX_COLORS: Record<string,string> = {
+  木: 'var(--jy-wx-wood)',
+  火: 'var(--jy-wx-fire)',
+  土: 'var(--jy-wx-earth)',
+  金: 'var(--jy-wx-metal)',
+  水: 'var(--jy-wx-water)',
+}
 
 // ── 前端排盤輔助常量（用於豐富結果展示） ──
 const TG = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸']
@@ -321,22 +326,23 @@ function WuxingPieChart({ data }: { data: Record<string,number> }) {
   })
 
   return (
-    <svg viewBox="0 0 180 180" className="w-40 h-40 md:w-48 md:h-48 mx-auto">
+    <svg viewBox="0 0 180 180" className="w-40 h-40 md:w-48 md:h-48 mx-auto" role="img" aria-label="五行比例圖">
+      <title>五行比例圖</title>
       {slices.map(s => (
         <g key={s.elem}>
-          <path d={s.d} fill={s.color} stroke="rgba(10,14,26,0.8)" strokeWidth="1.5" />
+          <path d={s.d} fill={s.color} stroke="var(--jy-ui-canvas)" strokeWidth="1.5" />
           {s.pct > 0.08 && (
             <text x={s.lx} y={s.ly} textAnchor="middle" dominantBaseline="central"
-              fill="white" fontSize="10" fontWeight="bold">
+              fill="var(--jy-wx-on-fill)" fontSize="10" fontWeight="bold">
               {s.elem}
             </text>
           )}
         </g>
       ))}
       {/* 中空效果 */}
-      <circle cx={cx} cy={cy} r={28} fill="rgba(10,14,26,0.9)" />
-      <text x={cx} y={cy-4} textAnchor="middle" fill="#c9a84c" fontSize="9" fontWeight="bold">五行</text>
-      <text x={cx} y={cy+8} textAnchor="middle" fill="#d4d0ca" fontSize="7">比例</text>
+      <circle cx={cx} cy={cy} r={28} fill="var(--jy-ui-canvas-soft)" />
+      <text x={cx} y={cy-4} textAnchor="middle" fill="var(--jy-ui-gold-soft)" fontSize="9" fontWeight="bold">五行</text>
+      <text x={cx} y={cy+8} textAnchor="middle" fill="var(--jy-ui-ink-muted)" fontSize="7">比例</text>
     </svg>
   )
 }
@@ -488,48 +494,40 @@ export default function FreeToolPage() {
   }, [result, form.gender, form.year])
 
   return (
-    <div className="py-12 md:py-20 overflow-x-hidden max-w-full">
+    <div className="jy-page jy-tool-page py-12 md:py-20 overflow-x-hidden max-w-full">
       {/* P5 — 三層 JSON-LD(SoftwareApplication+FAQPage+HowTo、純 SEO、使用者不可見、零渲染風險) */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildFreeToolJsonLd('bazi')) }}
       />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="jy-container">
         {/* Hero */}
-        <div className="text-center mb-10 md:mb-14">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/10 border border-gold/25 text-gold/90 text-[11px] sm:text-xs font-semibold tracking-[0.25em] uppercase mb-5">
-            <span className="text-[10px]">&#10022;</span>
-            <span>BaZi &middot; 四柱八字</span>
-            <span className="text-[10px]">&#10022;</span>
-          </div>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-center mb-4 break-words tracking-tight leading-[1.1]">
-            <span className="text-gradient-gold">八字命理速算</span>
-          </h1>
-          <p className="text-center text-sm sm:text-base text-text tracking-[0.02em] mb-2">
-            四柱排盤 <span className="text-gold/50 mx-1">&middot;</span> 五行十神 <span className="text-gold/50 mx-1">&middot;</span> 大運流年
-          </p>
-          <p className="text-center text-xs text-text-muted/60 tracking-wider">
-            不需註冊 &middot; 即時出結果 &middot; 完全免費
-          </p>
+        <div className="jy-tool-hero">
+          <p className="jy-eyebrow">BAZI · 四柱八字</p>
+          <h1>八字命理速算</h1>
+          <p>輸入出生資料，先看四柱、五行十神與大運流年的基礎排盤。</p>
+          <ul aria-label="服務特點">
+            <li>不需註冊</li>
+            <li>即時速算</li>
+            <li>免費查看基礎結果</li>
+          </ul>
         </div>
 
         {/* 八字由來說明 */}
         <div className="max-w-2xl mx-auto mb-10">
-          <details className="glass rounded-xl p-4 cursor-pointer">
-            <summary className="text-sm font-medium text-gold-400 flex items-center gap-2">
-              <span>&#128218;</span> 關於八字命理：三千年的智慧
-            </summary>
-            <div className="mt-3 text-xs text-text-muted/80 space-y-2 leading-relaxed">
-              <p><strong className="text-white/90">八字的由來：</strong>八字命理（又稱四柱推命）源自中國古代天文曆法，歷經兩千餘年發展。唐代李虛中以年柱為主創立雛形，宋代徐子平改以日柱為核心，奠定了現代八字學的基礎，故又稱「子平術」。八字以出生的年、月、日、時四柱天干地支共八個字，推算一個人的先天命格與後天運勢。</p>
-              <p><strong className="text-white/90">核心原理：</strong>八字的理論基礎是陰陽五行（金木水火土）的生剋制化。透過分析日主（出生日的天干）與其他七個字的關係，推導出十神（正官、偏財、食神等），再結合大運和流年的變化，解讀一個人在性格、事業、感情、財運等方面的傾向與時機。</p>
-              <p><strong className="text-white/90">鑒源的做法：</strong>本系統使用天文級精度的萬年曆進行排盤，支援農曆／國曆雙向查詢，並可根據出生地經度進行真太陽時校正，確保時柱的準確性。分析涵蓋五行能量分佈、十神關係、格局判定與大運流年推演。</p>
+          <details className="jy-tool-details">
+            <summary>排盤基礎與閱讀方法</summary>
+            <div className="jy-tool-details__body">
+              <p><strong>八字的由來：</strong>八字命理（又稱四柱推命）源自中國古代天文曆法，歷經長期發展。唐代李虛中以年柱為主建立雛形，宋代徐子平改以日柱為核心，奠定現代八字學的基礎。八字以出生的年、月、日、時四柱天干地支共八個字，整理一個人的先天格局與後天週期。</p>
+              <p><strong>核心原理：</strong>理論基礎是陰陽五行的生剋制化。透過分析日主與其他七個字的關係，推導十神，再結合大運和流年的變化，形成性格、事業、關係與財務等面向的傳統詮釋。</p>
+              <p><strong>鑑源的做法：</strong>系統使用萬年曆排盤，支援農曆／國曆輸入，並可依出生地經度校正真太陽時。免費結果先呈現五行分佈、十神關係與大運流年的基礎資訊。</p>
             </div>
           </details>
         </div>
 
         {/* 分析進度動畫 */}
         {loading && !result && (
-          <div className="max-w-lg mx-auto">
+          <div className="max-w-lg mx-auto" role="status" aria-live="polite" aria-busy="true">
             <div className="glass rounded-2xl p-8">
               <h3 className="text-2xl md:text-3xl font-black text-cream tracking-tight mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
                 正在為 <span className="text-gold">{form.name}</span> 進行命格分析
@@ -540,14 +538,15 @@ export default function FreeToolPage() {
                   const isCurrent = currentStep === i
                   return (
                     <div key={i} className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-300 ${
-                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : 'opacity-30'
+                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : ''
                     }`}>
                       <span className={`w-6 text-center text-sm transition-all ${isCompleted ? 'text-gold' : isCurrent ? 'text-gold/70 animate-pulse' : 'text-text-muted/40'}`}
+                        aria-hidden="true"
                         dangerouslySetInnerHTML={{ __html: isCompleted ? '&#10003;' : step.icon }} />
                       <span className={`text-sm transition-all ${isCompleted ? 'text-cream' : isCurrent ? 'text-text animate-pulse' : 'text-text-muted/40'}`}>
                         {step.text}
                       </span>
-                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />}
+                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" aria-hidden="true" />}
                       {isCompleted && <span className="ml-auto text-xs text-gold/60">完成</span>}
                     </div>
                   )
@@ -562,39 +561,40 @@ export default function FreeToolPage() {
 
         {!result && !loading && (
           <div className="max-w-lg mx-auto">
-            <form onSubmit={handleSubmit} className="glass rounded-2xl px-6 py-8 md:p-10 space-y-6">
+            <form onSubmit={handleSubmit} className="jy-tool-form px-6 py-8 md:p-10 space-y-6">
               {/* 從家人選擇 */}
               <FamilyMemberPicker onSelect={handleFamilySelect} />
 
               {/* 姓名 + 性別 */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
-                  <label className="block text-sm text-text-muted mb-1.5">姓名 <span className="text-red-accent">*</span></label>
-                  <input type="text" required placeholder="請輸入您的全名" value={form.name}
+                  <label htmlFor="bazi-name" className="block text-sm text-text-muted mb-1.5">姓名 <span className="text-red-accent">*</span></label>
+                  <input id="bazi-name" name="name" type="text" required placeholder="請輸入您的全名" value={form.name}
                     onChange={(e) => setForm({...form, name:e.target.value})}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
                 </div>
-                <div>
-                  <label className="block text-sm text-text-muted mb-1.5">性別</label>
+                <fieldset>
+                  <legend className="block text-sm text-text-muted mb-1.5">性別</legend>
                   <div className="flex gap-4 pt-2">
                     {[{v:'M',l:'男'},{v:'F',l:'女'}].map(({v,l})=>(
-                      <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" name="gender" value={v} checked={form.gender===v} onChange={(e)=>setForm({...form,gender:e.target.value})} className="accent-gold" />
+                      <label key={v} htmlFor={`bazi-gender-${v}`} className="flex items-center gap-1.5 cursor-pointer">
+                        <input id={`bazi-gender-${v}`} type="radio" name="gender" value={v} checked={form.gender===v} onChange={(e)=>setForm({...form,gender:e.target.value})} className="accent-gold" />
                         <span className="text-base text-text">{l}</span>
                       </label>
                     ))}
                   </div>
-                </div>
+                </fieldset>
               </div>
 
               {/* 曆法、出生時間、出生城市（八字基本必要欄位） */}
               <>
               {/* 國曆/農曆切換 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">曆法</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">曆法</legend>
                 <div className="flex rounded-lg overflow-hidden border border-gold/10">
                   {[{v:'solar' as const,l:'國曆（西曆）'},{v:'lunar' as const,l:'農曆'}].map(({v,l})=>(
                     <button key={v} type="button"
+                      aria-pressed={form.calendarType===v}
                       onClick={()=>setForm({...form, calendarType:v})}
                       className={`flex-1 py-2.5 text-sm font-medium transition-all ${form.calendarType===v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
                       {l}
@@ -604,7 +604,7 @@ export default function FreeToolPage() {
                 {form.calendarType==='lunar' && (
                   <p className="text-xs text-gold/60 mt-1.5">系統將自動轉換為國曆並處理閏月</p>
                 )}
-              </div>
+              </fieldset>
 
               {/* 出生日期 */}
               <div className="grid grid-cols-3 gap-3">
@@ -633,8 +633,8 @@ export default function FreeToolPage() {
               </div>
 
               {/* 出生時間 — 三選一 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">出生時間</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">出生時間</legend>
                 <div className="flex rounded-lg overflow-hidden border border-gold/10 mb-3">
                   {[
                     {v:'unknown' as const, l:'不確定'},
@@ -642,6 +642,7 @@ export default function FreeToolPage() {
                     {v:'exact' as const, l:'知道精確時間'},
                   ].map(({v,l})=>(
                     <button key={v} type="button"
+                      aria-pressed={form.timeMode===v}
                       onClick={()=>setForm({...form, timeMode:v})}
                       className={`flex-1 py-2.5 text-xs font-medium transition-all ${form.timeMode===v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
                       {l}
@@ -672,15 +673,15 @@ export default function FreeToolPage() {
                     </select>
                   </div>
                 )}
-              </div>
+              </fieldset>
 
               {/* 出生地區 */}
               <div className="relative">
-                <label className="block text-sm text-text-muted mb-1.5">出生地區 <span className="text-red-accent">*</span></label>
+                <label htmlFor="bazi-city" className="block text-sm text-text-muted mb-1.5">出生地區 <span className="text-red-accent">*</span></label>
                 {needCityForCountry && (
                   <p className="text-xs text-gold/80 mb-1.5">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
                 )}
-                <input type="text" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
+                <input id="bazi-city" name="birth-city" type="text" autoComplete="off" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
                   onChange={(e) => {
                     const val = e.target.value
                     setForm({...form, city:val})
@@ -738,6 +739,10 @@ export default function FreeToolPage() {
 
               </>
 
+              <p className="jy-tool-privacy-note">
+                送出後，姓名與出生資料會用於排盤及 AI 輔助解讀。請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
+              </p>
+
               {/* v5.10.459 CTA 修(3 家視覺 LLM 共識):「請填寫完整資料」是狀態描述非行動呼籲;
                   且 bg-white/10 在 light theme 米白底上近隱形。改常駐行動文案 + 可見 disabled 樣式 + 缺項提示 */}
               <button type="submit" disabled={loading || !form.name.trim() || form.cityLat === 0}
@@ -753,7 +758,7 @@ export default function FreeToolPage() {
                   填寫{!form.name.trim() ? '姓名' : ''}{!form.name.trim() && form.cityLat === 0 ? '與' : ''}{form.cityLat === 0 ? '出生地區' : ''}後即可開始
                 </p>
               )}
-              {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
+              {error && <p className="jy-alert jy-alert--danger" role="alert">{error}</p>}
             </form>
           </div>
         )}
@@ -761,7 +766,7 @@ export default function FreeToolPage() {
         {result && derivedData && (
           <div className="space-y-8">
             <div className="text-center">
-              <button onClick={()=>setResult(null)} className="text-sm text-gold hover:underline">&larr; 重新分析</button>
+              <button onClick={()=>setResult(null)} className="inline-flex min-h-11 items-center px-3 text-sm text-gold hover:underline">&larr; 重新分析</button>
             </div>
 
             {/* ═══ 2026 整體運勢（第一眼！） ═══ */}
@@ -818,19 +823,19 @@ export default function FreeToolPage() {
                         {p.shishen}
                       </div>
                       {/* 天干 */}
-                      <div className="text-3xl font-bold mb-0.5" style={{ color: WX_COLORS[p.tgWx] || '#d4d0ca' }}>
+                      <div className="text-3xl font-bold mb-0.5" style={{ color: WX_COLORS[p.tgWx] || 'var(--jy-ui-ink)' }}>
                         {p.tg}
                       </div>
-                      <div className="text-[10px] mb-2" style={{ color: WX_COLORS[p.tgWx] || '#6880a0' }}>
+                      <div className="text-[10px] mb-2" style={{ color: WX_COLORS[p.tgWx] || 'var(--jy-ui-ink-muted)' }}>
                         {p.tgWx}
                       </div>
                       {/* 分隔線 */}
                       <div className="border-t border-gold/10 my-2" />
                       {/* 地支 */}
-                      <div className="text-3xl font-bold mb-0.5" style={{ color: WX_COLORS[p.dzWx] || '#d4d0ca' }}>
+                      <div className="text-3xl font-bold mb-0.5" style={{ color: WX_COLORS[p.dzWx] || 'var(--jy-ui-ink)' }}>
                         {p.dz}
                       </div>
-                      <div className="text-[10px] mb-2" style={{ color: WX_COLORS[p.dzWx] || '#6880a0' }}>
+                      <div className="text-[10px] mb-2" style={{ color: WX_COLORS[p.dzWx] || 'var(--jy-ui-ink-muted)' }}>
                         {p.dzWx}
                       </div>
                       {/* 藏干 */}
@@ -839,7 +844,7 @@ export default function FreeToolPage() {
                         {p.canggan.map((cg, i) => (
                           <div key={i} className="flex items-center justify-center gap-1 text-[10px]">
                             <span className="text-text-muted/50">{CANGGAN_LABELS[i]}</span>
-                            <span style={{ color: WX_COLORS[WX_TG[cg]] || '#6880a0' }}>{cg}</span>
+                            <span style={{ color: WX_COLORS[WX_TG[cg]] || 'var(--jy-ui-ink-muted)' }}>{cg}</span>
                             <span className="text-gold/50">{p.cangganShishen[i]}</span>
                           </div>
                         ))}
@@ -1054,7 +1059,7 @@ export default function FreeToolPage() {
                             <div key={elem} className="flex items-center gap-3">
                               <span className="w-9 text-lg font-bold tracking-wide" style={{color:WX_COLORS[elem]}}>{elem}</span>
                               <div className="flex-1 h-7 bg-white/5 rounded-full overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]">
-                                <div className="h-full rounded-full flex items-center pl-3 transition-all duration-700 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]" style={{width:`${Math.max(pct,5)}%`,background:`linear-gradient(90deg, ${WX_COLORS[elem]}dd, ${WX_COLORS[elem]})`}}>
+                                <div className="h-full rounded-full flex items-center pl-3 transition-all duration-700 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]" style={{width:`${Math.max(pct,5)}%`,background:`linear-gradient(90deg, color-mix(in srgb, ${WX_COLORS[elem]} 87%, transparent), ${WX_COLORS[elem]})`}}>
                                   <span className="text-[11px] font-bold text-white drop-shadow-sm">{typeof val==='number'&&val%1!==0?val.toFixed(1):val}</span>
                                 </div>
                               </div>
@@ -1284,95 +1289,6 @@ export default function FreeToolPage() {
             {/* v5.4.17 P0 freemium paywall(Gemini+Codex 共識「準但不完整」)*/}
             <FreemiumPaywall systemName="八字" clientName={form.name} checkoutQuery={`name=${encodeURIComponent(form.name)}&year=${form.year}&month=${form.month}&day=${form.day}&hour=${form.timeMode === 'exact' ? form.exactHour : form.hour}&gender=${form.gender}&calendarType=${form.calendarType}`} />
 
-            {/* ═══ 升級引導 ═══ */}
-            <div className="rounded-2xl overflow-hidden" style={{background:'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))'}}>
-              <div className="p-8 md:p-10">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                    以上只揭示了您命格的 <span className="text-gradient-gold">6.7%</span>
-                  </h3>
-                  <p className="text-base text-text max-w-2xl mx-auto leading-relaxed">
-                    您剛才體驗的是八字一個系統的簡要分析。完整報告融合
-                    <strong className="text-white">千年東方玄學經典</strong>——
-                    《滴天髓》《窮通寶鑑》《紫微斗數全書》《奇門遁甲統宗》，結合
-                    <strong className="text-white">全球最頂尖的命理分析引擎</strong>，
-                    橫跨 14 套東西方命理體系，為您呈現一份前所未有的命格全景報告。
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#128218;</div>
-                    <h4 className="font-bold text-white mb-1">千年古籍精髓</h4>
-                    <p className="text-sm text-text-muted">融合數十部命理經典核心理論，44,421+ 條專業規則</p>
-                  </div>
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#129302;</div>
-                    <h4 className="font-bold text-white mb-1">科技量化深度解讀</h4>
-                    <p className="text-sm text-text-muted">AI 深度引擎逐句分析，每段結論精準到您個人命盤</p>
-                  </div>
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#127760;</div>
-                    <h4 className="font-bold text-white mb-1">14 系統交叉驗證</h4>
-                    <p className="text-sm text-text-muted">東西方系統互相印證，多系統共識的結論才最可靠</p>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-                    {([
-                      { plan: 'C', label: '解鎖人生藍圖完整報告 $89', primary: true },
-                      { plan: 'D', label: '聚焦單一困惑深度分析 $39', primary: false },
-                    ] as const).map(({ plan, label, primary }) => {
-                      const q = new URLSearchParams({
-                        plan,
-                        name: form.name,
-                        year: form.year,
-                        month: form.month,
-                        day: form.day,
-                        hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
-                        minute: form.timeMode === 'exact' ? form.exactMinute : '0',
-                        gender: form.gender,
-                        timeMode: form.timeMode,
-                        calendarType: form.calendarType,
-                      })
-                      const cls = primary
-                        ? 'px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow'
-                        : 'px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10'
-                      return <a key={plan} href={`/checkout?${q}`} className={cls}>{label}</a>
-                    })}
-                  </div>
-
-                  {/* 出門訣引導 */}
-                  <div className="glass rounded-xl p-5 max-w-md mx-auto mb-6">
-                    <p className="text-sm text-cream mb-2 font-semibold">想知道什麼時候出門最順利？</p>
-                    <p className="text-xs text-text-muted mb-3">奇門遁甲出門訣 — 精準計算吉時吉方，讓每次出門都事半功倍</p>
-                    <div className="flex gap-2 justify-center">
-                      <Link href="/checkout?plan=E1" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        事件擇吉 $59
-                      </Link>
-                      <Link href="/checkout?plan=E2" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        月度單盤 $29
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* v5.4.7 P3 social proof */}
-                  <p className="text-xs text-text-muted/70 mb-3">
-                    已有 <LiveCounter type="paid" /> 份完整付費報告完成交付
-                  </p>
-
-                  <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">
-                    <span>&#128274; Stripe 安全支付</span>
-                    <span>&#9889; 約30-60分鐘出報告</span>
-                    <span>&#128230; PDF 永久保存</span>
-                  </div>
-                  <p className="text-xs text-text-muted/50">
-                    還沒準備好？{' '}
-                    <Link href="/auth/signup" className="text-gold underline hover:no-underline">免費註冊帳號</Link>
-                    {' '}先收藏命格資料，隨時回來查閱
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

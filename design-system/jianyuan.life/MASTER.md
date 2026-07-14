@@ -1,105 +1,134 @@
-# 鑑源 jianyuan.life — Design System Master(Source of Truth)
+# 鑑源 jianyuan.life — 商業呈現設計系統
 
-> **檢索邏輯(ui-ux-pro-max skill 階層式)**:做特定頁面前先查 `design-system/jianyuan.life/pages/[page].md`、
-> 存在則該檔規則**覆寫**本檔;不存在則嚴格遵循本檔。
+> 本文件定義公開網站、結帳、會員區與私人報告的呈現規則。命理計算、判定、方案代碼與付款流程不在設計層修改範圍內。
 >
-> **canonical 來源**:本檔描述的 token 全部以 `app/globals.css` 為實作真相 — 改色票/字體**只改 globals.css**、
-> 本檔同步更新描述。component 內禁止裸 hex(skill §6 `color-semantic`)。
+> 實作優先序：`app/presentation.css` 的 `--jy-ui-*` 與 `.jy-*` 是新頁面唯一來源；`app/globals.css` 僅維持舊頁相容。特定頁面可由 `pages/*.md` 加嚴，但不得降低本文件的可及性與信任門檻。
 
----
+**品牌方向：** 現代典籍 × 私人顧問卷宗 × 觀測台
+**產品語氣：** 冷靜、可核對、尊重判斷，不神化、不催迫、不用假精確數字
+**更新：** 2026-07-13
 
-**Project:** jianyuan.life(鑑源命理平台、14 套系統交叉分析 B2C SaaS)
-**Updated:** 2026-06-12(skill 正式落檔、v5.10.422 基線)
-**Category:** Premium 命理/人生諮詢(Luxury + Editorial Storytelling)
+## 1. 核心原則
 
----
+1. **結論先行。** 每頁先回答「這是什麼、適合誰、下一步是什麼」，再展開證據與細節。
+2. **可解釋比神祕重要。** 明確區分計算事實、傳統詮釋與行動建議；限制與缺資料就近呈現。
+3. **資訊階層靠排版，不靠特效。** 以留白、字級、線條、表面層級建立節奏；靜態內容禁止 hover lift、大片 blur 與持續漂浮。
+4. **一次只有一個主要動作。** 次要動作使用 outline/text，不與主 CTA 爭奪。
+5. **不使用暗黑模式。** 禁止假倒數、假稀缺、虛構熱門、未驗證見證、預勾加購與晚揭露費用。
+6. **繁中先行。** 版面以繁體中文實際字寬、斷行、標點與長文掃讀設計，不以英文 mockup 推回中文。
 
-## 選型紀錄(skill `--design-system` 引擎驗證、2026-06-12)
+## 2. 語意色彩
 
-| 引擎建議 | 採用? | 理由 |
-|---|---|---|
-| Pattern: **Storytelling + Feature-Rich**、CTA above fold、Hero > Features > CTA | ✅ 採用 | 與現行首頁結構一致(hero 金句 → 14 系統 grid → 方案 CTA) |
-| Style: Liquid Glass(morphing/iridescent) | ❌ 捨棄 | 引擎自標 ⚠ Performance Moderate-Poor + ⚠ Text contrast;與 v5.10.408 light-theme 對比修復教訓直接衝突。保留現行**克制版 glass**(`.glass` 卡片、blur 僅用於背景退場語意) |
-| Colors: 深底 + 金 accent(#A16207 系) | ✅ 方向一致 | 我們的金 #C9A84C 已配套 light 變體 #8B6F3B(on-light)與金底深字 #0A0E1A、對比全 AA+ |
-| Typography: Bodoni Moda + Jost | ❌ 捨棄 | 拉丁字體、不適中文主體。現行 Noto Serif TC(標題/editorial)+ Noto Sans TC(正文)為定案 |
-| Anti-pattern: Cheap visuals / Fast animations | ✅ 遵守 | 動效統一 260ms ease-out、禁 <150ms 突變 |
+所有新 UI 只使用 `--jy-ui-*`，component 內不得新增裸 hex。
 
----
+| 語意 | Dark | Light | 用途 |
+|---|---:|---:|---|
+| `--jy-ui-canvas` | `#080b12` | `#f5f0e7` | 全頁底色 |
+| `--jy-ui-canvas-raised` | `#111925` | `#f9f3e9` | 區段抬升 |
+| `--jy-ui-surface` | `#121a27` | `#fffaf1` | 主要面板 |
+| `--jy-ui-ink` | `#f4efe6` | `#241e18` | 主文字 |
+| `--jy-ui-ink-muted` | `#bec4ce` | `#5e574e` | 次文字 |
+| `--jy-ui-gold` | `#d5b261` | `#80581b` | 品牌、索引、證據 |
+| `--jy-ui-action` | `#d5b261` | `#a33e32` | 唯一主要 CTA |
+| `--jy-ui-focus` | `#91c7ff` | `#155d92` | 鍵盤焦點 |
+| `--jy-ui-success` | `#72c59a` | `#2d714b` | 成功狀態 |
+| `--jy-ui-danger` | `#ed8b80` | `#a5322a` | 錯誤狀態 |
 
-## 1. 色彩(semantic token、globals.css 為準)
+Light 不是 Dark 反相：紙張、線條、陰影、CTA 均有獨立值。五行圖表仍使用 `globals.css` 既有 `--wx-*`；不得改變資料或類別映射。
 
-### 品牌核心
-| Token | Dark(預設) | Light(`[data-theme="light"]` remap) | 用途 |
-|---|---|---|---|
-| `--color-gold` | `#C9A84C` | 同(另有 `--color-gold-on-light: #8B6F3B`) | 品牌金、accent/CTA |
-| `--color-gold-light` | `#E0C068` | — | 晨曦金、hover/高光 |
-| `--color-dark` | `#0A0E1A` | `#f5f3ee`(⚠ 見禁區 #1) | 深空黑 |
-| `--color-text` | `#E8E4DE`(AAA 14.2:1) | `#1a2340` | 正文 |
-| `--color-text-muted` | `#B3B8C5`(AA+ 7.8:1) | `#4a5269` | 輔助文字 |
-| `--color-cream` | `#E8E4DE` | `#5a4f30`(暗金、11.2:1) | 強調暖白 |
+## 3. 字體與閱讀尺度
 
-### 背景層級(elevation、skill §4 `elevation-consistent`)
-`--color-bg-sunken #060912` < `--color-bg-base #080B16` < `--color-bg-raised #0E1428` < `--color-bg-card #111A30` < `--color-bg-card-hi #15203A`
+- Display／H1／H2：Noto Serif TC，重量 500–700；用於編輯式敘事，不整頁 serif。
+- Body／表單／表格：Noto Sans TC，16px 起；長篇報告 18px、行高 1.8。
+- 拉丁小標：Cinzel 僅限極少量品牌 metadata，不得犧牲可讀性。
+- 公開頁內容容器：`--jy-ui-content: 78rem`；左右 gutter 用 `--jy-ui-gutter`。
+- 長文閱讀欄：`--jy-ui-reading: 42rem`，正文段落建議不超過 36–40em。
+- 一頁一個 H1，H2/H3 不跳級；小標不得小於相鄰正文。
+- 不用全大寫中文，不用超寬 tracking 於兩行以上文字。
 
-### 五行色票(v5.10.418 統一、命理圖表唯一來源)
-| Token | Hex | 語意 |
-|---|---|---|
-| `--wx-wood` | `#5B8F6E` | 沉木綠 |
-| `--wx-fire` | `#C26A55` | 陶赭紅(避大紅) |
-| `--wx-earth` | `#C9A84C` | 赭金土 = 品牌金 |
-| `--wx-metal` | `#C6C2B6` | 鉑銀 |
-| `--wx-water` | `#5181A8` | 黛水藍 |
+## 4. 版面與元件語法
 
-透明度混色一律 `color-mix(in srgb, var(--wx-x) 20%, transparent)` — **禁止 `${hex}33` 字串拼接**(var() 不相容、v418 教訓)。
+優先組合下列 class，不另造一套 page-local token：
 
-### 功能色(深版、dark 底 AA pass)
-success `#1E8449` / warning `#B8650E` / info `#1F618D` / danger `#EF4444`;現代變體 `--color-success-modern #5BD49A`、`--color-danger-modern #E07A6E`。
-功能色必配 icon/文字、不可只靠色(skill §1 `color-not-only`)。
+- Shell：`.jy-page`、`.jy-container`、`.jy-reading-container`
+- Section：`.jy-section`，必要時加 `--ruled`／`--raised`
+- Type：`.jy-eyebrow`、`.jy-display`、`.jy-title`、`.jy-lede`、`.jy-copy`
+- Actions：`.jy-button` + `--primary`／`--secondary`，`.jy-text-link`
+- Surfaces：`.jy-panel`、`.jy-card`；只有能點擊的卡片才有互動狀態
+- Layout：`.jy-grid-2`、`.jy-grid-3`、`.jy-stats`
+- Commercial：`.jy-pricing-grid`、`.jy-price-card`、`.jy-comparison-wrap`
 
-## 2. 字體
+面板預設實色、1px semantic border、低對比陰影。Glass 僅可用於真正需要背景上下文的短暫浮層；報告正文與定價卡禁止 backdrop blur。
 
-| Token | 字族 | 用途 |
-|---|---|---|
-| `--font-sans` | Noto Serif TC → Georgia(serif) | 標題、editorial 金句(zh-CN locale 切 Noto Serif SC) |
-| `--font-body` | Noto Sans TC → PingFang TC → Inter | 正文 |
-| `--font-classic` | Source Han Serif TC | 古籍引文 |
-| `--font-display` | Cinzel/Trajan 系 | 拉丁裝飾標題(極少用) |
+## 5. 商業漏斗
 
-尺度:正文 ≥16px(17px 報告頁)、line-height 1.5-1.8、報告正文欄寬 max 880px 置中(v406)、金句 22-24px serif。
+### 定價
 
-## 3. 動效系統(v5.10.416-422 定案)
+每張方案卡在 CTA 前說清楚：適合誰、得到什麼、一次性或訂閱、幣別與最終價、交付格式／範圍、預計完成時間、資料更正與支援方式。推薦只能附可核對的推薦理由，禁止「最多人買」等無資料聲稱。
 
-- **唯一機制**:`.rv`(初始 opacity:0 + translateY(12px))→ `.rv-in`(260ms ease-out)、`html[data-motion="on"]` 閘控、**transform/opacity only**(零 CLS)。
-- **進場觸發鐵律(v422 血淚)**:IntersectionObserver 必須 `{ rootMargin: '300px 0px 300px 0px', threshold: 0 }` + 150ms scroll 安全網掃描「已過視窗上方仍未進場」元素 — threshold>0 對快滾(兩幀間跳過視窗)與零尺寸元素**永不觸發**。
-- 同批 stagger 40ms;章首金句金邊生長 420ms;`prefers-reduced-motion` 全關(掛 flag 檢查最前)。
-- 逐元件 opt-in class、**禁全域 selector 動效**(v5.10.323 墨跡規則全站誤傷教訓)。
-- Feature flag:`NEXT_PUBLIC_FF_REPORT_MOTION` / `FF_HOME_GUIDED` / `FF_CONSULT_ONBOARDING`(next.config.ts `?? 'true'` 預設開、Vercel env 設 `'false'` 即單獨關)。
+比較表使用真正的 `table`、`caption`、`th scope`。手機只讓表格容器局部橫向捲動，不得造成 body overflow。
 
-## 4. 互動與觸控(skill §2 CRITICAL)
+### 結帳
 
-- 觸控目標 ≥44×44px:全站 input/select/textarea `min-height: 44px`(globals.css 全域規則)、icon 鍵 `p-2.5` 補位。
-- 所有 clickable 加 `cursor-pointer`;hover 過渡 150-300ms;按鈕 async 時 disable + spinner。
-- 每屏唯一主 CTA(`.btn-glow` 金漸層);次要動作視覺從屬。
-- 多步流程必留 escape route(ConsultIntro「跳過、直接填表 →」為範本)。
+標準閱讀順序：選方案 → 填資料 → 檢查資料與總價 → 付款 → 完成／追蹤。表單：
 
-## 5. 結構鐵律(本專案血淚規則、優先級最高)
+- 只收生成報告需要的資料，label 永遠可見。
+- 錯誤訊息具體、靠近欄位，提交失敗保留所有輸入。
+- 付款前顯示姓名、曆法、年月日時分、地點／時區、性別、方案、折扣與最終幣別金額。
+- 付款 CTA 明寫金額與結果，例如「支付 US$___ 並開始生成報告」。
+- 不用無法證實的 SSL 位數、永久保存、成功率或退款聲稱作 trust badge。
 
-1. **light theme remap 禁區**:`[data-theme="light"]` 改 `--color-dark` 這類「語意=深色」的 token 會連帶炸 25+ 處金底深字 — 任何 remap 必配 `[data-theme="light"] .text-dark { color: var(--color-text-on-gold) }` 類鎖定規則 + 對比實測(v408 P0)。
-2. **全域裝飾 selector 必用 `:where()` 排除互動元件**:`:where(:not(.btn-glow)):not(.cta-primary-large):not([class*="bg-"])` 零特異性模式(v408 修法)、否則蓋掉按鈕底色 = CTA 隱形。
-3. **報告頁 `/report/*` 強制 dark**:next-themes `forcedTheme="dark"`(不寫 localStorage)+ 藏主題切換入口 — warm-light 報告遷移 sprint(326 處正文色)完成前不可開放切換。
-4. **print 必須全文**:未進場 `.rv`、摺疊章節在 `@media print` 一律 `!important` 全可見。
-5. **真實性文案**(`jianyuan-truth.md`):對外 14 套系統(非 15)、不支援退款(4 大保證、禁「7 日全額退」)、禁「100%/獨家/保證」、約 30-60 分鐘。
-6. **icon 用 SVG**(Heroicons/Lucide 線條風統一)、禁 emoji 作結構性 icon(內文裝飾性 emoji 已由 sanitize 層清理)。
+### 完成頁
 
-## 6. 交付前檢查(每次 UI 改動、skill Pre-Delivery)
+必須包含付款／領取狀態、訂單編號、通知 Email、預計完成時間、追蹤連結、修正資料與客服方式，以及下一步說明。
 
-```
-□ 對比:light+dark 雙模式正文 ≥4.5:1、金底深字、CTA 可見(v408 教訓:雙主題都實測)
-□ 觸控:新互動元件 ≥44px、間距 ≥8px
-□ 動效:reduced-motion 驗證、快滾酷刑測試(50×1200px wheel、零 opacity:0 殘留)
-□ CLS:transform/opacity only、async 內容預留空間、首幀無跳動(null-first-frame 模式)
-□ print:emulateMedia print 全文可見
-□ 響應式:375 / 768 / 1024 / 1440 四檔 + 無水平溢出
-□ a11y:aria-expanded/aria-controls/aria-label、focus 可見、heading 不跳級
-□ 流程:tsc → build → flag-on dev 眼驗 → (P0 區 Codex) → push → verify_production.js → production 眼驗
+## 6. 報告呈現
+
+品牌北極星是「私人高端顧問 dossier」，不是 SaaS dashboard。標準骨架：
+
+1. 封面與報告對象／資料摘要
+2. 唯一一個三分鐘 Executive Brief
+3. 重要限制與資料完整狀態
+4. 目錄
+5. 起：本源與你是誰
+6. 承：形成脈絡與過去
+7. 轉：目前週期與未來
+8. 合：當下行動
+9. 命理依據、術語與技術附錄
+10. 信件、免責與回饋
+
+每章固定採「一句論點 → 白話解讀 → 可核對證據 → 支持／衝突 → 可執行行動」。核心內容預設可讀；accordion 只收納術語與推導細節。
+
+正式客戶頁目前仍是 `/report/[token]`。`/r/*` 的 adapter 含 mock fallback，在 real-only contract 完成前不可切換 production，也不可將 React PDF POC 當正式下載。
+
+## 7. 可及性與響應式發布門檻
+
+- WCAG 2.2 AA：正文 4.5:1，大字與非文字 UI 3:1。
+- 設計目標觸控 44×44px；絕對不得低於 WCAG 24×24px。
+- 320 CSS px／400% zoom 除真正二維表格與圖表外無整頁橫捲。
+- 所有互動可由鍵盤完成；`:focus-visible` 3px、不可被 sticky chrome 遮住。
+- 表單狀態與非同步成功／錯誤用 `aria-live` 或等效語意通知。
+- 動效尊重 `prefers-reduced-motion`；只使用 opacity／transform，避免 CLS。
+- 斷點驗證至少 390、768、1024、1440；明／暗模式各驗一次。
+- Print 顯示完整正文、隱藏操作 chrome，不因 reveal/collapse 丟內容。
+
+## 8. 命理與商業邏輯防火牆
+
+視覺 wave 可改：DOM 順序、容器、排版、色彩、chrome、可及性標記、真實資料的摘要布局、PDF 字級／邊距／表頭與 presentation flags 接線。
+
+視覺 wave 不可改：calculators、`report_result`／`full_charts`／`analyses` 值、prompt、quality gate、生成 workflow、建議推導、方案代碼／價格、adapter 語意 mapping。缺資料就省略呈現，絕不可用 mock／他人資料補空。
+
+## 9. 每次 UI 變更的驗收
+
+```text
+□ npx tsc --noEmit --incremental false
+□ production build（高風險或 release 前）
+□ 1440 / 390 × light / dark 實際截圖
+□ scrollWidth === clientWidth（表格等明確例外除外）
+□ 一頁一個 H1、heading 不跳級
+□ 可見互動目標 ≥24px；主要 mobile controls 目標 44px
+□ 鍵盤 focus、錯誤與狀態訊息可感知
+□ prefers-reduced-motion 與 print
+□ 報告 golden fixture 做數字、日期、四柱、判定 parity diff
+□ 不新增虛構指標、見證、熱門或保證聲稱
 ```

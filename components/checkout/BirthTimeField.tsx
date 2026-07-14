@@ -8,13 +8,14 @@ interface BirthTimeFieldProps {
   hour: string
   minute: string
   onChange: (field: 'hour' | 'minute', val: string) => void
+  idPrefix?: string
 }
 
-export default function BirthTimeField({ timeMode, setTimeMode, hour, minute, onChange }: BirthTimeFieldProps) {
+export default function BirthTimeField({ timeMode, setTimeMode, hour, minute, onChange, idPrefix = 'checkout-birth-time' }: BirthTimeFieldProps) {
   return (
-    <div>
-      <label className="block text-xs text-text-muted mb-1">出生時間</label>
-      <div className="flex rounded-lg overflow-hidden border border-gold/20 mb-3">
+    <fieldset>
+      <legend className="block text-xs text-text-muted mb-1">出生時間</legend>
+      <div className="flex rounded-lg overflow-hidden border border-gold/20 mb-3" role="group" aria-label="出生時間精確度">
         {([
           { key: 'unknown', label: '不確定' },
           { key: 'shichen', label: '知道時辰' },
@@ -22,6 +23,7 @@ export default function BirthTimeField({ timeMode, setTimeMode, hour, minute, on
         ] as const).map(({ key, label }) => (
           <button key={key} type="button"
             onClick={() => setTimeMode(key)}
+            aria-pressed={timeMode === key}
             className={`flex-1 py-2 text-xs font-medium transition-all ${
               timeMode === key
                 ? 'bg-gold/20 text-gold border-b-2 border-gold'
@@ -31,27 +33,32 @@ export default function BirthTimeField({ timeMode, setTimeMode, hour, minute, on
         ))}
       </div>
       {timeMode === 'unknown' && (
-        <div className="bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-text-muted text-sm">
+        <div className="bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-text-muted text-sm" role="note">
           將以正午（12:00）計算，部分時辰相關分析可能有偏差。<br/>
           <span className="text-[10px] text-text-muted/60">小提示：可詢問父母或查看出生證明，知道大概時段也可以選「知道時辰」。</span>
         </div>
       )}
       {timeMode === 'shichen' && (
-        <select value={hour} onChange={(e) => onChange('hour', e.target.value)}
-          className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
-          {SHICHEN.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
+        <div>
+          <label htmlFor={`${idPrefix}-shichen`} className="sr-only">出生時辰</label>
+          <select id={`${idPrefix}-shichen`} value={hour} onChange={(e) => onChange('hour', e.target.value)}
+            className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
+            {SHICHEN.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
       )}
       {timeMode === 'exact' && (
         <>
           <div className="flex gap-3">
-            <select value={hour} onChange={(e) => onChange('hour', e.target.value)}
+            <label htmlFor={`${idPrefix}-hour`} className="sr-only">出生小時</label>
+            <select id={`${idPrefix}-hour`} value={hour} onChange={(e) => onChange('hour', e.target.value)}
               className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
               {Array.from({ length: 24 }, (_, i) => (
                 <option key={i} value={i}>{String(i).padStart(2, '0')}時</option>
               ))}
             </select>
-            <select value={minute} onChange={(e) => onChange('minute', e.target.value)}
+            <label htmlFor={`${idPrefix}-minute`} className="sr-only">出生分鐘</label>
+            <select id={`${idPrefix}-minute`} value={minute} onChange={(e) => onChange('minute', e.target.value)}
               className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
               {Array.from({ length: 60 }, (_, i) => (
                 <option key={i} value={i}>{String(i).padStart(2, '0')}分</option>
@@ -65,6 +72,6 @@ export default function BirthTimeField({ timeMode, setTimeMode, hour, minute, on
           </div>
         </>
       )}
-    </div>
+    </fieldset>
   )
 }

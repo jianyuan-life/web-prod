@@ -12,7 +12,7 @@ export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
   return (
     <>
       {/* 軟著陸過渡句讓 CTA 不突兀 */}
-      <div className="mt-8 mb-2 px-2 text-center">
+      <div className="no-print mt-8 mb-2 px-2 text-center">
         <p
           className="text-sm sm:text-base leading-7 italic"
           style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'var(--font-sans)' }}
@@ -21,7 +21,7 @@ export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
         </p>
       </div>
       <div
-        className="mb-8 rounded-2xl p-6 sm:p-8"
+        className="no-print mb-8 rounded-2xl p-6 sm:p-8"
         style={{
           background:
             'linear-gradient(135deg, rgba(201,168,76,0.18), rgba(26,42,74,0.35)), radial-gradient(circle at top right, rgba(201,168,76,0.25), transparent 60%)',

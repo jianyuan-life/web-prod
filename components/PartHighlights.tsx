@@ -36,7 +36,7 @@ export default function PartHighlights({ part, sections }: PartHighlightsProps) 
 
   return (
     <div
-      className="mb-5 rounded-xl p-5"
+      className="report-part-highlights mb-5 rounded-xl p-5"
       style={{
         background: c.bg,
         border: `1px solid ${c.border}`,

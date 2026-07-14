@@ -42,20 +42,29 @@ function renderMarkdown(md: string) {
   const html: string[] = []
   let inTable = false
   let tableRows: string[] = []
+  let inList = false
+
+  function flushList() {
+    if (!inList) return
+    html.push('</ul>')
+    inList = false
+  }
 
   function flushTable() {
     if (!tableRows.length) return
     // v5.10.459:分隔列過濾補內部 |(多欄 GFM 分隔列如 |:---:|:---:| 原本濾不掉、`:---:` 洩漏成資料列、production blog 實測)
     const rows = tableRows.filter(r => !r.match(/^\|[\s:|-]+\|$/))
     if (rows.length > 0) {
-      html.push('<div class="overflow-x-auto my-6"><table class="w-full text-sm">')
+      html.push('<div class="overflow-x-auto my-6" role="region" aria-label="文章資料表" tabindex="0"><table class="w-full text-sm"><caption class="sr-only">文章資料表</caption><thead>')
       rows.forEach((row, i) => {
         const cells = row.split('|').filter(Boolean).map(c => c.trim())
         const tag = i === 0 ? 'th' : 'td'
+        const scope = i === 0 ? 'scope="col"' : ''
         const cls = i === 0 ? 'class="text-left text-gold/80 font-semibold py-2 px-3 border-b border-gold/10"' : 'class="py-2 px-3 border-b border-white/5 text-text-muted"'
-        html.push(`<tr>${cells.map(c => `<${tag} ${cls}>${formatInline(c)}</${tag}>`).join('')}</tr>`)
+        html.push(`<tr>${cells.map(c => `<${tag} ${scope} ${cls}>${formatInline(c)}</${tag}>`).join('')}</tr>`)
+        if (i === 0) html.push('</thead><tbody>')
       })
-      html.push('</table></div>')
+      html.push('</tbody></table></div>')
     }
     tableRows = []
     inTable = false
@@ -69,6 +78,8 @@ function renderMarkdown(md: string) {
 
   for (const line of lines) {
     const trimmed = line.trim()
+
+    if (!trimmed.startsWith('- ') && inList) flushList()
 
     // 表格行
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
@@ -92,13 +103,18 @@ function renderMarkdown(md: string) {
 
     // 列表
     if (trimmed.startsWith('- ')) {
-      html.push(`<li class="text-text-muted leading-relaxed ml-4 mb-1">${formatInline(trimmed.slice(2))}</li>`)
+      if (!inList) {
+        html.push('<ul class="my-5 list-disc space-y-2 pl-6">')
+        inList = true
+      }
+      html.push(`<li class="text-text-muted leading-relaxed">${formatInline(trimmed.slice(2))}</li>`)
       continue
     }
 
     // 普通段落
     html.push(`<p class="text-text leading-[2] mb-4">${formatInline(trimmed)}</p>`)
   }
+  if (inList) flushList()
   if (inTable) flushTable()
   return html.join('\n')
 }
@@ -138,7 +154,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
   const contentHtml = safeHtmlForBlog(renderMarkdown(post.content))
 
   return (
-    <div className="min-h-screen pt-24 pb-16">
+    <div className="jy-page jy-public-page jy-blog-detail min-h-screen pt-24 pb-16">
       {/* JSON-LD */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       {faqSchema.mainEntity.length > 0 && (
@@ -148,7 +164,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
       <article className="max-w-3xl mx-auto px-6">
         {/* 標頭 */}
         <div className="mb-10">
-          <Link href="/blog" className="text-xs text-text-muted hover:text-gold transition-colors mb-4 inline-block">
+          <Link href="/blog" className="inline-flex min-h-11 items-center text-xs text-text-muted hover:text-gold transition-colors mb-4">
             &larr; 返回文章列表
           </Link>
           <div className="flex items-center gap-3 mb-4">

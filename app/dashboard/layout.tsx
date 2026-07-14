@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import './dashboard-presentation.css'
 
 export const metadata: Metadata = {
   title: '我的報告',  // root layout template 會補「| 鑒源 JianYuan」、此處只寫純標題避免品牌名重複

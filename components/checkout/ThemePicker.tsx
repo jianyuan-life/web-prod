@@ -47,12 +47,12 @@ export default function ThemePicker({ selectedTopics, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-3">
+    <fieldset className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-cream mb-1">
+        <legend className="block text-sm font-medium text-cream mb-1">
           選擇本月重點主題 <span className="text-gold">（1-3 個）</span>
           <span className="text-red-400">*</span>
-        </label>
+        </legend>
         <p className="text-[11px] text-text-muted/70 leading-[1.6]">
           引擎依古法占事派精算、為每個主題分配專屬吉時。
           <br />
@@ -74,6 +74,8 @@ export default function ThemePicker({ selectedTopics, onChange }: Props) {
               key={topic.code}
               type="button"
               onClick={() => handleClick(topic.code)}
+              aria-pressed={isSelected}
+              aria-label={`${topic.label}${isSelected ? `，已選為 ${rankLabel}` : '，未選'}`}
               className={`relative text-left rounded-xl p-3 border transition-all ${
                 isSelected
                   ? 'border-gold/60 bg-gold/10 shadow-[0_0_0_1px_rgba(197,150,58,0.3)]'
@@ -97,9 +99,9 @@ export default function ThemePicker({ selectedTopics, onChange }: Props) {
       </div>
 
       {/* 狀態提示 */}
-      <div className="text-[11px] leading-[1.6]">
+      <div className="text-[11px] leading-[1.6]" aria-live="polite">
         {selectedTopics.length === 0 && (
-          <p className="text-red-400/80">⚠ 至少選 1 個主題</p>
+          <p className="text-red-400/80" role="alert">⚠ 至少選 1 個主題</p>
         )}
         {selectedTopics.length === 1 && (
           <p className="text-gold/80">✓ 已選 1 個：全部 8 個吉時專注於此主題</p>
@@ -111,6 +113,6 @@ export default function ThemePicker({ selectedTopics, onChange }: Props) {
           <p className="text-green-400/90">✓ 已選 3 個：TOP 1 (3 吉時) + TOP 2 (3 吉時) + TOP 3 (2 吉時)</p>
         )}
       </div>
-    </div>
+    </fieldset>
   )
 }

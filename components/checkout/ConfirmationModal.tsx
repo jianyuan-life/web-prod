@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { internalGet, internalPost } from '@/lib/api'  // T10b v5.10.373(timeout + 429 handling)
 import { SHICHEN } from './types'
@@ -47,7 +47,55 @@ export default function ConfirmationModal({
   e1EndDate, e1EventType, e1HasExactTime, eSelectedBlocks, customerNote,
   finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied,
 }: ConfirmationModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const editButtonRef = useRef<HTMLButtonElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!show) return
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusFrame = window.requestAnimationFrame(() => editButtonRef.current?.focus())
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      document.body.style.overflow = previousOverflow
+      previousFocusRef.current?.focus()
+    }
+  }, [show])
+
   if (!show) return null
+
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      if (!loading) {
+        event.preventDefault()
+        onClose()
+      }
+      return
+    }
+    if (event.key !== 'Tab') return
+
+    const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]'
+    ) || [])
+    if (focusable.length === 0) {
+      event.preventDefault()
+      dialogRef.current?.focus()
+      return
+    }
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
 
   // 格式化出生時間顯示
   const getTimeDisplay = () => {
@@ -65,11 +113,26 @@ export default function ConfirmationModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* 背景遮罩 */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={() => { if (!loading) onClose() }}
+        aria-hidden="true"
+      />
 
       {/* 彈窗內容 */}
-      <div className="relative glass rounded-2xl p-6 max-w-md w-full border border-gold/20 shadow-2xl">
-        <h3 className="text-lg font-bold text-gold text-center mb-4">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="checkout-confirm-title"
+        aria-describedby="checkout-confirm-description"
+        aria-busy={loading}
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
+        className="checkout-dialog relative glass rounded-2xl p-5 sm:p-6 max-w-md w-full border border-gold/20 shadow-2xl"
+      >
+        <p className="checkout-order-kicker text-center">Final review</p>
+        <h3 id="checkout-confirm-title" className="text-lg font-bold text-gold text-center mb-4">
           請確認您的出生資料
         </h3>
 
@@ -157,7 +220,7 @@ export default function ConfirmationModal({
 
         {/* 警告提示 */}
         <div className="bg-gold/10 border border-gold/20 rounded-xl p-3 mb-5">
-          <p className="text-xs text-gold/90 leading-relaxed text-center">
+          <p id="checkout-confirm-description" className="text-xs text-gold/90 leading-relaxed text-center">
             出生資料一旦提交將用於排盤計算，請務必確認正確。
           </p>
         </div>
@@ -175,14 +238,15 @@ export default function ConfirmationModal({
         {/* 應付金額 */}
         {finalPrice !== undefined && (
           <div className="flex justify-between items-center mb-4 px-2 py-2 rounded-lg" style={{ background: 'rgba(201,168,76,0.08)' }}>
-            <span className="text-sm text-text-muted">應付金額</span>
-            <span className="text-xl font-bold text-gold">${finalPrice}</span>
+            <span className="text-sm text-text-muted">一次性應付金額</span>
+            <span className="text-xl font-bold text-gold">USD {finalPrice}</span>
           </div>
         )}
 
         {/* 按鈕 */}
         <div className="flex gap-3">
           <button
+            ref={editButtonRef}
             type="button"
             onClick={onClose}
             disabled={loading}
@@ -196,7 +260,7 @@ export default function ConfirmationModal({
             disabled={loading}
             className="flex-1 py-3 bg-gold text-dark font-bold rounded-xl btn-glow disabled:opacity-50"
           >
-            {loading ? '跳轉付款中...' : '確認無誤，付款'}
+            {loading ? <span role="status">跳轉付款中...</span> : finalPrice === 0 ? '確認無誤，建立報告' : '確認無誤，前往 Stripe'}
           </button>
         </div>
       </div>
@@ -258,19 +322,20 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
     <div className="mb-4 rounded-xl p-3" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.15)' }}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-green-300">積分折抵</span>
-        <span className="text-[10px] text-green-400/60">可用 {balance} 點（1點=$1）</span>
+        <span className="text-[10px] text-green-400/60">可用 {balance} 點（1 點 = USD 1）</span>
       </div>
       {pointsUsed > 0 ? (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-green-400">已折抵 <strong>{pointsUsed} 點（-${pointsDiscount}）</strong></span>
-          <button onClick={removePoints} className="text-[10px] text-red-400 hover:text-red-300">取消</button>
+          <span className="text-sm text-green-400">已折抵 <strong>{pointsUsed} 點（− USD {pointsDiscount}）</strong></span>
+          <button type="button" onClick={removePoints} className="text-[10px] text-red-400 hover:text-red-300">取消</button>
         </div>
       ) : (
         <div className="flex gap-2">
-          <input value={inputVal} onChange={e => setInputVal(e.target.value.replace(/\D/g, ''))}
+          <label htmlFor="modal-points-input" className="sr-only">要折抵的積分點數</label>
+          <input id="modal-points-input" inputMode="numeric" value={inputVal} onChange={e => setInputVal(e.target.value.replace(/\D/g, ''))}
             placeholder={`最多 ${maxPoints} 點`}
             className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-green-500/40 focus:outline-none" />
-          <button onClick={applyPoints} disabled={!inputVal}
+          <button type="button" onClick={applyPoints} disabled={!inputVal}
             className="px-3 py-1.5 bg-green-500/80 text-white text-xs font-semibold rounded-lg hover:bg-green-500 disabled:opacity-40 transition-colors">
             折抵
           </button>

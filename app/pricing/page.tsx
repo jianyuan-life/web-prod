@@ -2,11 +2,8 @@ import Link from 'next/link'
 import PriceTag from '@/components/PriceTag'
 import PricingButton from '@/components/PricingButton'
 import { PromotionTopBanner, PromotionPrice } from '@/components/PromotionBanner'
-import SocialProof from '@/components/SocialProof'
-import FreeTryBanner from '@/components/FreeTryBanner'
 import FunnelPageHit from '@/components/FunnelPageHit'
-import TrustBar from '@/components/TrustBar'
-import GoldMark from '@/components/GoldMark'  // v5.10.463 E2:品牌四芒星勾號
+import GoldMark from '@/components/GoldMark'
 
 const PLANS = {
   personal: [
@@ -52,7 +49,7 @@ const PLANS = {
     },
     { code: 'E3', name: '月度精選', price: 89,
       valueHint: '寧缺勿濫、最多 8 個高純度吉時',
-      desc: '月度頂規嚴選——先嚴剔 32 凶煞、再以 25 吉法則加權、為您選定的 1-3 個主題用神尋找最多 8 個高純度吉窗。**因真吉稀缺**、若當月不足、系統自動跨月延伸搜尋至補足、寧缺勿濫不以低品質時窗湊數',
+      desc: '月度頂規嚴選——先嚴剔 32 凶煞、再以 25 吉法則加權、為您選定的 1-3 個主題用神尋找最多 8 個高純度吉窗。因真吉稀缺，若當月不足，系統自動跨月延伸搜尋至補足，寧缺勿濫不以低品質時窗湊數',
       suitableFor: '希望「品質至上、不湊數」的進階客戶、嚴格擇日寧少不濫',
       features: ['最多 8 個嚴選吉時（不足跨月補足、不湊數）', '選 1-3 個主題（事業／財運／感情／健康／學業／貴人／化解小人／家庭）', '32 凶硬剔（無 escape clause、凶時不放行）', '25 吉加權（含主題用神對應 60% 權重）', '真太陽時經度校準', '個人年命宮交叉驗證', '行事曆邀約一鍵加入', '古法占事派正統'],
     },
@@ -65,11 +62,33 @@ const PLANS = {
   ],
 }
 
-type Plan = { code: string; name: string; price: number; desc: string; features: string[]; systems?: number; popular?: boolean; locked?: boolean; seasonal?: boolean; hasQuestion?: boolean; addPrice?: number; suitableFor?: string; valueHint?: string }
+type Plan = {
+  code: string
+  name: string
+  price: number
+  desc: string
+  features: string[]
+  systems?: number
+  popular?: boolean
+  locked?: boolean
+  seasonal?: boolean
+  hasQuestion?: boolean
+  addPrice?: number
+  suitableFor?: string
+  valueHint?: string
+}
 
-// v5.10.462 B8:row 資料抽 const、desktop 表格、mobile 摺疊卡
-// v5.10.464 E3(GeminiPro r4「規格書式資訊過載=分析癱瘓、-2 商業說服力」):
-// 砍零訊號列(PDF 全 ✓/性格事業感情近似變體/年命宮+行事曆全 ✓)→ 只留真差異、footnote 補共通項
+const PLAN_PRESENTATION: Record<string, { delivery: string; eta: string }> = {
+  C: { delivery: '網頁重點版＋30,000 字以上 PDF 完整版', eta: '通常約 30–60 分鐘' },
+  D: { delivery: '約 5,000 字以上 PDF 專題報告', eta: '通常約 30 分鐘' },
+  G15: { delivery: '家庭互動報告；每位成員約 8,000 字以上', eta: '依家庭成員數量而定' },
+  R: { delivery: '兩人合盤；約 8,000 字以上 PDF 報告', eta: '依分析人數而定' },
+  E1: { delivery: '1–3 個吉時、方位度數、信心等級與行事曆邀約', eta: '通常需 40 分鐘以上' },
+  E2: { delivery: '當月 1 個吉時、主吉方與行事曆邀約', eta: '通常需 40 分鐘以上' },
+  E3: { delivery: '最多 8 個吉時、主題用神與行事曆邀約', eta: '通常需 40 分鐘以上' },
+  E4: { delivery: '年盤、12 個月盤與全年行事曆邀約', eta: '依年度排算範圍而定' },
+}
+
 const COMPARE_ROWS = [
   { feature: '分析系統數', d: '3–5 套（依問題類別）', c: '14套', r: '4–6 套（關係系統）', g: '14套' },
   { feature: '大運流年走勢', d: '--', c: '&#10003;', r: '--', g: '&#10003;' },
@@ -78,6 +97,7 @@ const COMPARE_ROWS = [
   { feature: '家庭動力學', d: '--', c: '--', r: '--', g: '&#10003;' },
   { feature: '報告字數', d: '5,000字+', c: '30,000字+', r: '8,000字+', g: '每人8,000字+' },
 ] as const
+
 const CHUMENJI_ROWS = [
   { feature: '對象', e1: '單一事件', e2: '當月入門', e3: '當月密集', e4: '整年佈局' },
   { feature: '吉時數', e1: 'Top3', e2: '當月 1 個', e3: '當月 8 個（4 週×Top2）', e4: '年盤＋12 月盤' },
@@ -86,354 +106,418 @@ const CHUMENJI_ROWS = [
   { feature: '販售限制', e1: '隨時', e2: '晦日 21:00 前當月', e3: '隨時', e4: '立春前 30 天限時' },
 ] as const
 
-// 表格 cell(✓ → 品牌四芒星、-- → 細槓;取代 dangerouslySetInnerHTML、對齊 GoldMark)
-function CellValue({ v }: { v: string }) {
-  if (v === '&#10003;') return <GoldMark className="w-3.5 h-3.5" />
-  if (v === '--') return <span className="text-text-muted/40">—</span>
-  return <>{v}</>
+const FAQS = [
+  {
+    q: '命理分析真的準確嗎？',
+    a: '鑒源的排盤使用確定性算法（壽星天文曆、Swiss Ephemeris），相同資料可得到相同盤面。解讀則以古籍規則與多套系統交叉分析；它提供的是可核對的觀察與行動參考，不是對人生結果的保證。',
+  },
+  {
+    q: '報告多久生成？',
+    a: '個人報告通常約 30 分鐘；家族藍圖與合否會依分析人數增加；出門訣需排算大量時辰，通常需要 40 分鐘以上。付款後系統自動運算，完成後可在網頁查看。',
+  },
+  {
+    q: '可以退款嗎？',
+    a: '報告為依個人資料即時生成的數位內容，一旦開始生成即消耗運算資源，因此生成後不支援退款。如果報告品質有問題，請聯繫 support@jianyuan.life，我們會協助檢查並在適用情況下重新生成。',
+  },
+  {
+    q: '付款方式有哪些？安全嗎？',
+    a: '付款透過 Stripe（PCI DSS Level 1 認證）處理，支援 Visa、Mastercard、AMEX 等主流信用卡。卡號不會經過鑒源伺服器，全程加密。',
+  },
+  {
+    q: '人生藍圖和心之所惑有什麼差別？',
+    a: '「人生藍圖」涵蓋性格、事業、財運、感情、健康與大運等人生面向；「心之所惑」只聚焦你最在意的一個問題，精選最相關的系統深入剖析。',
+  },
+  {
+    q: '四個出門訣方案怎麼選？',
+    a: 'E1 針對單一重要事件；E2 提供當月一個吉時；E3 依 1–3 個主題提供最多八個吉時；E4 提供年盤與十二個月盤，並只在每年立春前 30 天開放。',
+  },
+  {
+    q: '不確定出生時間怎麼辦？',
+    a: '可以選擇最接近的時辰。出生時間越精確，依賴時辰的分析越完整；姓名學、數字能量學、生肖運勢等不依賴精確時辰的系統仍可提供補充觀察。',
+  },
+  {
+    q: '出門訣為什麼不提供「隔天」替代方案？',
+    a: '古法奇門遁甲「一時一盤」，不同時辰會形成不同盤面。若錯過推薦時窗，需要等待系統下一個符合條件的時窗，而不是直接以隔天同一時間替代。',
+  },
+]
+
+const GUIDE_ITEMS = [
+  { title: '想先試一個具體問題', body: '選「心之所惑」D；以一個主題進行 3–5 套系統分析。', href: '#plan-d' },
+  { title: '想全面理解自己', body: '選「人生藍圖」C；涵蓋主要人生面向與大運流年。', href: '#plan-c' },
+  { title: '分析兩人關係', body: '選「合否？」R；含兩人分析，每增加一人 USD $19。', href: '#plan-r' },
+  { title: '理解整個家庭', body: '先為每位成員完成人生藍圖，再選「家族藍圖」G15。', href: '#plan-g15' },
+  { title: '處理單一重要事件', body: '選「事件擇吉」E1；精選 1–3 個吉時與方位。', href: '#plan-e1' },
+  { title: '規劃一個月', body: 'E2 提供一個月度吉時；E3 提供最多八個高純度時窗。', href: '#plan-e2' },
+  { title: '規劃整個年度', body: '選「年度全運」E4；固定於每年立春前 30 天開放。', href: '#plan-e4' },
+]
+
+function CellValue({ value }: { value: string }) {
+  if (value === '&#10003;') {
+    return (
+      <span className="jy-pricing-table__included">
+        <GoldMark className="h-3.5 w-3.5" />
+        <span className="sr-only">包含</span>
+      </span>
+    )
+  }
+  if (value === '--') return <span className="jy-pricing-table__empty">—</span>
+  return <>{value}</>
 }
 
-// mobile 摺疊卡的值顯示(entity → 符號)
-function cellText(v: string): string {
-  if (v === '&#10003;') return '✓ 包含'
-  if (v === '--') return '—'
-  return v
-}
+function PlanCard({ plan, promotionAware }: { plan: Plan; promotionAware: boolean }) {
+  const presentation = PLAN_PRESENTATION[plan.code]
+  const price = <PriceTag usd={plan.price} size="md" />
 
-// mobile per-plan 摺疊卡(details/summary、零 JS)
-function MobileCompareCards({ plans, rows }: {
-  plans: Array<{ key: string; name: string; price: number; highlight?: boolean }>
-  rows: ReadonlyArray<Record<string, string>>
-}) {
   return (
-    <div className="sm:hidden space-y-3">
-      {plans.map((p) => (
-        <details key={p.key} className={`glass rounded-xl group ${p.highlight ? 'border border-gold/30' : ''}`} open={p.highlight}>
-          <summary className="p-4 cursor-pointer flex justify-between items-center min-h-[44px]">
-            <span className="font-semibold text-cream text-sm">{p.name}</span>
-            <span className="flex items-center gap-3">
-              <span className="text-xs text-gold">${p.price}</span>
-              <span className="text-gold group-open:rotate-45 transition-transform">+</span>
-            </span>
-          </summary>
-          <div className="px-4 pb-4 space-y-2 border-t border-gold/10 pt-3">
-            {rows.map((row) => (
-              <div key={row.feature} className="flex justify-between gap-3 text-xs leading-[1.7]">
-                <span className="text-text-muted shrink-0">{row.feature}</span>
-                <span className={`text-right ${row[p.key] === '&#10003;' ? 'text-gold' : 'text-cream/85'}`}>{cellText(row[p.key])}</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      ))}
-    </div>
+    <article id={`plan-${plan.code.toLowerCase()}`} className="jy-pricing-plan jy-card" aria-labelledby={`plan-title-${plan.code}`}>
+      <header className="jy-pricing-plan__header">
+        <div>
+          <div className="jy-pricing-plan__code">方案 {plan.code}</div>
+          <h3 id={`plan-title-${plan.code}`} className="jy-subheading">{plan.name}</h3>
+        </div>
+        {plan.seasonal && <span className="jy-pricing-plan__status">固定開放期 · 立春前 30 天</span>}
+      </header>
+
+      <p className="jy-pricing-plan__description">{plan.desc}</p>
+
+      <dl className="jy-pricing-plan__facts">
+        <div>
+          <dt>適合誰</dt>
+          <dd>{plan.suitableFor}</dd>
+        </div>
+        <div>
+          <dt>交付內容</dt>
+          <dd>{presentation.delivery}</dd>
+        </div>
+        <div>
+          <dt>預計完成</dt>
+          <dd>{presentation.eta}</dd>
+        </div>
+      </dl>
+
+      <div className="jy-pricing-plan__price">
+        <div>
+          {promotionAware ? (
+            <PromotionPrice planCode={plan.code} originalPrice={plan.price}>{price}</PromotionPrice>
+          ) : price}
+          {plan.addPrice && <span className="jy-pricing-plan__add-on">加人 +${plan.addPrice}/人</span>}
+        </div>
+        <span>一次性付款 · 以 USD 為基準</span>
+      </div>
+
+      {plan.valueHint && <p className="jy-pricing-plan__scope">{plan.valueHint}</p>}
+
+      <div className="jy-pricing-plan__contents">
+        <h4>方案包括</h4>
+        <ul>
+          {plan.features.map((feature) => (
+            <li key={feature}>
+              <GoldMark className="mt-1 h-3.5 w-3.5" />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="jy-pricing-plan__action">
+        <PricingButton
+          code={plan.code}
+          popular={plan.popular}
+          seasonal={plan.seasonal}
+          locked={plan.locked}
+        />
+      </div>
+    </article>
   )
 }
 
-function Section({ title, subtitle, plans }: { title: string; subtitle: string; plans: Plan[] }) {
+function PlanSection({
+  id,
+  eyebrow,
+  title,
+  description,
+  plans,
+}: {
+  id: string
+  eyebrow: string
+  title: string
+  description: string
+  plans: Plan[]
+}) {
   return (
-    <div className="mb-16">
-      <div className="divider-ornament text-gold/30 mb-4">
-        <span className="text-xs tracking-[0.2em]">{title}</span>
-      </div>
-      <p className="text-center text-text-muted text-sm mb-8">{subtitle}</p>
-      <div className={`grid grid-cols-1 ${plans.length >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-5`}>
-        {plans.map((plan) => (
-          <div key={plan.code}
-            className={`relative glass rounded-2xl p-6 flex flex-col transition-all ${
-              plan.popular ? 'border-gold/40 ring-1 ring-gold/20 scale-105 shadow-lg shadow-gold/20' : ''
-            } ${plan.seasonal ? 'opacity-60' : ''}`}>
-            {plan.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gold text-dark text-[10px] font-bold rounded-full">最超值</div>
-            )}
-            {plan.seasonal && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-700 text-white text-[10px] font-bold rounded-full">立春前 30 天限時</div>
-            )}
-            <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
-            <h3 className="text-xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
-            <p className="text-xs text-text-muted mt-1 mb-2">{plan.desc}</p>
-            {plan.suitableFor && (
-              <p className="text-[10px] text-gold/70 mb-4 flex items-start gap-1">
-                <span className="shrink-0 mt-px">&#9733;</span>
-                <span>適合：{plan.suitableFor}</span>
-              </p>
-            )}
-            <div className="mb-4">
-              <PromotionPrice planCode={plan.code} originalPrice={plan.price}>
-                <PriceTag usd={plan.price} size="md" />
-              </PromotionPrice>
-              {plan.addPrice && <span className="text-xs text-text-muted ml-2">加人 +${plan.addPrice}/人</span>}
-              {plan.valueHint && <div className="text-[10px] text-gold/60 mt-1">{plan.valueHint}</div>}
-            </div>
-            <ul className="space-y-2 mb-6 flex-1">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs text-text leading-[1.8] tracking-[0.02em]">
-                  <GoldMark className="w-3.5 h-3.5 mt-1" />{f}
-                </li>
-              ))}
-            </ul>
-            <PricingButton code={plan.code} popular={plan.popular} seasonal={plan.seasonal} locked={plan.locked} />
+    <section id={id} className="jy-section jy-pricing-catalog-section">
+      <div className="jy-container">
+        <div className="jy-section-head">
+          <div>
+            <div className="jy-eyebrow">{eyebrow}</div>
+            <h2 className="jy-heading">{title}</h2>
           </div>
-        ))}
+          <p className="jy-copy">{description}</p>
+        </div>
+        <div className="jy-pricing-plan-grid">
+          {plans.map((plan) => <PlanCard key={plan.code} plan={plan} promotionAware />)}
+        </div>
       </div>
-    </div>
+    </section>
+  )
+}
+
+function ComparisonTable({
+  caption,
+  columns,
+  rows,
+  note,
+}: {
+  caption: string
+  columns: Array<{ key: string; name: string; code: string; price: number }>
+  rows: ReadonlyArray<Record<string, string>>
+  note: string
+}) {
+  return (
+    <>
+      <div className="jy-pricing-table-wrap" role="region" aria-label={caption} tabIndex={0}>
+        <table className="jy-pricing-table">
+          <caption>{caption}</caption>
+          <thead>
+            <tr>
+              <th scope="col">比較項目</th>
+              {columns.map((column) => (
+                <th key={column.key} scope="col">
+                  <span>{column.name}</span>
+                  <small>{column.code} · USD ${column.price}</small>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.feature}>
+                <th scope="row">{row.feature}</th>
+                {columns.map((column) => (
+                  <td key={column.key}><CellValue value={row[column.key]} /></td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="jy-pricing-table-note">{note}</p>
+    </>
   )
 }
 
 export default function PricingPage() {
+  const indexGroups = [
+    { label: '個人分析', plans: PLANS.personal },
+    { label: '關係分析', plans: PLANS.family },
+    { label: '奇門擇吉', plans: PLANS.chumenji },
+  ]
+
   return (
-    <div className="py-20">
+    <div className="jy-page jy-pricing-page">
       <FunnelPageHit step="visit_pricing" />
-      <div className="max-w-7xl mx-auto px-6">
-        <FreeTryBanner />
-        <h1 className="text-3xl font-bold text-center mb-2" style={{ fontFamily: 'var(--font-sans)' }}>
-          <span className="text-gradient-gold">方案與定價</span>
-        </h1>
-        <p className="text-center text-text-muted mb-4 max-w-xl mx-auto text-sm">
-          個人、家庭、關係、出門訣共四大類別，從了解自己到採取行動，每份報告在網頁上展示，永久保存於您的帳號中。
-        </p>
-        <p className="text-center text-xs text-gold mb-8">
-          &#128274; 購買前需先<Link href="/auth/signup" className="underline">免費註冊</Link>或<Link href="/auth/login" className="underline">登入</Link>
-        </p>
 
-        <PromotionTopBanner />
-
-        <SocialProof />
-
-        {/* v5.6.10 R3 (一步一步、最高標準):Trust Bar 移到 H1 下方 above-the-fold */}
-        {/* 對應 5 家 audit:Co-Star/16P 信任元素需在「選方案」之前出現 */}
-        <TrustBar variant="pricing" />
-
-        <Section title="個人命格分析" subtitle="了解自己，掌握人生方向" plans={PLANS.personal} />
-        <Section title="家庭與關係" subtitle="家人之間的命格交織與互動" plans={PLANS.family} />
-
-        {/* 出門訣四方案 E1-E4 */}
-        <div className="mb-16">
-          <div className="divider-ornament text-gold/30 mb-4">
-            <span className="text-xs tracking-[0.2em]">古法奇門遁甲擇吉出門訣</span>
-          </div>
-          <div className="glass rounded-2xl p-6 mb-8 max-w-3xl mx-auto">
-            <h3 className="text-lg font-bold text-gradient-gold mb-3" style={{ fontFamily: 'var(--font-sans)' }}>什麼是出門訣？</h3>
-            <p className="text-sm text-text leading-[1.9] mb-4">
-              古法奇門遁甲記載：「吉門吉方即行，凶門凶方即止。」天地能量每兩小時輪轉一次，八方吉凶隨之改變。
-              出門訣的本質——在對的時間，走向對的方位，讓天時地利的能量灌注到您身上。
+      <header className="jy-pricing-hero">
+        <div className="jy-container jy-pricing-hero__grid">
+          <div className="jy-pricing-hero__copy">
+            <div className="jy-eyebrow">方案目錄 · PRICING</div>
+            <h1 className="jy-display jy-pricing-display">
+              <span>先看交付範圍，</span>
+              <span>再決定是否委託</span>
+            </h1>
+            <p className="jy-lede">
+              八個方案對應八種不同問題。價格皆為一次性付款；每張方案卡清楚列出適合情境、交付內容、完成時間與分析範圍。
             </p>
-            <p className="text-sm text-text leading-[1.9] mb-4">
-              鑒源的出門訣引擎採用古法 25 層評分體系——三吉門旺衰、三奇配門、八神吉凶、九星旺衰、天地盤干五行生剋、
-              九遁格局、28 種吉凶格局判斷、神煞方位過濾——每一層都有古籍理論支撐。
-              最終套入您的個人年命宮交叉驗證，確保推薦的每個吉時都是專屬於您的。
-            </p>
-            <div className="rounded-xl bg-gold/5 border border-gold/10 p-4 text-xs text-text-muted space-y-1.5">
-              <p><strong className="text-gold">操作方式：</strong></p>
-              <p>1. 在推薦的吉時準時出門，朝吉方走出 500 公尺以上</p>
-              <p>2. 到達後面朝吉方靜坐 40 分鐘，放鬆接氣</p>
-              <p>3. 接氣完成後，可直接前往辦重要的事，效果最強</p>
-              <p>4. 每個推薦附帶信心等級＋行事曆邀約一鍵加入</p>
+            <div className="jy-actions">
+              <Link href="#personal-analysis" className="jy-button jy-button--primary">查看分析方案</Link>
+              <Link href="/tools/bazi" className="jy-button jy-button--secondary">先免費速算</Link>
             </div>
+            <p className="jy-pricing-auth-note">
+              購買前需先<Link href="/auth/signup" className="jy-link">免費註冊</Link>或<Link href="/auth/login" className="jy-link">登入</Link>；方案完成後保存在帳號中。
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {PLANS.chumenji.map((plan) => (
-              <div key={plan.code}
-                className={`relative glass rounded-2xl p-6 flex flex-col transition-all ${plan.popular ? 'border-gold/40 ring-1 ring-gold/20 shadow-lg shadow-gold/20' : ''} ${plan.seasonal ? 'border-red-accent/30 ring-1 ring-red-accent/10' : ''}`}>
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-gold text-dark text-[10px] font-bold rounded-full">最熱門</div>
-                )}
-                {plan.seasonal && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-red-700 text-white text-[10px] font-bold rounded-full">立春前限時</div>
-                )}
-                <div className="text-xs text-gold/70 font-mono mb-1">方案 {plan.code}</div>
-                <h3 className="text-xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>{plan.name}</h3>
-                <p className="text-xs text-text-muted mt-1 mb-2">{plan.desc}</p>
-                {plan.suitableFor && (
-                  <p className="text-[10px] text-gold/70 mb-3 flex items-start gap-1">
-                    <span className="shrink-0 mt-px">&#9733;</span>
-                    <span>適合：{plan.suitableFor}</span>
-                  </p>
-                )}
-                <div className="mb-4">
-                  <PriceTag usd={plan.price} size="md" />
-                  {plan.valueHint && <div className="text-[10px] text-gold/60 mt-1">{plan.valueHint}</div>}
-                </div>
-                <ul className="space-y-2 mb-6 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-xs text-text">
-                      <GoldMark className="w-3.5 h-3.5 mt-1" />{f}
-                    </li>
-                  ))}
-                </ul>
-                <PricingButton code={plan.code} popular={plan.popular} seasonal={plan.seasonal} />
+
+          <nav className="jy-pricing-index jy-panel" aria-label="定價方案索引">
+            <div className="jy-pricing-index__head">
+              <span>委託索引</span>
+              <span>一次性 USD</span>
+            </div>
+            {indexGroups.map((group) => (
+              <div key={group.label} className="jy-pricing-index__group">
+                <div className="jy-pricing-index__label">{group.label}</div>
+                {group.plans.map((plan) => (
+                  <Link key={plan.code} href={`#plan-${plan.code.toLowerCase()}`} className="jy-pricing-index__row">
+                    <span className="jy-pricing-index__code">{plan.code}</span>
+                    <span>{plan.name}</span>
+                    <strong>${plan.price}</strong>
+                  </Link>
+                ))}
               </div>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      <div className="jy-container jy-pricing-promotion" aria-live="polite">
+        <PromotionTopBanner />
+      </div>
+
+      <section className="jy-section jy-section--compact jy-section--ruled" aria-label="購買與交付說明">
+        <div className="jy-container">
+          <dl className="jy-pricing-assurances">
+            <div><dt>定價</dt><dd>所有方案一次性付款，非訂閱制</dd></div>
+            <div><dt>幣別</dt><dd>以 USD 為基準，可顯示所在地參考幣值</dd></div>
+            <div><dt>付款</dt><dd>由 Stripe 加密處理信用卡資料</dd></div>
+            <div><dt>交付</dt><dd>網頁查看；適用方案另附 PDF 或行事曆</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <PlanSection
+        id="personal-analysis"
+        eyebrow="個人 · PERSONAL"
+        title="從一個問題，到完整人生全貌"
+        description="如果你只想處理眼前的一個困惑，選專題分析；如果希望一次理解性格、事業、財運、感情與大運，選完整人生分析。"
+        plans={PLANS.personal}
+      />
+
+      <PlanSection
+        id="relationship-analysis"
+        eyebrow="關係 · RELATIONSHIPS"
+        title="看兩個人如何互動，而不是只判斷好壞"
+        description="合否聚焦兩人關係；家族藍圖分析整個家庭的溝通與互動。家族方案有明確前置條件，請先核對方案卡。"
+        plans={PLANS.family}
+      />
+
+      <section id="qimen-selection" className="jy-section jy-section--paper">
+        <div className="jy-container">
+          <div className="jy-pricing-method jy-panel">
+            <div>
+              <div className="jy-eyebrow">奇門擇吉 · QIMEN</div>
+              <h2 className="jy-heading">出門訣把時間、方位與個人年命放在同一張盤上</h2>
+              <p className="jy-copy">
+                古法奇門遁甲記載：「吉門吉方即行，凶門凶方即止。」鑒源依事件類型計算時辰與方位，先剔除凶煞，再以吉法則、真太陽時與個人年命宮交叉核對。
+              </p>
+              <p className="jy-copy jy-copy--small">
+                方案差異不在「準不準」的宣稱，而在要處理一個事件、一個月，還是一整年的規劃範圍。
+              </p>
+            </div>
+            <ol className="jy-pricing-method__steps">
+              <li><span>01</span><p><strong>選定時窗</strong>依報告列出的日期與時辰準時出門。</p></li>
+              <li><span>02</span><p><strong>朝向吉方</strong>往指定方位行走 500 公尺以上。</p></li>
+              <li><span>03</span><p><strong>靜坐接氣</strong>到達後面朝吉方靜坐 40 分鐘。</p></li>
+              <li><span>04</span><p><strong>安排重要行動</strong>完成後再前往處理預定事項。</p></li>
+            </ol>
+          </div>
+
+          <div className="jy-pricing-section-intro">
+            <div>
+              <div className="jy-eyebrow">出門訣方案</div>
+              <h3 className="jy-heading">從單一事件，到全年擇吉佈局</h3>
+            </div>
+            <p className="jy-copy">四個方案皆保留各自原有的排算範圍、開放條件與交付方式；年度全運固定只在立春前 30 天開放。</p>
+          </div>
+
+          <div className="jy-pricing-plan-grid">
+            {PLANS.chumenji.map((plan) => <PlanCard key={plan.code} plan={plan} promotionAware={false} />)}
+          </div>
+        </div>
+      </section>
+
+      <section id="plan-comparison" className="jy-section">
+        <div className="jy-container">
+          <div className="jy-section-head">
+            <div>
+              <div className="jy-eyebrow">比較 · COMPARE</div>
+              <h2 className="jy-heading">只比較真正不同的交付範圍</h2>
+            </div>
+            <p className="jy-copy">先依問題類型選方案，再核對系統數、聚焦程度、多人分析與報告篇幅。表格可在小螢幕內左右滑動，不會推寬整個頁面。</p>
+          </div>
+
+          <ComparisonTable
+            caption="個人、關係與家庭方案比較"
+            columns={[
+              { key: 'd', name: '心之所惑', code: 'D', price: 39 },
+              { key: 'c', name: '人生藍圖', code: 'C', price: 89 },
+              { key: 'r', name: '合否？', code: 'R', price: 59 },
+              { key: 'g', name: '家族藍圖', code: 'G15', price: 59 },
+            ]}
+            rows={COMPARE_ROWS}
+            note="四個方案皆提供完整數位報告；差異在分析對象、深度與聚焦範圍。"
+          />
+
+          <div className="jy-pricing-table-separator" />
+
+          <ComparisonTable
+            caption="出門訣方案比較"
+            columns={[
+              { key: 'e1', name: '事件擇吉', code: 'E1', price: 59 },
+              { key: 'e2', name: '月度單盤', code: 'E2', price: 29 },
+              { key: 'e3', name: '月度精選', code: 'E3', price: 89 },
+              { key: 'e4', name: '年度全運', code: 'E4', price: 279 },
+            ]}
+            rows={CHUMENJI_ROWS}
+            note="四個方案皆含個人年命宮交叉驗證與行事曆邀約；差異在排算時間單位與吉時數量。"
+          />
+        </div>
+      </section>
+
+      <section className="jy-section jy-section--ruled">
+        <div className="jy-container">
+          <div className="jy-section-head">
+            <div>
+              <div className="jy-eyebrow">選擇指南 · GUIDE</div>
+              <h2 className="jy-heading">由你要處理的問題開始選</h2>
+            </div>
+            <p className="jy-copy">不以「最熱門」替你做決定。先確認分析對象與時間範圍，再回到方案卡核對前置條件與完整交付清單。</p>
+          </div>
+          <div className="jy-pricing-guide">
+            {GUIDE_ITEMS.map((item) => (
+              <Link key={item.title} href={item.href} className="jy-pricing-guide__item">
+                <strong>{item.title}</strong>
+                <span>{item.body}</span>
+                <b aria-hidden="true">→</b>
+              </Link>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* 方案對比表 */}
-        <div className="mb-16 max-w-4xl mx-auto">
-          <div className="divider-ornament text-gold/30 mb-4">
-            <span className="text-xs tracking-[0.2em]">方案比較</span>
-          </div>
-          <p className="text-center text-text-muted text-sm mb-8">一目了然，找到最適合你的方案</p>
-          {/* v5.10.462 B8:mobile 改 per-plan 摺疊卡(4 欄表擠 390px 難讀)、desktop 保留表格 */}
-          <MobileCompareCards
-            plans={[
-              { key: 'c', name: '人生藍圖', price: 89, highlight: true },
-              { key: 'd', name: '心之所惑', price: 39 },
-              { key: 'r', name: '合否？', price: 59 },
-              { key: 'g', name: '家族藍圖', price: 59 },
-            ]}
-            rows={COMPARE_ROWS}
-          />
-          <div className="hidden sm:block glass rounded-xl overflow-hidden overflow-x-auto sm:mx-0 sm:px-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gold/10">
-                  <th className="text-left p-4 text-text-muted font-normal">功能</th>
-                  <th className="p-4 text-gold text-center font-semibold">心之所惑<br/><span className="text-xs text-text-muted font-normal">$39</span></th>
-                  <th className="p-4 text-gold text-center font-semibold bg-gold/5">人生藍圖<br/><span className="text-xs text-text-muted font-normal">$89</span></th>
-                  <th className="p-4 text-gold text-center font-semibold">合否？<br/><span className="text-xs text-text-muted font-normal">$59</span></th>
-                  <th className="p-4 text-gold text-center font-semibold">家族藍圖<br/><span className="text-xs text-text-muted font-normal">$59</span></th>
-                </tr>
-              </thead>
-              <tbody className="text-[13px] leading-[1.7]">
-                {COMPARE_ROWS.map((row) => (
-                  <tr key={row.feature} className="border-b border-gold/5 hover:bg-white/3">
-                    <td className="p-3.5 text-cream">{row.feature}</td>
-                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.d} /></td>
-                    <td className="p-3.5 text-center text-text-muted bg-gold/5"><CellValue v={row.c} /></td>
-                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.r} /></td>
-                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.g} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-center text-[11px] text-text-muted/70 mt-3">四方案皆含 PDF 完整報告與性格 / 事業 / 感情核心分析 — 差異在深度與聚焦、詳見各方案卡</p>
-        </div>
-
-        {/* 出門訣對比表 */}
-        <div className="mb-16 max-w-4xl mx-auto">
-          <div className="divider-ornament text-gold/30 mb-4">
-            <span className="text-xs tracking-[0.2em]">出門訣比較</span>
-          </div>
-          <p className="text-center text-text-muted text-sm mb-8">四個出門訣方案，覆蓋從單事件到全年的擇吉需求</p>
-          <MobileCompareCards
-            plans={[
-              { key: 'e1', name: '事件擇吉 E1', price: 59, highlight: true },
-              { key: 'e2', name: '月度單盤 E2', price: 29 },
-              { key: 'e3', name: '月度精選 E3', price: 89 },
-              { key: 'e4', name: '年度全運 E4', price: 279 },
-            ]}
-            rows={CHUMENJI_ROWS}
-          />
-          <div className="hidden sm:block glass rounded-xl overflow-hidden overflow-x-auto sm:mx-0 sm:px-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gold/10">
-                  <th className="text-left p-4 text-text-muted font-normal">項目</th>
-                  <th className="p-4 text-gold text-center font-semibold">事件擇吉 E1<br/><span className="text-xs text-text-muted font-normal">$59</span></th>
-                  <th className="p-4 text-gold text-center font-semibold">月度單盤 E2<br/><span className="text-xs text-text-muted font-normal">$29</span></th>
-                  <th className="p-4 text-gold text-center font-semibold bg-gold/5">月度精選 E3<br/><span className="text-xs text-text-muted font-normal">$89</span></th>
-                  <th className="p-4 text-gold text-center font-semibold">年度全運 E4<br/><span className="text-xs text-text-muted font-normal">$279</span></th>
-                </tr>
-              </thead>
-              <tbody className="text-[13px] leading-[1.7]">
-                {CHUMENJI_ROWS.map((row) => (
-                  <tr key={row.feature} className="border-b border-gold/5 hover:bg-white/3">
-                    <td className="p-3.5 text-cream">{row.feature}</td>
-                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.e1} /></td>
-                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.e2} /></td>
-                    <td className="p-3.5 text-center text-text-muted bg-gold/5"><CellValue v={row.e3} /></td>
-                    <td className="p-3.5 text-center text-text-muted"><CellValue v={row.e4} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-center text-[11px] text-text-muted/70 mt-3">四方案皆含個人年命宮交叉驗證與行事曆邀約一鍵加入</p>
-        </div>
-
-        {/* v5.4.21 P1 Gemini UI audit:Social Proof + Trust Bar */}
-        <div className="max-w-4xl mx-auto mt-12 mb-8">
-          {/* v5.10.459 誠實化修(jianyuan-truth 鐵律):原「真實客戶的選擇 + 4.8/5.0 滿意度」無數據源
-              (transparency avgRating=null、全站無評分聚合)= 假見證;改可驗證事實 + 使用情境參考標注(對齊首頁 v4.8.0 先例) */}
-          <div className="glass rounded-2xl p-6 border border-gold/20">
-            <p className="text-center text-xs text-cream/80 mb-4 font-semibold">為什麼客戶選擇鑒源</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div>
-                <div className="text-xl font-bold text-gold mb-1">44,421+</div>
-                <div className="text-[10px] text-text-muted">條專業規則</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-gold mb-1">3 次</div>
-                <div className="text-[10px] text-text-muted">失敗自動重試</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-gold mb-1">14 系統</div>
-                <div className="text-[10px] text-text-muted">交叉驗證</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-gold mb-1">PDF</div>
-                <div className="text-[10px] text-text-muted">永久保存</div>
-              </div>
+      <section className="jy-section">
+        <div className="jy-container">
+          <div className="jy-pricing-policy jy-panel">
+            <div>
+              <div className="jy-eyebrow">購買前確認</div>
+              <h2 className="jy-subheading">付款前，請先核對三件事</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
-              <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
-                「比我預期的精準很多、看完知道下一步該做什麼。」
-                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 人生藍圖 · 使用情境參考</div>
-              </blockquote>
-              <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
-                「合否報告幫我看清關係的核心動力、不是糾結對錯。」
-                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 合否？ · 使用情境參考</div>
-              </blockquote>
-              <blockquote className="text-[11px] text-text-muted italic border-l-2 border-gold/30 pl-3">
-                「出門訣讓我面試當天信心很足、果然順利錄取。」
-                <div className="text-[9px] text-text-muted/60 mt-1 not-italic">— 事件擇吉 · 使用情境參考</div>
-              </blockquote>
+            <dl>
+              <div><dt>資料</dt><dd>出生時間越精確，依賴時辰的分析越完整。</dd></div>
+              <div><dt>數位內容</dt><dd>報告開始生成後不支援退款；品質問題可聯繫客服檢查。</dd></div>
+              <div><dt>最終金額</dt><dd>促銷如適用，折扣會在方案與結帳流程中顯示。</dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section className="jy-section jy-section--paper">
+        <div className="jy-container jy-container--reading">
+          <div className="jy-section-head">
+            <div>
+              <div className="jy-eyebrow">常見問題 · FAQ</div>
+              <h2 className="jy-heading">購買前常見問題</h2>
             </div>
+            <p className="jy-copy">仍有未涵蓋的付款或報告問題，可聯繫 support@jianyuan.life。</p>
+          </div>
+          <div className="jy-faq">
+            {FAQS.map((faq) => (
+              <details key={faq.q}>
+                <summary>{faq.q}</summary>
+                <div className="jy-faq__answer">{faq.a}</div>
+              </details>
+            ))}
           </div>
         </div>
-
-        {/* 推薦指南 */}
-        <div className="max-w-3xl mx-auto glass rounded-2xl p-8">
-          <h3 className="text-xl font-bold text-gradient-gold mb-4" style={{ fontFamily: 'var(--font-sans)' }}>不確定選哪個？</h3>
-          <div className="space-y-3 text-sm text-text">
-            <p><strong className="text-cream">第一次體驗：</strong>先去<Link href="/tools/bazi" className="text-gold underline">免費速算</Link>看效果，再選「心之所惑」（$39）聚焦你最在乎的問題。</p>
-            <p><strong className="text-cream">全面了解自己：</strong>「人生藍圖」（$89）完整分析人生各面向，最超值。</p>
-            <p><strong className="text-cream">有特定困惑：</strong>「心之所惑」（$39）聚焦一個面向深入剖析。</p>
-            <p><strong className="text-cream">全家分析：</strong>每位家人先各自購買「人生藍圖」（$89），再加購「家族藍圖」（$59）做家庭互動分析。</p>
-            <p><strong className="text-cream">感情/合夥：</strong>「合否？」（$59）兩人命理交叉分析，看你們合不合。</p>
-            <p><strong className="text-cream">單一重要事件：</strong>「事件擇吉」（$59）針對一個事件推出 Top3 吉時方案。</p>
-            <p><strong className="text-cream">每月補運：</strong>先試「月度單盤」（$29）當月執行，認可後升級「月度精選」（$89）持續補運。</p>
-            <p><strong className="text-cream">全年擇吉：</strong>「年度全運」（$279）立春前 30 天限時販售，全年重要決策一次搞定。</p>
-          </div>
-        </div>
-
-        {/* FAQ */}
-        <div className="max-w-3xl mx-auto mt-16">
-          <div className="divider-ornament text-gold/30 mb-4">
-            <span className="text-xs tracking-[0.2em]">常見問題</span>
-          </div>
-          <p className="text-center text-text-muted text-sm mb-8">購買前您可能想知道的事</p>
-          {[
-            { q: '命理分析真的準確嗎？', a: '鑒源的排盤計算使用確定性算法（壽星天文曆、Swiss Ephemeris），排盤結果可重複驗證，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的專業規則。我們最多用十四套系統交叉分析——當多數系統得出相同結論時，可信度遠高於單一系統。' },
-            { q: '報告多久生成？', a: '個人報告（人生藍圖、心之所惑）約 30 分鐘；家族藍圖和合否根據人數而定；出門訣因需精密計算整月或整年的盤面能量，完成時間約 5-40 分鐘不等。付款後系統全自動運算，完成後即可於網頁上查看。' },
-            { q: '可以退款嗎？', a: '報告為虛擬數位內容，一旦開始生成即消耗大量運算資源，因此生成後不支援退款。如果報告品質有任何問題，請聯繫 support@jianyuan.life，我們會免費重新生成。' },
-            { q: '付款方式有哪些？安全嗎？', a: '透過 Stripe（PCI DSS Level 1 認證）處理，支援 Visa、Mastercard、AMEX 等主流信用卡。您的卡號不會經過鑒源伺服器，全程加密。' },
-            { q: '人生藍圖和心之所惑有什麼差別？', a: '「人生藍圖」是全面分析——動用十四套系統涵蓋性格、事業、財運、感情、健康、大運等所有面向。「心之所惑」則聚焦在你最在乎的一個問題，精選最相關的系統深入剖析。' },
-            { q: '四個出門訣方案怎麼選？', a: 'E1 事件擇吉（$59）針對單一重要事件推 Top3 吉時；E2 月度單盤（$29）當月購買當月執行、晦日 21:00 前截止;E3 月度精選（$89）主題精選用神、4 週共 8 個吉時；E4 年度全運（$279）年盤＋12 月盤全年佈局、立春前 30 天限時。' },
-            { q: '不確定出生時間怎麼辦？', a: '可以選擇最接近的時辰。即使時間不完全精確，十四套系統中有多套不依賴精確時辰（如姓名學、數字能量學、生肖運勢等），仍能提供有價值的分析。' },
-            { q: '出門訣為什麼不提供「隔天」替代方案？', a: '古法奇門遁甲「一時一盤」，每個時辰的盤面能量不同，隔天就是完全不同的能量組合。若錯過推薦的吉時，只能等待下一個系統推薦的時窗。' },
-          ].map((faq) => (
-            <details key={faq.q} className="glass rounded-lg mb-3 group">
-              <summary className="p-5 cursor-pointer font-semibold text-cream flex justify-between items-center text-sm">
-                {faq.q}
-                <span className="text-gold group-open:rotate-45 transition-transform text-lg ml-4 shrink-0">+</span>
-              </summary>
-              <div className="px-5 pb-5 text-sm text-text-muted leading-[1.9] border-t border-gold/5 pt-4">{faq.a}</div>
-            </details>
-          ))}
-        </div>
-      </div>
+      </section>
     </div>
   )
 }

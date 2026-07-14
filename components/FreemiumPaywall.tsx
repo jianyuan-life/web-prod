@@ -1,24 +1,12 @@
 'use client'
 
-// v5.4.18 freemium 重構(Gemini 全網 grounding + Codex 共識)
-// 業界對標:Spotify / Notion / Headspace / Calendly 2024-2025 SOTA
-// 改進:
-//   - Bento-box 6 模組(原 3、強化好奇心缺口)
-//   - 首屏極簡(對比表收進可摺疊區、降認知負荷)
-//   - 漸進式揭露(每模組獨立 bottom sheet on click)
-//   - 動態進度條(隨 modal 開啟 +)
-//   - Social proof 24h X 人解鎖
-//   - 風險透明化(無訂閱陷阱)
-// 業界 benchmark:標準 3-5%、優秀 PLG 6-8%、Notion 10-13%
-
 import Link from 'next/link'
 import { useState } from 'react'
 
-type LockedModule = {
-  icon: string
+type ReportModule = {
   title: string
   hint: string
-  detail: string  // 點擊後 modal 顯示的詳細 teaser
+  detail: string
 }
 
 interface Props {
@@ -27,228 +15,129 @@ interface Props {
   checkoutQuery?: string
 }
 
-// v5.4.18 Bento-box 6 模組(Gemini 對標 Headspace 2025)
-const LOCKED_MODULES: LockedModule[] = [
+const REPORT_MODULES: ReportModule[] = [
   {
-    icon: '📅',
     title: '未來 12 月流年',
     hint: '逐月運勢曲線',
-    detail: '每月的吉凶高低、最關鍵的轉折月份(精確到農曆月)、你該主動出擊還是按兵不動。',
+    detail: '逐月整理較重要的高低變化、轉折月份，以及適合主動或暫緩的時段。',
   },
   {
-    icon: '💼',
     title: '事業轉折點',
-    hint: '黃金期 vs 蟄伏期',
-    detail: '你下一個事業大運在何時、適合創業還是任職、哪一年是不可錯過的爆發點。',
+    hint: '發展期與調整期',
+    detail: '從命盤脈絡整理事業發展節奏、工作型態傾向與需要留意的轉換時機。',
   },
   {
-    icon: '💰',
     title: '財富軌跡',
-    hint: '正財偏財佈局',
-    detail: '你的命格是穩健存錢型還是投機獲利型、合適的投資方位、避免破財的具體年月。',
+    hint: '正財與偏財傾向',
+    detail: '整理財務決策傾向、較適合的累積方式，以及不同週期需要留意的風險。',
   },
   {
-    icon: '❤️',
-    title: '正緣時機',
-    hint: '感情運勢預測',
-    detail: '你的桃花年份(已婚 = 婚姻穩定度檢視)、伴侶命格匹配方向、避開的對象類型。',
+    title: '關係時機',
+    hint: '互動模式與感情節奏',
+    detail: '說明關係中的需求、溝通模式與較重要的互動週期，供你自行核對。',
   },
   {
-    icon: '⚠️',
-    title: '危機預警',
-    hint: '3 個容易踩的坑',
-    detail: '你命格中最容易爆發的 3 個風險點(健康/人際/決策)、預警年份 + 具體預防方案。',
+    title: '風險提醒',
+    hint: '容易忽略的課題',
+    detail: '把健康、人際與決策中反覆出現的課題整理成可辨識的提醒，不以恐嚇式預言呈現。',
   },
   {
-    icon: '🎯',
-    title: '刻意練習清單',
-    hint: '8 條可執行行動',
-    detail: '針對你獨特命格、付費版給 8 條具體刻意練習(每條附難度分級 + 環境觸發點 + 持續週期)。',
+    title: '行動清單',
+    hint: '把解讀轉為下一步',
+    detail: '將跨系統解讀收斂成具體練習與觀察方向；建議仍由你依實際情況判斷。',
   },
 ]
 
 export default function FreemiumPaywall({ systemName, clientName, checkoutQuery = '' }: Props) {
-  const [openModal, setOpenModal] = useState<number | null>(null)
+  const [openModule, setOpenModule] = useState<number | null>(null)
   const [showCompare, setShowCompare] = useState(false)
-  const [progress, setProgress] = useState(18)  // 預設 18%、開過 modal 後動態 +
-
-  const greeting = clientName ? `${clientName}、` : ''
   const checkoutUrl = '/checkout?plan=C' + (checkoutQuery ? '&' + checkoutQuery : '')
-
-  const handleModalOpen = (i: number) => {
-    setOpenModal(i)
-    // Zeigarnik 效應:打開 modal 推進度條到 30%、製造「快接近解鎖」感
-    if (progress < 30) setProgress(30)
-  }
+  const heading = clientName ? `${clientName}，速算已完成` : '速算已完成'
 
   return (
-    <div className="my-8">
-      {/* 1. 動態進度條(FOMO + Zeigarnik 效應)*/}
-      <div className="text-center mb-6">
-        <p className="text-sm text-cream/80 mb-2">
-          {greeting}你的免費{systemName}解讀完成 <span className="text-gold font-bold">{progress}%</span>
+    <section className="jy-upgrade" aria-labelledby="free-tool-upgrade-title">
+      <header className="jy-upgrade__header">
+        <p className="jy-eyebrow">FROM QUICK VIEW TO FULL DOSSIER</p>
+        <h2 id="free-tool-upgrade-title">{heading}</h2>
+        <p>
+          上方是單一 {systemName} 系統的免費速覽。人生藍圖會把它與其餘命理系統交叉閱讀，並將結論、依據與行動建議分開呈現。
         </p>
-        <div className="max-w-md mx-auto h-2 bg-white/5 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-gold to-amber-400 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+      </header>
+
+      <div className="jy-upgrade__modules" aria-label="完整報告增加的閱讀模組">
+        {REPORT_MODULES.map((module, index) => {
+          const isOpen = openModule === index
+          const panelId = `report-module-${index}`
+          return (
+            <button
+              key={module.title}
+              type="button"
+              className="jy-upgrade-module"
+              aria-expanded={isOpen}
+              aria-controls={panelId}
+              onClick={() => setOpenModule(isOpen ? null : index)}
+            >
+              <span className="jy-upgrade-module__index">{String(index + 1).padStart(2, '0')}</span>
+              <span>
+                <strong>{module.title}</strong>
+                <small>{module.hint}</small>
+              </span>
+              <span className="jy-upgrade-module__toggle" aria-hidden="true">{isOpen ? '−' : '+'}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {openModule !== null && (
+        <div id={`report-module-${openModule}`} className="jy-upgrade__detail" role="region" aria-live="polite">
+          <p className="jy-eyebrow">{REPORT_MODULES[openModule].title}</p>
+          <p>{REPORT_MODULES[openModule].detail}</p>
         </div>
-        <p className="text-[11px] text-text-muted/60 mt-2">
-          剩 {100 - progress}% 命格深度分析、待你解鎖
-        </p>
-      </div>
+      )}
 
-      {/* 2. Bento-box 6 模組(點擊揭露 detail)*/}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 mb-6 max-w-3xl mx-auto">
-        {LOCKED_MODULES.map((m, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => handleModalOpen(i)}
-            className="relative glass rounded-xl p-3 overflow-hidden border border-gold/15 hover:border-gold/40 transition-all text-left group"
-          >
-            <div className="flex items-start gap-2 mb-1">
-              <span className="text-xl">{m.icon}</span>
-              <div className="flex-1 min-w-0">
-                {/* v5.10.297:paywall card title + hint 加 title hover + CJK */}
-                <h4
-                  className="text-xs font-bold text-white truncate"
-                  title={m.title}
-                  style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
-                >
-                  {m.title}
-                </h4>
-                <p
-                  className="text-[10px] text-text-muted/70 truncate"
-                  title={m.hint}
-                  style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
-                >
-                  {m.hint}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-[9px] text-gold/80">點擊預覽</span>
-              <span className="text-sm">🔒</span>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* 3. 主 CTA(極簡、單一 job)*/}
-      <div className="text-center mb-3">
-        <Link
-          href={checkoutUrl}
-          className="inline-block px-10 py-4 text-base bg-gradient-to-r from-gold to-amber-500 text-dark font-bold rounded-xl btn-glow hover:scale-105 transition-transform shadow-xl"
-        >
-          解鎖完整 14 系統深度分析 $89
+      <div className="jy-upgrade__decision">
+        <div>
+          <span>人生藍圖 · 一次性付款</span>
+          <strong>US$89</strong>
+          <small>付款前仍可核對方案、出生資料與應付金額</small>
+        </div>
+        <Link href={checkoutUrl} className="jy-button jy-button--primary">
+          查看人生藍圖方案
         </Link>
-        <p className="text-[11px] text-text-muted/70 mt-3">
-          ✓ 一次性付款、無訂閱陷阱 　 ✓ 約 8,000 字 PDF 永久保存 　 ✓ 14 套東西方系統交叉驗證
-        </p>
       </div>
 
-      {/* 4. Social proof(24h 動態、業界對標 Booking.com)— v5.10.297 砍 🌟、改 hairline accent */}
-      <p className="text-center text-[11px] text-cream/60 mb-3 tracking-wide">
-        <span className="inline-block h-px w-3 bg-cream/40 align-middle mr-2" />
-        過去 24 小時、已有多位客戶解鎖完整命格報告
-        <span className="inline-block h-px w-3 bg-cream/40 align-middle ml-2" />
-      </p>
-
-      {/* 5. 收摺對比表(降認知負荷、Notion 極簡 Paywall)*/}
-      <div className="text-center">
-        <button
-          type="button"
-          onClick={() => setShowCompare(v => !v)}
-          className="text-xs text-gold/70 hover:text-gold underline-offset-2 hover:underline"
-        >
-          {showCompare ? '收起' : '查看免費 vs 付費版完整差異'}
-        </button>
-      </div>
+      <button
+        type="button"
+        className="jy-upgrade__compare-toggle"
+        aria-expanded={showCompare}
+        aria-controls="free-paid-comparison"
+        onClick={() => setShowCompare((visible) => !visible)}
+      >
+        {showCompare ? '收起方案差異' : '比較免費速算與完整報告'}
+      </button>
 
       {showCompare && (
-        <div className="mt-4 max-w-lg mx-auto">
-          <table className="w-full text-xs">
+        <div id="free-paid-comparison" className="jy-comparison-wrap" tabIndex={0}>
+          <table className="jy-comparison-table">
+            <caption>免費 {systemName} 速算與人生藍圖比較</caption>
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left py-2 text-text-muted font-normal w-1/2">項目</th>
-                <th className="text-center py-2 text-text-muted font-normal">免費</th>
-                <th className="text-center py-2 text-gold font-semibold">$89 完整版</th>
+              <tr>
+                <th scope="col">項目</th>
+                <th scope="col">免費速算</th>
+                <th scope="col">人生藍圖 · US$89</th>
               </tr>
             </thead>
-            <tbody className="text-[11px]">
-              <tr className="border-b border-white/5">
-                <td className="py-1.5 text-gray-400">{systemName}排盤</td>
-                <td className="text-center text-green-400">✓</td>
-                <td className="text-center text-gold">✓ 深度</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="py-1.5 text-gray-400">14 套系統交叉驗證</td>
-                <td className="text-center text-gray-600">—</td>
-                <td className="text-center text-gold">✓</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="py-1.5 text-gray-400">未來 12 月流年</td>
-                <td className="text-center text-gray-600">—</td>
-                <td className="text-center text-gold">✓</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="py-1.5 text-gray-400">事業 / 財富 / 感情詳解</td>
-                <td className="text-center text-gray-600">—</td>
-                <td className="text-center text-gold">✓</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="py-1.5 text-gray-400">8 條刻意練習行動</td>
-                <td className="text-center text-gray-600">—</td>
-                <td className="text-center text-gold">✓</td>
-              </tr>
-              <tr>
-                <td className="py-1.5 text-gray-400">PDF 永久保存</td>
-                <td className="text-center text-gray-600">—</td>
-                <td className="text-center text-gold">✓</td>
-              </tr>
+            <tbody>
+              <tr><th scope="row">{systemName} 排盤</th><td>基礎速覽</td><td>完整解讀</td></tr>
+              <tr><th scope="row">跨系統閱讀</th><td>—</td><td>14 套系統交叉整理</td></tr>
+              <tr><th scope="row">未來 12 月</th><td>—</td><td>逐月重點</td></tr>
+              <tr><th scope="row">事業／財務／關係</th><td>簡要</td><td>分章說明</td></tr>
+              <tr><th scope="row">行動建議</th><td>—</td><td>具體清單</td></tr>
+              <tr><th scope="row">交付</th><td>網頁即時結果</td><td>網頁報告與 PDF</td></tr>
             </tbody>
           </table>
         </div>
       )}
-
-      {/* 6. Modal(漸進式揭露、Spotify Bottom Sheet 對標)*/}
-      {openModal !== null && (
-        <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-end md:items-center justify-center p-4"
-          onClick={() => setOpenModal(null)}
-        >
-          <div
-            className="bg-[#1a1a1a] border border-gold/30 rounded-2xl p-6 max-w-md w-full"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3 mb-4">
-              <span className="text-3xl">{LOCKED_MODULES[openModal].icon}</span>
-              <div>
-                <h3 className="text-lg font-bold text-white">{LOCKED_MODULES[openModal].title}</h3>
-                <p className="text-xs text-gold/80">{LOCKED_MODULES[openModal].hint}</p>
-              </div>
-            </div>
-            <p className="text-sm text-text leading-relaxed mb-5">
-              {LOCKED_MODULES[openModal].detail}
-            </p>
-            <Link
-              href={checkoutUrl}
-              className="block text-center px-6 py-3 bg-gradient-to-r from-gold to-amber-500 text-dark font-bold rounded-xl btn-glow"
-            >
-              解鎖此模組 + 全部分析 $89
-            </Link>
-            <button
-              type="button"
-              onClick={() => setOpenModal(null)}
-              className="block w-full mt-3 text-center text-xs text-text-muted hover:text-cream"
-            >
-              關閉(繼續看免費版)
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    </section>
   )
 }

@@ -4,7 +4,7 @@
 // 對應 QA Agent P0 finding「Cookie consent 機制 0 實作 → 歐盟客戶觸發違規(罰款上限營收 4%)」
 // 實作:預設 GA4 consent denied、用戶選「全部接受」或「自訂」後升級
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
 const STORAGE_KEY = 'jy_cookie_consent_v1'
@@ -53,12 +53,18 @@ export default function CookieConsent() {
   const pathname = usePathname()
   const [show, setShow] = useState(false)
   const [showCustom, setShowCustom] = useState(false)
+  const firstActionRef = useRef<HTMLButtonElement>(null)
 
   // v5.10.183 P0 修(4 plans desktop UI Vision audit 共通發現):
   // Cookie 彈窗在 report 閱讀頁右下角擋住 CTA「分享報告」+ 章節 cue + 五行進度條
   // v5.10.186 修(Codex GDPR finding):不能在 /report hide(GA4+Meta Pixel 仍 set cookie、違 GDPR)
   // 改:report 頁仍顯示、但 toast 移到頂部 max-w-sm、不擋下方 reading area
-  const isReportOrDashboard = pathname?.startsWith('/report/') || pathname?.startsWith('/dashboard')
+  const isPrivateChrome = pathname?.startsWith('/report/')
+    || pathname?.startsWith('/r/')
+    || pathname?.startsWith('/dashboard')
+    || pathname?.startsWith('/jamie')
+  const isFormFlow = pathname?.startsWith('/auth/')
+    || pathname?.startsWith('/checkout')
   // v5.6.10 (Codex L3 review fix):自訂偏好預設關閉(對齊 GDPR「明確同意」原則)
   const [analytics, setAnalytics] = useState(false)
   const [marketing, setMarketing] = useState(false)
@@ -73,6 +79,12 @@ export default function CookieConsent() {
       setShow(true)
     }
   }, [])
+
+  useEffect(() => {
+    if (!show) return
+    const frame = window.requestAnimationFrame(() => firstActionRef.current?.focus())
+    return () => window.cancelAnimationFrame(frame)
+  }, [show, showCustom])
 
   function save(prefs: Omit<ConsentPrefs, 'decided_at' | 'necessary'>) {
     const full: ConsentPrefs = {
@@ -104,79 +116,69 @@ export default function CookieConsent() {
 
   if (!show) return null
 
-  // v5.10.186:report/dashboard 頁 desktop 右上 toast、mobile 改 bottom 全寬
-  // v5.10.187 修(Gemini Vision mobile audit P0):mobile 右上 toast 擋 B+ 79/100 hero、改 bottom + 縮小
-  const positionClass = isReportOrDashboard
-    ? 'fixed bottom-3 right-3 left-3 sm:top-20 sm:bottom-auto sm:left-auto sm:max-w-sm max-w-[calc(100vw-24px)] z-[1000]'
-    : 'fixed bottom-3 right-3 left-3 sm:left-auto max-w-[calc(100vw-24px)] sm:max-w-sm z-[1000]'
+  // Mobile 參與正常文流，避免遮住 CTA、出生時間與表單錯誤；desktop 才使用非模態 toast。
+  const positionClass = isFormFlow
+    ? 'jy-cookie--flow'
+    : isPrivateChrome
+      ? 'jy-cookie--top'
+      : 'jy-cookie--bottom'
 
   return (
     <div
       role="dialog"
+      aria-modal="false"
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-desc-short"
-      // v5.10.459 mobile 瘦身(production 實測:mobile 卡壓住 /tools/bazi 表單「出生時間」欄 = funnel 入口功能阻擋)
-      className={`${positionClass} p-2.5 sm:p-4 bg-dark/95 backdrop-blur-xl border border-gold/30 rounded-xl shadow-2xl`}
-      style={{ animation: 'slideUp 0.3s ease-out' }}
+      className={`jy-cookie ${positionClass}`}
     >
-      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
-
-      {/* v5.10.94 P0 修(MASTER_BUG_REPORT 全 6/6 件 + Jamie 截圖 N1):
-          原 fixed bottom-0 inset-x-0 + p-4 sm:p-6 全寬橫條 → desktop 30% / mobile 40% viewport 永久遮閱讀
-          修 desktop:右下 max-w-sm(384px)toast、不擋主閱讀區
-          修 mobile:仍全寬(避太小)但 padding 縮 + 文案精簡(原 desc 2 行→1 行)
-          保留 GDPR 3 選項(自訂/必要/全接受) */}
       <div>
         {!showCustom ? (
-          <div className="flex flex-col gap-2 sm:gap-3">
+          <div className="jy-cookie__compact">
             <div>
-              <h3 id="cookie-consent-title" className="text-cream font-bold text-[13px] sm:text-sm mb-0.5 sm:mb-1">
+              <p id="cookie-consent-title" className="jy-cookie__title">
                 Cookie 與隱私偏好
-              </h3>
-              <p id="cookie-desc-short" className="text-text-muted text-[11px] sm:text-xs leading-relaxed">
-                使用 Cookie 改善體驗、可自訂偏好。詳見{' '}
-                <a href="/privacy" className="text-gold underline hover:text-gold/80">
-                  隱私政策
-                </a>
-                。
+              </p>
+              <p id="cookie-desc-short" className="jy-cookie__copy">
+                必要 Cookie 維持登入與結帳；分析與行銷 Cookie 由你決定。詳見 <a href="/privacy">隱私政策</a>。
               </p>
             </div>
-            {/* mobile min-h-[44px] 保 Apple HIG 觸控區(v5.3.56 全站鐵律)、視覺仍比原版瘦 */}
-            <div className="flex flex-row gap-2 shrink-0">
+            <div className="jy-cookie__actions">
               <button
+                ref={firstActionRef}
                 onClick={() => setShowCustom(true)}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg border border-gold/40 text-gold hover:bg-gold/10 transition-colors"
+                className="jy-cookie__button jy-cookie__button--quiet"
               >
                 自訂偏好
               </button>
               <button
                 onClick={acceptNecessary}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg border border-cream/30 text-cream hover:bg-cream/5 transition-colors"
+                className="jy-cookie__button jy-cookie__button--quiet"
               >
-                僅必要 Cookie
+                僅使用必要項目
               </button>
               <button
                 onClick={acceptAll}
-                className="px-4 py-1.5 sm:px-5 sm:py-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg bg-gold text-dark font-bold hover:bg-gold/90 transition-colors"
+                className="jy-cookie__button jy-cookie__button--primary"
               >
                 全部接受
               </button>
             </div>
           </div>
         ) : (
-          <div>
-            <h3 className="text-cream font-bold text-base mb-3">自訂 Cookie 偏好</h3>
-            <div className="space-y-3 mb-4">
-              <label className="flex items-start gap-3 cursor-not-allowed opacity-70">
+          <div className="jy-cookie__custom">
+            <p id="cookie-consent-title" className="jy-cookie__title">自訂 Cookie 偏好</p>
+            <p id="cookie-desc-short" className="jy-cookie__copy">非必要項目預設關閉；可隨時在隱私設定重新選擇。</p>
+            <div className="jy-cookie__choices">
+              <label className="jy-cookie__choice jy-cookie__choice--disabled">
                 <input type="checkbox" checked disabled className="mt-1" />
                 <div>
-                  <div className="text-cream text-sm font-medium">必要 Cookie(無法關閉)</div>
-                  <div className="text-text-muted text-xs">
+                  <strong>必要 Cookie（無法關閉）</strong>
+                  <span>
                     維持登入狀態、結帳流程、安全性。網站運作必須。
-                  </div>
+                  </span>
                 </div>
               </label>
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label className="jy-cookie__choice">
                 <input
                   type="checkbox"
                   checked={analytics}
@@ -184,13 +186,11 @@ export default function CookieConsent() {
                   className="mt-1"
                 />
                 <div>
-                  <div className="text-cream text-sm font-medium">分析 Cookie(Google Analytics 4)</div>
-                  <div className="text-text-muted text-xs">
-                    匿名統計頁面瀏覽 / 停留時間、幫助我們改善網站體驗。
-                  </div>
+                  <strong>分析 Cookie（Google Analytics 4）</strong>
+                  <span>匿名統計頁面瀏覽與停留時間，幫助改善網站體驗。</span>
                 </div>
               </label>
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label className="jy-cookie__choice">
                 <input
                   type="checkbox"
                   checked={marketing}
@@ -198,23 +198,22 @@ export default function CookieConsent() {
                   className="mt-1"
                 />
                 <div>
-                  <div className="text-cream text-sm font-medium">行銷 Cookie(Meta Pixel / 廣告)</div>
-                  <div className="text-text-muted text-xs">
-                    衡量廣告成效、提供相關內容。關閉不影響網站功能。
-                  </div>
+                  <strong>行銷 Cookie（Meta Pixel／廣告）</strong>
+                  <span>衡量廣告成效。關閉不影響網站功能。</span>
                 </div>
               </label>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 justify-end">
+            <div className="jy-cookie__custom-actions">
               <button
+                ref={firstActionRef}
                 onClick={() => setShowCustom(false)}
-                className="px-4 py-2 text-sm rounded-lg border border-cream/30 text-cream hover:bg-cream/5 transition-colors"
+                className="jy-cookie__button jy-cookie__button--quiet"
               >
                 取消
               </button>
               <button
                 onClick={saveCustom}
-                className="px-5 py-2 text-sm rounded-lg bg-gold text-dark font-bold hover:bg-gold/90 transition-colors"
+                className="jy-cookie__button jy-cookie__button--primary"
               >
                 儲存偏好
               </button>

@@ -92,26 +92,25 @@ export default function Navbar() {
 
   // v5.10.428:/jamie 後台有自己的 sidebar chrome、不渲染公開站 navbar
   // (UI 100 審查 P1:後台頂部洩漏公開 navbar = 系統介紹/登入/免費註冊 對 admin 無意義)
-  if (pathname?.startsWith('/jamie')) return null
+  if (pathname?.startsWith('/jamie') || pathname?.startsWith('/report/') || pathname?.startsWith('/r/')) return null
 
   return (
     <nav
-      className={`fixed top-0 w-full z-50 border-b border-gold/10 transition-shadow duration-300 ${scrolled ? 'shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]' : ''}`}
-      style={{ background: 'rgba(10,14,26,0.92)', backdropFilter: 'blur(12px)' }}
+      className={`jy-navbar ${scrolled ? 'jy-navbar--scrolled' : ''}`}
     >
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="jy-navbar__inner">
         {/* v5.10.428 logo 品牌感升級(benchmark P2:≥40px + 寬字距 + 細線分隔修飾)*/}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <img src="/logo-jianyuan.png?v=14" alt="鑒源" className="h-10 w-10 transition-transform duration-500 group-hover:scale-110" style={{ filter: 'drop-shadow(0 0 6px rgba(201,168,76,0.25))' }} />
+        <Link href="/" className="jy-brand">
+          <img src="/logo-jianyuan.png?v=14" alt="" className="jy-brand__mark" />
           <span className="flex items-baseline gap-2">
-            <span className="text-gold font-serif text-xl font-semibold tracking-[0.22em]">鑒源</span>
-            <span className="hidden sm:inline text-gold/40 text-[10px] tracking-[0.3em] font-light uppercase" style={{ fontFamily: 'var(--font-body)' }}>JianYuan</span>
+            <span className="jy-brand__name">鑒源</span>
+            <span className="jy-brand__latin">JianYuan</span>
           </span>
         </Link>
-        <div className="hidden md:flex items-center gap-8 text-sm">
-          <Link href="/#systems" className="text-text-muted hover:text-gold transition-colors">{txt.nav_systems}</Link>
-          <Link href="/pricing" className="text-text-muted hover:text-gold transition-colors">{txt.nav_pricing}</Link>
-          <Link href="/blog" className="text-text-muted hover:text-gold transition-colors">{txt.nav_blog}</Link>
+        <div className="jy-navbar__links max-[820px]:hidden">
+          <Link href="/#systems" className="jy-nav-link">{txt.nav_systems}</Link>
+          <Link href="/pricing" className="jy-nav-link">{txt.nav_pricing}</Link>
+          <Link href="/blog" className="jy-nav-link">{txt.nav_blog}</Link>
           <div
             ref={toolsContainerRef}
             className="relative"
@@ -120,7 +119,7 @@ export default function Navbar() {
           >
             <button
               type="button"
-              className="text-text-muted hover:text-gold transition-colors flex items-center gap-1 py-2 px-2.5 rounded-lg bg-gold/[0.08] border border-gold/10"
+              className="jy-nav-tool"
               aria-haspopup="menu"
               aria-expanded={toolsOpen}
               {...(toolsOpen ? { 'aria-controls': 'tools-menu' } : {})}
@@ -139,7 +138,7 @@ export default function Navbar() {
               }}
             >
               {txt.nav_free}
-              <span className="text-[9px] font-bold bg-gold text-dark px-1.5 py-0.5 rounded-full leading-none">FREE</span>
+              <span className="jy-nav-free">FREE</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
             {toolsOpen && (
@@ -148,7 +147,7 @@ export default function Navbar() {
                   id="tools-menu"
                   role="menu"
                   aria-label="免費工具"
-                  className="glass rounded-lg border border-gold/15 py-2 shadow-xl"
+                  className="jy-nav-menu py-2"
                   onKeyDown={(e) => {
                     const items = Array.from(
                       toolsContainerRef.current?.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]') ?? []
@@ -171,40 +170,40 @@ export default function Navbar() {
                     }
                   }}
                 >
-                  <Link href="/tools/bazi" role="menuitem" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">八字命理速算</Link>
-                  <Link href="/tools/ziwei" role="menuitem" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">紫微斗數速算</Link>
-                  <Link href="/tools/qimen" role="menuitem" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">奇門遁甲排盤</Link>
-                  <Link href="/tools/name" role="menuitem" className="block px-4 py-2 text-sm text-text-muted hover:text-gold hover:bg-gold/5 transition-colors">姓名學速算</Link>
+                  <Link href="/tools/bazi" role="menuitem" className="jy-nav-menu__item">八字命理速算</Link>
+                  <Link href="/tools/ziwei" role="menuitem" className="jy-nav-menu__item">紫微斗數速算</Link>
+                  <Link href="/tools/qimen" role="menuitem" className="jy-nav-menu__item">奇門遁甲排盤</Link>
+                  <Link href="/tools/name" role="menuitem" className="jy-nav-menu__item">姓名學速算</Link>
                 </div>
               </div>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="jy-navbar__actions">
           {/* v5.10.395 Warm Light Theme v1.1 — NavBar 主切換 toggle(FF 控制)*/}
           {process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && (
-            <div className="hidden md:block">
+            <div className="jy-theme-desktop">
               <ThemeToggleSimple />
             </div>
           )}
           <LocaleSwitcher />
           {/* 桌面版用戶區域 */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="jy-navbar__user max-[820px]:hidden">
             {user ? (
               <>
-                <Link href="/dashboard" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_my_reports}</Link>
-                <button onClick={handleLogout} className="text-sm text-text-muted/60 hover:text-text-muted transition-colors">{txt.nav_logout}</button>
+                <Link href="/dashboard" className="jy-nav-link">{txt.nav_my_reports}</Link>
+                <button onClick={handleLogout} className="jy-nav-link">{txt.nav_logout}</button>
                 <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center text-gold text-xs font-bold">
                   {(user.user_metadata?.full_name?.[0] || user.email?.[0] || '?').toUpperCase()}
                 </div>
               </>
             ) : isReportPage ? (
               // v5.7.75 報告頁訪客 = 已透過 token 取得、不再推銷註冊(Gemini P0「不該顯示免費註冊」修)
-              <Link href="/auth/login" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_login}</Link>
+              <Link href="/auth/login" className="jy-nav-link">{txt.nav_login}</Link>
             ) : (
               <>
-                <Link href="/auth/login" className="text-sm text-text-muted hover:text-gold transition-colors">{txt.nav_login}</Link>
-                <Link href="/auth/signup" className="px-4 py-2 bg-gold/90 text-dark font-semibold rounded-lg text-sm btn-glow hover:bg-gold">
+                <Link href="/auth/login" className="jy-nav-link">{txt.nav_login}</Link>
+                <Link href="/auth/signup" className="jy-button jy-button--primary min-h-10 px-4 py-2 text-sm">
                   {txt.nav_signup}
                 </Link>
               </>
@@ -212,7 +211,7 @@ export default function Navbar() {
           </div>
           {/* 手機漢堡選單按鈕 */}
           <button
-            className="md:hidden p-2 text-text-muted hover:text-gold transition-colors"
+            className="jy-nav-icon min-[821px]:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? '關閉選單' : '開啟選單'}
             aria-expanded={mobileMenuOpen}
@@ -233,7 +232,7 @@ export default function Navbar() {
         <button
           type="button"
           aria-label="關閉選單"
-          className="md:hidden fixed inset-0 top-16 bg-black/60 backdrop-blur-sm z-40 animate-fade-in"
+          className="jy-mobile-backdrop min-[821px]:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -243,29 +242,30 @@ export default function Navbar() {
         <div
           id="mobile-menu"
           role="menu"
-          className="md:hidden relative z-50 border-t border-gold/10 px-6 py-4 space-y-3 animate-slide-down"
-          style={{ background: 'rgba(10,14,26,0.97)' }}
+          className="jy-mobile-menu min-[821px]:hidden"
         >
-          <Link href="/#systems" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_systems}</Link>
-          <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_pricing}</Link>
-          <Link href="/blog" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_blog}</Link>
-          <div className="border-t border-gold/10 pt-2">
-            <p className="text-xs text-gold/60 mb-2">{txt.nav_free}</p>
-            <Link href="/tools/bazi" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">八字命理速算</Link>
-            <Link href="/tools/ziwei" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">紫微斗數速算</Link>
-            <Link href="/tools/qimen" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">奇門遁甲排盤</Link>
-            <Link href="/tools/name" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">姓名學速算</Link>
+          <div className="jy-mobile-menu__group">
+            <Link href="/#systems" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">{txt.nav_systems}</Link>
+            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">{txt.nav_pricing}</Link>
+            <Link href="/blog" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">{txt.nav_blog}</Link>
           </div>
-          <div className="border-t border-gold/10 pt-2">
+          <div className="jy-mobile-menu__group">
+            <p className="text-xs text-gold/60 mb-2">{txt.nav_free}</p>
+            <Link href="/tools/bazi" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">八字命理速算</Link>
+            <Link href="/tools/ziwei" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">紫微斗數速算</Link>
+            <Link href="/tools/qimen" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">奇門遁甲排盤</Link>
+            <Link href="/tools/name" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">姓名學速算</Link>
+          </div>
+          <div className="jy-mobile-menu__group">
             {user ? (
               <>
-                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_my_reports}</Link>
-                <button onClick={() => { setMobileMenuOpen(false); handleLogout() }} className="block text-sm text-text-muted/60 hover:text-text-muted py-1">{txt.nav_logout}</button>
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">{txt.nav_my_reports}</Link>
+                <button onClick={() => { setMobileMenuOpen(false); handleLogout() }} className="jy-mobile-link w-full">{txt.nav_logout}</button>
               </>
             ) : (
               <>
-                <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-text-muted hover:text-gold py-1">{txt.nav_login}</Link>
-                <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-gold font-semibold py-1">{txt.nav_signup}</Link>
+                <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link">{txt.nav_login}</Link>
+                <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="jy-mobile-link text-[color:var(--jy-ui-link)]">{txt.nav_signup}</Link>
               </>
             )}
           </div>

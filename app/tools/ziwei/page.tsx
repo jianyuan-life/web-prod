@@ -7,7 +7,6 @@ import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(time
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
-import LiveCounter from '@/components/LiveCounter'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
 import { buildFreeToolJsonLd } from '@/lib/seo/free-tool-schema'  // P5 SEO 三層 JSON-LD
 
@@ -500,48 +499,40 @@ export default function ZiweiToolPage() {
   }
 
   return (
-    <div className="py-12 md:py-20 overflow-x-hidden max-w-full">
+    <div className="jy-page jy-tool-page py-12 md:py-20 overflow-x-hidden max-w-full">
       {/* P5 — 三層 JSON-LD(純 SEO、使用者不可見、零渲染風險) */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildFreeToolJsonLd('ziwei')) }}
       />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="jy-container">
         {/* Hero */}
-        <div className="text-center mb-10 md:mb-14">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/10 border border-gold/25 text-gold/90 text-[11px] sm:text-xs font-semibold tracking-[0.25em] uppercase mb-5">
-            <span className="text-[10px]">&#10022;</span>
-            <span>ZiWei &middot; 帝王之學</span>
-            <span className="text-[10px]">&#10022;</span>
-          </div>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-center mb-4 break-words tracking-tight leading-[1.1]">
-            <span className="text-gradient-gold">紫微斗數速算</span>
-          </h1>
-          <p className="text-center text-sm sm:text-base text-text tracking-[0.02em] mb-2">
-            排列紫微命盤 <span className="text-gold/50 mx-1">&middot;</span> 十四主星解讀 <span className="text-gold/50 mx-1">&middot;</span> 十二宮位分析
-          </p>
-          <p className="text-center text-xs text-text-muted/60 tracking-wider">
-            不需註冊 &middot; 即時出結果 &middot; 完全免費
-          </p>
+        <div className="jy-tool-hero">
+          <p className="jy-eyebrow">ZIWEI · 紫微斗數</p>
+          <h1>紫微斗數速算</h1>
+          <p>輸入出生資料，先看命宮主星、十二宮位與四化飛星的基礎排盤。</p>
+          <ul aria-label="服務特點">
+            <li>不需註冊</li>
+            <li>即時速算</li>
+            <li>免費查看基礎結果</li>
+          </ul>
         </div>
 
         {/* 紫微斗數由來說明 */}
         <div className="max-w-2xl mx-auto mb-10">
-          <details className="glass rounded-xl p-4 cursor-pointer">
-            <summary className="text-sm font-medium text-gold-400 flex items-center gap-2">
-              <span>&#128218;</span> 關於紫微斗數：帝王之學
-            </summary>
-            <div className="mt-3 text-xs text-text-muted/80 space-y-2 leading-relaxed">
-              <p><strong className="text-white/90">紫微斗數的由來：</strong>紫微斗數相傳由宋代陳希夷（陳摶老祖）所創，是中國命理學中最精密的推命術之一，素有「帝王之學」的美譽。其名來自紫微星——北極星，古人認為它是天帝的居所，統領群星，因此紫微斗數以紫微星為核心，佈列十四主星於十二宮位，形成每個人獨一無二的命盤。</p>
-              <p><strong className="text-white/90">核心原理：</strong>紫微斗數以農曆出生年月日時為基礎，將 108 顆星曜按照特定規則排入十二宮位（命宮、兄弟、夫妻、子女、財帛、疾厄、遷移、交友、事業、田宅、福德、父母），每顆星有廟旺利陷四種狀態，再搭配四化飛星（化祿、化權、化科、化忌）的流轉，推演一生各面向的吉凶起伏。</p>
-              <p><strong className="text-white/90">鑒源的做法：</strong>本系統精確計算紫微星的安星起始位置，完整排列十四主星與輔星，並逐宮分析星曜組合的意涵。支援農曆／國曆輸入，閏月自動處理，確保命盤排列的準確性。</p>
+          <details className="jy-tool-details">
+            <summary>排盤基礎與閱讀方法</summary>
+            <div className="jy-tool-details__body">
+              <p><strong>紫微斗數的由來：</strong>紫微斗數相傳由宋代陳希夷（陳摶老祖）所創，是中國命理學中最精密的推命術之一，素有「帝王之學」的美譽。其名來自紫微星——北極星，古人認為它是天帝的居所，統領群星，因此紫微斗數以紫微星為核心，佈列十四主星於十二宮位，形成每個人獨一無二的命盤。</p>
+              <p><strong>核心原理：</strong>紫微斗數以農曆出生年月日時為基礎，將 108 顆星曜按照特定規則排入十二宮位（命宮、兄弟、夫妻、子女、財帛、疾厄、遷移、交友、事業、田宅、福德、父母），每顆星有廟旺利陷四種狀態，再搭配四化飛星（化祿、化權、化科、化忌）的流轉，推演一生各面向的吉凶起伏。</p>
+              <p><strong>鑒源的做法：</strong>本系統精確計算紫微星的安星起始位置，完整排列十四主星與輔星，並逐宮分析星曜組合的意涵。支援農曆／國曆輸入，閏月自動處理，確保命盤排列的準確性。</p>
             </div>
           </details>
         </div>
 
         {/* 分析進度動畫 */}
         {loading && !result && (
-          <div className="max-w-lg mx-auto">
+          <div className="max-w-lg mx-auto" role="status" aria-live="polite" aria-busy="true">
             <div className="glass rounded-2xl p-8">
               <h3 className="text-2xl md:text-3xl font-black text-cream tracking-tight mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
                 正在為 <span className="text-gold">{form.name}</span> 排列紫微命盤
@@ -552,14 +543,15 @@ export default function ZiweiToolPage() {
                   const isCurrent = currentStep === i
                   return (
                     <div key={i} className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-300 ${
-                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : 'opacity-30'
+                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : ''
                     }`}>
                       <span className={`w-6 text-center text-sm transition-all ${isCompleted ? 'text-gold' : isCurrent ? 'text-gold/70 animate-pulse' : 'text-text-muted/40'}`}
+                        aria-hidden="true"
                         dangerouslySetInnerHTML={{ __html: isCompleted ? '&#10003;' : step.icon }} />
                       <span className={`text-sm transition-all ${isCompleted ? 'text-cream' : isCurrent ? 'text-text animate-pulse' : 'text-text-muted/40'}`}>
                         {step.text}
                       </span>
-                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />}
+                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" aria-hidden="true" />}
                       {isCompleted && <span className="ml-auto text-xs text-gold/60">完成</span>}
                     </div>
                   )
@@ -575,38 +567,38 @@ export default function ZiweiToolPage() {
         {/* 表單 */}
         {!result && !loading && (
           <div className="max-w-lg mx-auto">
-            <form onSubmit={handleSubmit} className="glass rounded-2xl px-6 py-8 md:p-10 space-y-6">
+            <form onSubmit={handleSubmit} className="jy-tool-form px-6 py-8 md:p-10 space-y-6">
               {/* 從家人選擇 */}
               <FamilyMemberPicker onSelect={handleFamilySelect} />
 
               {/* 姓名 + 性別 */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
-                  <label className="block text-sm text-text-muted mb-1.5">姓名 <span className="text-red-accent">*</span></label>
-                  <input type="text" required placeholder="請輸入您的全名" value={form.name}
+                  <label htmlFor="ziwei-name" className="block text-sm text-text-muted mb-1.5">姓名 <span className="text-red-accent">*</span></label>
+                  <input id="ziwei-name" name="name" type="text" required placeholder="請輸入您的全名" value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
                 </div>
-                <div>
-                  <label className="block text-sm text-text-muted mb-1.5">性別</label>
+                <fieldset>
+                  <legend className="block text-sm text-text-muted mb-1.5">性別</legend>
                   <div className="flex gap-4 pt-2">
                     {[{ v: 'M', l: '男' }, { v: 'F', l: '女' }].map(({ v, l }) => (
-                      <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" name="gender" value={v} checked={form.gender === v} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="accent-gold" />
+                      <label key={v} htmlFor={`ziwei-gender-${v}`} className="flex items-center gap-1.5 cursor-pointer">
+                        <input id={`ziwei-gender-${v}`} type="radio" name="gender" value={v} checked={form.gender === v} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="accent-gold" />
                         <span className="text-base text-text">{l}</span>
                       </label>
                     ))}
                   </div>
-                </div>
+                </fieldset>
               </div>
 
               {/* 出生地區 */}
               <div className="relative">
-                <label className="block text-sm text-text-muted mb-1.5">出生地區 <span className="text-red-accent">*</span></label>
+                <label htmlFor="ziwei-city" className="block text-sm text-text-muted mb-1.5">出生地區 <span className="text-red-accent">*</span></label>
                 {needCityForCountry && (
                   <p className="text-xs text-gold/80 mb-1.5">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
                 )}
-                <input type="text" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
+                <input id="ziwei-city" name="birth-city" type="text" autoComplete="off" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
                   onChange={(e) => {
                     const val = e.target.value
                     setForm({...form, city: val})
@@ -663,11 +655,12 @@ export default function ZiweiToolPage() {
               </div>
 
               {/* 國曆/農曆 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">曆法</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">曆法</legend>
                 <div className="flex rounded-lg overflow-hidden border border-gold/10">
                   {[{ v: 'solar' as const, l: '國曆（西曆）' }, { v: 'lunar' as const, l: '農曆' }].map(({ v, l }) => (
                     <button key={v} type="button"
+                      aria-pressed={form.calendarType === v}
                       onClick={() => setForm({ ...form, calendarType: v })}
                       className={`flex-1 py-2.5 text-sm font-medium transition-all ${form.calendarType === v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
                       {l}
@@ -677,25 +670,25 @@ export default function ZiweiToolPage() {
                 {form.calendarType === 'lunar' && (
                   <p className="text-xs text-gold/60 mt-1.5">系統將自動轉換為國曆進行排盤計算</p>
                 )}
-              </div>
+              </fieldset>
 
               {/* 出生日期 */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm text-text-muted mb-1.5">出生年</label>
-                  <input aria-label="出生年" type="number" min="1920" max="2025" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
+                  <label htmlFor="ziwei-year" className="block text-sm text-text-muted mb-1.5">出生年</label>
+                  <input id="ziwei-year" aria-label="出生年" type="number" min="1920" max="2025" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm text-text-muted mb-1.5">{form.calendarType === 'lunar' ? '農曆月' : '月'}</label>
-                  <select aria-label={form.calendarType === 'lunar' ? '農曆月' : '月'} value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}
+                  <label htmlFor="ziwei-month" className="block text-sm text-text-muted mb-1.5">{form.calendarType === 'lunar' ? '農曆月' : '月'}</label>
+                  <select id="ziwei-month" aria-label={form.calendarType === 'lunar' ? '農曆月' : '月'} value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
                     {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{form.calendarType === 'lunar' ? `${['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '臘'][i]}月` : `${i + 1}月`}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-text-muted mb-1.5">{form.calendarType === 'lunar' ? '農曆日' : '日'}</label>
-                  <select aria-label={form.calendarType === 'lunar' ? '農曆日' : '日'} value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })}
+                  <label htmlFor="ziwei-day" className="block text-sm text-text-muted mb-1.5">{form.calendarType === 'lunar' ? '農曆日' : '日'}</label>
+                  <select id="ziwei-day" aria-label={form.calendarType === 'lunar' ? '農曆日' : '日'} value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
                     {Array.from({ length: 30 }, (_, i) => <option key={i + 1} value={i + 1}>{form.calendarType === 'lunar' ? `${['初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十', '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'][i]}` : `${i + 1}日`}</option>)}
                   </select>
@@ -703,8 +696,8 @@ export default function ZiweiToolPage() {
               </div>
 
               {/* 出生時間 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">出生時間</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">出生時間</legend>
                 <div className="flex rounded-lg overflow-hidden border border-gold/10 mb-3">
                   {[
                     { v: 'unknown' as const, l: '不確定' },
@@ -712,6 +705,7 @@ export default function ZiweiToolPage() {
                     { v: 'exact' as const, l: '知道精確時間' },
                   ].map(({ v, l }) => (
                     <button key={v} type="button"
+                      aria-pressed={form.timeMode === v}
                       onClick={() => setForm({ ...form, timeMode: v })}
                       className={`flex-1 py-2.5 text-xs font-medium transition-all ${form.timeMode === v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
                       {l}
@@ -742,17 +736,21 @@ export default function ZiweiToolPage() {
                     </select>
                   </div>
                 )}
-              </div>
+              </fieldset>
+
+              <p className="jy-tool-privacy-note">
+                送出後，姓名與出生資料會用於排盤及 AI 輔助解讀。請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
+              </p>
 
               <button type="submit" disabled={loading || !form.name.trim() || form.cityLat === 0}
                 className={`w-full py-4 font-bold rounded-xl text-lg transition-all ${
                   form.name.trim() && form.cityLat !== 0
                     ? 'bg-gold text-dark btn-glow disabled:opacity-50'
-                    : 'bg-white/10 text-text-muted cursor-not-allowed'
+                    : 'border border-gold/30 bg-gold/10 text-gold/60 cursor-not-allowed'
                 }`}>
                 開始紫微排盤
               </button>
-              {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
+              {error && <p className="jy-alert jy-alert--danger" role="alert">{error}</p>}
             </form>
           </div>
         )}
@@ -761,7 +759,7 @@ export default function ZiweiToolPage() {
         {result && (
           <div className="space-y-8">
             <div className="text-center">
-              <button onClick={() => { setResult(null); setActivePalace(null) }} className="text-sm text-gold hover:underline">&larr; 重新排盤</button>
+              <button onClick={() => { setResult(null); setActivePalace(null) }} className="inline-flex min-h-11 items-center px-3 text-sm text-gold hover:underline">&larr; 重新排盤</button>
             </div>
 
             {/* 命宮主星 — 人格封號 */}
@@ -1025,7 +1023,7 @@ export default function ZiweiToolPage() {
               <div className="glass rounded-2xl p-6 border border-gold/20 animate-[fadeIn_0.3s_ease-out]">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-base font-bold text-gold">{activePalace}</h3>
-                  <button onClick={() => setActivePalace(null)} className="text-xs text-text-muted/50 hover:text-text-muted">收起</button>
+                  <button onClick={() => setActivePalace(null)} className="inline-flex min-h-11 items-center px-3 text-xs text-text-muted/50 hover:text-text-muted">收起</button>
                 </div>
                 <p className="text-xs text-text-muted/60 mb-3">{PALACE_DESC[activePalace] || ''}</p>
                 <div className="grid grid-cols-2 gap-4">
@@ -1116,90 +1114,24 @@ export default function ZiweiToolPage() {
             <p className="text-xs text-text-muted/50 text-center">以上為命宮主星速算概覽，完整報告將根據您的完整命盤做 14 系統個人化深度分析</p>
 
             {/* v5.4.17 P0 freemium paywall */}
-            <FreemiumPaywall systemName="紫微" />
-
-            {/* 升級引導 */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))' }}>
-              <div className="p-8 md:p-10">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                    紫微斗數只是 14 套系統中的 <span className="text-gradient-gold">1 套</span>
-                  </h3>
-                  <p className="text-base text-text max-w-2xl mx-auto leading-relaxed">
-                    完整報告還會融合<strong className="text-white">八字、奇門遁甲、西洋占星、姓名學</strong>等 13 套命理體系，
-                    從多維度交叉驗證，為您呈現一份真正全面的命格分析。
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#128218;</div>
-                    <h4 className="font-bold text-white mb-1">14 系統交叉驗證</h4>
-                    <p className="text-sm text-text-muted">東西方命理系統互相印證，結論更可靠</p>
-                  </div>
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#128202;</div>
-                    <h4 className="font-bold text-white mb-1">11 章 30,000字+ 深度報告</h4>
-                    <p className="text-sm text-text-muted">從命格名片到刻意練習，涵蓋人生全面向</p>
-                  </div>
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#128230;</div>
-                    <h4 className="font-bold text-white mb-1">精美 PDF 永久保存</h4>
-                    <p className="text-sm text-text-muted">隨時回顧，也可以分享給信任的人</p>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
-                    {(['C', 'D'] as const).map((plan, idx) => {
-                      const q = new URLSearchParams({
-                        plan,
-                        name: form.name,
-                        year: form.year,
-                        month: form.month,
-                        day: form.day,
-                        hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
-                        minute: form.timeMode === 'exact' ? form.exactMinute : '0',
-                        gender: form.gender,
-                        timeMode: form.timeMode,
-                        city: form.city,
-                        cityLat: String(form.cityLat),
-                        cityLng: String(form.cityLng),
-                        cityTz: String(form.cityTz),
-                      })
-                      const label = idx === 0 ? '解鎖人生藍圖完整報告 $89' : '聚焦單一困惑深度分析 $39'
-                      const cls = idx === 0
-                        ? 'px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow'
-                        : 'px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10'
-                      return <a key={plan} href={`/checkout?${q}`} className={cls}>{label}</a>
-                    })}
-                  </div>
-
-                  {/* v5.4.4 Item 1 批次 5:出門訣 cross-sell(對齊 bazi/qimen 頁) */}
-                  <div className="glass rounded-xl p-5 max-w-md mx-auto mb-6">
-                    <p className="text-sm text-cream mb-2 font-semibold">想知道什麼時候出門最順利?</p>
-                    <p className="text-xs text-text-muted mb-3">奇門遁甲出門訣 — 精準計算吉時吉方、讓每次出門都事半功倍</p>
-                    <div className="flex gap-2 justify-center">
-                      <Link href="/checkout?plan=E1" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        事件擇吉 $59
-                      </Link>
-                      <Link href="/checkout?plan=E2" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        月度單盤 $29
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* v5.4.7 P3 social proof */}
-                  <p className="text-xs text-text-muted/70 mb-3">
-                    已有 <LiveCounter type="paid" /> 份完整付費報告完成交付
-                  </p>
-
-                  <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">
-                    <span>&#128274; Stripe 安全支付</span>
-                    <span>&#9889; 約30-60分鐘出報告</span>
-                    <span>&#128230; PDF 永久保存</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <FreemiumPaywall
+              systemName="紫微"
+              clientName={form.name}
+              checkoutQuery={new URLSearchParams({
+                name: form.name,
+                year: form.year,
+                month: form.month,
+                day: form.day,
+                hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
+                minute: form.timeMode === 'exact' ? form.exactMinute : '0',
+                gender: form.gender,
+                timeMode: form.timeMode,
+                city: form.city,
+                cityLat: String(form.cityLat),
+                cityLng: String(form.cityLng),
+                cityTz: String(form.cityTz),
+              }).toString()}
+            />
           </div>
         )}
       </div>

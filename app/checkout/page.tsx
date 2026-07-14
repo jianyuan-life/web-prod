@@ -11,10 +11,11 @@ import FamilyMemberField from '@/components/checkout/FamilyMemberField'
 import CustomerNote from '@/components/checkout/CustomerNote'
 import PointsRedeem from '@/components/checkout/PointsRedeem'
 import FunnelPageHit from '@/components/FunnelPageHit'
-import TrustBar from '@/components/TrustBar'
 import CheckoutProgress from '@/components/checkout/CheckoutProgress'
+import CheckoutSecurityNote from '@/components/checkout/CheckoutSecurityNote'
 import TurnstileWidget from '@/components/security/TurnstileWidget'
 import ConsultIntro from '@/components/checkout/ConsultIntro'  // v5.10.420 Phase 2(flag off 不渲染)  // Phase 5 v5.10.382 老闆按鈕 #5(Turnstile bot 防護、checkout 高價值 funnel)
+import './checkout-presentation.css'
 
 function CheckoutForm() {
   const ctx = useCheckoutForm()
@@ -36,17 +37,17 @@ function CheckoutForm() {
   }, [ctx.plan?.name])
 
   if (!ctx.authChecked) {
-    return <div className="py-20 text-center text-text-muted">驗證登入狀態...</div>
+    return <div className="checkout-shell py-20 text-center text-text-muted" role="status">驗證登入狀態...</div>
   }
 
   return (
-    <div className="py-20">
+    <div className="checkout-shell">
       <FunnelPageHit step="start_checkout" planCode={ctx.planCode} />
-      <div className="max-w-2xl mx-auto px-6">
+      <div className="checkout-frame">
         {/* v5.6.10 (Round C):checkout 加「← 返回方案」鍵(對應 QA P0、防 escape 困住客戶) */}
         <Link
           href="/pricing"
-          className="inline-flex items-center gap-2 text-text-muted hover:text-gold transition-colors text-sm mb-6"
+          className="checkout-back-link inline-flex items-center gap-2 text-text-muted hover:text-gold transition-colors text-sm"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
             <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
@@ -54,8 +55,18 @@ function CheckoutForm() {
           返回方案
         </Link>
 
-        {/* v5.6.10 R3:checkout 進度條(填表 → 確認 → 付款)+ TrustBar(Stripe/服務保證/SSL) */}
-        <CheckoutProgress current={1} />
+        <header className="checkout-page-heading">
+          <p className="checkout-kicker">Secure commission · 01 / 03</p>
+          <h1>確認委託資料</h1>
+          <p>
+            先核對分析所需資料與一次性金額；送出後若需付款，您會前往 Stripe 完成付款。
+          </p>
+        </header>
+
+        {/* v5.6.10 R3:checkout 進度條(填表 → 付款 → 報告) */}
+        <div className="checkout-progress-frame">
+          <CheckoutProgress current={1} />
+        </div>
 
         {/* v5.10.420 Phase 2:問診式對話卡(flag off=null;完成/跳過前先不攤 12 欄表單、
             progressive disclosure;customerNote 與表單同 state、後面仍可改) */}
@@ -68,9 +79,10 @@ function CheckoutForm() {
             onDone={() => setIntroDone(true)}
           />
         )}
-        {(!consultEnabled || introDone) && (<>
-
-        <CheckoutHeader
+        {(!consultEnabled || introDone) && (
+        <div className="checkout-layout">
+          <aside className="checkout-summary">
+            <CheckoutHeader
           planCode={ctx.planCode}
           planName={ctx.plan.name}
           isFamilyPlan={ctx.isFamilyPlan}
@@ -83,29 +95,33 @@ function CheckoutForm() {
           rCount={ctx.rMembers.length}
           totalPrice={ctx.totalPrice}
           finalPrice={ctx.finalPrice}
-          couponApplied={ctx.couponApplied}
-          planSystems={ctx.plan.systems}
-        />
+            couponApplied={ctx.couponApplied}
+            pointsDiscount={ctx.pointsDiscount}
+            planSystems={ctx.plan.systems}
+            />
 
-        {/* 優惠碼 + 積分折抵（左右並排） */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          <CouponInput
-            couponInput={ctx.couponInput}
-            setCouponInput={ctx.setCouponInput}
-            couponApplied={ctx.couponApplied}
-            setCouponApplied={() => ctx.setCouponApplied(null)}
-            couponLoading={ctx.couponLoading}
-            couponError={ctx.couponError}
-            setCouponError={ctx.setCouponError}
-            applyCoupon={ctx.applyCoupon}
-          />
-          <PointsRedeem
-            planCode={ctx.planCode}
-            orderAmount={ctx.totalPrice}
-            couponApplied={ctx.couponApplied}
-            onPointsChange={ctx.handlePointsChange}
-          />
-        </div>
+            {/* 金額調整與訂單摘要放在一起，避免打斷核心委託資料的填寫節奏。 */}
+            <div className="checkout-adjustments grid grid-cols-1 gap-3 mt-4" role="group" aria-label="優惠與積分折抵">
+              <CouponInput
+                couponInput={ctx.couponInput}
+                setCouponInput={ctx.setCouponInput}
+                couponApplied={ctx.couponApplied}
+                setCouponApplied={() => ctx.setCouponApplied(null)}
+                couponLoading={ctx.couponLoading}
+                couponError={ctx.couponError}
+                setCouponError={ctx.setCouponError}
+                applyCoupon={ctx.applyCoupon}
+              />
+              <PointsRedeem
+                planCode={ctx.planCode}
+                orderAmount={ctx.totalPrice}
+                couponApplied={ctx.couponApplied}
+                onPointsChange={ctx.handlePointsChange}
+              />
+            </div>
+          </aside>
+
+          <section className="checkout-main" aria-label="委託資料表單">
 
         {/* Phase 5 v5.10.382 — Cloudflare Turnstile bot 防護(老闆灌 NEXT_PUBLIC_TURNSTILE_SITE_KEY 後 widget render、未設則隱身、結帳是高價值 funnel 防 bot 重要) */}
         <TurnstileWidget onVerify={ctx.setTurnstileToken} />
@@ -129,7 +145,11 @@ function CheckoutForm() {
           />
         ) : ctx.isG15Plan ? (
           /* G15 家族藍圖：導入已完成的人生藍圖報告 */
-          <form onSubmit={ctx.handleCheckout} className="space-y-4">
+          <form onSubmit={ctx.handleCheckout} className="checkout-form-card space-y-4" aria-labelledby="g15-form-heading">
+            <div>
+              <p className="checkout-order-kicker">Member records</p>
+              <h2 id="g15-form-heading" className="text-xl font-semibold text-cream">選擇家族成員報告</h2>
+            </div>
             <div className="glass rounded-xl p-4 mb-2">
               <p className="text-sm text-text-muted leading-relaxed">
                 從已完成的「人生藍圖」報告中選擇家庭成員，系統會讀取各成員的命理資料進行家族互動分析。
@@ -206,9 +226,10 @@ function CheckoutForm() {
             {/* 搜尋其他家人的報告 */}
             {ctx.g15Selected.length < 8 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-text-muted">搜尋其他家人的報告</p>
+                <label htmlFor="g15-report-search" className="text-sm font-medium text-text-muted">搜尋其他家人的報告</label>
                 <div className="flex gap-2">
                   <input
+                    id="g15-report-search"
                     type="text"
                     placeholder="輸入姓名搜尋..."
                     value={ctx.g15SearchQuery}
@@ -260,10 +281,7 @@ function CheckoutForm() {
               </div>
             )}
 
-            {ctx.error && <p className="text-red-400 text-sm text-center">{ctx.error}</p>}
-
-            {/* v5.6.10 R3:確認付款前加完整 TrustBar(Stripe/服務保證/SSL) */}
-            <TrustBar variant="checkout" />
+            {ctx.error && <p className="checkout-form-error text-sm" role="alert">{ctx.error}</p>}
 
             {/* v5.10.269 GDPR/個資法 第三方授權 disclaimer(對應 Gemini L4 P0 audit) */}
             <p className="text-xs text-text-muted/70 text-center leading-relaxed border-t border-gold/5 pt-3 mt-2">
@@ -272,30 +290,29 @@ function CheckoutForm() {
               本服務遵守 <Link href="/privacy" className="text-gold/80 underline hover:text-gold">隱私政策</Link> 與 GDPR/個資法。
             </p>
 
+            <CheckoutSecurityNote />
+
             <button
               type="submit"
               disabled={ctx.loading || ctx.g15Selected.length < 2}
               className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
             >
-              {ctx.loading ? '跳轉付款中...' : `確認付款 — $${ctx.finalPrice}`}
+              {ctx.loading ? '跳轉付款中...' : `檢查資料並付款 — USD ${ctx.finalPrice}`}
             </button>
             {ctx.g15Selected.length < 2 && (
               <p className="text-xs text-gold/60 text-center">請至少選擇 2 位家庭成員</p>
             )}
-            {/* v5.4.21 P0 修(Gemini UI audit):trust badges(Stripe + SSL + 重試補單保障、v5.10.420 對齊退費政策) */}
-            <div className="flex flex-wrap justify-center gap-3 text-[10px] text-text-muted/70 pt-1">
-              <span>&#128274; Stripe 加密支付</span>
-              <span>&#128737;&#65039; SSL 256-bit</span>
-              <span>&#128230; PDF 永久保存</span>
-              <span>&#127919; 失敗自動重試 + 24 小時人工補單</span>
-            </div>
             <p className="text-xs text-text-muted/60 text-center">
               報告平均需 30 分鐘以上、寫到信箱 + 線上看
             </p>
           </form>
         ) : ctx.isFamilyPlan ? (
           /* 家庭方案表單 */
-          <form onSubmit={ctx.handleCheckout} className="space-y-4">
+          <form onSubmit={ctx.handleCheckout} className="checkout-form-card space-y-4" aria-labelledby="family-form-heading">
+            <div>
+              <p className="checkout-order-kicker">Birth records</p>
+              <h2 id="family-form-heading" className="text-xl font-semibold text-cream">填寫家庭成員資料</h2>
+            </div>
             <div className="space-y-4">
               {ctx.familyMembers.map((member, index) => (
                 <FamilyMemberField
@@ -313,13 +330,13 @@ function CheckoutForm() {
               <button type="button" onClick={ctx.addFamilyMember}
                 className="w-full py-3 border border-gold/30 rounded-xl text-gold text-sm hover:bg-gold/10 transition-all">
                 + 加入第 {ctx.familyMembers.length + 1} 位家庭成員
-                <span className="text-text-muted ml-2">(+${ctx.extraPrice})</span>
+                <span className="text-text-muted ml-2">（一次性 + USD {ctx.extraPrice}）</span>
               </button>
             )}
 
             <CustomerNote customerNote={ctx.customerNote} setCustomerNote={ctx.setCustomerNote} />
 
-            {ctx.error && <p className="text-red-400 text-sm text-center">{ctx.error}</p>}
+            {ctx.error && <p className="checkout-form-error text-sm" role="alert">{ctx.error}</p>}
 
             {/* v5.10.269 GDPR/個資法 第三方授權 disclaimer(對應 Gemini L4 P0 audit) */}
             <p className="text-xs text-text-muted/70 text-center leading-relaxed border-t border-gold/5 pt-3 mt-2">
@@ -328,19 +345,14 @@ function CheckoutForm() {
               本服務遵守 <Link href="/privacy" className="text-gold/80 underline hover:text-gold">隱私政策</Link> 與 GDPR/個資法。
             </p>
 
+            <CheckoutSecurityNote />
+
             <button
               type="submit" disabled={ctx.loading}
               className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
             >
-              {ctx.loading ? '跳轉付款中...' : ctx.finalPrice === 0 ? '免費領取報告' : `確認付款 — $${ctx.finalPrice}`}
+              {ctx.loading ? '跳轉付款中...' : ctx.finalPrice === 0 ? '檢查資料並免費領取報告' : `檢查資料並付款 — USD ${ctx.finalPrice}`}
             </button>
-            {/* v5.4.21 P0 修(Gemini UI audit):trust badges 強化(家庭方案版) */}
-            <div className="flex flex-wrap justify-center gap-3 text-[10px] text-text-muted/70 pt-1">
-              <span>&#128274; Stripe 加密支付</span>
-              <span>&#128737;&#65039; SSL 256-bit</span>
-              <span>&#128230; PDF 永久保存</span>
-              <span>&#127919; 失敗自動重試 + 24 小時人工補單</span>
-            </div>
             <p className="text-xs text-text-muted/60 text-center">
               報告平均需 30 分鐘以上、出門訣需 40 分鐘以上
             </p>
@@ -392,7 +404,8 @@ function CheckoutForm() {
             onConfirmCheckout={ctx.confirmCheckout}
           />
         )}
-        </>)}
+          </section>
+        </div>)}
       </div>
     </div>
   )
@@ -400,7 +413,7 @@ function CheckoutForm() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<div className="py-20 text-center text-text-muted">載入中...</div>}>
+    <Suspense fallback={<div className="checkout-shell py-20 text-center text-text-muted" role="status">載入中...</div>}>
       <CheckoutForm />
     </Suspense>
   )

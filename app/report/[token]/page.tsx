@@ -1494,10 +1494,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   const aiContentReady = !!report.report_result?.ai_content
   if (report.status !== 'completed' || !aiContentReady) {
     const isFailed = report.status === 'failed'
+    const reportReference = report.id.slice(0, 8).toUpperCase()
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
-        <div className="glass rounded-2xl p-12 text-center max-w-md">
-          <div className="text-5xl mb-4">{isFailed ? '\u26A0\uFE0F' : '\u23F3'}</div>
+      <div data-report-shell className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
+        <div
+          className="glass rounded-2xl p-12 text-center max-w-md"
+          role={isFailed ? 'alert' : 'status'}
+          aria-live={isFailed ? 'assertive' : 'polite'}
+          aria-busy={!isFailed}
+        >
+          <div className="text-5xl mb-4" aria-hidden="true">{isFailed ? '\u26A0\uFE0F' : '\u23F3'}</div>
           <h1 className="text-xl font-bold text-cream mb-2">
             {isFailed
               ? '報告生成遇到問題'
@@ -1508,7 +1514,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </h1>
           <p className="text-text-muted text-sm mb-2">
             {isFailed
-              ? '系統已記錄此次生成異常，客服將於 1–2 小時內為您重新生成並通知您'
+              ? '系統目前無法完成這份報告；您的委託與付款紀錄仍安全保留。您可以回到「我的報告」重新嘗試，若問題持續請聯繫客服。'
               : isChumenjiPlan(report.plan_code)
               ? '系統正以 25 層古籍評分體系逐時辰排算奇門局，套入個人年命宮驗證吉位'
               : report.plan_code === 'G15'
@@ -1530,7 +1536,17 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             </>
           )}
           {isFailed && (
-            <p className="text-gold text-sm mt-4">如有疑問請聯繫 <a href="mailto:support@jianyuan.life" className="underline">support@jianyuan.life</a></p>
+            <div className="mt-5 text-sm">
+              <p className="text-text-muted/70 font-mono text-xs tracking-wide">報告參考碼：{reportReference}</p>
+              <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
+                <a href="/dashboard" className="rounded-lg border border-gold/30 px-4 py-2.5 font-semibold text-gold transition-colors hover:bg-gold/10">
+                  回到我的報告
+                </a>
+                <a href="mailto:support@jianyuan.life" className="rounded-lg px-4 py-2.5 text-text-muted underline underline-offset-4 transition-colors hover:text-gold">
+                  聯繫客服
+                </a>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -1853,8 +1869,14 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
     ? scanForCrisis(aiContent)
     : { crisis: false, categories: [] as string[], matchedTerms: [] as string[] }
 
+  // 商業化閱讀層：舊版在正文前重複渲染多組「五件套／三層洞察／核心洞察／速覽」。
+  // 這些模組會再次加工同一份 personalityCard，甚至加入當日日期與通用行動文案；
+  // 正式閱讀路徑只保留可追溯的 narrative_summary、deterministic full_charts 與原始正文。
+  // 保留舊 JSX 作歷史報告比對，但不讓它進入客戶可見／輔助科技閱讀樹；命理計算不變。
+  const showLegacyOverviewModules = false
+
   return (
-    <div className={`min-h-screen pb-16${isSimplified ? ' locale-cn' : ''}${isFamily ? ' is-family' : ''}`} style={{ background: 'linear-gradient(180deg, #0a0e1a 0%, #0f1628 40%, #0a0e1a 100%)' }}>
+    <div data-report-shell className={`min-h-screen pb-16${isSimplified ? ' locale-cn' : ''}${isFamily ? ' is-family' : ''}`}>
       <style>{`
         ${isSimplified ? `.locale-cn { font-family: var(--font-body-sc), var(--font-body), "Noto Sans SC", sans-serif; }
         .locale-cn .report-h3, .locale-cn h1, .locale-cn h2, .locale-cn h3 { font-family: var(--font-sans-sc), var(--font-sans), "Noto Serif SC", serif; }` : ''}
@@ -2130,7 +2152,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         }
         @media print {
           body, html { background: white !important; color: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          nav, footer, .no-print { display: none !important; }
+          .jy-navbar, .jy-footer, .skip-link, .jy-cookie, .no-print { display: none !important; }
           .section-card { border: 1px solid #ddd; page-break-inside: avoid; padding: 16px !important; margin-bottom: 12px !important; box-shadow: none !important; }
           .glass { background: white !important; border: 1px solid #eee !important; box-shadow: none !important; }
           .report-h3 { color: #1a2a4a !important; font-size: 1rem !important; }
@@ -2190,25 +2212,15 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
       <ReadingProgressBar />
       {/* #13 回到頂部浮動按鈕 */}
       <BackToTopButton />
-      {/* v5.10.14 R+11 Gemini desktop P2 修(91→95):FloatingActionPanel 右下紫色「儲存 PDF」跟 header 綠色「下載 PDF」+ Sticky CTA bar 紫色「下載 PDF」三重複、移除 FloatingActionPanel 避免認知混淆 */}
-      {/* <FloatingActionPanel /> */}
+      {/* PDF 主操作統一在工具列；內文僅於摘要截斷時保留 contextual CTA。 */}
       {/* 目錄 Scrollspy — 滾動時高亮目前章節 */}
       <ScrollSpy />
 
       {/* v5.10.11 R+9 hotfix:OnboardingModal 移除(Playwright strict eval fresh browser localStorage 空 → modal 永遠開遮整屏 → Haiku 62 / Gemini mobile 68 災難);保留 import + component 待改 mini banner 不擋首屏 */}
       {/* {!isChumenji && <OnboardingModal />} */}
 
-      {/* v5.10.9 R+6 Sticky CTA bar(Haiku 86→95 P2「分享/下載/預約諮詢按鈕未浮現」修):
-           頂部釘固 100% 寬度、滾動不消失、3 個按鈕(分享 / 下載 PDF / 預約諮詢)
-           E1-E4 出門訣無 PDF、改顯示「行事曆」按鈕
-           top-[68px] 避免跟 ReadingProgressBar(top-16 1px 高)重疊 */}
-      <div className="sticky top-[68px] z-30 no-print" style={{
-        background: 'rgba(10, 14, 26, 0.85)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(197,150,58,0.18)',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
-      }}>
+      {/* 頂部固定報告工具列；一般報告提供 PDF，出門訣導向行事曆區段。 */}
+      <div className="report-toolbar sticky top-0 z-30 no-print">
         <ReportMotion />
         <div className="mx-auto max-w-[1600px] px-4 py-2 flex items-center justify-between gap-2 text-[12px]">
           {/* v5.10.10 R+8 #12+#13 左邊:視圖切換 / 術語小辭典 / 暗黑模式(Kimi+GPT-4o+Haiku 缺項補) */}
@@ -2218,11 +2230,13 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             <span className="text-text-muted/40 text-[10px]" aria-hidden>·</span>
           )}
           <div className="flex items-center gap-2">
-          {/* v5.10.430 老闆指令:砍「分享」(反人性 — 沒人分享自己的私密命盤)
-              + 砍「預約諮詢」(不該有)。保留 PDF / 行事曆 = 正當功能。 */}
+          {/* 工具列不重複分享或諮詢操作；只保留主要交付入口。 */}
           {report.pdf_url && !isChumenji ? (
             <a
               href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
+              download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
               style={{
                 background: 'rgba(197,150,58,0.16)',
@@ -2266,15 +2280,25 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             連貫性改靠 v5.10.145 breadcrumb + v5.10.146 ChapterNav + v5.10.144 mobile FAB(都不碰 main 寬度)
             main 100% 全寬、表格 td 加 white-space:nowrap、第 1 欄絕不再截斷 */}
         {/* v5.10.407 #3 修(老闆「版面這麼大字擠左右留白」):正文統一 880px 置中、左右對稱平衡;側目錄改 ≥1400 才顯示(1280 隱藏改用頂部 ChapterNav、徹底不遮) */}
-        <div className="w-full max-w-[880px] mx-auto">
+        <div className="report-reading-column w-full mx-auto">
         {!isChumenji && sections.length > 3 && (
-          <ReportBreadcrumb planName={PLAN_NAMES[report.plan_code] || '命理分析'} />
+          <div className="report-breadcrumb-slot">
+            <ReportBreadcrumb planName={PLAN_NAMES[report.plan_code] || '命理分析'} />
+          </div>
         )}
 
         {/* 品牌標題 v5.8.5 縮 mb-3 → mb-2 */}
-        <div className="text-center mb-2 no-print">
+        <div className="report-kicker text-center mb-2 no-print">
           <span className="text-gold/70 text-xs tracking-[4px]">鑒 源 命 理</span>
         </div>
+
+        <h1 id="report-document-title" className="sr-only">
+          {isRelationship && report.birth_data?.members && report.birth_data.members.length >= 2
+            ? `${report.birth_data.members[0]?.name || report.client_name}與${report.birth_data.members[1]?.name || '合盤對象'}｜${PLAN_NAMES[report.plan_code] || '命理分析報告'}`
+            : `${isFamily && report.birth_data?.member_names
+              ? (report.birth_data.member_names as string[]).filter(Boolean).join('、') + '家族'
+              : report.client_name}｜${PLAN_NAMES[report.plan_code] || '命理分析報告'}`}
+        </h1>
 
         {/* 報告重構 2026-06-23:命格綜合卡(命格原型+一句話+天賦/課題、答案先行)
             narrative_summary 有才渲染(新報告 v5.10.454+ 才有、Gemini 忠於原文黃金驗證、舊報告/出門訣 null) */}
@@ -2291,7 +2315,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {/* v5.10.10 R+8 #9 個人化行動摘要 2-3 條(Gemini 缺項補):
              從既有 personalityCard.talents/challenges/yearTheme 規則式抽取、不動 prompt
              顯示在 Hero 之前、給客戶第一眼看到具體可執行下一步 */}
-        {!isChumenji && !isRelationship && !isFamily && personalityCard && (
+        {showLegacyOverviewModules && !isChumenji && !isRelationship && !isFamily && personalityCard && (
           <ActionRecommendations
             talents={personalityCard.talents || []}
             challenges={personalityCard.challenges || []}
@@ -2302,7 +2326,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {/* T13 v5.10.362(lesson #144 雙渲染器分裂修):ExecutiveSummary editorial component
             McKinsey 「結論先行」原則、客戶第一眼看到 3 條最關鍵 takeaway、不需 scroll
             從既有 personalityCard.talents/challenges 規則式抽 3 條、無需動 prompt */}
-        {!isChumenji && !isRelationship && !isFamily && personalityCard && (
+        {showLegacyOverviewModules && !isChumenji && !isRelationship && !isFamily && personalityCard && (
           (() => {
             const talents = personalityCard.talents || []
             const challenges = personalityCard.challenges || []
@@ -2325,7 +2349,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             Bento Box 一張卡裝齊 5 件套(封號 + 八字四柱 + 紫微命宮 + 天賦 Top 3 + 課題 Top 3)
             目的:讓 LLM / 客戶首屏 (< 800px scroll) 一眼看到完整命格、不必滾動
             注意:此卡為「精華 + 摘要」、下方既有的洞察金字塔 / 命盤一覽 / 命格名片大卡保留作詳述、不刪 */}
-        {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && (() => {
+        {showLegacyOverviewModules && !isChumenji && !isRelationship && !isFamily && personalityCard?.title && (() => {
           // 抽八字四柱(復用既有 fallback 邏輯)
           const rr = (report.report_result || {}) as Record<string, unknown>
           const cd = (rr.client_data || {}) as Record<string, unknown>
@@ -2604,7 +2628,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         })()}
 
         {/* v5.9.3 3 層洞察金字塔(Claude TOP 1 共識 +15 分):結論 → 機制 → 行動 */}
-        {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && personalityCard.definition && (() => {
+        {showLegacyOverviewModules && !isChumenji && !isRelationship && !isFamily && personalityCard?.title && personalityCard.definition && (() => {
           // v5.10.76 P0(4-LLM Vision 共識:洞察金字塔 + 2026 行動建議區 raw `| ★★★★★ | name | desc |` 殘留):
           //   AI 把整個 markdown table row 寫進 personalityCard.talents[0]、render 直接吐
           //   修:sanitizeRow() 拆 row、取「最具語義」cell(優先 name 而非 star)、限長
@@ -2673,68 +2697,29 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </div>
               </div>
 
-              {/* v5.9.6 Layer 2 改 3 KPI 視覺卡(Claude「去 50% 文字、加 300% 視覺信號」)*/}
+              {/* 命盤重點只呈現真實報告內容，不以 UI 硬編分數或客群百分位。 */}
               <div className="px-4 py-3 rounded-xl mb-3" style={{ background: 'rgba(197,150,58,0.08)', border: '1px solid rgba(197,150,58,0.30)' }}>
                 <div className="flex items-start gap-2">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-dark font-bold text-xs" style={{ background: '#c9a84c' }}>2</div>
-                  <div className="flex-1">
-                    <div className="flex items-baseline gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 mb-3">
                       <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider" style={{ background: '#c9a84c', color: '#0a0e1a' }}>STEP 2</span>
-                      <span className="text-gold/85 text-[11px] tracking-wider font-semibold">命盤儀表板</span>
+                      <span className="text-gold/85 text-[11px] tracking-wider font-semibold">命盤重點線索</span>
                     </div>
-                    {/* v5.10.0 Layer 2 加 SVG 因果流程圖(Claude P1「決策樹視覺化」) */}
-                    <div className="flex items-center justify-center gap-1 mb-2 text-[11px]">
-                      <span className="px-2 py-1 rounded font-semibold" style={{ background: 'rgba(106,176,76,0.15)', color: '#6ab04c', border: '1px solid rgba(106,176,76,0.30)' }}>{topTalent || '優勢'}</span>
-                      <span className="text-gold/60 font-bold">→</span>
-                      <span className="px-2 py-1 rounded font-semibold" style={{ background: 'rgba(155,89,182,0.15)', color: '#bb8fce', border: '1px solid rgba(155,89,182,0.30)' }}>2026</span>
-                      <span className="text-gold/60 font-bold">→</span>
-                      <span className="px-2 py-1 rounded font-semibold" style={{ background: 'rgba(197,150,58,0.15)', color: '#c9a84c', border: '1px solid rgba(197,150,58,0.30)' }}>3 行動</span>
-                    </div>
-                    {/* 3 KPI 卡 — v5.10.8 R+5 修(Claude Haiku P2「85/100/60 沒 label、不知是什麼」共識):
-                        三個分數加 native title tooltip + 副標說明、解 LLM 截圖看不懂 KPI 含義 issue
-                        v5.10.7 R+3 gap 2→3 統一(mobile #3「卡片間距不均勻」)*/}
-                    <div className="grid grid-cols-3 gap-3">
-                      {/* KPI 1:個性開放度(原「優勢分數」、85 = 同型客戶平均 +10、Top 15%) */}
-                      <div className="px-3 py-3 rounded-lg" title="個性開放度 85 分:同型客戶超過 70% 客戶分數、屬 Top 15%。代表願意接受新觀點、行動不被框架卡住" style={{ background: 'rgba(106,176,76,0.12)', border: '1px solid rgba(106,176,76,0.35)' }}>
-                        <div className="text-green-400/65 text-[9px] tracking-wider mb-1">個性開放度</div>
-                        <div className="flex items-baseline gap-1 mb-0.5">
-                          <div className="text-2xl font-bold text-green-400">85</div>
-                          <div className="text-green-400/50 text-[9px] font-medium">/ 100</div>
-                        </div>
-                        <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{topTalent || '—'}</div>
-                        <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #6ab04c 85%, rgba(106,176,76,0.15) 85%)' }}/>
-                        <div className="text-green-400/50 text-[8px] mt-1 tracking-wide">Top 15%</div>
+                    <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(106,176,76,0.10)', border: '1px solid rgba(106,176,76,0.28)' }}>
+                        <dt className="text-green-400/70 text-[10px] tracking-wider mb-1.5">主要天賦</dt>
+                        <dd className="text-cream text-[12px] font-semibold leading-relaxed">{topTalent || '報告未提供'}</dd>
                       </div>
-                      {/* KPI 2:行動力(原「主要課題」、100 = 滿分 trigger 強度、命格自動反應出現頻率) */}
-                      <div className="px-3 py-3 rounded-lg" title="行動力 100 分:滿分執行強度、本能反應快速。但行動力高也代表課題出現頻率高、5 秒覺察是關鍵" style={{ background: 'rgba(224,150,58,0.12)', border: '1px solid rgba(224,150,58,0.35)' }}>
-                        <div className="text-orange-400/65 text-[9px] tracking-wider mb-1">行動力</div>
-                        <div className="flex items-baseline gap-1 mb-0.5">
-                          <div className="text-2xl font-bold text-orange-400">100</div>
-                          <div className="text-orange-400/50 text-[9px] font-medium">/ 100</div>
-                        </div>
-                        <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{topChallenge || '—'}</div>
-                        <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #e0963a 100%, rgba(224,150,58,0.15) 100%)' }}/>
-                        <div className="text-orange-400/50 text-[8px] mt-1 tracking-wide">最強執行</div>
+                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(224,150,58,0.10)', border: '1px solid rgba(224,150,58,0.28)' }}>
+                        <dt className="text-orange-400/70 text-[10px] tracking-wider mb-1.5">主要課題</dt>
+                        <dd className="text-cream text-[12px] font-semibold leading-relaxed">{topChallenge || '報告未提供'}</dd>
                       </div>
-                      {/* KPI 3:修行深度(原「2026 方向」、60 = 中等深度、年度聚焦深耕值) */}
-                      <div className="px-3 py-3 rounded-lg" title="修行深度 60 分:2026 年度聚焦深耕的能量值、屬中段 50%。建議透過冥想 / 反思 / 命格覺察補強到 75+" style={{ background: 'rgba(155,89,182,0.12)', border: '1px solid rgba(155,89,182,0.35)' }}>
-                        <div className="text-purple-300/65 text-[9px] tracking-wider mb-1 flex items-center gap-1">
-                          <span>修行深度</span>
-                          <span>↗</span>
-                        </div>
-                        <div className="flex items-baseline gap-1 mb-0.5">
-                          <div className="text-2xl font-bold text-purple-300">60</div>
-                          <div className="text-purple-300/50 text-[9px] font-medium">/ 100</div>
-                        </div>
-                        <div className="text-cream text-[11px] font-semibold leading-tight line-clamp-1">{yearTheme ? yearTheme.slice(0, 8) : '聚焦深耕'}</div>
-                        <div className="h-1 rounded-full mt-1.5" style={{ background: 'linear-gradient(90deg, #bb8fce 60%, rgba(155,89,182,0.15) 60%)' }}/>
-                        <div className="text-purple-300/50 text-[8px] mt-1 tracking-wide">中段 50%</div>
+                      <div className="px-3 py-3 rounded-lg" style={{ background: 'rgba(155,89,182,0.10)', border: '1px solid rgba(155,89,182,0.28)' }}>
+                        <dt className="text-purple-300/70 text-[10px] tracking-wider mb-1.5">年度主題</dt>
+                        <dd className="text-cream text-[12px] font-semibold leading-relaxed">{yearTheme || '報告未提供'}</dd>
                       </div>
-                    </div>
-                    {/* v5.10.8 R+5:三分數整體說明(Claude Haiku「不知是什麼」共識最後一道修)*/}
-                    <div className="text-text-muted/55 text-[10px] mt-3 text-center tracking-wide">
-                      ↑ 命格 3 維度評分(個性 / 行動 / 修行)、滿分 100、來自 14 套系統交叉計算
-                    </div>
+                    </dl>
                   </div>
                 </div>
               </div>
@@ -2746,7 +2731,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   <span className="text-red-400/85 text-[10px] tracking-[2px] font-semibold">陷阱預警 · 你最常掉的坑</span>
                 </div>
                 <div className="text-cream/85 text-[12px] leading-relaxed mt-1.5">
-                  「{personalityCard.title}」型最常見:<span className="text-red-400 font-semibold">{topChallenge}</span>(95% 同型客戶都會遇到)。當這出現時 = 命格自動反應、不是你真心要的 — 5 秒覺察可破。
+                  當「<span className="text-red-400 font-semibold">{topChallenge}</span>」反覆出現時，可先把它視為值得觀察的慣性反應；停五秒再決定下一步，讓選擇回到自己手上。
                 </div>
               </div>
 
@@ -2803,7 +2788,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {/* v5.7.89 Quick Insights — 5 條核心洞察(Co-Star + Mint 範本、訊號最強)
             v5.10.10 R+8 #2 精準預告 + 跳詳解頁(取代「可展開卡片」、Qwen+GPT-4o 反對選擇悖論修):
               每張卡顯示「結論一句 + 30 字精準預告 + → 跳詳解頁按鈕」 */}
-        {!isChumenji && !isRelationship && !isFamily && personalityCard?.title && (() => {
+        {showLegacyOverviewModules && !isChumenji && !isRelationship && !isFamily && personalityCard?.title && (() => {
           interface InsightItem { icon: string; label: string; value: string; preview: string; anchor: string; color: string }
           const insights: InsightItem[] = []
           const fi = (personalityCard.firstImpression || '').trim()
@@ -2917,7 +2902,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         )}
 
         {/* v5.10.433 命格速覽卡(老闆「全部移除數字評分」)— 留命格名 + Top5 天賦/課題、砍評等圈/79分/percentile/挑戰度 */}
-        {!isChumenji && analysesSummary.length >= 3 && (() => {
+        {showLegacyOverviewModules && !isChumenji && analysesSummary.length >= 3 && (() => {
           // v5.10.461:cap 14(對外清零 15→14 鐵律 v5.3.95;測試報告實測 badge 吐「15 套交叉」=
           // 南洋 filter 漏接舊命名變體、與 legacy 命盤一覽卡 Math.min(14,·) 同規格對齊)
           const systemCrossCount = Math.min(14, analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length)
@@ -2988,7 +2973,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         })()}
 
         {/* v5.7.72 頂部命盤摘要橫幅(LLM 第一眼看到、所有核心數據一覽) */}
-        {!isChumenji && !isRelationship && !isFamily && (() => {
+        {showLegacyOverviewModules && !isChumenji && !isRelationship && !isFamily && (() => {
           const rr = (report.report_result || {}) as Record<string, unknown>
           const cd = (rr.client_data || {}) as Record<string, unknown>
           const ana = (rr.analyses || {}) as Record<string, unknown>
@@ -3160,7 +3145,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         })()}
 
         {/* ──── 報告頭部 ──── */}
-        <div className="glass rounded-2xl p-8 sm:p-10 mb-8 text-center relative overflow-hidden">
+        <header className="report-cover glass rounded-2xl p-8 sm:p-10 mb-8 text-center relative overflow-hidden" aria-labelledby="report-document-title">
           {/* 頂部金色裝飾光帶 */}
           <div aria-hidden className="absolute top-0 left-0 right-0 h-[2px]" style={{
             background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.6), transparent)',
@@ -3176,21 +3161,21 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
           {/* R 方案：雙人姓名大字，中間「×」分隔 */}
           {isRelationship && report.birth_data?.members && report.birth_data.members.length >= 2 ? (
-            <div className="flex items-center justify-center gap-4 sm:gap-6 mb-2 relative z-10 flex-wrap">
-              <h1 className="text-2xl sm:text-3xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+            <div className="flex items-center justify-center gap-4 sm:gap-6 mb-2 relative z-10 flex-wrap" aria-hidden="true">
+              <span className="text-2xl sm:text-3xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
                 {report.birth_data.members[0]?.name || report.client_name}
-              </h1>
+              </span>
               <span className="text-xl sm:text-2xl text-gold/70 font-light" aria-hidden>&#10005;</span>
-              <h1 className="text-2xl sm:text-3xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
+              <span className="text-2xl sm:text-3xl font-bold text-cream" style={{ fontFamily: 'var(--font-sans)' }}>
                 {report.birth_data.members[1]?.name || '合盤對象'}
-              </h1>
+              </span>
             </div>
           ) : (
-            <h1 className="text-3xl sm:text-4xl font-bold text-cream mb-1 relative z-10" style={{ fontFamily: 'var(--font-sans)' }}>
+            <div className="text-3xl sm:text-4xl font-bold text-cream mb-1 relative z-10" style={{ fontFamily: 'var(--font-sans)' }} aria-hidden="true">
               {isFamily && report.birth_data?.member_names
                 ? (report.birth_data.member_names as string[]).filter(Boolean).join('、') + ' 家族'
                 : report.client_name}
-            </h1>
+            </div>
           )}
 
           {/* G15 家族：成員徽章（首字大圓 32px + 角色標籤）*/}
@@ -3313,11 +3298,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
             </div>
           )}
 
-          {/* 操作按鈕（Client Component 處理 onClick）*/}
+          {/* 分享操作；PDF 下載統一保留在頂部工具列。 */}
           <div className="relative z-10">
-            <ReportClientButtons pdfUrl={report.pdf_url} planCode={report.plan_code} reportId={report.id} clientName={report.client_name} accessToken={token} />
+            <ReportClientButtons />
           </div>
-        </div>
+        </header>
 
         {/* ──── R 方案：關係描述 + 客戶問題引言卡 ──── */}
         {isRelationship && (report.birth_data?.relation_description || report.birth_data?.customer_note) && (
@@ -4609,6 +4594,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   key={globalIdx}
                   id={`sec-${globalIdx}`}
                   title={sec.title}
+                  className={globalIdx === sections.length - 1 ? 'report-final-chapter' : ''}
                   titleColor={sStyle.titleColor}
                   icon={
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg" style={{ background: sStyle.iconBg }}>{sStyle.icon}</div>
@@ -4649,7 +4635,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                   title={sec.title}
                   titleColor="var(--color-gold)"
                   defaultExpanded={true}
-                  className="glass"
+                  className={`glass${globalIdx === sections.length - 1 ? ' report-final-chapter' : ''}`}
                   style={{ borderLeft: `4px solid ${accentColor}`, background: stripeBg }}
                   // v5.10.104 P1(verify h2Count G15 7LLM=28 過多、5 個年份 H2 應降 H3):
                   // 年份小節「20XX 年」「20XX-20XX」用 H3 降層、不跟主章節 H2 同級、outline 對齊 SEO/a11y
@@ -4928,46 +4914,6 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
-        {/* ──── 底部 PDF 按鈕（v5.3.83:出門訣 E1-E4 不顯示 PDF、深度綁定 web、使用行事曆）──── */}
-        {report.pdf_url && !isChumenji && (
-          <div className="flex justify-center my-10">
-            <a
-              href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
-              download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:scale-105 shadow-lg"
-              style={{
-                background: isChumenji
-                  ? 'linear-gradient(135deg, #c9a84c 0%, #e8c87a 50%, #f7dfa0 100%)'
-                  : 'linear-gradient(135deg, #c9a84c, #e8c87a)',
-                color: '#0a0e1a',
-                boxShadow: isChumenji ? '0 4px 14px rgba(201, 168, 76, 0.4)' : undefined,
-              }}
-            >
-              {isChumenji ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                  <polyline points="8 15 12 19 16 15" />
-                  <line x1="12" y1="13" x2="12" y2="19" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-              )}
-              {isChumenji
-                ? (report.plan_code === 'E1' ? '下載 Top3 吉時 PDF' : report.plan_code === 'E2' ? '下載本月月盤 PDF' : '下載 4 週吉時月度 PDF')
-                : '下載 PDF 完整報告'}
-            </a>
-          </div>
-        )}
-
         {/* v5.10.430 老闆指令砍「分享精華卡片」ShareCard(LINE/WhatsApp/複製連結)
             — 反人性、沒人分享自己的私密命盤 */}
 
@@ -4989,9 +4935,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                  - 加 Generated for: {client_name}(專屬感)
                  - 加 AI Engine v{pkg.version}(版本 trace)
                  - 加底部品牌浮水印(opacity-5、視覺信任 */}
-        <div className="relative text-center text-text-muted/30 text-xs leading-7 pt-6 mt-8" style={{ borderTop: '1px solid rgba(201,168,76,0.10)' }}>
+        <div className="report-provenance relative text-center text-text-muted/30 text-xs leading-7 pt-6 mt-8" style={{ borderTop: '1px solid rgba(201,168,76,0.10)' }}>
           {/* v5.10.7 R+4 浮水印(opacity 0.04、SaaS 級防偽信號) */}
-          <div aria-hidden className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden" style={{ opacity: 0.04 }}>
+          <div aria-hidden className="report-provenance__watermark absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden" style={{ opacity: 0.04 }}>
             <span style={{
               fontSize: '6rem',
               fontFamily: 'var(--font-sans)',

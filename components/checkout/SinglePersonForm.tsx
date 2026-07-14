@@ -8,6 +8,7 @@ import TimeBlockPicker from './TimeBlockPicker'
 import ThemePicker from './ThemePicker'
 import CustomerNote from './CustomerNote'
 import ConfirmationModal from './ConfirmationModal'
+import CheckoutSecurityNote from './CheckoutSecurityNote'
 import { isChumenjiPlan } from '@/lib/plan-names'
 import { D_TOPICS, E1_EVENT_TYPES, type CheckoutFormState as FormState } from './types'
 
@@ -78,7 +79,12 @@ export default function SinglePersonForm({
   showConfirmModal, onCloseConfirmModal, onConfirmCheckout,
 }: SinglePersonFormProps) {
   return (
-    <form onSubmit={onSubmit} className="glass rounded-2xl p-6 space-y-4">
+    <form onSubmit={onSubmit} className="checkout-form-card space-y-4" aria-labelledby="single-person-form-heading">
+      <div>
+        <p className="checkout-order-kicker">Birth record</p>
+        <h2 id="single-person-form-heading" className="text-xl font-semibold text-cream">填寫分析資料</h2>
+        <p className="mt-1 text-xs leading-relaxed text-text-muted">標示 * 的欄位為建立命盤所需資料。</p>
+      </div>
       {/* 從已儲存的家人選擇（登入時才顯示） */}
       <FamilyMemberPicker onSelect={(m) => {
         setForm(f => ({
@@ -123,8 +129,9 @@ export default function SinglePersonForm({
         <div className="border-t border-gold/10 pt-4 space-y-3">
           <p className="text-sm font-semibold text-gold">專項分析設定</p>
           <div>
-            <label className="block text-xs text-text-muted mb-1">分析主題 *</label>
+            <label htmlFor="checkout-d-topic" className="block text-xs text-text-muted mb-1">分析主題 *</label>
             <select
+              id="checkout-d-topic"
               required
               value={dTopic}
               onChange={(e) => setDTopic(e.target.value)}
@@ -135,8 +142,9 @@ export default function SinglePersonForm({
           </div>
           {dTopic === '問事（其他）' && (
             <div>
-              <label className="block text-xs text-text-muted mb-1">請描述您的問題 *（最多 200 字）</label>
+              <label htmlFor="checkout-d-other" className="block text-xs text-text-muted mb-1">請描述您的問題 *（最多 200 字）</label>
               <textarea
+                id="checkout-d-other"
                 required
                 maxLength={200}
                 rows={3}
@@ -171,10 +179,10 @@ export default function SinglePersonForm({
           </div>
 
           {/* 有無明確時間 */}
-          <div>
-            <label className="block text-sm font-semibold text-gold mb-2">事件有無固定時間？ *</label>
+          <fieldset>
+            <legend className="block text-sm font-semibold text-gold mb-2">事件有無固定時間？ *</legend>
             <div className="flex gap-6 flex-wrap">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="checkout-choice flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio" name="e1-has-exact-time" value="yes"
                   checked={e1HasExactTime === 'yes'}
@@ -183,7 +191,7 @@ export default function SinglePersonForm({
                 />
                 <span className="text-sm text-text">有（如面試、簽約、會議已排好時間）</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="checkout-choice flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio" name="e1-has-exact-time" value="no"
                   checked={e1HasExactTime === 'no'}
@@ -194,7 +202,7 @@ export default function SinglePersonForm({
               </label>
             </div>
             <p className="text-[10px] text-text-muted/60 mt-1">{e1HasExactTime === 'yes' ? '請於下方事件描述註明確切時間，系統會驗證該時辰的吉凶' : '系統會從事件日期範圍內找出 Top3 最佳吉時'}</p>
-          </div>
+          </fieldset>
 
           {/* 事件日期 */}
           <div>
@@ -294,18 +302,20 @@ export default function SinglePersonForm({
           - E3 選 3 個主題 TOP 1/2/3 已表達優先序、不需自由文字
           所以所有方案都不顯示 CustomerNote */}
 
-      {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+      {error && <p className="checkout-form-error text-sm" role="alert">{error}</p>}
 
       {/* 下一步說明 */}
-      <div className="border-t border-gold/10 pt-4 mt-4">
-        <p className="text-xs text-text-muted mb-2 font-semibold">付款後會發生什麼？</p>
-        <div className="space-y-1.5 text-[11px] text-text-muted/70">
-          <p>1. 跳轉至 Stripe 安全付款頁面完成付款</p>
-          <p>2. 系統自動開始為您排盤運算與深度分析</p>
-          <p>3. 完整報告平均需 30 分鐘以上{isChumenjiPlan(planCode) ? '，出門訣需 40 分鐘以上' : ''}</p>
-          <p>4. 完成後寄送 Email 通知，也可在儀表板即時查看</p>
-        </div>
-      </div>
+      <section className="border-t border-gold/10 pt-4 mt-4" aria-labelledby="checkout-next-heading">
+        <h3 id="checkout-next-heading" className="text-xs text-text-muted mb-2 font-semibold">付款後會發生什麼？</h3>
+        <ol className="space-y-1.5 pl-5 text-[11px] text-text-muted/70 list-decimal">
+          <li>跳轉至 Stripe 安全付款頁面完成付款</li>
+          <li>系統自動開始為您排盤運算與深度分析</li>
+          <li>完整報告平均需 30 分鐘以上{isChumenjiPlan(planCode) ? '，出門訣需 40 分鐘以上' : ''}</li>
+          <li>完成後寄送 Email 通知，也可在儀表板即時查看</li>
+        </ol>
+      </section>
+
+      <CheckoutSecurityNote />
 
       <button
         type="submit" disabled={loading || !isFormValid}
@@ -315,19 +325,12 @@ export default function SinglePersonForm({
             : 'bg-white/10 text-text-muted cursor-not-allowed'
         }`}
       >
-        {loading ? '跳轉付款中...' : isFormValid ? '確認付款' : '請填寫完整資料'}
+        {loading
+          ? '跳轉付款中...'
+          : isFormValid
+            ? finalPrice === 0 ? '檢查資料並免費領取報告' : `檢查資料並付款 — USD ${finalPrice}`
+            : '請填寫完整資料'}
       </button>
-
-      {/* v5.4.21 P0 修(Gemini UI audit):trust badges 強化 */}
-      <div className="flex flex-wrap justify-center gap-3 text-[10px] text-text-muted/70">
-        <span>&#128274; Stripe 加密支付</span>
-        <span>&#128737;&#65039; SSL 256-bit</span>
-        <span>&#128230; PDF 永久保存</span>
-        <span>&#127919; 失敗自動重試 + 24 小時人工補單</span>
-      </div>
-      <p className="text-xs text-text-muted/60 text-center">
-        付款由 Stripe 安全處理、信用卡資訊不經過鑒源伺服器
-      </p>
 
       {/* 資料確認彈窗 */}
       <ConfirmationModal

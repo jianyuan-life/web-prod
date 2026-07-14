@@ -7,7 +7,6 @@ import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(time
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
-import LiveCounter from '@/components/LiveCounter'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
 
 const SHICHEN = [
@@ -19,7 +18,13 @@ const SHICHEN = [
   { label: '戌時 (19:00-21:00)', value: 20 }, { label: '亥時 (21:00-23:00)', value: 22 },
 ]
 
-const WX_COLORS: Record<string, string> = { '木': '#22c55e', '火': '#ef4444', '土': '#eab308', '金': '#f59e0b', '水': '#3b82f6' }
+const WX_COLORS: Record<string, string> = {
+  木: 'var(--jy-wx-wood)',
+  火: 'var(--jy-wx-fire)',
+  土: 'var(--jy-wx-earth)',
+  金: 'var(--jy-wx-metal)',
+  水: 'var(--jy-wx-water)',
+}
 
 // ── 三才配置吉凶對照（簡化版 125 組合）──
 const SANCAI_JIXIONG: Record<string, { level: string; desc: string }> = {
@@ -220,57 +225,50 @@ export default function NameToolPage() {
   const ScoreRing = ({ score }: { score: number }) => {
     const r = 54, c = 2 * Math.PI * r
     const offset = c - (score / 100) * c
-    const color = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444'
+    const color = score >= 80 ? 'var(--jy-ui-success)' : score >= 60 ? 'var(--jy-wx-earth)' : 'var(--jy-ui-danger)'
     return (
-      <svg width="140" height="140" viewBox="0 0 140 140">
-        <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+      <svg width="140" height="140" viewBox="0 0 140 140" role="img" aria-label={`綜合評分 ${score} 分`}>
+        <title>綜合評分 {score} 分</title>
+        <circle cx="70" cy="70" r={r} fill="none" stroke="var(--jy-ui-line)" strokeWidth="8" />
         <circle cx="70" cy="70" r={r} fill="none" stroke={color} strokeWidth="8"
           strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
           transform="rotate(-90 70 70)" className="transition-all duration-1000" />
-        <text x="70" y="64" textAnchor="middle" fill="white" fontSize="28" fontWeight="bold">{score}</text>
-        <text x="70" y="84" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="12">/ 100</text>
+        <text x="70" y="64" textAnchor="middle" fill="var(--jy-ui-ink)" fontSize="28" fontWeight="bold">{score}</text>
+        <text x="70" y="84" textAnchor="middle" fill="var(--jy-ui-ink-muted)" fontSize="12">/ 100</text>
       </svg>
     )
   }
 
   return (
-    <div className="py-12 md:py-20 overflow-x-hidden max-w-full">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+    <div className="jy-page jy-tool-page py-12 md:py-20 overflow-x-hidden max-w-full">
+      <div className="jy-container">
         {/* Hero */}
-        <div className="text-center mb-10 md:mb-14">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold/10 border border-gold/25 text-gold/90 text-[11px] sm:text-xs font-semibold tracking-[0.25em] uppercase mb-5">
-            <span className="text-[10px]">&#10022;</span>
-            <span>XingMing &middot; 康熙筆畫</span>
-            <span className="text-[10px]">&#10022;</span>
-          </div>
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-center mb-4 break-words tracking-tight leading-[1.1]">
-            <span className="text-gradient-gold">姓名學速算</span>
-          </h1>
-          <p className="text-center text-sm sm:text-base text-text tracking-[0.02em] mb-2">
-            五格剖象法 <span className="text-gold/50 mx-1">&middot;</span> 三才配置 <span className="text-gold/50 mx-1">&middot;</span> 數理吉凶分析
-          </p>
-          <p className="text-center text-xs text-text-muted/60 tracking-wider">
-            不需註冊 &middot; 即時出結果 &middot; 完全免費
-          </p>
+        <div className="jy-tool-hero">
+          <p className="jy-eyebrow">XINGMING · 康熙筆畫</p>
+          <h1>姓名學速算</h1>
+          <p>輸入姓名與出生資料，先看五格數理、三才配置與姓名結構的基礎分析。</p>
+          <ul aria-label="服務特點">
+            <li>不需註冊</li>
+            <li>即時速算</li>
+            <li>免費查看基礎結果</li>
+          </ul>
         </div>
 
         {/* 姓名學由來與說明 */}
         <div className="max-w-2xl mx-auto mb-10">
-          <details className="glass rounded-xl p-4 cursor-pointer">
-            <summary className="text-sm font-medium text-gold-400 flex items-center gap-2">
-              <span>&#128218;</span> 關於姓名學：為什麼用康熙字典筆畫？
-            </summary>
-            <div className="mt-3 text-xs text-text-muted/80 space-y-2 leading-relaxed">
-              <p><strong className="text-white/90">姓名學的由來：</strong>五格剖象法由日本學者熊崎健翁於 1918 年創立，後傳入華人世界並與中國傳統數理、五行學說結合，成為目前最廣泛使用的姓名分析方法。透過姓名的筆畫數，計算出天格、人格、地格、外格、總格五格數理，搭配八十一靈動數與三才配置，推算姓名的吉凶能量。</p>
-              <p><strong className="text-white/90">為什麼必須用繁體字（康熙字典）計算？</strong>姓名學的數理基礎建立在《康熙字典》的筆畫標準之上，而非現代簡化字。康熙字典成書於 1716 年，是中國歷史上最權威的字典，其筆畫系統基於 214 個部首的完整字形。簡化字改變了許多字的筆畫數（例如「張」簡體7畫、繁體11畫；「陳」簡體7畫、繁體16畫），若用簡體計算將導致五格數理完全錯誤。</p>
-              <p><strong className="text-white/90">鑒源的做法：</strong>本系統採用 Unicode 官方 Unihan 數據庫（涵蓋 102,998 個漢字），以 214 個康熙部首的標準筆畫為基礎計算。無論您輸入繁體或簡體，系統都會自動轉換為繁體字後再進行筆畫查詢，確保結果準確無誤。</p>
+          <details className="jy-tool-details">
+            <summary>計算基礎與閱讀方法</summary>
+            <div className="jy-tool-details__body">
+              <p><strong>姓名學的由來：</strong>五格剖象法由日本學者熊崎健翁於 1918 年創立，後傳入華人世界並與中國傳統數理、五行學說結合，成為目前最廣泛使用的姓名分析方法。透過姓名的筆畫數，計算出天格、人格、地格、外格、總格五格數理，搭配八十一靈動數與三才配置，推算姓名的吉凶能量。</p>
+              <p><strong>為什麼必須用繁體字（康熙字典）計算？</strong>姓名學的數理基礎建立在《康熙字典》的筆畫標準之上，而非現代簡化字。康熙字典成書於 1716 年，是中國歷史上最權威的字典，其筆畫系統基於 214 個部首的完整字形。簡化字改變了許多字的筆畫數（例如「張」簡體7畫、繁體11畫；「陳」簡體7畫、繁體16畫），若用簡體計算將導致五格數理完全錯誤。</p>
+              <p><strong>鑒源的做法：</strong>本系統採用 Unicode 官方 Unihan 數據庫（涵蓋 102,998 個漢字），以 214 個康熙部首的標準筆畫為基礎計算。無論您輸入繁體或簡體，系統都會自動轉換為繁體字後再進行筆畫查詢，確保結果準確無誤。</p>
             </div>
           </details>
         </div>
 
         {/* 分析進度動畫 */}
         {loading && !result && (
-          <div className="max-w-lg mx-auto">
+          <div className="max-w-lg mx-auto" role="status" aria-live="polite" aria-busy="true">
             <div className="glass rounded-2xl p-8">
               <h3 className="text-2xl md:text-3xl font-black text-cream tracking-tight mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
                 正在分析「<span className="text-gold">{form.surname}{form.givenName}</span>」的姓名能量
@@ -281,14 +279,15 @@ export default function NameToolPage() {
                   const isCurrent = currentStep === i
                   return (
                     <div key={i} className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-300 ${
-                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : 'opacity-30'
+                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : ''
                     }`}>
                       <span className={`w-6 text-center text-sm transition-all ${isCompleted ? 'text-gold' : isCurrent ? 'text-gold/70 animate-pulse' : 'text-text-muted/40'}`}
+                        aria-hidden="true"
                         dangerouslySetInnerHTML={{ __html: isCompleted ? '&#10003;' : step.icon }} />
                       <span className={`text-sm transition-all ${isCompleted ? 'text-cream' : isCurrent ? 'text-text animate-pulse' : 'text-text-muted/40'}`}>
                         {step.text}
                       </span>
-                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />}
+                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" aria-hidden="true" />}
                       {isCompleted && <span className="ml-auto text-xs text-gold/60">完成</span>}
                     </div>
                   )
@@ -304,59 +303,68 @@ export default function NameToolPage() {
         {/* 表單 */}
         {!result && !loading && (
           <div className="max-w-lg mx-auto">
-            <form onSubmit={handleSubmit} className="glass rounded-2xl px-6 py-8 md:p-10 space-y-6">
+            <form onSubmit={handleSubmit} className="jy-tool-form px-6 py-8 md:p-10 space-y-6">
               {/* 從家人選擇 */}
               <FamilyMemberPicker onSelect={handleFamilySelect} />
 
               {/* 姓 + 名 */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-text-muted mb-1.5">姓氏 <span className="text-red-accent">*</span></label>
-                  <input type="text" required placeholder="例：王" value={form.surname}
+                  <label htmlFor="name-surname" className="block text-sm text-text-muted mb-1.5">姓氏 <span className="text-red-accent">*</span></label>
+                  <input id="name-surname" name="surname" type="text" required placeholder="例：王" value={form.surname}
                     onChange={(e) => setForm({ ...form, surname: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm text-text-muted mb-1.5">名字 <span className="text-red-accent">*</span></label>
-                  <input type="text" required placeholder="例：大明" value={form.givenName}
+                  <label htmlFor="name-given-name" className="block text-sm text-text-muted mb-1.5">名字 <span className="text-red-accent">*</span></label>
+                  <input id="name-given-name" name="given-name" type="text" required placeholder="例：大明" value={form.givenName}
                     onChange={(e) => setForm({ ...form, givenName: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
                 </div>
               </div>
 
               {/* 性別 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">性別</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">性別</legend>
                 <div className="flex gap-6">
                   {[{ v: 'M', l: '男' }, { v: 'F', l: '女' }].map(({ v, l }) => (
-                    <label key={v} className="flex items-center gap-1.5 cursor-pointer">
-                      <input type="radio" name="gender" value={v} checked={form.gender === v} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="accent-gold" />
+                    <label key={v} htmlFor={`name-gender-${v}`} className="flex items-center gap-1.5 cursor-pointer">
+                      <input id={`name-gender-${v}`} type="radio" name="gender" value={v} checked={form.gender === v} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="accent-gold" />
                       <span className="text-base text-text">{l}</span>
                     </label>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
               {/* 出生日期 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">出生日期</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">出生日期</legend>
                 <div className="grid grid-cols-3 gap-3">
-                  <input aria-label="出生年" type="number" min="1920" max="2025" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
-                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" placeholder="年" />
-                  <select aria-label="出生月" value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}
-                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
-                    {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}
-                  </select>
-                  <select aria-label="出生日" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })}
-                    className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
-                    {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}日</option>)}
-                  </select>
+                  <div>
+                    <label htmlFor="name-year" className="block text-xs text-text-muted mb-1">年</label>
+                    <input id="name-year" aria-label="出生年" type="number" min="1920" max="2025" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}
+                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label htmlFor="name-month" className="block text-xs text-text-muted mb-1">月</label>
+                    <select id="name-month" aria-label="出生月" value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}
+                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                      {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="name-day" className="block text-xs text-text-muted mb-1">日</label>
+                    <select id="name-day" aria-label="出生日" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })}
+                      className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-3 text-cream text-base focus:border-gold/40 focus:outline-none">
+                      {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}日</option>)}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              </fieldset>
 
               {/* 出生時間 — 三選一 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">出生時間</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">出生時間</legend>
                 <div className="flex rounded-lg overflow-hidden border border-gold/10 mb-3">
                   {[
                     { v: 'unknown' as const, l: '不確定' },
@@ -364,6 +372,7 @@ export default function NameToolPage() {
                     { v: 'exact' as const, l: '知道精確時間' },
                   ].map(({ v, l }) => (
                     <button key={v} type="button"
+                      aria-pressed={form.timeMode === v}
                       onClick={() => setForm({ ...form, timeMode: v })}
                       className={`flex-1 py-2.5 text-xs font-medium transition-all ${form.timeMode === v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
                       {l}
@@ -394,15 +403,15 @@ export default function NameToolPage() {
                     </select>
                   </div>
                 )}
-              </div>
+              </fieldset>
 
               {/* 出生地區 */}
               <div className="relative">
-                <label className="block text-sm text-text-muted mb-1.5">出生地區 <span className="text-red-accent">*</span></label>
+                <label htmlFor="name-city" className="block text-sm text-text-muted mb-1.5">出生地區 <span className="text-red-accent">*</span></label>
                 {needCityForCountry && (
                   <p className="text-xs text-gold/80 mb-1.5">已選擇「{needCityForCountry}」（多時區），請輸入城市名</p>
                 )}
-                <input type="text" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
+                <input id="name-city" name="birth-city" type="text" autoComplete="off" placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'} value={form.city}
                   onChange={(e) => {
                     const val = e.target.value
                     setForm({ ...form, city: val })
@@ -458,6 +467,10 @@ export default function NameToolPage() {
                 )}
               </div>
 
+              <p className="jy-tool-privacy-note">
+                送出後，姓名與出生資料會用於筆畫計算、排盤及 AI 輔助解讀。請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
+              </p>
+
               {/* v5.10.459 CTA 修(同 /tools/bazi):常駐行動文案 + light theme 可見 disabled 樣式 */}
               <button type="submit" disabled={loading || !form.surname.trim() || !form.givenName.trim() || form.cityLat === 0}
                 className={`w-full py-4 font-bold rounded-xl text-lg transition-all ${
@@ -470,7 +483,7 @@ export default function NameToolPage() {
               {(!form.surname.trim() || !form.givenName.trim() || form.cityLat === 0) && (
                 <p className="text-xs text-text-muted/70 text-center mt-2">填寫姓名與出生地區後即可開始</p>
               )}
-              {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
+              {error && <p className="jy-alert jy-alert--danger" role="alert">{error}</p>}
             </form>
 
             {/* 說明 */}
@@ -489,7 +502,7 @@ export default function NameToolPage() {
         {result && (
           <div className="space-y-8">
             <div className="text-center">
-              <button onClick={() => setResult(null)} className="text-sm text-gold hover:underline">&larr; 重新分析</button>
+              <button onClick={() => setResult(null)} className="inline-flex min-h-11 items-center px-3 text-sm text-gold hover:underline">&larr; 重新分析</button>
             </div>
 
             {/* 綜合評分 */}
@@ -554,7 +567,7 @@ export default function NameToolPage() {
                         <div className="flex items-center gap-3">
                           <span className="text-lg font-bold text-white tracking-wide">{name}</span>
                           <span className="text-base font-semibold text-cream/70 tabular-nums">{data.value}</span>
-                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ color: WX_COLORS[data.wuxing], background: `${WX_COLORS[data.wuxing]}22`, border: `1px solid ${WX_COLORS[data.wuxing]}55` }}>
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full" style={{ color: WX_COLORS[data.wuxing], background: `color-mix(in srgb, ${WX_COLORS[data.wuxing]} 13%, transparent)`, border: `1px solid color-mix(in srgb, ${WX_COLORS[data.wuxing]} 33%, transparent)` }}>
                             {data.wuxing}
                           </span>
                         </div>
@@ -588,7 +601,7 @@ export default function NameToolPage() {
                       <div key={i} className="flex items-center gap-3 md:gap-4">
                         <div className="text-center">
                           <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(255,255,255,0.05)]"
-                            style={{ borderColor: WX_COLORS[item.wx], background: `${WX_COLORS[item.wx]}18` }}>
+                            style={{ borderColor: WX_COLORS[item.wx], background: `color-mix(in srgb, ${WX_COLORS[item.wx]} 9%, transparent)` }}>
                             <span className="text-2xl md:text-3xl font-extrabold" style={{ color: WX_COLORS[item.wx] }}>{item.wx}</span>
                           </div>
                           <div className="text-sm text-cream font-bold">{item.label}</div>
@@ -715,69 +728,20 @@ export default function NameToolPage() {
             </p>
 
             {/* v5.4.17 P0 freemium paywall */}
-            <FreemiumPaywall systemName="姓名" />
-
-            {/* 升級引導 */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))' }}>
-              <div className="p-8 md:p-10">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                    姓名學只是 14 套系統中的 <span className="text-gradient-gold">1 套</span>
-                  </h3>
-                  <p className="text-base text-text max-w-2xl mx-auto leading-relaxed">
-                    姓名是先天命格的一部分，但真正影響人生的還有<strong className="text-white">八字、紫微斗數、奇門遁甲</strong>等。
-                    完整報告融合 14 套東西方命理體系，多維度交叉驗證，給您最全面的命格分析。
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
-                    {(['C', 'D'] as const).map((plan, idx) => {
-                      const q = new URLSearchParams({
-                        plan,
-                        name: form.surname + form.givenName,
-                        year: form.year,
-                        month: form.month,
-                        day: form.day,
-                        hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
-                        minute: form.timeMode === 'exact' ? form.exactMinute : '0',
-                        gender: form.gender,
-                        timeMode: form.timeMode,
-                      })
-                      const label = idx === 0 ? '解鎖人生藍圖完整報告 $89' : '聚焦單一困惑深度分析 $39'
-                      const cls = idx === 0
-                        ? 'px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow'
-                        : 'px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10'
-                      return <a key={plan} href={`/checkout?${q}`} className={cls}>{label}</a>
-                    })}
-                  </div>
-
-                  {/* v5.4.4 Item 1 批次 5:出門訣 cross-sell(對齊全 4 頁 free tools) */}
-                  <div className="glass rounded-xl p-5 max-w-md mx-auto mb-4">
-                    <p className="text-sm text-cream mb-2 font-semibold">想知道什麼時候出門最順利?</p>
-                    <p className="text-xs text-text-muted mb-3">奇門遁甲出門訣 — 精準計算吉時吉方、讓每次出門都事半功倍</p>
-                    <div className="flex gap-2 justify-center">
-                      <Link href="/checkout?plan=E1" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        事件擇吉 $59
-                      </Link>
-                      <Link href="/checkout?plan=E2" className="px-4 py-2 text-xs bg-gold/15 text-gold rounded-lg hover:bg-gold/25 transition-all border border-gold/20">
-                        月度單盤 $29
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* v5.4.7 P3 social proof */}
-                  <p className="text-xs text-text-muted/70 mb-3">
-                    已有 <LiveCounter type="paid" /> 份完整付費報告完成交付
-                  </p>
-
-                  <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60">
-                    <span>&#128274; Stripe 安全支付</span>
-                    <span>&#9889; 約 30-60 分鐘出報告</span>
-                    <span>&#128230; PDF 永久保存</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <FreemiumPaywall
+              systemName="姓名"
+              clientName={`${form.surname}${form.givenName}`}
+              checkoutQuery={new URLSearchParams({
+                name: form.surname + form.givenName,
+                year: form.year,
+                month: form.month,
+                day: form.day,
+                hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
+                minute: form.timeMode === 'exact' ? form.exactMinute : '0',
+                gender: form.gender,
+                timeMode: form.timeMode,
+              }).toString()}
+            />
           </div>
         )}
       </div>

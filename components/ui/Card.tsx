@@ -47,7 +47,9 @@ export type CardProps<E extends ElementType = 'div'> = CardOwnProps<E> &
 // 不用 forwardRef、改 ref-as-prop pattern(React 19 支援、避免 forwardRef + polymorphic 型別衝突)
 export function Card<E extends ElementType = 'div'>({
   as,
-  interactive = true,
+  // 靜態報告內容預設不能呈現「可點擊」的 hover 上浮 affordance；
+  // 真正可互動的卡片由呼叫端明確 opt in。
+  interactive = false,
   className = '',
   children,
   ...rest

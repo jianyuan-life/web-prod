@@ -386,8 +386,17 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
           </span>
           <span className="text-gold tabular-nums font-semibold flex-shrink-0">{pct}%</span>
         </div>
-        <div className="h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+        <div
+          className="h-2.5 bg-white/5 rounded-full overflow-hidden border border-white/5"
+          role="progressbar"
+          aria-label="報告生成進度"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(pct)}
+          aria-valuetext={`${Math.round(pct)}%，${progressDesc}`}
+        >
           <div
+            aria-hidden="true"
             className="h-full rounded-full transition-all duration-[2000ms] ease-out relative overflow-hidden"
             style={{
               width: `${pct}%`,

@@ -45,42 +45,44 @@ export default async function TransparencyPage() {
 
   if (!enabled) {
     return (
-      <main style={{ background: '#0A0A0A', color: '#fff', minHeight: '70vh', padding: '64px 24px', textAlign: 'center' }}>
-        <h1 style={{ fontSize: 28 }}>Building in Public</h1>
-        <p style={{ color: '#aaa', marginTop: 12 }}>透明化頁面即將推出。</p>
-      </main>
+      <section className="jy-page jy-public-page jy-transparency-page" aria-labelledby="transparency-title">
+        <div className="jy-transparency-page__empty jy-panel">
+          <p className="jy-eyebrow">TRANSPARENCY</p>
+          <h1 id="transparency-title" className="jy-heading">Building in Public</h1>
+          <p className="jy-lede">透明化頁面即將推出。</p>
+          <p className="jy-transparency-page__note">公開資料會在完成核對與授權後於此呈現。</p>
+        </div>
+      </section>
     )
   }
 
   const s = await loadPublicStats()
   return (
-    <main style={{ background: '#0A0A0A', color: '#fff', minHeight: '70vh', padding: '56px 24px' }}>
-      <h1 style={{ fontSize: 30, textAlign: 'center' }}>鑒源 · Building in Public</h1>
-      <div
-        style={{
-          display: 'grid',
-          gap: 18,
-          gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
-          maxWidth: 720,
-          margin: '32px auto',
-        }}
-      >
-        <Stat label="累計營收 (USD)" value={s ? `$${s.mrr.toLocaleString()}` : '—'} />
-        <Stat label="累計報告生成數" value={s ? String(s.reports) : '—'} />
-        <Stat label="平均滿意度" value={s?.avgRating != null ? s.avgRating.toFixed(2) : '蒐集中'} />
+    <section className="jy-page jy-public-page jy-transparency-page" aria-labelledby="transparency-title">
+      <div className="jy-container jy-transparency-page__inner">
+        <header className="jy-transparency-page__header">
+          <p className="jy-eyebrow">TRANSPARENCY</p>
+          <h1 id="transparency-title" className="jy-heading">鑒源 · Building in Public</h1>
+          <p className="jy-lede">僅呈現經核對的訂單彙總，不公開任何個人資料。</p>
+        </header>
+        <dl className="jy-transparency-page__stats">
+          <Stat label="累計營收 (USD)" value={s ? `$${s.mrr.toLocaleString()}` : '—'} />
+          <Stat label="累計報告生成數" value={s ? String(s.reports) : '—'} />
+          <Stat label="平均滿意度" value={s?.avgRating != null ? s.avgRating.toFixed(2) : '蒐集中'} />
+        </dl>
+        <p className="jy-transparency-page__note">
+          數據每次載入自 Supabase 真實訂單彙總，不含任何虛構基數。
+        </p>
       </div>
-      <p style={{ color: '#666', textAlign: 'center', fontSize: 12 }}>
-        數據每次載入自 Supabase 真實訂單彙總,不含任何虛構基數。
-      </p>
-    </main>
+    </section>
   )
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ background: '#161616', border: '1px solid #2a2a2a', borderRadius: 12, padding: 24, textAlign: 'center' }}>
-      <div style={{ fontSize: 30, fontWeight: 800, color: '#B33A2E' }}>{value}</div>
-      <div style={{ color: '#aaa', fontSize: 13, marginTop: 6 }}>{label}</div>
+    <div className="jy-transparency-page__stat jy-card">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   )
 }

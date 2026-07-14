@@ -69,12 +69,12 @@ export function ReportRenderer({ type, id, data }: ReportRendererProps) {
   })()
 
   return (
-    <>
+    <div data-report-shell>
       {/* v5.10.252 wire dead component #3:JianyuanNavBar 用於 /r/* Beta 路徑
           注意:目前跟 global Navbar 同存(Sprint 3 改 route group(/r)/layout.tsx 隱藏 global)
           userEmail 留 null = 顯示「我的報告 / 登入」、Sprint 2.x 從 server component 傳入 */}
       <JianyuanNavBar />
       {reportContent}
-    </>
+    </div>
   )
 }

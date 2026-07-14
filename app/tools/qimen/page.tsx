@@ -6,7 +6,6 @@ import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
 import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(timeout + 429)
 import AIAnalysisCard from '@/components/AIAnalysisCard'
-import LiveCounter from '@/components/LiveCounter'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
 import { buildFreeToolJsonLd } from '@/lib/seo/free-tool-schema'  // P5 SEO 三層 JSON-LD
 
@@ -426,37 +425,40 @@ export default function QimenToolPage() {
   }
 
   return (
-    <div className="py-16 overflow-x-hidden max-w-full">
+    <div className="jy-page jy-tool-page py-12 md:py-20 overflow-x-hidden max-w-full">
       {/* P5 — 三層 JSON-LD(純 SEO、使用者不可見、零渲染風險) */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildFreeToolJsonLd('qimen')) }}
       />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="jy-container">
         {/* ═══ 標題 ═══ */}
-        <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2 break-words">
-          <span className="text-gradient-gold">奇門遁甲排盤</span>
-        </h1>
-        <p className="text-center text-text-muted mb-2">天地盤 + 九星八門八神 + 格局判斷</p>
-        <p className="text-center text-xs text-text-muted/60 mb-4">不需註冊 &middot; 即時出結果 &middot; 完全免費</p>
+        <div className="jy-tool-hero">
+          <p className="jy-eyebrow">QIMEN · 奇門遁甲</p>
+          <h1>奇門遁甲排盤</h1>
+          <p>選擇排盤時間，查看天地盤、九星八門八神與格局判斷的基礎結果。</p>
+          <ul aria-label="服務特點">
+            <li>不需註冊</li>
+            <li>即時排盤</li>
+            <li>免費查看基礎結果</li>
+          </ul>
+        </div>
 
         {/* ═══ 由來說明 ═══ */}
         <div className="max-w-2xl mx-auto mb-10">
-          <details className="glass rounded-xl p-4 cursor-pointer">
-            <summary className="text-sm font-medium text-amber-400/90 flex items-center gap-2">
-              <span>&#128218;</span> 關於奇門遁甲：帝王之術
-            </summary>
-            <div className="mt-3 text-xs text-text-muted/80 space-y-2 leading-relaxed">
-              <p><strong className="text-white/90">奇門遁甲的由來：</strong>奇門遁甲與太乙神數、六壬神課並稱中國古代三式，被譽為「帝王之術」。傳說黃帝於涿鹿之戰中得九天玄女傳授奇門遁甲以戰勝蚩尤。其體系融合易學、天文、曆法、陰陽五行，歷經數千年發展，至今仍是預測學中最為精密的術數體系之一。</p>
-              <p><strong className="text-white/90">核心原理：</strong>奇門遁甲以九宮格為基本框架，將天盤（天干）、地盤（地干）、九星、八門、八神五層資訊疊加在九宮之上，通過分析各層元素的生剋關係與格局組合，判斷特定時空的吉凶能量分佈。「奇」指乙丙丁三奇，「門」指八門，「遁」指六甲旬首所遁之干。</p>
-              <p><strong className="text-white/90">鑒源的做法：</strong>本系統使用精確的天文曆法數據，嚴格按照古法排盤規則（含超神接氣、陰陽遁局判定、寄宮法則），確保每一宮的天地盤干、九星、八門、八神完全正確。格局判斷涵蓋九遁、28種經典格局。</p>
+          <details className="jy-tool-details">
+            <summary>排盤基礎與閱讀方法</summary>
+            <div className="jy-tool-details__body">
+              <p><strong>奇門遁甲的由來：</strong>奇門遁甲與太乙神數、六壬神課並稱中國古代三式，被譽為「帝王之術」。傳說黃帝於涿鹿之戰中得九天玄女傳授奇門遁甲以戰勝蚩尤。其體系融合易學、天文、曆法、陰陽五行，歷經數千年發展，至今仍是預測學中最為精密的術數體系之一。</p>
+              <p><strong>核心原理：</strong>奇門遁甲以九宮格為基本框架，將天盤（天干）、地盤（地干）、九星、八門、八神五層資訊疊加在九宮之上，通過分析各層元素的生剋關係與格局組合，判斷特定時空的吉凶能量分佈。「奇」指乙丙丁三奇，「門」指八門，「遁」指六甲旬首所遁之干。</p>
+              <p><strong>鑒源的做法：</strong>本系統使用精確的天文曆法數據，嚴格按照古法排盤規則（含超神接氣、陰陽遁局判定、寄宮法則），確保每一宮的天地盤干、九星、八門、八神完全正確。格局判斷涵蓋九遁、28種經典格局。</p>
             </div>
           </details>
         </div>
 
         {/* ═══ 分析進度動畫 ═══ */}
         {loading && !result && (
-          <div className="max-w-lg mx-auto">
+          <div className="max-w-lg mx-auto" role="status" aria-live="polite" aria-busy="true">
             <div className="glass rounded-2xl p-8">
               <h3 className="text-lg font-bold text-cream mb-6 text-center" style={{ fontFamily: 'var(--font-sans)' }}>
                 正在排列奇門遁甲盤
@@ -467,14 +469,15 @@ export default function QimenToolPage() {
                   const isCurrent = currentStep === i
                   return (
                     <div key={i} className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-300 ${
-                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : 'opacity-30'
+                      isCompleted ? 'bg-gold/10' : isCurrent ? 'bg-gold/5' : ''
                     }`}>
                       <span className={`w-6 text-center text-sm transition-all ${isCompleted ? 'text-gold' : isCurrent ? 'text-gold/70 animate-pulse' : 'text-text-muted/40'}`}
+                        aria-hidden="true"
                         dangerouslySetInnerHTML={{ __html: isCompleted ? '&#10003;' : step.icon }} />
                       <span className={`text-sm transition-all ${isCompleted ? 'text-cream' : isCurrent ? 'text-text animate-pulse' : 'text-text-muted/40'}`}>
                         {step.text}
                       </span>
-                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" />}
+                      {isCurrent && <span className="ml-auto w-4 h-4 border-2 border-gold/50 border-t-gold rounded-full animate-spin" aria-hidden="true" />}
                       {isCompleted && <span className="ml-auto text-xs text-gold/60">完成</span>}
                     </div>
                   )
@@ -490,11 +493,11 @@ export default function QimenToolPage() {
         {/* ═══ 表單 ═══ */}
         {!result && !loading && (
           <div className="max-w-lg mx-auto">
-            <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
+            <form onSubmit={handleSubmit} className="jy-tool-form px-6 py-8 md:p-10 space-y-6">
 
               {/* 排盤類型 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">排盤類型</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">排盤類型</legend>
                 <div className="flex rounded-lg overflow-hidden border border-gold/10">
                   {([
                     { v: 'hour' as const, l: '時盤' },
@@ -502,26 +505,28 @@ export default function QimenToolPage() {
                     { v: 'year' as const, l: '年盤' },
                   ]).map(({ v, l }) => (
                     <button key={v} type="button"
+                      aria-pressed={panType === v}
                       onClick={() => setPanType(v)}
                       className={`flex-1 py-2.5 text-sm font-medium transition-all ${panType === v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
                       {l}
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-text-muted/50 mt-1">
+                <p className="text-xs text-text-muted mt-1.5">
                   {panType === 'hour' ? '時盤精度最高，適合判斷具體事件的吉凶方位' : panType === 'day' ? '日盤適合判斷整天的能量趨勢' : '年盤適合判斷整年的大方向'}
                 </p>
-              </div>
+              </fieldset>
 
               {/* 排盤時間 */}
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5">排盤時間</label>
+              <fieldset>
+                <legend className="block text-sm text-text-muted mb-1.5">排盤時間</legend>
                 <div className="flex rounded-lg overflow-hidden border border-gold/10 mb-3">
                   {([
                     { v: 'now' as const, l: '當前時間' },
                     { v: 'custom' as const, l: '自訂時間' },
                   ]).map(({ v, l }) => (
                     <button key={v} type="button"
+                      aria-pressed={timeSource === v}
                       onClick={() => setTimeSource(v)}
                       className={`flex-1 py-2.5 text-sm font-medium transition-all ${timeSource === v ? 'bg-gold/20 text-gold' : 'bg-white/3 text-text-muted hover:bg-white/5'}`}>
                       {l}
@@ -540,14 +545,14 @@ export default function QimenToolPage() {
                     {/* 日期選擇 */}
                     <div className="grid grid-cols-3 gap-3 mb-3">
                       <div>
-                        <label className="block text-[10px] text-text-muted/60 mb-1">年</label>
-                        <input type="number" min="1920" max="2100" value={form.year}
+                        <label htmlFor="qimen-year" className="block text-xs text-text-muted mb-1">年</label>
+                        <input id="qimen-year" type="number" min="1920" max="2100" value={form.year}
                           onChange={(e) => setForm({ ...form, year: e.target.value })}
                           className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-cream text-sm focus:border-gold/40 focus:outline-none" />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-text-muted/60 mb-1">月</label>
-                        <select value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}
+                        <label htmlFor="qimen-month" className="block text-xs text-text-muted mb-1">月</label>
+                        <select id="qimen-month" value={form.month} onChange={(e) => setForm({ ...form, month: e.target.value })}
                           className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-cream text-sm focus:border-gold/40 focus:outline-none">
                           {Array.from({ length: 12 }, (_, i) => (
                             <option key={i + 1} value={i + 1}>{i + 1} 月</option>
@@ -555,8 +560,8 @@ export default function QimenToolPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[10px] text-text-muted/60 mb-1">日</label>
-                        <select value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })}
+                        <label htmlFor="qimen-day" className="block text-xs text-text-muted mb-1">日</label>
+                        <select id="qimen-day" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })}
                           className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-cream text-sm focus:border-gold/40 focus:outline-none">
                           {Array.from({ length: 31 }, (_, i) => (
                             <option key={i + 1} value={i + 1}>{i + 1} 日</option>
@@ -566,22 +571,26 @@ export default function QimenToolPage() {
                     </div>
                     {/* 時辰選擇 */}
                     <div>
-                      <label className="block text-[10px] text-text-muted/60 mb-1">時辰</label>
-                      <select value={form.hour} onChange={(e) => setForm({ ...form, hour: e.target.value })}
+                      <label htmlFor="qimen-hour" className="block text-xs text-text-muted mb-1">時辰</label>
+                      <select id="qimen-hour" value={form.hour} onChange={(e) => setForm({ ...form, hour: e.target.value })}
                         className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-cream text-sm focus:border-gold/40 focus:outline-none">
                         {SHICHEN.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                       </select>
                     </div>
                   </>
                 )}
-              </div>
+              </fieldset>
+
+              <p className="jy-tool-privacy-note">
+                送出後，所選排盤類型與時間會用於排盤及 AI 輔助解讀。請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
+              </p>
 
               {/* 提交按鈕 */}
               <button type="submit" disabled={loading}
                 className="w-full py-4 font-bold rounded-xl text-lg transition-all bg-gold text-dark btn-glow disabled:opacity-50">
                 {loading ? '排盤中...' : '開始排盤'}
               </button>
-              {error && <p className="text-red-400 text-sm text-center mt-2">{error}</p>}
+              {error && <p className="jy-alert jy-alert--danger" role="alert">{error}</p>}
             </form>
           </div>
         )}
@@ -590,7 +599,7 @@ export default function QimenToolPage() {
         {result && (
           <div className="space-y-8">
             <div className="text-center">
-              <button onClick={() => setResult(null)} className="text-sm text-gold hover:underline">&larr; 重新排盤</button>
+              <button onClick={() => setResult(null)} className="inline-flex min-h-11 items-center px-3 text-sm text-gold hover:underline">&larr; 重新排盤</button>
             </div>
 
             {/* ═══ 時空概覽卡片 ═══ */}
@@ -965,88 +974,12 @@ export default function QimenToolPage() {
             </div>
 
             {/* ═══ 速算提示 ═══ */}
-            <p className="text-center text-xs text-text-muted/50 leading-relaxed">
-              以上為即時排盤結果。如需針對特定事件的深度奇門分析，請查看付費出門訣服務
+            <p className="text-center text-xs text-text-muted/70 leading-relaxed">
+              以上為即時排盤速覽，請依實際情況核對並自行判斷。
             </p>
 
             {/* v5.4.17 P0 freemium paywall */}
             <FreemiumPaywall systemName="奇門" />
-
-            {/* ═══ 付費升級引導（重點推出門訣 E1/E2） ═══ */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(26,58,92,0.4))' }}>
-              <div className="p-8 md:p-10">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                    想知道 <span className="text-gradient-gold">最佳出門時機</span> 嗎？
-                  </h3>
-                  <p className="text-base text-text max-w-2xl mx-auto leading-relaxed">
-                    您剛才看到的是奇門遁甲的基礎排盤。我們的<strong className="text-white">出門訣服務</strong>將根據您的具體事件，
-                    結合 25 步專業評分系統，為您挑選出最有利的出行時間與方位。
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#128205;</div>
-                    <h4 className="font-bold text-white mb-1">精準方位指引</h4>
-                    <p className="text-sm text-text-muted">根據八門九星分析，告訴您往哪個方向出門最有利</p>
-                  </div>
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#9200;</div>
-                    <h4 className="font-bold text-white mb-1">Top 3 吉時推薦</h4>
-                    <p className="text-sm text-text-muted">從所有可用時段中挑選最佳出門時間，含日曆邀約</p>
-                  </div>
-                  <div className="glass rounded-xl p-5 text-center">
-                    <div className="text-3xl mb-2">&#128302;</div>
-                    <h4 className="font-bold text-white mb-1">補運指南</h4>
-                    <p className="text-sm text-text-muted">針對您的事件提供穿著、配飾、方位等補運建議</p>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
-                    <Link href="/checkout?plan=E1"
-                      className="px-10 py-4 bg-gold text-dark font-bold rounded-xl text-lg btn-glow">
-                      事件擇吉 $59
-                    </Link>
-                    <Link href="/checkout?plan=E2"
-                      className="px-10 py-4 glass text-white font-semibold rounded-xl text-lg hover:bg-white/10">
-                      月度單盤 $29
-                    </Link>
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-4 text-xs text-text-muted/60 mb-4">
-                    <span>&#128274; Stripe 安全支付</span>
-                    <span>&#9889; 約 30-60 分鐘出報告</span>
-                    <span>&#128230; PDF 永久保存</span>
-                  </div>
-
-                  {/* v5.4.7 P3 social proof:已 X 份完整報告生成、增信任 */}
-                  <p className="text-xs text-text-muted/70 mb-4">
-                    已有 <LiveCounter type="paid" /> 份完整付費報告完成交付
-                  </p>
-
-                  {/* v5.4.5 Item 1 批次 6:文案強化(Gemini 建議「術 vs 道」「終身藍圖」) */}
-                  <div className="glass rounded-xl p-5 max-w-lg mx-auto mb-4 border border-gold/20">
-                    <p className="text-sm text-cream mb-2 font-semibold">奇門助你贏在當下、但你的「終身藍圖」看過了嗎?</p>
-                    <p className="text-xs text-text-muted mb-3 leading-relaxed">
-                      奇門遁甲擅長捕捉「當下時空」、但真正的勝算、取決於你的命格底氣。
-                      完整人生藍圖整合八字、紫微、占星、吠陀、易經、人類圖、姓名學等 14 套東西方系統、
-                      <strong className="text-cream">為你做 360° 交叉驗證、找出獨特的天命密碼</strong>。
-                    </p>
-                    <Link href="/checkout?plan=C" className="inline-block px-6 py-2.5 text-sm bg-gradient-to-r from-gold/40 to-amber-500/40 text-gold rounded-lg hover:from-gold/55 hover:to-amber-500/55 transition-all border border-gold/40 font-semibold shadow-md">
-                      解鎖人生藍圖完整報告 $89
-                    </Link>
-                    <p className="text-[10px] text-text-muted/60 mt-2">
-                      含八字 / 紫微 / 占星 / 易經 / 人類圖等 14 套深度解析、約 46,000 字
-                    </p>
-                  </div>
-
-                  <p className="text-xs text-text-muted/50">
-                    還沒準備好?{' '}
-                    <Link href="/auth/signup" className="text-gold underline hover:no-underline">免費註冊帳號</Link>
-                    {' '}先體驗更多免費工具
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

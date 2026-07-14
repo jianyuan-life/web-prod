@@ -21,17 +21,17 @@ export function ReportNarrativeCard({ narrative }: { narrative?: unknown }) {
 
   return (
     <section
-      aria-label="命格綜合"
+      className="report-executive-brief"
+      aria-labelledby="report-executive-brief-title"
       style={{
-        background: 'linear-gradient(160deg, var(--jy-bg-card, #111A30), var(--jy-bg-raised, #0E1428))',
-        border: '1px solid var(--jy-border, rgba(201,168,76,0.16))',
-        borderRadius: '18px', padding: '30px 28px', margin: '0 0 36px',
+        padding: '30px 28px', margin: '0 0 36px',
       }}
     >
+      <p id="report-executive-brief-title" style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC", serif)', fontSize: '0.78rem', letterSpacing: '0.28em', color: 'var(--jy-text-gold-300, #E0C679)', marginBottom: '12px', textAlign: 'center' }}>報 告 摘 要</p>
+
       {/* 命格原型 hero */}
       {archetype && (
         <div style={{ textAlign: 'center', marginBottom: oneLiner || talents.length || risks.length ? '24px' : '0' }}>
-          <p style={{ fontFamily: 'var(--jy-font-serif, "Noto Serif TC", serif)', fontSize: '0.78rem', letterSpacing: '0.28em', color: 'var(--jy-text-gold-300, #E0C679)', marginBottom: '12px' }}>命 格 原 型</p>
           <h2 style={{ fontFamily: 'var(--jy-font-serif, serif)', fontWeight: 300, fontSize: 'clamp(1.9rem, 4vw, 2.8rem)', letterSpacing: '0.08em', color: 'var(--jy-text-gold-light, #E0C068)', lineHeight: 1.25 }}>{archetype}</h2>
           {oneLiner && <p style={{ fontFamily: 'var(--jy-font-serif, serif)', fontWeight: 300, fontSize: 'clamp(1rem, 2.2vw, 1.3rem)', color: 'var(--jy-text-secondary, #B3B8C5)', marginTop: '14px', letterSpacing: '0.04em', maxWidth: '28em', marginInline: 'auto' }}>{oneLiner}</p>}
         </div>
@@ -42,7 +42,7 @@ export function ReportNarrativeCard({ narrative }: { narrative?: unknown }) {
 
       {/* TOP3 天賦 / 課題 */}
       {(talents.length > 0 || risks.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: talents.length && risks.length ? '1fr 1fr' : '1fr', gap: '24px' }}>
+        <div className={talents.length && risks.length ? 'report-executive-brief__columns report-executive-brief__columns--split' : 'report-executive-brief__columns'} style={{ gap: '24px' }}>
           {talents.length > 0 && (
             <div>
               <h3 style={{ fontFamily: 'var(--jy-font-serif, serif)', fontSize: '0.98rem', letterSpacing: '0.1em', color: 'var(--wx-wood, #5B8F6E)', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--jy-border-soft, rgba(201,168,76,0.1))' }}>TOP 3 天賦</h3>

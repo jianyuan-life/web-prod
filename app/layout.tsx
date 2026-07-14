@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import pkg from '../package.json'
-import { Noto_Serif_TC, Noto_Sans_TC, Noto_Serif_SC, Noto_Sans_SC, Cinzel } from 'next/font/google'
 import Link from 'next/link'
 import Image from 'next/image'
 import Script from 'next/script'
@@ -19,23 +18,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { ThemeLanguageSettings } from '@/components/ThemeLanguageSettings'
 import { FirstVisitWarmBanner } from '@/components/FirstVisitWarmBanner'
 import './globals.css'
-
-// v5.3.44 字型 variable 保留歷史命名（QA 稽核發現動了會破壞 200+ 處品牌標題視覺）
-// --font-sans = Noto Serif TC（品牌 Serif，Logo/封面/大標題用）
-// --font-body = Noto Sans TC（真 Sans，正文用；報告頁 CSS 顯式用 var(--font-body)）
-// 命名違反直覺但不動，未來統一改名另開 Wave。
-const notoSerif = Noto_Serif_TC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans', display: 'swap' })
-const notoSans = Noto_Sans_TC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body', display: 'swap' })
-// 簡體中文字體（簡體模式時由 LocaleContent 切換 class）
-// v5.10.253 P1 perf 修(本 session 補做):
-//   - preload: false 防 server-side 強行 preload SC font(只 zh-TW 用戶不會看到簡體、白白下載 ~1MB)
-//   - SC 字體只在 .lang-sc class 存在時才實際載入(瀏覽器懶載)
-//   - 對應 home FCP 3964ms 改善目標(transfer 4239→3200 KiB 預期)
-const notoSerifSC = Noto_Serif_SC({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-sans-sc', display: 'swap', preload: false })
-const notoSansSC = Noto_Sans_SC({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-body-sc', display: 'swap', preload: false })
-// v5.10.198 UI redesign Phase 2:Cinzel for display(英文 logo / Chapter numbers、Jamie 規格書 2.2 --font-display)
-// v5.10.253 perf 修:weight 從 4 個減為 2 個(只用 500/700、其他 weight 0 引用)、節省 ~200 KiB
-const cinzel = Cinzel({ subsets: ['latin'], weight: ['500', '700'], variable: '--font-display-google', display: 'swap' })
+import './presentation.css'
 
 // T16 v5.10.363(L4 Gemini Vision mobile 修):viewport export
 // 原 audit:layout.tsx 缺 viewport export、iOS Safari notch 區可能渲染錯
@@ -88,7 +71,7 @@ export const metadata: Metadata = {
 // 已 revert、保留 middleware 端 nonce 生成、Sprint 6 改用 per-page dynamic + edge runtime 方案再上
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-TW" className={`${notoSerif.variable} ${notoSans.variable} ${notoSerifSC.variable} ${notoSansSC.variable} ${cinzel.variable}`} suppressHydrationWarning>
+    <html lang="zh-TW" suppressHydrationWarning>
       <head>
         {/* v5.10.395 Warm Light Theme v1.1 — SSR no-flash + R8 localStorage migration
             必須在 ThemeProvider hydrate 前執行、避免閃爍
@@ -105,6 +88,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             節省 LCP 100-300ms(尤其 mobile 3G/4G、handshake 高延遲)*/}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Serif+TC:wght@400;500;600;700&display=swap"
+        />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
         <link rel="dns-prefetch" href="https://connect.facebook.net" />
@@ -308,9 +295,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && <FirstVisitWarmBanner />}
         <main id="main-content" className="pt-16">{children}</main>
         <GlobalBackToTop />
-        <footer className="border-t border-gold/10 mt-20">
+        <footer className="jy-footer">
           {/* 英文/簡體翻譯覆蓋範圍：v5.3.95 起 footer 納入 LocaleContent */}
-          <div className="max-w-6xl mx-auto px-6 py-16">
+          <div className="jy-footer__inner">
             {/* 古典分隔裝飾 */}
             <div className="text-center mb-10">
               <div className="flex items-center justify-center gap-3 mb-3">
@@ -326,14 +313,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
               <div>
-                <h4 className="text-gold/80 font-semibold mb-3">命理服務</h4>
+                <h2 className="text-gold/80 font-semibold mb-3">命理服務</h2>
                 <div className="space-y-2 text-text-muted">
                   <Link href="/tools/bazi" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">免費命理速算</Link>
                   <Link href="/pricing" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">方案與定價</Link>
                 </div>
               </div>
               <div>
-                <h4 className="text-gold/80 font-semibold mb-3">了解更多</h4>
+                <h2 className="text-gold/80 font-semibold mb-3">了解更多</h2>
                 <div className="space-y-2 text-text-muted">
                   <Link href="/#systems" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">十四大系統</Link>
                   <Link href="/#how" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">分析流程</Link>
@@ -344,14 +331,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
               </div>
               <div>
-                <h4 className="text-gold/80 font-semibold mb-3">法律條款</h4>
+                <h2 className="text-gold/80 font-semibold mb-3">法律條款</h2>
                 <div className="space-y-2 text-text-muted">
                   <Link href="/privacy" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">隱私政策</Link>
                   <Link href="/terms" className="flex items-center min-h-[44px] md:block md:min-h-0 hover:text-gold transition-colors">使用條款</Link>
                 </div>
               </div>
               <div>
-                <h4 className="text-gold/80 font-semibold mb-3">聯繫我們</h4>
+                <h2 className="text-gold/80 font-semibold mb-3">聯繫我們</h2>
                 <EmailLink className="inline-flex items-center min-h-[44px] md:min-h-0 text-text-muted hover:text-gold transition-colors" />
               </div>
             </div>

@@ -51,12 +51,12 @@ export default function ConsultIntro({
   }
 
   return (
-    <div className="glass rounded-2xl p-6 md:p-8 mb-8" style={{ border: '1px solid rgba(201,168,76,0.25)' }}>
+    <section className="glass rounded-2xl p-6 md:p-8 mb-8" style={{ border: '1px solid rgba(201,168,76,0.25)' }} aria-labelledby="consult-intro-heading">
       {/* 顧問頭像列 */}
       <div className="flex items-center gap-3 mb-5">
         <div className="w-10 h-10 rounded-full bg-gold/15 border border-gold/30 flex items-center justify-center text-gold font-bold" aria-hidden>鑒</div>
         <div>
-          <div className="text-cream text-sm font-semibold">鑒源命理顧問</div>
+          <h2 id="consult-intro-heading" className="text-cream text-sm font-semibold">鑒源命理顧問</h2>
           <div className="text-text-muted text-[11px]">為您的「{planName}」起盤前、先聊兩句</div>
         </div>
       </div>
@@ -104,6 +104,6 @@ export default function ConsultIntro({
         className="mt-4 text-text-muted/70 hover:text-text-muted text-xs underline cursor-pointer">
         跳過、直接填表 →
       </button>
-    </div>
+    </section>
   )
 }

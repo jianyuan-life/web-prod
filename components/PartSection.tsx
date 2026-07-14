@@ -65,12 +65,12 @@ export default function PartSection({
   }, [expanded])
 
   return (
-    <section ref={sectionRef} className="mb-12 sm:mb-16" id={`part-${part.key}`}>
+    <section ref={sectionRef} className="report-part-section mb-12 sm:mb-16" id={`part-${part.key}`}>
       {/* 篇章分隔帶 */}
       <button
         type="button"
         onClick={() => setExpanded(prev => !prev)}
-        className="w-full mb-4 group"
+        className="report-part-section__toggle w-full mb-4 group"
         aria-expanded={expanded}
         style={{
           display: 'block',
@@ -198,7 +198,7 @@ export default function PartSection({
             nav 9 hrefs vs chapter id 只 3 個(qi+cheng)、6 個 dead = zhuan/he 折疊
           修補:children 永遠 render、用 CSS height/overflow 折疊(對齊 CollapsibleSection L113-130 設計) */}
       <div
-        className="pl-0 sm:pl-4"
+        className="report-part-section__content pl-0 sm:pl-4"
         style={{
           animation: expanded ? 'fadeIn 0.3s ease' : undefined,
           height: expanded ? 'auto' : 0,

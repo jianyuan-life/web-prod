@@ -8,20 +8,22 @@ import { join } from 'path'
 
 const ROOT = process.cwd()
 
-// 權威源:checkout API PRICE_MAP(L17-25)
-const checkoutSrc = readFileSync(join(ROOT, 'app/api/checkout/route.ts'), 'utf-8')
+// 權威源：lib/plan-names.ts 的 PLAN_PRICES；checkout route 僅 import SSOT。
+const planNamesSrc = readFileSync(join(ROOT, 'lib/plan-names.ts'), 'utf-8')
 
-function parsePriceMap(src) {
+function parsePlanPrices(src) {
   const map = {}
-  const re = /(\b[CDEGR]\d?\d?)\s*:\s*\{\s*amount:\s*(\d+),\s*name:\s*['"](.+?)['"]/g
+  const block = src.match(/export const PLAN_PRICES[^=]*=\s*\{([\s\S]*?)\n\}/)?.[1] || ''
+  const re = /^\s*(?:['"]([^'"]+)['"]|([A-Z]\d*))\s*:\s*(\d+)/gm
   let m
-  while ((m = re.exec(src)) !== null) {
-    map[m[1]] = { amount: parseInt(m[2], 10), name: m[3] }
+  while ((m = re.exec(block)) !== null) {
+    const code = m[1] || m[2]
+    map[code] = { amount: parseInt(m[3], 10) }
   }
   return map
 }
 
-const PRICE_MAP = parsePriceMap(checkoutSrc)
+const PRICE_MAP = parsePlanPrices(planNamesSrc)
 
 suite('checkout API PRICE_MAP 解析')
 test('找到至少 8 個方案', () => {
@@ -45,16 +47,14 @@ test('amount 在合理範圍(1000-50000 cents = $10-$500)', () => {
 suite('Stripe webhook PLAN_NAMES 對齊')
 const webhookSrc = readFileSync(join(ROOT, 'app/api/webhook/stripe/route.ts'), 'utf-8')
 test('webhook PLAN_NAMES 含全 8 方案', () => {
-  for (const k of Object.keys(PRICE_MAP)) {
-    assert(webhookSrc.includes(`${k}: '`),
-      `webhook PLAN_NAMES 缺方案 ${k}`)
-  }
+  assert(webhookSrc.includes("import { PLAN_NAMES } from '@/lib/plan-names'"),
+    'webhook 應直接 import 方案名稱 SSOT')
 })
 
 suite('前端 pricing 頁無 stale 價格')
 const pricingSrc = readFileSync(join(ROOT, 'app/pricing/page.tsx'), 'utf-8')
 test('E1 顯示 $59(非 stale $89/$119)', () => {
-  const hasNew = pricingSrc.includes('$59') || pricingSrc.includes('5900')
+  const hasNew = /code:\s*['"]E1['"][\s\S]{0,120}?price:\s*59\b/.test(pricingSrc)
   // 精確 stale pattern:'事件出門訣 $89' 或 '事件出門訣($89)' 或 'E1 ... $89' 緊密綁定
   const stalePatterns = [
     /事件出門訣\s*[\$＄]89(?!\d)/,
@@ -67,7 +67,7 @@ test('E1 顯示 $59(非 stale $89/$119)', () => {
   assert(hasNew && !stale, 'E1 應顯示 $59、不應有 $89/$119 緊密綁定 stale 價')
 })
 test('E2 顯示 $29(非 stale $99)', () => {
-  const hasNew = pricingSrc.includes('$29') || pricingSrc.includes('2900')
+  const hasNew = /code:\s*['"]E2['"][\s\S]{0,120}?price:\s*29\b/.test(pricingSrc)
   const stalePatterns = [
     /月度出門訣\s*[\$＄]99(?!\d)/,
     /月度出門訣[（(]\s*[\$＄]99/,

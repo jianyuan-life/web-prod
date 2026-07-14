@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="py-20 max-w-3xl mx-auto px-6">
+    <article className="jy-page jy-reading-page py-20 max-w-3xl mx-auto px-6">
       <h1 className="text-3xl font-bold text-gradient-gold mb-8">使用條款</h1>
       <div className="prose prose-invert prose-sm max-w-none space-y-6 text-text">
         <p><strong>最後更新：</strong>2026年3月31日</p>
@@ -52,6 +52,6 @@ export default function TermsPage() {
         <h2 className="text-xl font-semibold text-white">7. 聯繫方式</h2>
         <p>如有任何問題，請聯繫：<a href="mailto:support@jianyuan.life" className="text-gold">support@jianyuan.life</a></p>
       </div>
-    </div>
+    </article>
   )
 }

@@ -40,7 +40,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         reportTitle={`家族藍圖 · ${data.meta.familyName}`}
         onDownloadPDF={() => { window.location.href = `/api/r/family-blueprint/${data.meta.id}/pdf` }}
       />
-      <main className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
+      <article className="min-h-screen text-[var(--jy-text-primary)] relative overflow-hidden" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
         <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8 relative z-10">
 
         {/* v5.10.319 序向動畫(Gemini 開箱儀式感)*/}
@@ -445,7 +445,7 @@ export function FamilyBlueprintReport({ id, data }: FamilyBlueprintReportProps) 
         </Stagger>
         </div>
         <BackToTop />
-      </main>
+      </article>
     </>
   )
 }
@@ -479,7 +479,7 @@ function PairItem({ label, verdict, text }: { label: string; verdict: string; te
 
 function SkeletonView({ id }: { id: string }) {
   return (
-    <main className="min-h-screen text-[var(--jy-text-primary)]" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
+    <article className="min-h-screen text-[var(--jy-text-primary)]" style={{ background: 'var(--jy-bg-glow)', backgroundColor: 'var(--jy-bg-void)' }}>
       <div className="mx-auto max-w-[1280px] px-4 py-20 sm:px-6 lg:px-8">
         <Eyebrow>FAMILY BLUEPRINT · 家族藍圖</Eyebrow>
         <h1 className="mt-8 font-bold" style={{ fontFamily: 'var(--jy-font-display)', fontSize: 'clamp(48px, 6vw, 88px)', lineHeight: 1.05 }}>家族藍圖</h1>
@@ -490,6 +490,6 @@ function SkeletonView({ id }: { id: string }) {
           <p className="mt-3 text-sm text-[var(--jy-text-tertiary)]">Sprint 1 demo 路徑:<code>/r/family-blueprint/he-jia</code></p>
         </Card>
       </div>
-    </main>
+    </article>
   )
 }

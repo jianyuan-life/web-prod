@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 
 export default function WhitepaperPage() {
   return (
-    <div className="py-20 max-w-3xl mx-auto px-6">
+    <article className="jy-page jy-public-page jy-whitepaper-page py-20 max-w-3xl mx-auto px-6">
       {/* Hero */}
       <header className="text-center mb-16">
         <div className="inline-block mb-4 text-sm tracking-widest text-gold uppercase">
@@ -187,7 +187,7 @@ export default function WhitepaperPage() {
           研究部落格
         </Link>
       </div>
-    </div>
+    </article>
   )
 }
 

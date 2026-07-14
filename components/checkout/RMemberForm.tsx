@@ -4,6 +4,7 @@ import { useState } from 'react'
 import BirthTimeField from './BirthTimeField'
 import CustomerNote from './CustomerNote'
 import FamilyMemberPicker from './FamilyMemberPicker'
+import CheckoutSecurityNote from './CheckoutSecurityNote'
 import { type FamilyMember } from './types'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import { searchLocations, searchCities, type LocationSearchResult, type City, type Country } from '@/lib/cities'
@@ -72,7 +73,7 @@ function MemberCityField({ member, index, updateMember }: {
 
   return (
     <div className="relative">
-      <label className="block text-xs text-text-muted mb-1">出生地區 <span className="text-red-400">*</span></label>
+      <label htmlFor={`r-member-${index}-city`} className="block text-xs text-text-muted mb-1">出生地區 <span className="text-red-400">*</span></label>
       {needCityFor && (
         <div className="mb-1 flex items-center gap-2">
           <span className="text-xs text-gold">{needCityFor} — 請輸入城市名</span>
@@ -80,7 +81,7 @@ function MemberCityField({ member, index, updateMember }: {
             className="text-[10px] text-red-400 hover:text-red-300">取消</button>
         </div>
       )}
-      <input type="text"
+      <input id={`r-member-${index}-city`} type="text"
         placeholder={needCityFor ? `輸入${needCityFor}的城市名...` : '輸入地區名（如：台灣、香港、日本）'}
         value={member.birthCity || ''}
         onChange={(e) => onInputChange(e.target.value)}
@@ -94,19 +95,19 @@ function MemberCityField({ member, index, updateMember }: {
       )}
       {/* 搜尋結果下拉 */}
       {results.length > 0 && (
-        <div className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-dark-card border border-gold/20 rounded-lg shadow-lg">
+        <div className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-dark-card border border-gold/20 rounded-lg shadow-lg" role="listbox" aria-label={`第 ${index + 1} 位當事人的出生地區搜尋結果`}>
           {results.map((item, i) => (
             item.type === 'city' && item.city ? (
               <button key={`city-${i}`} type="button"
                 onClick={() => selectCity(item.city!)}
-                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gold/10 transition-colors">
+                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-gold/10 transition-colors" role="option" aria-selected="false">
                 {item.city.name}（{item.city.country}）
                 <span className="text-text-muted/40 text-xs ml-1">UTC{item.city.tz >= 0 ? '+' : ''}{item.city.tz}</span>
               </button>
             ) : item.type === 'country' && item.country ? (
               <button key={`country-${i}`} type="button"
                 onClick={() => selectCountry(item.country!, item.isMultiTz || false)}
-                className="w-full text-left px-3 py-2 text-sm text-gold hover:bg-gold/10 transition-colors">
+                className="w-full text-left px-3 py-2 text-sm text-gold hover:bg-gold/10 transition-colors" role="option" aria-selected="false">
                 {item.country.name}
                 {item.isMultiTz && <span className="text-text-muted/40 text-xs ml-1">（多時區，請選城市）</span>}
               </button>
@@ -125,7 +126,11 @@ export default function RMemberForm({
   loading, error, finalPrice, isFormValid, onSubmit,
 }: RMemberFormProps) {
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="checkout-form-card space-y-4" aria-labelledby="relation-form-heading">
+      <div>
+        <p className="checkout-order-kicker">Relationship records</p>
+        <h2 id="relation-form-heading" className="text-xl font-semibold text-cream">填寫關係分析資料</h2>
+      </div>
       <div className="space-y-4">
         {rMembers.map((member, index) => {
           const label = index === 0 ? '我' : index === 1 ? '對方' : `第 ${index + 1} 位當事人`
@@ -162,19 +167,19 @@ export default function RMemberForm({
                 })
               }} />
               <div>
-                <label className="block text-xs text-text-muted mb-1">姓名 *</label>
-                <input type="text" required placeholder={`請輸入${label}的姓名`}
+                <label htmlFor={`r-member-${index}-name`} className="block text-xs text-text-muted mb-1">姓名 *</label>
+                <input id={`r-member-${index}-name`} type="text" required placeholder={`請輸入${label}的姓名`}
                   value={member.name}
                   onChange={(e) => updateRMember(index, { ...member, name: e.target.value })}
                   className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none text-sm"
                 />
               </div>
               {/* 曆法選擇 */}
-              <div>
-                <label className="block text-xs text-text-muted mb-1">曆法</label>
+              <fieldset>
+                <legend className="block text-xs text-text-muted mb-1">曆法</legend>
                 <div className="flex gap-4">
                   {[{ v: 'solar', l: '國曆' }, { v: 'lunar', l: '農曆' }].map(({ v, l }) => (
-                    <label key={v} className="flex items-center gap-2 cursor-pointer">
+                    <label key={v} className="checkout-choice flex items-center gap-2 cursor-pointer">
                       <input type="radio" name={`r-cal-${index}`} value={v}
                         checked={(member.calendarType || 'solar') === v}
                         onChange={() => updateRMember(index, { ...member, calendarType: v as 'solar' | 'lunar' })}
@@ -183,7 +188,7 @@ export default function RMemberForm({
                     </label>
                   ))}
                   {member.calendarType === 'lunar' && (
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="checkout-choice flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={member.lunarLeap || false}
                         onChange={(e) => updateRMember(index, { ...member, lunarLeap: e.target.checked })}
                         className="accent-gold" />
@@ -191,61 +196,62 @@ export default function RMemberForm({
                     </label>
                   )}
                 </div>
-              </div>
+              </fieldset>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs text-text-muted mb-1">出生年</label>
-                  <input type="number" min="1920" max="2030"
+                  <label htmlFor={`r-member-${index}-year`} className="block text-xs text-text-muted mb-1">出生年</label>
+                  <input id={`r-member-${index}-year`} type="number" min="1920" max="2030"
                     value={member.year}
                     onChange={(e) => updateRMember(index, { ...member, year: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted mb-1">月</label>
-                  <select value={member.month} onChange={(e) => updateRMember(index, { ...member, month: e.target.value })}
+                  <label htmlFor={`r-member-${index}-month`} className="block text-xs text-text-muted mb-1">月</label>
+                  <select id={`r-member-${index}-month`} value={member.month} onChange={(e) => updateRMember(index, { ...member, month: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
                     {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted mb-1">日</label>
-                  <select value={member.day} onChange={(e) => updateRMember(index, { ...member, day: e.target.value })}
+                  <label htmlFor={`r-member-${index}-day`} className="block text-xs text-text-muted mb-1">日</label>
+                  <select id={`r-member-${index}-day`} value={member.day} onChange={(e) => updateRMember(index, { ...member, day: e.target.value })}
                     className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none">
                     {Array.from({ length: 31 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}日</option>)}
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs text-text-muted mb-1">性別 *</label>
+              <fieldset>
+                <legend className="block text-xs text-text-muted mb-1">性別 *</legend>
                 <div className="flex gap-6">
                   {[{ v: 'M', l: '男' }, { v: 'F', l: '女' }].map(({ v, l }) => (
-                    <label key={v} className="flex items-center gap-2 cursor-pointer">
+                    <label key={v} className="checkout-choice flex items-center gap-2 cursor-pointer">
                       <input type="radio" name={`r-gender-${index}`} value={v} checked={member.gender === v}
                         onChange={() => updateRMember(index, { ...member, gender: v })} className="accent-gold" />
                       <span className="text-sm text-text">{l}</span>
                     </label>
                   ))}
                 </div>
-              </div>
+              </fieldset>
               {/* v5.10.5 R 各成員獨立婚姻狀況(感情/夫妻互動段個性化)*/}
-              <div>
-                <label className="block text-xs text-text-muted mb-1">婚姻狀況 *</label>
+              <fieldset>
+                <legend className="block text-xs text-text-muted mb-1">婚姻狀況 *</legend>
                 <div className="flex gap-6">
                   {[{ v: 'unmarried' as const, l: '未婚' }, { v: 'married' as const, l: '已婚' }].map(({ v, l }) => (
-                    <label key={v} className="flex items-center gap-2 cursor-pointer">
+                    <label key={v} className="checkout-choice flex items-center gap-2 cursor-pointer">
                       <input type="radio" name={`r-marital-${index}`} value={v} checked={(member.marital_status || 'unmarried') === v}
                         onChange={() => updateRMember(index, { ...member, marital_status: v })} className="accent-gold" />
                       <span className="text-sm text-text">{l}</span>
                     </label>
                   ))}
                 </div>
-              </div>
+              </fieldset>
               <BirthTimeField
                 timeMode={member.timeMode}
                 setTimeMode={(m) => updateRMember(index, { ...member, timeMode: m })}
                 hour={member.hour}
                 minute={member.minute}
+                idPrefix={`r-member-${index}-time`}
                 onChange={(field, val) => updateRMember(index, { ...member, [field]: val })}
               />
               {/* 出生地區（含地理編碼搜尋） */}
@@ -263,14 +269,15 @@ export default function RMemberForm({
         <button type="button" onClick={addRMember}
           className="w-full py-3 border border-gold/30 rounded-xl text-gold text-sm hover:bg-gold/10 transition-all">
           + 加入第 {rMembers.length + 1} 位當事人
-          <span className="text-text-muted ml-2">(+$19)</span>
+          <span className="text-text-muted ml-2">（一次性 + USD 19）</span>
         </button>
       )}
 
       {/* 關係說明 */}
       <div className="border-t border-gold/10 pt-4">
-        <label className="block text-xs text-text-muted mb-1">關係說明 *（最多 200 字）</label>
+        <label htmlFor="r-relation-description" className="block text-xs text-text-muted mb-1">關係說明 *（最多 200 字）</label>
         <textarea
+          id="r-relation-description"
           required
           maxLength={200}
           rows={3}
@@ -284,7 +291,9 @@ export default function RMemberForm({
 
       <CustomerNote customerNote={customerNote} setCustomerNote={setCustomerNote} />
 
-      {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+      {error && <p className="checkout-form-error text-sm" role="alert">{error}</p>}
+
+      <CheckoutSecurityNote />
 
       <button
         type="submit" disabled={loading || !isFormValid}
@@ -294,17 +303,10 @@ export default function RMemberForm({
             : 'bg-white/10 text-text-muted cursor-not-allowed'
         }`}
       >
-        {loading ? '跳轉付款中...' : !isFormValid ? '請填寫完整資料' : finalPrice === 0 ? '免費領取報告' : `確認付款 — $${finalPrice}`}
+        {loading ? '跳轉付款中...' : !isFormValid ? '請填寫完整資料' : finalPrice === 0 ? '檢查資料並免費領取報告' : `檢查資料並付款 — USD ${finalPrice}`}
       </button>
-      {/* v5.4.21 P0 修(Gemini UI audit):trust badges 強化(R 雙人方案) */}
-      <div className="flex flex-wrap justify-center gap-3 text-[10px] text-text-muted/70">
-        <span>&#128274; Stripe 加密支付</span>
-        <span>&#128737;&#65039; SSL 256-bit</span>
-        <span>&#128230; PDF 永久保存</span>
-        <span>&#127919; 失敗自動重試 + 24 小時人工補單</span>
-      </div>
       <p className="text-xs text-text-muted/60 text-center">
-        付款由 Stripe 安全處理、報告平均需 30 分鐘以上、出門訣需 40 分鐘以上
+        報告平均需 30 分鐘以上、出門訣需 40 分鐘以上
       </p>
     </form>
   )

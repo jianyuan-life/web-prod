@@ -41,7 +41,7 @@ export function ThemeToggleSimple() {
       <button
         type="button"
         aria-label="切換主題(載入中)"
-        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-line text-xs"
+        className="jy-theme-button gap-1.5 px-3 text-xs"
         disabled
       >
         <Sun size={14} aria-hidden />
@@ -74,7 +74,7 @@ export function ThemeToggleSimple() {
       }}
       aria-label={`切換至${nextLabel}主題`}
       title={`切換至${nextLabel}主題`}
-      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-line hover:border-line-strong transition-colors text-xs"
+      className="jy-theme-button gap-1.5 px-3 text-xs"
     >
       {currentIcon}
       <span className="hidden sm:inline">{nextLabel}</span>

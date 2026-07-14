@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="py-20 max-w-3xl mx-auto px-6">
+    <article className="jy-page jy-reading-page py-20 max-w-3xl mx-auto px-6">
       <h1 className="text-3xl font-bold text-gradient-gold mb-8">隱私政策</h1>
       <div className="prose prose-invert prose-sm max-w-none space-y-6 text-text">
         <p><strong>最後更新：</strong>2026年3月31日</p>
@@ -97,6 +97,6 @@ export default function PrivacyPage() {
         <p>隱私相關問題請聯繫:<a href="mailto:support@jianyuan.life" className="text-gold">support@jianyuan.life</a></p>
         <p className="text-text-muted text-sm">本政策最後更新:2026-04-28(v5.6.10、新增 GDPR / CCPA 條款 + Cookie Consent Mode v2)</p>
       </div>
-    </div>
+    </article>
   )
 }

@@ -240,7 +240,7 @@ const SECTIONS: Section[] = [
 
 export default function FAQPage() {
   return (
-    <div className="py-24">
+    <div className="jy-page jy-public-page jy-faq-page py-24">
       <div className="max-w-4xl mx-auto px-6">
         <div className="text-center mb-12">
           <div className="text-xs tracking-[0.3em] text-gold/60 mb-3">FAQ</div>
@@ -261,7 +261,7 @@ export default function FAQPage() {
                 <details key={qa.q} className="glass rounded-xl p-5 border border-gold/10 hover:border-gold/30 transition-colors group">
                   <summary className="cursor-pointer text-cream font-semibold text-sm flex items-center justify-between list-none">
                     <span>{qa.q}</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-gold transition-transform group-open:rotate-180 shrink-0 ml-4">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-gold transition-transform group-open:rotate-180 shrink-0 ml-4" aria-hidden="true" focusable="false">
                       <polyline points="6 9 12 15 18 9" />
                     </svg>
                   </summary>

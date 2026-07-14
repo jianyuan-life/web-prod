@@ -112,13 +112,13 @@ export default function Error({ error, reset }: ErrorPageProps) {
 
   return (
     <div
-      className="min-h-[80vh] flex items-center justify-center px-6"
+      className="jy-page jy-state-page min-h-[80vh] flex items-center justify-center px-6"
       role="alert"
       aria-live="assertive"
     >
       <div className="text-center max-w-md">
         <div className="text-5xl mb-4" aria-hidden="true">⚠️</div>
-        <h1 className="text-2xl font-bold text-white mb-3">發生了一些問題</h1>
+        <h1 className="text-2xl font-bold mb-3">發生了一些問題</h1>
         <p className="text-text-muted mb-6">
           {sanitizeErrorMessage(error.message)}
         </p>
@@ -133,7 +133,7 @@ export default function Error({ error, reset }: ErrorPageProps) {
           </button>
           <a
             href="/"
-            className="px-6 py-3 glass rounded-xl text-cream hover:bg-white/10 transition-colors"
+            className="jy-button jy-button--secondary"
           >
             回到首頁
           </a>
