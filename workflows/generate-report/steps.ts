@@ -21,6 +21,7 @@ import { buildApologyEmail, hasApologyBeenSent } from '@/lib/report/apology-emai
 import * as _cV2 from '@/prompts/c_plan_v2'
 import * as _cV3 from '@/prompts/c_plan_v3'
 import * as _cV4 from '@/prompts/c_plan_v4'
+import * as _cV6 from '@/prompts/c_plan_v6'
 import { isV4, isV6 } from '@/lib/plan-flags'  // 報告版本 flag 單一 SSOT;函式內 access-time 讀取
 import { V6_BODY_TERM_BLACKLIST } from '@/prompts/c_plan_v6'  // C v6 正文術語黑名單(prompt 端與 gate 端同源)
 // 🔴 v5.10.444 P1 #1 修(LOGIC_AUDIT_2026-06-13、與 v5.10.441 D/R 同根):
@@ -37,6 +38,7 @@ process.env.USE_PLAN_V4_R ??= 'true'
 // C 人生使用說明書 v4（漸進式 L1/L2/L3、解審閱疲勞）：access-time 選版本(v5.10.444、繞 module-load 時序)
 //   v4 → _cV4(isV4('C') default on);否則 legacy USE_PLAN_V3 → _cV3;否則 _cV2。與舊三元選擇語意完全一致、只改「何時求值」。
 function _cPick(): typeof _cV2 {
+  if (isV6('C')) return _cV6 as unknown as typeof _cV2  // v6 人生手冊體(default OFF、USE_PLAN_V6_C='true' 才啟用)
   if (isV4('C')) return _cV4 as unknown as typeof _cV2
   if (process.env.USE_PLAN_V3 === 'true') return _cV3
   return _cV2

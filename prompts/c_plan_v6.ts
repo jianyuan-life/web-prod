@@ -111,6 +111,101 @@ function v6CoreRules(): string {
 五、篇幅:正文(附錄前)≥12,000 字、上不封頂、詳細優先;每章有實質深度(場景/表格/示範),不灌水。`
 }
 
+// ============================================================
+// v2 相容三段式介面(steps.ts _cPick() 七個 wrapper 的對應出口)
+// Call1=開卷+第一部(一~四章)/Call2=第二部(五~六章)/Call3=第三部+收卷+延伸+唯一附錄
+// buildUserPrompt(排盤數據組裝)與版本無關 → 直接複用 v2
+// ============================================================
+import {
+  getAgeGroup as _v2GetAgeGroup,
+  buildUserPrompt as _v2BuildUserPrompt,
+  type LifeStage,
+} from './c_plan_v2'
+
+export const getAgeGroup = _v2GetAgeGroup
+export const buildUserPrompt = _v2BuildUserPrompt
+
+function lifeStageToV6(stage: string, birthYear?: number): V6AgeGroup {
+  const age = birthYear ? new Date().getFullYear() - birthYear : 35
+  switch (stage as LifeStage) {
+    case 'toddler':
+    case 'child': return 'child_parent'
+    case 'teen': return 'teen'
+    case 'young_adult': return 'young'
+    case 'early_mid': return 'establishing'
+    case 'mid':
+    case 'pre_senior': return 'midlife'
+    case 'elder': return 'senior'
+    default: return getV6AgeGroup(age)
+  }
+}
+
+function v6PartHeader(ageGroup: string, birthYear?: number): string {
+  const g = lifeStageToV6(ageGroup, birthYear)
+  return `${v6CoreRules()}
+
+${AGE_ADAPTATION[g]}
+
+${maritalAdaptation(undefined)}`
+}
+
+export function buildCall1Prompt(ageGroup: string, clientNeed?: string, _locale?: string, birthYear?: number): string {
+  const needSection = clientNeed ? `\n【客戶自述的關注(第四章處境套用須涵蓋)】${clientNeed}\n` : ''
+  return `${v6PartHeader(ageGroup, birthYear)}
+${needSection}
+【本次任務=全書第一段】只輸出以下部分,其餘部分後續段落生成、不要越界:
+1. ## 開卷:你最該知道的三件事(三卡+每卡核對一行+「先回答一個合理的懷疑」+「閱讀之前:」聲明段)
+   — 第一卡必須立「原型稱號」(「你是「…的人」」白話格式),它是全書錨,後續段落會回收
+2. # 第一部:你是誰
+3. ## 一、你反覆出現的模式(4-6 節、每節附核對框)
+4. ## 二、你的賺錢方式(含職涯地形圖表格)
+5. ## 三、關係裡最需要被理解的事(依上方婚姻層規則)
+6. ## 四、你做重大選擇時最容易卡住的地方(含決策樹表格+三處境示範)
+每章末補一行「這些判斷的盤面出處:附錄 XX-nn…」錨(附錄由第三段生成,編號先行約定:SELF-01 起/WORK-01 起/REL-01 起/ACT-01 起)。`
+}
+
+export function buildCall2Prompt(ageGroup: string, call1Summary: string, _locale?: string, birthYear?: number): string {
+  return `${v6PartHeader(ageGroup, birthYear)}
+
+【前段摘要(保持原型稱號/術語轉譯/判斷編號的連貫,不重複前段內容)】
+${call1Summary}
+
+【本次任務=全書第二段】只輸出:
+1. # 第二部:你的時間
+2. ## 五、你的人生時間軸(過去印證三窗口打勾表+「不中則降級」計分規則 → 未來十年結構表+接力邏輯;
+   年齡採周歲並註明算法;過去窗口給具體候選事件)
+3. ## 六、接下來五年,一年一年講(每年:盤面說/怎麼讀分處境/年末核對;凡涉未來=傾向+條件)
+時間判斷編號 TIME-01 起,章末錨「出處見附錄 TIME-nn」。`
+}
+
+export function buildCall3Prompt(ageGroup: string, clientName: string, call1and2Summary: string, _locale?: string, birthYear?: number): string {
+  return `${v6PartHeader(ageGroup, birthYear)}
+
+【前兩段摘要(回收原型稱號;附錄必須涵蓋前兩段所有已標編號的判斷)】
+${call1and2Summary}
+
+【本次任務=全書第三段(收尾)】只輸出:
+1. # 第三部:怎麼辦
+2. ## 七、你的決策規則與九十天行動(三條規則各附例外+驗收/第一週起步/九十天表/驗收五題/常見失敗與恢復)
+3. ## 收卷:寫給${clientName}的一封信(回收原型稱號/三句話/三個開放問題/以「盤看得到你的傾向,看不到你這些年怎麼調整過自己」語意收尾)
+4. ## 延伸資訊(一頁、可跳過、不推銷)
+5. ## 附錄:你的命理依據(全書唯一附錄:第一節|判斷對照(前兩段+本段全部編號逐條,每條=白話一句+盤面事實/體系解讀/行動實驗分層)+第二節|排盤全覽+第三節|方法與聲明(含心理支持資源:台灣安心專線 1925/香港撒瑪利亞會 2896-0000))`
+}
+
+export function extractCall1Summary(call1Content: string): string {
+  const cut = call1Content.indexOf('# 第一部')
+  const opening = cut > 0 ? call1Content.slice(0, cut) : call1Content.slice(0, 1800)
+  const anchors = (call1Content.match(/附錄\s?[A-Z]+-\d+/g) || []).slice(0, 40).join('、')
+  return `${opening.slice(0, 1800)}\n【第一段已用判斷編號】${anchors}`
+}
+
+export function extractCall1And2Summary(call1Content: string, call2Content: string): string {
+  const s1 = extractCall1Summary(call1Content)
+  const anchors2 = (call2Content.match(/附錄\s?[A-Z]+-\d+/g) || []).slice(0, 30).join('、')
+  const timeline = call2Content.slice(0, 1200)
+  return `${s1}\n【第二段時間軸開頭】${timeline}\n【第二段已用判斷編號】${anchors2}`
+}
+
 // ── 單次生成主 prompt ──
 export function buildSingleCallV6C(
   clientName: string,
