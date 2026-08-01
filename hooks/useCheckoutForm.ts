@@ -34,11 +34,15 @@ export function useCheckoutForm() {
   // 確認彈窗
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
+  // v5.10.471:農曆暫停支援(P0 防雷:排盤 API 會把農曆當國曆算,詳 CALC_INPUT_AUDIT.md)。
+  // URL 帶 calendarType=lunar 時(免費工具 paywall 轉入),不沿用其農曆日期、退回預設,
+  // 由客戶重填國曆;強制 calendarType='solar'。API 端補轉換後移除此防護並恢復切換 UI。
+  const _urlIsLunar = params.get('calendarType') === 'lunar'
   const [form, setForm] = useState({
     name: params.get('name') || '',
-    year: params.get('year') || '1990',
-    month: params.get('month') || '1',
-    day: params.get('day') || '1',
+    year: (_urlIsLunar ? null : params.get('year')) || '1990',
+    month: (_urlIsLunar ? null : params.get('month')) || '1',
+    day: (_urlIsLunar ? null : params.get('day')) || '1',
     hour: params.get('hour') || '12',
     minute: params.get('minute') || '30',
     gender: params.get('gender') || 'M',
@@ -48,7 +52,7 @@ export function useCheckoutForm() {
     birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,
     // Sprint 3 國際化：IANA 時區 + ISO 國家碼
     timezone: '', countryCode: '',
-    calendarType: (params.get('calendarType') || 'solar') as 'solar' | 'lunar',
+    calendarType: 'solar' as 'solar' | 'lunar',  // v5.10.471 強制 solar(農曆暫停支援、見上方註解)
     lunarLeap: false,
   })
   const [timeMode, setTimeMode] = useState<'unknown' | 'shichen' | 'exact'>(

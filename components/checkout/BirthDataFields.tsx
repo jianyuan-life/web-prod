@@ -36,27 +36,21 @@ export default function BirthDataFields({
         />
       </div>
 
-      {/* 國曆/農曆切換 */}
+      {/* 國曆/農曆切換 — v5.10.471 暫時下架農曆選項(2026-08-01 L4 審查發現 P0:
+          排盤 API 的 BirthRequest 未宣告 calendar_type、pydantic extra:'ignore' 靜默丟棄,
+          農曆生日會被當國曆排盤(差近一個月、15 套全錯)。實測 89 筆付費訂單 0 筆農曆、無既往受災。
+          待 API 端補欄位+轉換(比照 /api/free-bazi 的 lunar-to-solar 路徑)後恢復本切換 UI。
+          詳:tasks/goal_2026-08-01_report_overhaul/CALC_INPUT_AUDIT.md */}
       <fieldset>
         <legend className="block text-xs text-text-muted mb-1">曆法</legend>
         <div className="flex rounded-lg overflow-hidden border border-gold/20" role="group" aria-label="選擇曆法">
-          {([{ v: 'solar' as const, l: '國曆（西曆）' }, { v: 'lunar' as const, l: '農曆' }]).map(({ v, l }) => (
-            <button key={v} type="button"
-              onClick={() => setForm(f => ({ ...f, calendarType: v, lunarLeap: false }))}
-              aria-pressed={form.calendarType === v}
-              className={`flex-1 py-2.5 text-sm font-medium transition-all ${form.calendarType === v ? 'bg-gold/20 text-gold' : 'bg-white/5 text-text-muted hover:bg-white/5'}`}>
-              {l}
-            </button>
-          ))}
+          <span className="flex-1 py-2.5 text-sm font-medium text-center bg-gold/20 text-gold">國曆（西曆）</span>
         </div>
-        {form.calendarType === 'lunar' && (
-          <label className="checkout-choice flex items-center gap-2 mt-2 cursor-pointer">
-            <input type="checkbox" checked={form.lunarLeap}
-              onChange={(e) => setForm(f => ({ ...f, lunarLeap: e.target.checked }))}
-              className="accent-gold" />
-            <span className="text-xs text-text-muted">閏月</span>
-          </label>
-        )}
+        <p className="text-[11px] text-text-muted mt-1.5 leading-5">
+          目前僅支援國曆生日。若您只記得農曆生日,可先用
+          <a href="/tools/bazi" className="text-gold underline underline-offset-2 mx-0.5">免費八字工具</a>
+          的農曆轉換查出對應國曆日期,再回來填寫。
+        </p>
       </fieldset>
 
       {/* 年月日 */}
