@@ -21,7 +21,8 @@ import { buildApologyEmail, hasApologyBeenSent } from '@/lib/report/apology-emai
 import * as _cV2 from '@/prompts/c_plan_v2'
 import * as _cV3 from '@/prompts/c_plan_v3'
 import * as _cV4 from '@/prompts/c_plan_v4'
-import { isV4 } from '@/lib/plan-flags'  // v5.10.444:四方案 v4 flag 單一 SSOT(!== 'false' default on)
+import { isV4, isV6 } from '@/lib/plan-flags'  // 報告版本 flag 單一 SSOT;函式內 access-time 讀取
+import { V6_BODY_TERM_BLACKLIST } from '@/prompts/c_plan_v6'  // C v6 正文術語黑名單(prompt 端與 gate 端同源)
 // 🔴 v5.10.444 P1 #1 修(LOGIC_AUDIT_2026-06-13、與 v5.10.441 D/R 同根):
 //   原 `const _C_PROMPTS = USE_PLAN_V4_C === 'true' ? _cV4 : ...`(module-load 凍結)+ destructure、
 //   在 workflow durable runtime 的 env/模組求值時序與 regular route 不同(v434/.441 已實證)、
@@ -2882,8 +2883,9 @@ export async function qualityGate(
     // 修法:新加 4 條集大成檢查走 [軟性]、由 5 LLM QA 兜底品質、結構檢查保留 9 老條當地基
     // v5.10.401:C v4(人生使用說明書)漸進式 5 大章不同於 v2 17 章、qualityGate 條件化(Codex P2 同類)
     // v5.10.444 P1 #2:改 isV4()(統一 !== 'false' default on)、對齊生成端、env unset 時 gate 不再套 v2 門檻誤判
+    const _useV6C = isV6('C')  // v6 章節表由 C-v6 專屬機檢驗,不套 v4/v2 章節規格
     const _useV4C = isV4('C')
-    const cRequired = _useV4C ? [
+    const cRequired = _useV6C ? [] : _useV4C ? [
       // C v4:L1 人生速覽 + 五大章(原廠設定/競爭力財富/感情磁場/精準診斷/五年戰略)+ 開運/刻意練習/寫給
       { pattern: /人生速覽|核心人生定位/, name: 'L1 人生速覽', soft: false },
       { pattern: /原廠設定|你是誰|底層邏輯/, name: '原廠設定與底層邏輯', soft: false },
@@ -3698,6 +3700,85 @@ export async function qualityGate(
   // 5. 內容長度檢查——軟性警告，不觸發重跑
   if (planCode === 'C' && reportContent.length < 15000) {
     warnings.push(`[軟性] C 方案內容偏短: ${reportContent.length} 字（期望 > 15,000 字）`)
+  }
+
+  // C v6 機械品質閘門(規格=jianyuan-hq goal_2026-08-01 check_v5.py 12 閘;Codex 移植+Claude 線上化適配)。
+  // 預設關閉,僅 USE_PLAN_V6_C='true' 時執行;未加 [軟性] 的項目沿用既有 criticalWarnings → retry 決策。
+  if (planCode === 'C' && isV6('C')) {
+    const C_V6_ABSOLUTE_WORDS = [
+      '一定會', '必然', '註定', '絕對不能', '永遠不會',
+      '百分之百', '極致', '頂峰', '無法改變', '一輩子都',
+    ]
+    const C_V6_FEAR_WORDS = ['大凶', '血光', '劫數', '絕症', '壽元', '凶煞', '破敗']
+    const C_V6_INTERNAL_MARKERS = ['截圖級洞察', '判決句', '巴納姆']
+
+    // 附錄必須是 Markdown 標題;第一個附錄標題之前才是正文。
+    const appendixHeadingPattern = /^#{1,6}\s*附錄(?:\s*[：:、—-]?\s*[你他她]們?的命理依據)?\s*$/gm
+    const appendixMatches = Array.from(reportContent.matchAll(appendixHeadingPattern))
+    const v6Body = appendixMatches.length > 0
+      ? reportContent.slice(0, appendixMatches[0].index)
+      : reportContent
+
+    // 1. 正文術語必須為零;附錄內容豁免。(黑名單 SSOT = prompts/c_plan_v6.ts)
+    const termHits = V6_BODY_TERM_BLACKLIST.flatMap((term) => {
+      const count = v6Body.split(term).length - 1
+      return count > 0 ? [`${term}×${count}`] : []
+    })
+    if (termHits.length > 0) {
+      warnings.push(`[C-v6 G1 正文術語] 命中 ${termHits.slice(0, 20).join('、')}`)
+    }
+
+    // 2-4. 絕對化、恐懼詞、內部代號掃全文。
+    for (const [gate, words] of [
+      ['G4 絕對化', C_V6_ABSOLUTE_WORDS],
+      ['G5 恐懼詞', C_V6_FEAR_WORDS],
+      ['G3 內部代號', C_V6_INTERNAL_MARKERS],
+    ] as const) {
+      const hits = words.filter((word) => reportContent.includes(word))
+      if (hits.length > 0) {
+        warnings.push(`[C-v6 ${gate}] 命中 ${hits.join('、')}`)
+      }
+    }
+
+    // 5. 開卷「閱讀之前」聲明後、附錄前,正文不得再出現免責語。
+    const openingMatch = /閱讀之前[:：]/.exec(v6Body)
+    const disclaimerZone = openingMatch
+      ? v6Body.slice(openingMatch.index + 200)
+      : v6Body
+    const disclaimerHits = disclaimerZone.match(/不構成|不取代|僅供參考|免責條款|不保證/g) || []
+    if (disclaimerHits.length > 0) {
+      warnings.push(`[C-v6 G7 正文免責] 開卷聲明後仍命中 ${disclaimerHits.length} 次:${disclaimerHits.slice(0, 5).join('、')}`)
+    }
+
+    // 6-9. 結構標記(線上版:原型稱號用通用樣式「你是「…的人」」,不綁樣本專名)。
+    const structureRules: Array<[string, RegExp]> = [
+      ['開卷三卡', /你們?最該知道的三件事/],
+      ['原型稱號', /你是「[^」]{2,14}的人」|你是一顆「[^」]{2,10}」/],
+      ['收卷自主聲明', /盤看得到[你他她]們?的傾向/],
+      ['章末出處錨', /出處見附錄|盤面出處/],
+    ]
+    for (const [name, pattern] of structureRules) {
+      if (!pattern.test(reportContent)) {
+        warnings.push(`[C-v6 結構] 缺少${name}`)
+      }
+    }
+
+    // 10. 全書至少二十個讀者核對點。
+    const v6CheckCount = (reportContent.match(/核\s*對|如果你回想|你來打分|由你核對/g) || []).length
+    if (v6CheckCount < 20) {
+      warnings.push(`[C-v6 G12 核對框] 共 ${v6CheckCount} 個,低於 20 個下限`)
+    }
+
+    // 11. 附錄標題必須且只能出現一次(老闆鐵律:唯一附錄)。
+    if (appendixMatches.length !== 1) {
+      warnings.push(`[C-v6 唯一附錄] 附錄標題共 ${appendixMatches.length} 個,必須恰好 1 個`)
+    }
+
+    // 12. 正文漢字保底(非阻斷,沿 check_v5 warn 語意)。
+    const v6HanCount = (v6Body.match(/[一-鿿]/g) || []).length
+    if (v6HanCount < 12000) {
+      warnings.push(`[軟性][C-v6 字數] 正文漢字 ${v6HanCount},低於 12,000 保底`)
+    }
   }
 
   // passed 判定：排除「含有禁止字眼」和「[軟性]」警告

@@ -35,3 +35,17 @@ export type V4Plan = 'C' | 'D' | 'G15' | 'R'
 export function isV4(plan: V4Plan): boolean {
   return process.env[`USE_PLAN_V4_${plan}`] !== 'false'
 }
+
+export type V6Plan = 'C' | 'D' | 'G15' | 'R'
+
+/**
+ * v6(人生手冊體)：**預設關閉(default OFF)**。只有 Vercel env 明確設成字串 'true' 才啟用。
+ *
+ * 與 isV4 語意相反:v6 是新版,必須顯式開啟,真客戶零影響。
+ * 必須保持 access-time 讀取(v5.10.434/.441 workflow runtime 時序教訓);
+ * 不得把結果存成 module-level const。
+ * 規格源:jianyuan-hq tasks/goal_2026-08-01_report_overhaul/(四份樣本+$200 面板)。
+ */
+export function isV6(plan: V6Plan): boolean {
+  return process.env[`USE_PLAN_V6_${plan}`] === 'true'
+}
