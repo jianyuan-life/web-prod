@@ -6,7 +6,7 @@ interface SubscribeCTAProps {
 
 /**
  * 合篇末尾的出門訣導流 CTA — 一次性購買，不是月費訂閱
- * 產品：E1 事件擇吉 $59（單次事件 Top3 吉時）／E2 月度單盤 $29（月家奇門古法、單月 1 盤、農曆晦日 22:20 執行）
+ * 產品：E3 月度精選 $89（主題用神、每月最多 8 個嚴選吉時;v5.10.467 方案收斂後唯一在售出門訣）
  */
 export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
   return (
@@ -59,7 +59,7 @@ export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
         }}
       >
         <div className="text-[10px] mb-3" style={{ color: 'rgba(201,168,76,0.7)', letterSpacing: '2px' }}>
-          📅 出門訣兩種選擇
+          出門訣 · 每月行動時窗
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -68,22 +68,10 @@ export default function SubscribeCTA({ clientName }: SubscribeCTAProps) {
             style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)' }}
           >
             <div className="text-sm font-semibold mb-1" style={{ color: '#e6d89a' }}>
-              事件擇吉 · $59
+              月度精選 · $89
             </div>
             <div className="text-xs leading-6" style={{ color: 'rgba(255,255,255,0.75)' }}>
-              為你某一件重要事件（求職／簽約／談判／告白／考試等）精算 Top 3 吉時 + 吉方
-            </div>
-          </div>
-
-          <div
-            className="flex-1 p-3 rounded-lg"
-            style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)' }}
-          >
-            <div className="text-sm font-semibold mb-1" style={{ color: '#e6d89a' }}>
-              月度單盤 · $29
-            </div>
-            <div className="text-xs leading-6" style={{ color: 'rgba(255,255,255,0.75)' }}>
-              月家奇門古法精算當月主吉時 + 主吉方（農曆晦日 22:20–23:00 執行 · 跨子時接新月氣）
+              依你選定的 1-3 個主題（事業／財運／感情等），先嚴剔 32 凶煞、再以 25 吉法則加權，嚴選最多 8 個高純度吉時 + 吉方（不足跨月補足、寧缺勿濫）
             </div>
           </div>
         </div>

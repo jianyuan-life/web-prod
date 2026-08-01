@@ -51,30 +51,24 @@ test('webhook PLAN_NAMES 含全 8 方案', () => {
     'webhook 應直接 import 方案名稱 SSOT')
 })
 
-suite('前端 pricing 頁無 stale 價格')
+suite('前端 pricing 頁價格對齊(v5.10.467 三方案陣容)')
 const pricingSrc = readFileSync(join(ROOT, 'app/pricing/page.tsx'), 'utf-8')
-test('E1 顯示 $59(非 stale $89/$119)', () => {
-  const hasNew = /code:\s*['"]E1['"][\s\S]{0,120}?price:\s*59\b/.test(pricingSrc)
-  // 精確 stale pattern:'事件出門訣 $89' 或 '事件出門訣($89)' 或 'E1 ... $89' 緊密綁定
-  const stalePatterns = [
-    /事件出門訣\s*[\$＄]89(?!\d)/,
-    /事件出門訣[（(]\s*[\$＄]89/,
-    /\bE1\b\s*[^E\n]{0,15}[\$＄]89(?!\d)/,
-    /事件出門訣\s*[\$＄]119(?!\d)/,
-    /\bE1\b\s*[^E\n]{0,15}[\$＄]119(?!\d)/,
-  ]
-  const stale = stalePatterns.some(p => p.test(pricingSrc))
-  assert(hasNew && !stale, 'E1 應顯示 $59、不應有 $89/$119 緊密綁定 stale 價')
-})
-test('E2 顯示 $29(非 stale $99)', () => {
-  const hasNew = /code:\s*['"]E2['"][\s\S]{0,120}?price:\s*29\b/.test(pricingSrc)
-  const stalePatterns = [
-    /月度出門訣\s*[\$＄]99(?!\d)/,
-    /月度出門訣[（(]\s*[\$＄]99/,
-    /\bE2\b\s*[^E\n]{0,15}[\$＄]99(?!\d)/,
-  ]
-  const stale = stalePatterns.some(p => p.test(pricingSrc))
-  assert(hasNew && !stale, 'E2 應顯示 $29、不應有 $99 緊密綁定 stale 價')
+// v5.10.467 方案收斂:對外只售 C/G15/E3(SSOT = lib/plan-names.ts VISIBLE_PLAN_CODES 預設值)。
+// 可見方案的頁面價格必須對齊 PLAN_PRICES;隱藏方案不得出現在定價頁資料中。
+const VISIBLE = ['C', 'G15', 'E3']
+const HIDDEN = ['D', 'R', 'E1', 'E2', 'E4']
+for (const code of VISIBLE) {
+  test(`${code} 頁面價格對齊 PLAN_PRICES`, () => {
+    const usd = PRICE_MAP[code].amount / 100
+    const re = new RegExp(`code:\\s*['"]${code}['"][\\s\\S]{0,160}?price:\\s*${usd}\\b`)
+    assert(re.test(pricingSrc), `${code} 應在定價頁顯示 price: ${usd}(對齊 PLAN_PRICES ${PRICE_MAP[code].amount} cents)`)
+  })
+}
+test('隱藏方案(D/R/E1/E2/E4)不出現在定價頁資料', () => {
+  for (const code of HIDDEN) {
+    const re = new RegExp(`code:\\s*['"]${code}['"]`)
+    assert(!re.test(pricingSrc), `定價頁不應含隱藏方案 ${code}(2026-08-01 方案收斂)`)
+  }
 })
 
 suite('免費工具 4 頁 CTA 無 stale 價格')

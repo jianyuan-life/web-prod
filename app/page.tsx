@@ -307,7 +307,7 @@ export default function HomePage() {
                 所有價格都是一次性付款。方案卡會說明適合情境、分析範圍、交付內容與預計完成時間。
               </p>
               <Link href="/pricing" className="jy-link inline-flex min-h-11 items-center gap-2 mt-4">
-                比較全部 8 種方案 <ArrowIcon />
+                查看三個方案的完整說明 <ArrowIcon />
               </Link>
             </div>
           </div>

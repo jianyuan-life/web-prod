@@ -14,13 +14,15 @@ import { useState } from 'react'
 import { PLAN_NAMES } from '@/lib/plan-names'
 
 // 買 X → 推 Y(對齊提示詞合集 Prompt 11 upsell 邏輯)
+// v5.10.467:目標一律收斂到可販售方案(C/G15/E3、SSOT = VISIBLE_PLAN_CODES);
+// D/R/E1/E2 為隱藏方案的來源 key、留著無害(新客戶不會觸發)
 const UPSELL_MAP: Record<string, string> = {
   C: 'G15',
   D: 'C',
-  R: 'E1',
+  R: 'E3',
   E1: 'E3',
   E2: 'E3',
-  G15: 'E4',
+  G15: 'E3',
 }
 
 export interface UpsellModalProps {

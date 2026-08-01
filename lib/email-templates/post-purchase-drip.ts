@@ -84,7 +84,7 @@ export function buildPostPurchaseDrip(ctx: DripCtx): DripEmail[] {
       subject: `${n},想知道「什麼時候做最順」嗎?`,
       html: wrap(
         `<h2>下一步:挑對時機</h2><p>你已經知道「自己是誰、該做什麼」。
-出門訣方案幫你補上「什麼時候做」—— 月度單盤 / 月度精選,把對的事放在對的時辰。</p>
+出門訣「月度精選」幫你補上「什麼時候做」—— 依你選定的主題,每月嚴選吉時與方位,把對的事放在對的時辰。</p>
 <p><a href="${(ctx.siteUrl || 'https://jianyuan.life')}/pricing?utm_source=email&utm_medium=drip&utm_campaign=post_purchase_d14">看出門訣方案</a></p>`,
         ctx,
       ),

@@ -27,13 +27,17 @@ test('D+0 必為 0(completed 當下立即補連結防遺失)', () => {
 done()
 
 // ── P11 UpsellModal:upsell 映射邏輯 ──
-const UPSELL_MAP = { C: 'G15', D: 'C', R: 'E1', E1: 'E3', E2: 'E3', G15: 'E4' }
+// v5.10.467 方案收斂:目標一律收斂到可販售方案(C/G15/E3),與 components/UpsellModal.tsx 同步
+const UPSELL_MAP = { C: 'G15', D: 'C', R: 'E3', E1: 'E3', E2: 'E3', G15: 'E3' }
 suite('P11 Upsell 映射(買 X 推 Y)')
 test('合集指定映射正確', () => {
   assertEqual(UPSELL_MAP.C, 'G15')
   assertEqual(UPSELL_MAP.D, 'C')
-  assertEqual(UPSELL_MAP.R, 'E1')
+  assertEqual(UPSELL_MAP.R, 'E3')
   assertEqual(UPSELL_MAP.E1, 'E3')
+})
+test('目標只能是可販售方案(C/G15/E3)', () => {
+  for (const t of Object.values(UPSELL_MAP)) assert(['C', 'G15', 'E3'].includes(t), `upsell 目標 ${t} 不在可販售清單`)
 })
 test('無映射的方案(E3/E4)→ 不彈(undefined、modal return null)', () => {
   assertEqual(UPSELL_MAP.E3, undefined)

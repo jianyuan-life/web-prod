@@ -298,7 +298,7 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
                   </div>
                   <p className="text-xs text-text leading-[1.7]">
                     古法「一時一盤」原則——月盤須在<strong className="text-red-300">{e2Window.lunar_month_display}</strong>亥子交替接氣才有效、錯過就失效。
-                    <br />若您無法在上述時段配合，建議改購 E3 月度精選（時窗較彈性）或 E1 事件擇吉。
+                    <br />若您無法在上述時段配合，建議改購 E3 月度精選（時窗較彈性）。
                   </p>
                 </>
               )}

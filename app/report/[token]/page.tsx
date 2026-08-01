@@ -4896,17 +4896,16 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 <h3 className="text-gold text-lg font-semibold mb-3" style={{ fontFamily: 'var(--font-sans)' }}>讓命理能量落地：出門訣</h3>
                 <p className="text-text-muted text-sm leading-7 mb-4">
                   您的命格報告揭示了先天能量分佈，而<strong className="text-cream">出門訣</strong>是將這些能量轉化為行動的實戰工具。
-                  源自《煙波釣叟歌》的千年擇吉術，系統以 25 層評分體系精算每個時辰八方位的能量——三吉門、三奇、八神、九星旺衰、天地盤干生剋、九遁格局，
+                  源自《煙波釣叟歌》的千年擇吉術，系統先嚴剔 32 凶煞、再以 25 吉法則加權，依您選定的主題（事業／財運／感情等）精算吉時與方位，
                   再套入您的個人年命宮驗證。操作方法：在推薦的吉時出門，朝吉方走 500 公尺以上，到達後面朝吉方靜坐 40 分鐘接氣。
-                  支援 15 種事件分類（求財、事業、感情、考試、談判、簽約等），每個推薦附帶信心指數。
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 items-start">
-                  <a href="/pricing"
+                  <a href="/pricing#plan-e3"
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-dark font-bold rounded-lg text-sm btn-glow">
-                    了解出門訣方案
+                    了解月度精選
                   </a>
                   <span className="text-xs text-text-muted/60 mt-2 sm:mt-0 sm:self-center">
-                    事件擇吉 $59 / 月度單盤 $29
+                    月度精選 $89 · 每月最多 8 個嚴選吉時
                   </span>
                 </div>
               </div>

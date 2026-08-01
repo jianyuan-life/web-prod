@@ -13,11 +13,23 @@ import {
   newFamilyEmail, type FamilyEmailEntry,
   type G15SelectedReport, type G15SearchResult,
 } from '@/components/checkout/types'
+import { isVisiblePlan } from '@/lib/plan-names'
 
 export function useCheckoutForm() {
   const params = useSearchParams()
-  const planCode = params.get('plan') || 'C'
-  const plan = PLANS[planCode] || PLANS.C
+  const rawPlanCode = params.get('plan') || 'C'
+  // v5.10.467:隱藏/未知方案不接受新購 → 導回定價頁
+  // (原本靜默 fallback 到 C,客戶以為在買 E1 實際會下 C 的單;現改為明確導離)
+  const planIsPurchasable = isVisiblePlan(rawPlanCode) && !!PLANS[rawPlanCode]
+  const planCode = planIsPurchasable ? rawPlanCode : 'C'
+  const plan = PLANS[planCode]
+
+  useEffect(() => {
+    if (!planIsPurchasable && typeof window !== 'undefined') {
+      window.location.replace('/pricing')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planIsPurchasable])
 
   // 確認彈窗
   const [showConfirmModal, setShowConfirmModal] = useState(false)

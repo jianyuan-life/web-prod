@@ -26,6 +26,26 @@ export const isChumenjiPlan = (code: string | undefined | null): boolean =>
 // 方案代碼列表(對應 8 方案)
 export const ALL_PLAN_CODES: readonly string[] = ['C', 'D', 'G15', 'R', 'E1', 'E2', 'E3', 'E4']
 
+// v5.10.467:方案可見性 SSOT(2026-08-01 老闆拍板:對外只售 C / G15 / E3,其餘隱藏)
+// - 「隱藏」= 不接受新購、UI 不呈現;code / 名稱 / 價格 / prompt 全保留,既有客戶
+//   的報告 / PDF / dashboard / email 走 paid_reports 既有資料,完全不受影響
+// - 本 env 控制的是「購買閘」(/api/checkout + useCheckoutForm);NEXT_PUBLIC_* 是
+//   build-time 內嵌,改 env 後必須 redeploy 才生效(Vercel env 變更本來就需 redeploy)
+// - ⚠️ 誠實聲明(Codex L3 2026-08-01):銷售 UI(定價頁 / 首頁卡 / OG 圖)是圍繞三方案
+//   重設計、非 filter 舊卡;要恢復販售隱藏方案,除了 env 還需要回復該方案的 UI 呈現
+//   (git 歷史有完整舊卡資料)。env 單獨改只會重新開放 API 與結帳表單。
+// - 緊急全關:env 設 'NONE' 可停止所有方案新購(fail-closed 語意)
+// - 全站 UI 與 /api/checkout 一律由 isVisiblePlan() 判斷,不得 inline 寫死方案清單(anti-drift)
+const _rawVisiblePlans = process.env.NEXT_PUBLIC_VISIBLE_PLAN_CODES || 'C,G15,E3'
+export const VISIBLE_PLAN_CODES: readonly string[] =
+  _rawVisiblePlans.trim().toUpperCase() === 'NONE'
+    ? []
+    : [...new Set(
+        _rawVisiblePlans.split(',').map(s => s.trim()).filter(c => ALL_PLAN_CODES.includes(c)),
+      )]
+export const isVisiblePlan = (code: string | undefined | null): boolean =>
+  !!code && VISIBLE_PLAN_CODES.includes(code)
+
 // v5.10.x:結帳定價集中管理(SSOT、對應 CLAUDE.md「方案常數絕不在 production code inline 定義」鐵律)
 // - 原本散落在 app/api/checkout/route.ts inline PRICE_MAP、移到此處唯一定義
 // - 加方案 / 改價只動此檔一處、不再 inline

@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter)
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { trackFunnelServer } from '@/lib/funnel-tracker'
-import { PLAN_NAMES, PRICE_MAP } from '@/lib/plan-names'  // v5.10.x:PRICE_MAP 移到 lib/plan-names SSOT(原本 inline、違反方案常數不 inline 鐵律)
+import { PLAN_NAMES, PRICE_MAP, isVisiblePlan } from '@/lib/plan-names'  // v5.10.x:PRICE_MAP 移到 lib/plan-names SSOT(原本 inline、違反方案常數不 inline 鐵律)
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 function getSupabase() {
@@ -18,6 +18,12 @@ export async function POST(req: NextRequest) {
     const plan = PRICE_MAP[planCode]
     if (!plan) {
       return NextResponse.json({ error: '無效的方案代碼' }, { status: 400 })
+    }
+
+    // v5.10.467:方案可見性防護(2026-08-01 拍板:對外只售 C/G15/E3、其餘隱藏)
+    // 只擋「新購」;既有客戶的報告/儀表板/PDF 不經過此路徑、完全不受影響
+    if (!isVisiblePlan(planCode)) {
+      return NextResponse.json({ error: '此方案目前未開放購買,歡迎選擇人生藍圖、家族藍圖或月度精選' }, { status: 400 })
     }
 
     // v5.3.70 解除 E1-E4 維護擋

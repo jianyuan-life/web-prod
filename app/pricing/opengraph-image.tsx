@@ -8,16 +8,11 @@ export const alt = '方案與定價 · 鑒源 JianYuan'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
-// v5.7.8:8 方案完整 grid(原 4 方案 IA Agent P0、影響社群分享轉化)
+// v5.10.467:方案陣容收斂為 3(2026-08-01 拍板、SSOT = lib/plan-names.ts VISIBLE_PLAN_CODES)
 const PLANS = [
-  { name: '月度單盤', price: '$29', sub: '月家奇門古法' },
-  { name: '心之所惑', price: '$39', sub: '聚焦你最在乎的問題' },
-  { name: '事件擇吉', price: '$59', sub: '奇門遁甲 Top3 吉時' },
-  { name: '合否？', price: '$59', sub: '雙人合盤關係解讀' },
-  { name: '家族藍圖', price: '$59', sub: '家庭互動分析' },
   { name: '人生藍圖', price: '$89', sub: '十四套系統交叉分析' },
-  { name: '月度精選', price: '$89', sub: '4 週 8 吉時補運' },
-  { name: '年度全運', price: '$279', sub: '年盤 + 12 月盤' },
+  { name: '家族藍圖', price: '$59', sub: '家庭互動分析' },
+  { name: '月度精選', price: '$89', sub: '每月嚴選 8 個吉時' },
 ]
 
 export default async function Image() {
@@ -69,15 +64,14 @@ export default async function Image() {
             marginBottom: 40,
           }}
         >
-          個人 · 家庭 · 關係 · 出門訣四大類別、從 $29 起
+          看清自己 · 看懂家庭 · 抓準時機、從 $59 起
         </div>
 
-        {/* v5.7.8:8 卡片 4×2 grid(原 4 方案 IA P0 升級到 8 方案) */}
+        {/* v5.10.467:3 卡片單列 grid(方案陣容收斂) */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gridTemplateRows: 'repeat(2, 1fr)',
+            gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 12,
             flex: 1,
           }}
