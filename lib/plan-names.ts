@@ -37,12 +37,21 @@ export const ALL_PLAN_CODES: readonly string[] = ['C', 'D', 'G15', 'R', 'E1', 'E
 // - 緊急全關:env 設 'NONE' 可停止所有方案新購(fail-closed 語意)
 // - 全站 UI 與 /api/checkout 一律由 isVisiblePlan() 判斷,不得 inline 寫死方案清單(anti-drift)
 const _rawVisiblePlans = process.env.NEXT_PUBLIC_VISIBLE_PLAN_CODES || 'C,G15,E3'
-export const VISIBLE_PLAN_CODES: readonly string[] =
+// v5.10.468:大小寫正規化(小寫 env 值原本會被交集 filter 全數丟棄 → 全站無聲停售)
+const _parsedVisible: string[] =
   _rawVisiblePlans.trim().toUpperCase() === 'NONE'
     ? []
     : [...new Set(
-        _rawVisiblePlans.split(',').map(s => s.trim()).filter(c => ALL_PLAN_CODES.includes(c)),
+        _rawVisiblePlans.split(',').map(s => s.trim().toUpperCase()).filter(c => ALL_PLAN_CODES.includes(c)),
       )]
+// 非法代碼靜默丟棄太危險(單一錯字=該方案無聲下架):丟棄時留 warn 供排查
+const _droppedVisible = _rawVisiblePlans.trim().toUpperCase() === 'NONE' ? [] :
+  _rawVisiblePlans.split(',').map(s => s.trim()).filter(Boolean)
+    .filter(c => !ALL_PLAN_CODES.includes(c.toUpperCase()))
+if (_droppedVisible.length > 0) {
+  console.warn(`[plan-visibility] env 含非法方案代碼已丟棄:${_droppedVisible.join(',')};生效清單:${_parsedVisible.join(',') || '(空=全站停售)'}`)
+}
+export const VISIBLE_PLAN_CODES: readonly string[] = _parsedVisible
 export const isVisiblePlan = (code: string | undefined | null): boolean =>
   !!code && VISIBLE_PLAN_CODES.includes(code)
 

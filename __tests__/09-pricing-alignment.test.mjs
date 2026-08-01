@@ -71,6 +71,30 @@ test('隱藏方案(D/R/E1/E2/E4)不出現在定價頁資料', () => {
   }
 })
 
+suite('方案可見性白名單防線(v5.10.467-468 唯一伺服器硬閘)')
+test('SSOT 預設白名單 = C,G15,E3', () => {
+  assert(/NEXT_PUBLIC_VISIBLE_PLAN_CODES\s*\|\|\s*'C,G15,E3'/.test(planNamesSrc),
+    'VISIBLE_PLAN_CODES 預設值必須是 C,G15,E3')
+})
+test('env 值必須與 ALL_PLAN_CODES 取交集(防 R-ADD/錯字擴大白名單)', () => {
+  assert(/filter\(c => ALL_PLAN_CODES\.includes\(c\)\)/.test(planNamesSrc),
+    'env 只能縮小白名單、不能擴大:必須有 ALL_PLAN_CODES 交集 filter')
+})
+test('env 值大小寫正規化(防小寫 env 全站無聲停售)', () => {
+  assert(/\.map\(s => s\.trim\(\)\.toUpperCase\(\)\)/.test(planNamesSrc),
+    '個別 code 必須 toUpperCase 後再比對(2026-08-01 footgun)')
+})
+test('checkout API 有 isVisiblePlan 硬閘', () => {
+  const checkoutSrc = readFileSync(join(ROOT, 'app/api/checkout/route.ts'), 'utf-8')
+  assert(/if \(!isVisiblePlan\(planCode\)\)/.test(checkoutSrc),
+    '/api/checkout 必須有 isVisiblePlan 伺服器端硬閘(唯一真防線)')
+})
+test('R-ADD 不在 ALL_PLAN_CODES(偽方案不可能進白名單)', () => {
+  assert(/ALL_PLAN_CODES[^=]*=\s*\[[^\]]*\]/.test(planNamesSrc), '找不到 ALL_PLAN_CODES 定義')
+  const arr = planNamesSrc.match(/ALL_PLAN_CODES[^=]*=\s*\[([^\]]*)\]/)?.[1] || ''
+  assert(!arr.includes('R-ADD'), 'R-ADD 絕不可加入 ALL_PLAN_CODES(它是加人附加費、非方案)')
+})
+
 suite('免費工具 4 頁 CTA 無 stale 價格')
 const pages = [
   'app/tools/bazi/page.tsx',
