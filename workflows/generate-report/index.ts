@@ -375,8 +375,13 @@ export async function generateReportWorkflow(reportId: string) {
       // C 方案也要讀取 customer_note（客戶在結帳時填的備注/問題）
       const clientQuestion = (birthData.question || birthData.customer_note || birthData.topic || undefined) as string | undefined
 
+      // ── v6 版本鎖:C 區塊開頭讀一次、全區塊沿用(防同單多次讀 env 造成生成/檢查版本撕裂)──
+      const { isV6 } = await import('@/lib/plan-flags')
+      const useV6C = planCode === 'C' && isV6('C')
+
       // ── 新 Team Pipeline（feature flag 控制，老闆選 B 方案：C 先試水）──
-      const useTeamPipeline = process.env.USE_TEAM_PIPELINE_FOR_C === 'true'
+      // v6 時強制跳過 Team Pipeline:v6 的 prompt 選擇在 steps.ts _cPick(),Pipeline 走自己的組裝會繞過 v6
+      const useTeamPipeline = !useV6C && process.env.USE_TEAM_PIPELINE_FOR_C === 'true'
       let pipelineSuccess = false
 
       if (useTeamPipeline) {
@@ -441,25 +446,29 @@ export async function generateReportWorkflow(reportId: string) {
         const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
         const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
 
-        // Call 3 完整性檢查
+        // Call 3 完整性檢查(v6 用 v6 標記:唯一附錄+收卷信;v2/v4 用舊標記)
         let call3Content = r3.content
-        const hasDeliberatePractice = call3Content.includes('刻意練習')
-        const hasClosingLetter = call3Content.includes('寫給') && (call3Content.includes('的話') || call3Content.includes('們的話'))
+        const hasDeliberatePractice = useV6C
+          ? /#{1,6}\s*附錄/.test(call3Content)  // v6:Call3 必含唯一附錄
+          : call3Content.includes('刻意練習')
+        const hasClosingLetter = useV6C
+          ? (call3Content.includes('收卷') || /寫給.{1,12}的一封信/.test(call3Content))
+          : call3Content.includes('寫給') && (call3Content.includes('的話') || call3Content.includes('們的話'))
 
         if (!hasDeliberatePractice || !hasClosingLetter) {
           const missingParts: string[] = []
-          if (!hasDeliberatePractice) missingParts.push('刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
-          if (!hasClosingLetter) missingParts.push('寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
+          if (!hasDeliberatePractice) missingParts.push(useV6C ? '## 附錄:你的命理依據(全書唯一附錄:判斷對照+排盤全覽+方法聲明)' : '刻意練習（投資/感情/事業/健康/人際五大面向，每項至少200字）')
+          if (!hasClosingLetter) missingParts.push(useV6C ? '## 收卷:寫給客戶的一封信(回收原型稱號+三句話+三個開放問題)' : '寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
 
           // 重試 Call 3
           const retryR3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, true, missingParts, reportId)
           call3Content = retryR3.content
         }
 
-        // 附錄由程式碼自動生成（不走 AI）
-        const appendix = buildAppendix(calcResult.analyses)
+        // 附錄:v2/v4 由程式碼自動生成;v6 的唯一附錄由 Call3 生成(外掛會造成雙附錄、直接炸唯一附錄閘)
+        const appendix = useV6C ? '' : buildAppendix(calcResult.analyses)
 
-        const rawContent = [r1.content, r2.content, call3Content, appendix].join('\n\n')
+        const rawContent = [r1.content, r2.content, call3Content, appendix].filter(Boolean).join('\n\n')
         reportContent = cleanFinalReport(rawContent, birthData.name)
         aiModelUsed = r1.model
         console.log(`C 方案完成：${reportContent.length} 字（含附錄）`)

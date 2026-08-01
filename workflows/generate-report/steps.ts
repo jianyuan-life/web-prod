@@ -37,8 +37,13 @@ process.env.USE_PLAN_V4_G15 ??= 'true'
 process.env.USE_PLAN_V4_R ??= 'true'
 // C 人生使用說明書 v4（漸進式 L1/L2/L3、解審閱疲勞）：access-time 選版本(v5.10.444、繞 module-load 時序)
 //   v4 → _cV4(isV4('C') default on);否則 legacy USE_PLAN_V3 → _cV3;否則 _cV2。與舊三元選擇語意完全一致、只改「何時求值」。
+// v6 相容面=下方七個 wrapper 實際使用的出口;用 Pick+賦值讓編譯期真驗簽名(取代裸 unknown cast,Codex 互審 P1)
+type CPromptAdapter = Pick<typeof _cV2,
+  'getAgeGroup' | 'buildCall1Prompt' | 'buildCall2Prompt' | 'buildCall3Prompt' |
+  'buildUserPrompt' | 'extractCall1Summary' | 'extractCall1And2Summary'>
+const _cV6Adapter: CPromptAdapter = _cV6  // 簽名不相容時這行編譯即錯
 function _cPick(): typeof _cV2 {
-  if (isV6('C')) return _cV6 as unknown as typeof _cV2  // v6 人生手冊體(default OFF、USE_PLAN_V6_C='true' 才啟用)
+  if (isV6('C')) return _cV6Adapter as typeof _cV2  // v6 人生手冊體(default OFF、USE_PLAN_V6_C='true' 才啟用;僅七出口保證存在)
   if (isV4('C')) return _cV4 as unknown as typeof _cV2
   if (process.env.USE_PLAN_V3 === 'true') return _cV3
   return _cV2
@@ -3715,7 +3720,8 @@ export async function qualityGate(
     const C_V6_INTERNAL_MARKERS = ['截圖級洞察', '判決句', '巴納姆']
 
     // 附錄必須是 Markdown 標題;第一個附錄標題之前才是正文。
-    const appendixHeadingPattern = /^#{1,6}\s*附錄(?:\s*[：:、—-]?\s*[你他她]們?的命理依據)?\s*$/gm
+    // 邊界從寬認定(附錄|附錄:xxx|附錄｜xxx 等變體都算),名稱另由 prompt 約束——切錯邊界的代價(附錄術語被當正文掃)遠大於名稱寬鬆
+    const appendixHeadingPattern = /^#{1,6}\s*附錄(?:\s*$|\s*[：:、｜|—\-（(].*$)/gm
     const appendixMatches = Array.from(reportContent.matchAll(appendixHeadingPattern))
     const v6Body = appendixMatches.length > 0
       ? reportContent.slice(0, appendixMatches[0].index)
@@ -3743,10 +3749,16 @@ export async function qualityGate(
     }
 
     // 5. 開卷「閱讀之前」聲明後、附錄前,正文不得再出現免責語。
+    // 聲明結束點=聲明起點後的下一個 Markdown 標題(不用固定字數,避免長短聲明的邊界誤差)
     const openingMatch = /閱讀之前[:：]/.exec(v6Body)
-    const disclaimerZone = openingMatch
-      ? v6Body.slice(openingMatch.index + 200)
-      : v6Body
+    let disclaimerZone = v6Body
+    if (openingMatch) {
+      const afterOpening = v6Body.slice(openingMatch.index)
+      const nextHeading = /\n#{1,6}\s/.exec(afterOpening)
+      disclaimerZone = nextHeading
+        ? v6Body.slice(openingMatch.index + nextHeading.index)
+        : v6Body.slice(openingMatch.index + 400)
+    }
     const disclaimerHits = disclaimerZone.match(/不構成|不取代|僅供參考|免責條款|不保證/g) || []
     if (disclaimerHits.length > 0) {
       warnings.push(`[C-v6 G7 正文免責] 開卷聲明後仍命中 ${disclaimerHits.length} 次:${disclaimerHits.slice(0, 5).join('、')}`)
@@ -3755,7 +3767,7 @@ export async function qualityGate(
     // 6-9. 結構標記(線上版:原型稱號用通用樣式「你是「…的人」」,不綁樣本專名)。
     const structureRules: Array<[string, RegExp]> = [
       ['開卷三卡', /你們?最該知道的三件事/],
-      ['原型稱號', /你是「[^」]{2,14}的人」|你是一顆「[^」]{2,10}」/],
+      ['原型稱號', /\*\*原型稱號[:：]\*\*\s*「[^」]{2,20}」/],  // 機器錨:prompt 端強制同格式(c_plan_v6),不猜自然語句
       ['收卷自主聲明', /盤看得到[你他她]們?的傾向/],
       ['章末出處錨', /出處見附錄|盤面出處/],
     ]
