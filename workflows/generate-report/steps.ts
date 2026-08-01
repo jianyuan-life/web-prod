@@ -489,10 +489,13 @@ export function validateReportAgainstData(
   const correctLiunian = `${TIANGAN[tgIndex]}${DIZHI[dzIndex]}`
 
   // 搜尋「2026年」或「今年」後面跟著的天干地支
+  // 捕獲組鎖死為真正的干支對:非干支詞(如「流年運勢」「流年主題」)絕不觸發修正
+  // (修 2026-08-02:舊版任抓兩字元,會把一般詞彙誤「修正」成當年干支、污染正文)
+  const GANZHI_PAIR = '[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]'
   const liunianPatterns = [
-    new RegExp(`${currentYear}[年]?[：:，,]?\\s*([^\\s年，,。\\n]{2})年`, 'g'),
-    new RegExp(`流年[：:為是]?\\s*([^\\s，,。\\n]{2})`, 'g'),
-    new RegExp(`今年[是為]?\\s*([^\\s，,。\\n]{2})年`, 'g'),
+    new RegExp(`${currentYear}[年]?[：:，,]?\\s*(${GANZHI_PAIR})年`, 'g'),
+    new RegExp(`流年[：:為是]?\\s*(${GANZHI_PAIR})`, 'g'),
+    new RegExp(`今年[是為]?\\s*(${GANZHI_PAIR})年`, 'g'),
   ]
   content = checkAndReplace(content, `${currentYear}流年`, correctLiunian, liunianPatterns, corrections)
 
