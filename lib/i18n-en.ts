@@ -126,7 +126,6 @@ export const EN_UI: Record<string, string> = {
   '源自《滴天髓》《窮通寶鑑》等經典古籍': 'from classics such as Di Tian Sui and Qiong Tong Bao Jian',
   '隱私保護': 'Privacy protected',
   '資料加密傳輸與儲存': 'Encrypted transmission and storage',
-  '8 種方案任你選擇': '8 plans to choose from',
   '起': 'from',
 
   // Differences
@@ -229,20 +228,17 @@ export const EN_UI: Record<string, string> = {
   '免費體驗': 'Free Trial',
   '輸入出生資料，即時查看八字排盤與性格分析': 'Enter your birth data for an instant Bazi chart and personality analysis',
   '選擇方案': 'Choose a Plan',
-  '8 種方案，從個人到家庭，從 $29 起': '8 plans from personal to family — starting at $29',
   '填寫資料': 'Provide Your Data',
   '姓名、出生日期時間、性別，簡單三步': 'Name, birth date/time and gender — just three simple steps',
   '深度分析': 'Deep Analysis',
   '專業規則逐系統交叉分析': 'Professional rules cross-analyzed across every system',
   '查看報告': 'Read Your Report',
-  '線上閱讀 + PDF 永久保存，隨時回顧': 'Read online + permanent PDF — revisit anytime',
+  '線上閱讀 + PDF 下載，隨時回顧': 'Read online + downloadable PDF — revisit anytime',
 
   // Pricing section on home
   '方案': 'Plans',
   '選擇適合您的方案': 'Choose the plan that fits you',
-  '從 $29 起，每份報告都包含網頁展示 + PDF 永久保存': 'From $29 — every report includes a web view + permanent PDF',
   '還有家庭、關係、出門訣方案': 'There are also Family, Relationship, and Direction Guide plans',
-  '查看全部 8 種方案與詳細介紹': 'View all 8 plans in detail',
 
   // Direction guide promo
   '鑒源特色': 'JianYuan Signature',
@@ -348,8 +344,8 @@ export const EN_UI: Record<string, string> = {
 
   // Pricing page
   '方案與定價': 'Plans & Pricing',
-  '個人、家庭、關係、出門訣共四大類別，從了解自己到採取行動，每份報告在網頁上展示，永久保存於您的帳號中。':
-    'Four categories — Personal, Family, Relationship and Direction Guide. From self-understanding to action, every report is displayed online and permanently stored in your account.',
+  '個人、家庭、關係、出門訣共四大類別，從了解自己到採取行動，每份報告在網頁上展示，長期保存於您的帳號中。':
+    'Four categories — Personal, Family, Relationship and Direction Guide. From self-understanding to action, every report is displayed online and stored in your account for the long term.',
   '購買前需先': 'Please ',
   '或': ' or ',
   '個人命格分析': 'Personal Destiny Analysis',
@@ -612,8 +608,6 @@ export const EN_FOUNDER: Record<string, string> = {
   'PDF 完整報告': 'Full PDF report',
   '報告字數': 'Report length',
   '5,000字+': '5,000+ words',
-  '30,000字+': '30,000+ words',
-  '8,000字+': '8,000+ words',
   '每人8,000字+': '8,000+ words per person',
   '聚焦選定面向': 'Focused on selected dimension',
   '單面向': 'Single dimension',
@@ -658,7 +652,7 @@ export const EN_FOUNDER: Record<string, string> = {
   '健康養生+大運走勢': 'Health & major luck-cycle outlook',
   '2026 流年重點月份提醒': '2026 annual key-month alerts',
   '刻意練習——具體可執行的改善計劃': 'Deliberate Practice — concrete, executable improvement plan',
-  '網頁重點版+PDF 完整版（30,000字+）': 'Web highlights + full PDF (30,000+ words)',
+  '網頁重點版+PDF 完整版': 'Web highlights + full PDF',
   '可選：財運/事業/感情/健康/學業/搬家': 'Choose: Wealth / Career / Relationships / Health / Study / Moving',
   '用 200 字描述你的困惑': 'Describe your concern in 200 words',
   '精選相關系統聚焦你的問題深度分析': 'Relevant systems selected for a focused, in-depth analysis of your question',
