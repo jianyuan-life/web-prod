@@ -40,7 +40,8 @@ process.env.USE_PLAN_V4_R ??= 'true'
 // v6 相容面=下方七個 wrapper 實際使用的出口;用 Pick+賦值讓編譯期真驗簽名(取代裸 unknown cast,Codex 互審 P1)
 type CPromptAdapter = Pick<typeof _cV2,
   'getAgeGroup' | 'buildCall1Prompt' | 'buildCall2Prompt' | 'buildCall3Prompt' |
-  'buildUserPrompt' | 'extractCall1Summary' | 'extractCall1And2Summary'>
+  'buildUserPrompt' | 'extractCall1Summary' | 'extractCall1And2Summary' |
+  'SYSTEM_GROUPS' | 'FORBIDDEN_WORDS_BY_STAGE'>  // 後兩者被 _cPick() 直接取用(L2111/2131/2152/2934),漏了會 runtime undefined
 const _cV6Adapter: CPromptAdapter = _cV6  // 簽名不相容時這行編譯即錯
 function _cPick(): typeof _cV2 {
   if (isV6('C')) return _cV6Adapter as typeof _cV2  // v6 人生手冊體(default OFF、USE_PLAN_V6_C='true' 才啟用;僅七出口保證存在)

@@ -126,6 +126,21 @@ import {
 export const getAgeGroup = _v2GetAgeGroup
 export const buildUserPrompt = _v2BuildUserPrompt
 
+// v6 系統名單:14 套(=v2 的 15 套去掉已下架的南洋術數殘留)。
+// 奇門遁甲盤面留在資料層(附錄排盤全覽可列),但 v6 語言契約已禁時空處方進正文(E 系列不越界)。
+export const SYSTEM_GROUPS = {
+  call1: ['八字四柱', '紫微斗數', '奇門遁甲', '風水堪輿', '姓名學', '西洋占星', '吠陀占星', '易經占卜', '人類圖', '塔羅牌', '數字能量學', '中國古典占星', '生肖運勢', '生物節律'],
+  call2: ['八字四柱', '紫微斗數', '奇門遁甲', '風水堪輿', '姓名學', '西洋占星', '吠陀占星', '易經占卜', '人類圖', '塔羅牌', '數字能量學', '中國古典占星', '生肖運勢', '生物節律'],
+  call3: ['八字四柱', '紫微斗數', '奇門遁甲', '風水堪輿', '姓名學', '西洋占星', '吠陀占星', '易經占卜', '人類圖', '塔羅牌', '數字能量學', '中國古典占星', '生肖運勢', '生物節律'],
+}
+
+// v6 禁詞(gate 端 FORBIDDEN_WORDS_BY_STAGE 相容出口):正文層即 v6 黑名單+絕對化;附錄階段不加額外禁詞
+export const FORBIDDEN_WORDS_BY_STAGE: Record<string, string[]> = {
+  call1: ['一定會', '必然', '註定', '絕對不能', '永遠不會', '百分之百'],
+  call2: ['一定會', '必然', '註定', '絕對不能', '永遠不會', '百分之百'],
+  call3: ['一定會', '必然', '註定', '絕對不能', '永遠不會', '百分之百'],
+}
+
 function lifeStageToV6(stage: string, birthYear?: number): V6AgeGroup {
   const age = birthYear ? new Date().getFullYear() - birthYear : 35
   switch (stage as LifeStage) {
