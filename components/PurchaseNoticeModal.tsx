@@ -51,7 +51,7 @@ function formatE2Window(data: {
 const SHARED_NOTICE = [
   '報告為虛擬數位內容，付款後即開始精密計算、不支援退款',
   '所有排盤基於古法確定性演算法，相同輸入 100% 得到相同結果',
-  '報告永久保存於您的帳號中、網頁線上查閱',
+  '報告長期保存於您的帳號中、網頁線上查閱',
 ]
 
 // 各方案專屬須知
@@ -111,7 +111,7 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
     title: '人生藍圖須知',
     items: [
       '十四套命理系統交叉分析、一次看清人生全貌',
-      '約 30,000 字網頁重點版＋完整 PDF',
+      '約 14,000 字深度報告＋完整 PDF',
       '付款後系統自動精密計算並生成報告',
     ],
     timing: '約 30-60 分鐘完成生成',

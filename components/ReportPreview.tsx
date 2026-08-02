@@ -117,7 +117,7 @@ export default function ReportPreview() {
                       <polyline points="21 15 16 10 5 21" />
                     </svg>
                   ),
-                  title: '精美 PDF 永久保存',
+                  title: '精美 PDF 隨時下載',
                   desc: '隨時回顧，也可以分享給你信任的人',
                 },
                 {

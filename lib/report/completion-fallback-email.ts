@@ -50,8 +50,8 @@ export async function sendCompletionEmailIfMissing(reportId: string, source: str
     const brand = isCN ? '鉴 源' : '鑒 源'
     const cta = isCN ? '查看我的报告' : '查看我的報告'
     const body = isCN
-      ? `您好，您的<strong style="color:#c9a84c;">${planName}</strong>报告已生成完成，点击下方按钮即可查看。报告会永久保存在您的帐号中。`
-      : `您好，您的<strong style="color:#c9a84c;">${planName}</strong>報告已生成完成，點擊下方按鈕即可查看。報告會永久保存在您的帳號中。`
+      ? `您好，您的<strong style="color:#c9a84c;">${planName}</strong>报告已生成完成，点击下方按钮即可查看。报告会长期保存在您的帐号中。`
+      : `您好，您的<strong style="color:#c9a84c;">${planName}</strong>報告已生成完成，點擊下方按鈕即可查看。報告會長期保存在您的帳號中。`
 
     const outcome = await sendEmailWithRetry({
       from: isCN ? '鉴源命理 <reports@jianyuan.life>' : '鑒源命理 <reports@jianyuan.life>',

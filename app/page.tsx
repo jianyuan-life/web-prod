@@ -140,10 +140,10 @@ export default function HomePage() {
       <section className="jy-hero">
         <div className="jy-container jy-hero__grid">
           <div className="jy-hero__copy">
-            <div className="jy-eyebrow">十四大系統 · 44,421+ 條專業規則</div>
+            <div className="jy-eyebrow">十四大系統 · 44,421 條規則庫打底</div>
             <h1 className="jy-display">
               不是多算一次，<br />
-              是讓 <strong>14 套系統</strong>互相驗證
+              是讓 <strong>14 套系統</strong>互相對照
             </h1>
             <p className="jy-lede">
               把八字、紫微斗數、奇門遁甲與東西方命理放在同一份分析裡。
