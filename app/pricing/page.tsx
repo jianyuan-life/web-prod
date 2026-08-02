@@ -50,7 +50,7 @@ type Plan = {
 
 const PLAN_PRESENTATION: Record<string, { delivery: string; eta: string }> = {
   C: { delivery: '網頁重點版＋PDF 完整版', eta: '通常約 30–60 分鐘' },
-  G15: { delivery: '家庭互動報告；成員個別分析＋互動關係解讀', eta: '依家庭成員數量而定' },
+  G15: { delivery: '家庭互動報告；聚焦成員互動與家族整體能量', eta: '依家庭成員數量而定' },
   E3: { delivery: '最多 8 個吉時、主題用神與行事曆邀約', eta: '通常需 40 分鐘以上' },
 }
 

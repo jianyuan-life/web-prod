@@ -608,7 +608,6 @@ export const EN_FOUNDER: Record<string, string> = {
   'PDF 完整報告': 'Full PDF report',
   '報告字數': 'Report length',
   '5,000字+': '5,000+ words',
-  '每人8,000字+': '8,000+ words per person',
   '聚焦選定面向': 'Focused on selected dimension',
   '單面向': 'Single dimension',
   // Direction guide compare table

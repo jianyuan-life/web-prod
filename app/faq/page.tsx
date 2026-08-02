@@ -39,7 +39,7 @@ const SECTIONS: Section[] = [
         a: (
           <ul className="list-disc pl-5 space-y-1">
             <li>人生藍圖 C:主題式深度報告、網頁重點版 + PDF 完整版</li>
-            <li>家族藍圖 G15:成員個別分析 + 家族互動解讀</li>
+            <li>家族藍圖 G15:家族互動與整體能量深度解讀</li>
             <li>月度精選 E3:最多 8 個嚴選吉時 + 主題用神說明 + 行事曆邀約</li>
           </ul>
         ),
