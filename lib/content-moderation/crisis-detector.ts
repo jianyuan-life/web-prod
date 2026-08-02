@@ -8,6 +8,8 @@
 // additive 純函式、零行為變化:由呼叫端(report 渲染 / 生成後 QA)
 // 決定是否套用。本檔不自動 wire。法務 review 後上線(P0)。
 
+import { createServiceClient } from '@/lib/supabase'
+
 export type CrisisCategory = 'self_harm' | 'severe_depression' | 'acute_stress'
 
 export interface CrisisScanResult {
@@ -71,21 +73,12 @@ export async function logCrisisEvent(input: {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!url || !key) return
-    await fetch(`${url}/rest/v1/crisis_events`, {
-      method: 'POST',
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify({
-        user_id: input.userId || null,
-        report_id: input.reportId || null,
-        matched_terms: input.matchedTerms,
-        locale: input.locale,
-        ts: new Date().toISOString(),
-      }),
+    await createServiceClient().from('crisis_events').insert({
+      user_id: input.userId || null,
+      report_id: input.reportId || null,
+      matched_terms: input.matchedTerms,
+      locale: input.locale,
+      ts: new Date().toISOString(),
     })
   } catch {
     /* audit log 失敗不阻塞主流程 */

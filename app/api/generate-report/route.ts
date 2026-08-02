@@ -16,7 +16,8 @@ import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { PLAN_SYSTEM_PROMPT } from '@/workflows/generate-report/plan-prompts'  // v5.10.399:fallback 用 SSOT(含 v2/v4 wire + v5.10.x 全修補)、取代本檔脫節 inline 舊版
 import { buildSingleCallV4C } from '@/prompts/c_plan_v4'  // v5.10.458:C fallback / dryRun 改吐乾淨 v4 單-Call(解教科書根因 lesson #163)
 import { buildSingleCallV4G15 } from '@/prompts/g15_plan_v4'  // v5.10.458:G15 fallback 同 C 修(static v2 → v4 單-Call)
-import { isV4 } from '@/lib/plan-flags'  // v5.10.458:USE_PLAN_V4_C/G15 !== 'false' default on
+import { buildSingleCallV6C } from '@/prompts/c_plan_v6'  // v5.10.480:C fallback v6 parity(USE_PLAN_V6_C 開啟時 workflow 掛掉不得退回 v4 格式、lesson #163 脫節家族)
+import { isV4, isV6 } from '@/lib/plan-flags'  // v5.10.458:USE_PLAN_V4_C/G15 !== 'false' default on;isV6 default OFF
 import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
@@ -690,15 +691,32 @@ ${analyses.length}套系統排盤完整數據：
       // ============================================================
       console.info('C 方案 Fallback：使用 Claude Opus 4.6 單次呼叫...')
 
-      if (CLAUDE_API_KEY) {
+      // v5.10.480:C 版本選擇單一出口(v6 > v4 > v2 legacy)、三個 fallback 段共用防漂移
+      // v6 年齡取概略週歲(年差、與 c_plan_v6 getV6AgeGroup 分層粒度一致)
+      const buildCFallbackSystemPrompt = (): string => {
+        if (isV6('C')) {
+          const cAge = new Date().getFullYear() - birthData.year
+          return buildSingleCallV6C(birthData.name || '客戶', cAge, birthData.marital_status)
+        }
+        return isV4('C')
+          ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
+          : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+      }
+
+      // v5.10.480 E2E 實測(2026-08-02):v6 全書 ~15.5k 字,Opus 串流 200s 只到 8k=必超時;
+      // 且 200s 失敗後再跑 Sonnet(~110-150s)會超出本 route maxDuration=300 → v6 走 Opus=保證整條失敗。
+      // → isV6('C') 時跳過 Opus、直走下方 Sonnet(同家族、實測 200s 內完書);v4/v2 行為完全不變。
+      // v6 另需 max_tokens 24576:16000 實測截斷在附錄中段(15,520 字戛然而止)。
+      const cIsV6 = isV6('C')
+      const cMaxTokens = cIsV6 ? 24576 : 16000
+
+      if (CLAUDE_API_KEY && !cIsV6) {
         try {
           // Fallback route 受 Vercel 300s 限制，4 call 順序執行可能超時
           // 改為單次 generic prompt 呼叫，確保在時限內完成
-          const systemPrompt = isV4('C')
-            ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
-            : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+          const systemPrompt = buildCFallbackSystemPrompt()
           const genericUserPrompt = buildGenericUserPrompt()
-          const rawResult = await callClaudeStreaming(systemPrompt, genericUserPrompt, 16000, 200000, {
+          const rawResult = await callClaudeStreaming(systemPrompt, genericUserPrompt, cMaxTokens, 200000, {
             reportId, planCode, callStage: 'C_fallback_single',
           })
 
@@ -709,8 +727,10 @@ ${analyses.length}套系統排盤完整數據：
         } catch (e) {
           console.error('C 方案 Claude 多步生成失敗，嘗試 DeepSeek fallback:', e)
         }
-      } else {
+      } else if (!CLAUDE_API_KEY) {
         console.warn('CLAUDE_API_KEY 未設定，C 方案直接使用 DeepSeek fallback')
+      } else {
+        console.info('C v6 fallback:跳過 Opus(300s 預算裝不下)、直走 Sonnet 單次呼叫')
       }
 
       // v5.10.277 Opus 失敗 → 改 fallback Claude Sonnet 4.6(同家族、體驗一致、CLAUDE.md「DeepSeek 永久移除」)
@@ -718,10 +738,8 @@ ${analyses.length}套系統排盤完整數據：
       if (!reportContent && CLAUDE_API_KEY) {
         try {
           console.info('C 方案 Sonnet fallback:嘗試 Claude Sonnet 4.6...')
-          const systemPrompt = isV4('C')
-            ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
-            : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
-          const rawResult = await callClaudeStreaming(systemPrompt, buildGenericUserPrompt(), 16000, 200000, {
+          const systemPrompt = buildCFallbackSystemPrompt()
+          const rawResult = await callClaudeStreaming(systemPrompt, buildGenericUserPrompt(), cMaxTokens, 200000, {
             reportId, planCode, callStage: 'C_fallback_sonnet',
           }, 'claude-sonnet-4-6')
           reportContent = cleanAIResponse(rawResult)
@@ -729,7 +747,7 @@ ${analyses.length}套系統排盤完整數據：
           console.info(`C 方案 Sonnet fallback 完成：${reportContent.length} 字`)
           // 仍是 downgrade、ops 該知道(Sonnet 跟 Opus 品質有差、但同 family、客戶感知小)
           // dryRun:不發 Telegram(regression 跑 100 份會洗版 ops 告警、且非真實客戶事件)
-          if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', 'Opus failed').catch(() => {})
+          if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', cIsV6 ? 'v6 fallback by design skips Opus (300s budget)' : 'Opus failed').catch(() => {})
         } catch (e) {
           console.error('C 方案 Sonnet fallback 也失敗、最後嘗試 DeepSeek:', e)
         }
@@ -738,9 +756,7 @@ ${analyses.length}套系統排盤完整數據：
       // Claude 全失敗或 key 未設定 → fallback DeepSeek(legacy 最後 backup、Sprint 2.x 移除)
       if (!reportContent) {
         try {
-          const systemPrompt = isV4('C')
-            ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
-            : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+          const systemPrompt = buildCFallbackSystemPrompt()
           reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt()))
           aiModelUsed = 'deepseek-chat'
           console.info(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)

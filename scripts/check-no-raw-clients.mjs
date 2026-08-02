@@ -31,6 +31,8 @@ const RULES = [
       'lib/ai/observability/',      // observability fetch 已封 retry
       'workflows/',                 // workflow 內 service-to-service fetch、有自己 retry
       'lib/feature-flags.ts',       // Edge Config fetch
+      'lib/report/extract-narrative.ts',  // 外部 Gemini generateContent REST(lib/api.ts 只封內部 route、外部 LLM API 各有專屬 error handling)
+      'scripts/',                   // standalone Node ops/QA 腳本、非 app runtime、無 @/lib alias 可 import
     ],
   },
   {

@@ -11,6 +11,7 @@
 // additive 新嵌套路由,不影響既有 /report/[token]。
 
 import { NextRequest } from 'next/server'
+import { createServiceClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,12 +29,12 @@ export async function GET(
   let content = ''
   let status = 'unknown'
   try {
-    const r = await fetch(
-      `${url.replace(/\/$/, '')}/rest/v1/paid_reports?select=report_result,status&access_token=eq.${encodeURIComponent(token)}&limit=1`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store' },
-    )
-    if (r.ok) {
-      const rows = await r.json()
+    const { data: rows, error } = await createServiceClient()
+      .from('paid_reports')
+      .select('report_result,status')
+      .eq('access_token', token)
+      .limit(1)
+    if (!error) {
       const row = Array.isArray(rows) ? rows[0] : null
       status = row?.status || 'not_found'
       const rr = row?.report_result

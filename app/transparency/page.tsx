@@ -9,6 +9,7 @@
 // additive 新路由,不影響既有頁面。
 
 import { isFlagEnabled } from '@/lib/feature-flags'
+import { createServiceClient } from '@/lib/supabase'
 
 // v5.10.459:flag off = 「即將推出」佔位頁 → noindex 避免收錄空頁;
 // flag on(老闆 sign-off 上線)→ 自動恢復可索引(Codex L3 P2:noindex 必須隨 flag 條件化)
@@ -23,16 +24,14 @@ export function generateMetadata() {
 
 async function loadPublicStats(): Promise<{ mrr: number; reports: number; avgRating: number | null } | null> {
   // 僅 flag on 時呼叫。只露彙總、不露個資。
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return null
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null
   try {
-    const r = await fetch(
-      `${url.replace(/\/$/, '')}/rest/v1/paid_reports?select=amount_total,status&status=eq.completed`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store' },
-    )
-    if (!r.ok) return null
-    const rows: { amount_total: number | null }[] = await r.json()
+    const { data, error } = await createServiceClient()
+      .from('paid_reports')
+      .select('amount_total,status')
+      .eq('status', 'completed')
+    if (error || !data) return null
+    const rows = data as { amount_total: number | null }[]
     const rev = rows.reduce((a, b) => a + (b.amount_total || 0) / 100, 0)
     return { mrr: Math.round(rev), reports: rows.length, avgRating: null }
   } catch {

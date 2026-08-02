@@ -5,19 +5,19 @@
 // 註:合集列 Recharts;此處用 SSR 純文字/條狀(免新增 client chart 依賴、
 //   零 type-check 風險)。需 Recharts 視覺可後續老闆/staging 升級。
 
+import { createServiceClient } from '@/lib/supabase'
+
 interface Row { plan_code: string | null; amount_total: number | null; status: string; completed_at: string | null }
 
 async function load(): Promise<Row[] | null> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) return null
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null
   try {
     const since = new Date(Date.now() - 90 * 864e5).toISOString()
-    const r = await fetch(
-      `${url.replace(/\/$/, '')}/rest/v1/paid_reports?select=plan_code,amount_total,status,completed_at&completed_at=gte.${since}`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store' },
-    )
-    return r.ok ? await r.json() : null
+    const { data, error } = await createServiceClient()
+      .from('paid_reports')
+      .select('plan_code,amount_total,status,completed_at')
+      .gte('completed_at', since)
+    return error ? null : (data as Row[])
   } catch {
     return null
   }
