@@ -9,6 +9,7 @@ import {
   SYSTEM_GROUPS,
 } from '@/prompts/c_plan_v2'
 import { validateReportAgainstData } from '@/workflows/generate-report/steps'
+import { v6CMachineWarnings } from '@/workflows/generate-report/v6-gate'  // v5.10.481:fallback 與 workflow 同一把 v6 尺(Codex 反例 P0)
 import { extractFullCharts } from '@/workflows/generate-report/extract-full-charts'  // v5.10.461 P0-4:fallback 補接 deterministic 排盤結構化
 import { extractNarrativeFromContent } from '@/lib/report/extract-narrative'  // v5.10.461 P0-4:fallback 補接敘事綜合萃取
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
@@ -689,13 +690,19 @@ ${analyses.length}套系統排盤完整數據：
       // C 方案 Fallback：單次 Claude 呼叫（受 Vercel 300s 限制）
       // 主流程由 Workflow 處理（4-call 順序），這裡是備援
       // ============================================================
-      console.info('C 方案 Fallback：使用 Claude Opus 4.6 單次呼叫...')
+      // v5.10.481:入口 log 依實際模型鏈(v6 不會用 Opus、固定字樣會污染營運診斷 — Codex 反例)
+      if (!isV6('C')) console.info('C 方案 Fallback：使用 Claude Opus 4.6 單次呼叫...')
 
       // v5.10.480:C 版本選擇單一出口(v6 > v4 > v2 legacy)、三個 fallback 段共用防漂移
       // v6 年齡取概略週歲(年差、與 c_plan_v6 getV6AgeGroup 分層粒度一致)
       const buildCFallbackSystemPrompt = (): string => {
         if (isV6('C')) {
-          const cAge = new Date().getFullYear() - birthData.year
+          // 實足年齡(過生日才加歲;年差會在生日前多一歲、AGE_ADAPTATION 分層邊界會套錯版本)
+          const now = new Date()
+          let cAge = now.getFullYear() - birthData.year
+          const bm = Number(birthData.month) || 1
+          const bd = Number(birthData.day) || 1
+          if (now.getMonth() + 1 < bm || (now.getMonth() + 1 === bm && now.getDate() < bd)) cAge--
           return buildSingleCallV6C(birthData.name || '客戶', cAge, birthData.marital_status)
         }
         return isV4('C')
@@ -707,8 +714,12 @@ ${analyses.length}套系統排盤完整數據：
       // 且 200s 失敗後再跑 Sonnet(~110-150s)會超出本 route maxDuration=300 → v6 走 Opus=保證整條失敗。
       // → isV6('C') 時跳過 Opus、直走下方 Sonnet(同家族、實測 200s 內完書);v4/v2 行為完全不變。
       // v6 另需 max_tokens 24576:16000 實測截斷在附錄中段(15,520 字戛然而止)。
+      // v5.10.481(Codex 反例):v6 Sonnet timeout 200s→240s(24576 tokens 擠 200s 需 ~123 tok/s、過於激進;
+      // v6 已跳過 Opus、route 300s 預算容得下 240s 串流+排盤/收尾 overhead)。
       const cIsV6 = isV6('C')
       const cMaxTokens = cIsV6 ? 24576 : 16000
+      const cTimeoutMs = cIsV6 ? 240000 : 200000
+      if (cIsV6) console.info('C v6 fallback:跳過 Opus(300s 預算裝不下)、直走 Sonnet 單次呼叫')
 
       if (CLAUDE_API_KEY && !cIsV6) {
         try {
@@ -729,8 +740,6 @@ ${analyses.length}套系統排盤完整數據：
         }
       } else if (!CLAUDE_API_KEY) {
         console.warn('CLAUDE_API_KEY 未設定，C 方案直接使用 DeepSeek fallback')
-      } else {
-        console.info('C v6 fallback:跳過 Opus(300s 預算裝不下)、直走 Sonnet 單次呼叫')
       }
 
       // v5.10.277 Opus 失敗 → 改 fallback Claude Sonnet 4.6(同家族、體驗一致、CLAUDE.md「DeepSeek 永久移除」)
@@ -739,7 +748,7 @@ ${analyses.length}套系統排盤完整數據：
         try {
           console.info('C 方案 Sonnet fallback:嘗試 Claude Sonnet 4.6...')
           const systemPrompt = buildCFallbackSystemPrompt()
-          const rawResult = await callClaudeStreaming(systemPrompt, buildGenericUserPrompt(), cMaxTokens, 200000, {
+          const rawResult = await callClaudeStreaming(systemPrompt, buildGenericUserPrompt(), cMaxTokens, cTimeoutMs, {
             reportId, planCode, callStage: 'C_fallback_sonnet',
           }, 'claude-sonnet-4-6')
           reportContent = cleanAIResponse(rawResult)
@@ -828,6 +837,18 @@ ${analyses.length}套系統排盤完整數據：
     if (!reportContent) {
       await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容', dryRun)
       return NextResponse.json({ error: 'AI 未回覆', dryRun }, { status: 500 })
+    }
+
+    // v5.10.481(Codex 反例 P0):v6 fallback 必過同一把 v6 機檢尺、硬項不過=fail closed。
+    // E2E 實證 fallback 無 gate 時會出「殘缺 v6」(6/12:截斷附錄/漏原型錨/黑名單詞);
+    // route 300s 預算裝不下 retry → 不合格一律標 failed 走人工/重試流程,不得默默交付。
+    if (planCode === 'C' && isV6('C')) {
+      const v6HardWarnings = v6CMachineWarnings(reportContent).filter((w) => !w.startsWith('[軟性]'))
+      if (v6HardWarnings.length > 0) {
+        const summary = `v6 fallback 未過機檢(${v6HardWarnings.length} 硬項):${v6HardWarnings.slice(0, 3).join(';')}`
+        await markReportFailed(reportId, summary.slice(0, 300), dryRun)
+        return NextResponse.json({ error: 'v6 fallback 未過機檢、fail closed', warnings: v6HardWarnings.slice(0, 10), dryRun }, { status: 500 })
+      }
     }
 
     // Step 3.2: Post-generation QA — 比對 AI 報告與排盤數據，自動修正幻覺

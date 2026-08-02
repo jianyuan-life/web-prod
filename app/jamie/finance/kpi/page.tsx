@@ -7,6 +7,9 @@
 
 import { createServiceClient } from '@/lib/supabase'
 
+// supabase-js 不帶原 REST fetch 的 cache:'no-store' 語意 → 顯式宣告動態,防 KPI 被靜態化/吃 fetch cache(Codex 反例)
+export const dynamic = 'force-dynamic'
+
 interface Row { plan_code: string | null; amount_total: number | null; status: string; completed_at: string | null }
 
 async function load(): Promise<Row[] | null> {

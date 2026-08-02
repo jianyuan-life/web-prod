@@ -1,9 +1,9 @@
 {
-  "generated": "2026-08-02T06:15:14.559Z",
+  "generated": "2026-08-02T06:54:07.453Z",
   "summary": {
     "no-raw-fetch": {
-      "fileCount": 38,
-      "totalOccurrences": 79
+      "fileCount": 39,
+      "totalOccurrences": 80
     },
     "no-raw-supabase-service-client": {
       "fileCount": 0,
@@ -167,6 +167,10 @@
       {
         "file": "lib/security/client-audit.ts",
         "count": 2
+      },
+      {
+        "file": "scripts/test_team_pipeline.ts",
+        "count": 1
       }
     ],
     "no-raw-supabase-service-client": [],

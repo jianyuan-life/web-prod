@@ -32,7 +32,9 @@ const RULES = [
       'workflows/',                 // workflow 內 service-to-service fetch、有自己 retry
       'lib/feature-flags.ts',       // Edge Config fetch
       'lib/report/extract-narrative.ts',  // 外部 Gemini generateContent REST(lib/api.ts 只封內部 route、外部 LLM API 各有專屬 error handling)
-      'scripts/',                   // standalone Node ops/QA 腳本、非 app runtime、無 @/lib alias 可 import
+      // scripts 豁免逐檔列名(不整目錄放行:migration/backfill/含 service-key 營運腳本仍要受掃 — Codex 反例)
+      'scripts/validate_tone_charter.mjs',  // 外部 OpenAI REST、離線 QA 腳本、非 app runtime
+      'scripts/weekly_briefing.mjs',        // Supabase/Resend REST、cron 週報腳本、無 @/lib alias;讀彙總不寫入
     ],
   },
   {

@@ -11,6 +11,9 @@
 import { isFlagEnabled } from '@/lib/feature-flags'
 import { createServiceClient } from '@/lib/supabase'
 
+// supabase-js 不帶原 REST fetch 的 cache:'no-store' 語意 → 顯式宣告動態,防彙總數字被靜態化(Codex 反例)
+export const dynamic = 'force-dynamic'
+
 // v5.10.459:flag off = 「即將推出」佔位頁 → noindex 避免收錄空頁;
 // flag on(老闆 sign-off 上線)→ 自動恢復可索引(Codex L3 P2:noindex 必須隨 flag 條件化)
 export function generateMetadata() {
