@@ -125,6 +125,15 @@ test('motion is restrained, content remains visible, and reduced motion is suppo
   )
   assert.match(css, /@media\s*\(max-width:/)
   assert.match(css, /:global\(\[data-theme=['"]dark['"]\]\)\s+\.root/)
+  assert.match(css, /--boundary-bg:\s*#202622/)
+  assert.match(css, /--boundary-text:\s*#faf7f0/)
+  assert.match(
+    css,
+    /\.boundarySection\s*\{[^}]*background:\s*var\(--boundary-bg\)[^}]*color:\s*var\(--boundary-text\)/s,
+  )
+  assert.match(css, /\.boundaryIntro\s+\.sectionIndex\s*\{[^}]*color:\s*var\(--boundary-accent\)/s)
+  assert.match(css, /\.boundaryIntro\s*>\s*p:last-child\s*\{[^}]*color:\s*var\(--boundary-muted\)/s)
+  assert.match(css, /\.boundaryList p\s*\{[^}]*color:\s*var\(--boundary-body\)/s)
 })
 
 test('single-column hero permits grid children to shrink inside a 390px viewport', () => {

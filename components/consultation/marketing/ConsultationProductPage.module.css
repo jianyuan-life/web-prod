@@ -10,6 +10,11 @@
   --accent: #364b70;
   --accent-soft: #dbe1e8;
   --accent-ink: #263854;
+  --boundary-bg: #202622;
+  --boundary-text: #faf7f0;
+  --boundary-accent: #eda897;
+  --boundary-muted: #d5dbd6;
+  --boundary-body: #f0f2f0;
   --motion-quick: 160ms;
   --motion-base: 240ms;
   --motion-slow: 320ms;
@@ -589,12 +594,12 @@
   gap: clamp(2.5rem, 8vw, 7rem);
   padding: clamp(2rem, 6vw, 5rem);
   border: 1px solid var(--rule-strong);
-  background: var(--ink);
-  color: var(--paper-bright);
+  background: var(--boundary-bg);
+  color: var(--boundary-text);
 }
 
 .boundaryIntro .sectionIndex {
-  color: #d78270;
+  color: var(--boundary-accent);
 }
 
 .boundaryIntro h2 {
@@ -603,7 +608,7 @@
 
 .boundaryIntro > p:last-child {
   margin-top: 1.5rem;
-  color: #c5cbc6;
+  color: var(--boundary-muted);
 }
 
 .boundaryList {
@@ -622,12 +627,12 @@
 }
 
 .boundaryList li > span {
-  color: #d78270;
+  color: var(--boundary-accent);
 }
 
 .boundaryList p {
   margin: 0;
-  color: #e5e8e5;
+  color: var(--boundary-body);
   font-size: 0.84rem;
   line-height: 1.8;
 }

@@ -52,6 +52,7 @@ const TELEMETRY_BLOCKLIST = [
   '*googletagmanager.com/*',
   '*clarity.ms/*',
 ]
+const VERCEL_PREVIEW_TOOLBAR_URL = 'https://vercel.live/_next-live/feedback/feedback.js'
 
 const cliArgs = process.argv.slice(2)
 const planOnly = cliArgs.includes('--plan')
@@ -271,6 +272,30 @@ function runContractSelfTest() {
     ['fetch-response-error', {
       diagnostics: [{ method: 'Network.responseReceived', resourceType: 'Fetch', status: 500 }],
     }, ['runtime-or-resource-errors']],
+    ['vercel-preview-toolbar', {
+      diagnostics: [
+        {
+          method: 'Network.loadingFailed', resourceType: 'Script', url: VERCEL_PREVIEW_TOOLBAR_URL,
+          blockedReason: 'csp', canceled: false,
+        },
+        { method: 'Log.entryAdded', source: 'security', previewToolbarCsp: true },
+      ],
+    }, []],
+    ['vercel-toolbar-non-csp', {
+      diagnostics: [{
+        method: 'Network.loadingFailed', resourceType: 'Script', url: VERCEL_PREVIEW_TOOLBAR_URL,
+        blockedReason: 'mixed-content', canceled: false,
+      }],
+    }, ['runtime-or-resource-errors']],
+    ['other-csp-script', {
+      diagnostics: [{
+        method: 'Network.loadingFailed', resourceType: 'Script', url: 'https://example.invalid/product.js',
+        blockedReason: 'csp', canceled: false,
+      }],
+    }, ['runtime-or-resource-errors']],
+    ['other-security-log', {
+      diagnostics: [{ method: 'Log.entryAdded', source: 'security', previewToolbarCsp: false }],
+    }, ['runtime-or-resource-errors']],
   ]
   const outcomes = cases.map(([name, overrides, expectedCodes]) => {
     const result = { ...base, ...overrides }
@@ -472,12 +497,14 @@ function createCdpClient(webSocketUrl) {
         description: sanitizeDiagnosticText(details.exception?.description || details.text),
       })
     } else if (message.method === 'Log.entryAdded' && message.params.entry?.level === 'error') {
+      const logText = String(message.params.entry.text || '')
       diagnostics.push({
         method: message.method,
         level: message.params.entry.level,
         source: message.params.entry.source,
         url: safeUrl(message.params.entry.url || ''),
-        text: sanitizeDiagnosticText(message.params.entry.text),
+        previewToolbarCsp: message.params.entry.source === 'security' && logText.includes(VERCEL_PREVIEW_TOOLBAR_URL),
+        text: sanitizeDiagnosticText(logText),
       })
     } else if (message.method === 'Runtime.consoleAPICalled' && message.params.type === 'error') {
       diagnostics.push({
@@ -1210,6 +1237,13 @@ function getHardFailures(result) {
   const responseCriticalResourceTypes = new Set([...renderCriticalResourceTypes, 'Fetch', 'XHR'])
   const severeDiagnostics = result.diagnostics.filter((entry) => {
     if (entry.method === 'Network.loadingFailed' && entry.blockedReason === 'inspector') return false
+    if (
+      entry.method === 'Network.loadingFailed'
+      && entry.resourceType === 'Script'
+      && entry.url === VERCEL_PREVIEW_TOOLBAR_URL
+      && entry.blockedReason === 'csp'
+    ) return false
+    if (entry.method === 'Log.entryAdded' && entry.previewToolbarCsp === true) return false
     if (entry.method === 'Network.loadingFailed' && entry.canceled && !renderCriticalResourceTypes.has(entry.resourceType)) return false
     if (entry.method === 'Network.loadingFailed') return true
     if (entry.method === 'Network.responseReceived') {

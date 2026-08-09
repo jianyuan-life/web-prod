@@ -36,6 +36,10 @@ test('visual audit adversarial contract rejects every modeled false pass', () =>
     'canceled-prefetch',
     'canceled-script',
     'fetch-response-error',
+    'vercel-preview-toolbar',
+    'vercel-toolbar-non-csp',
+    'other-csp-script',
+    'other-security-log',
   ])
   assert.equal(receipt.identityOutcomes.find((entry) => entry.name === 'mutable-alias-rejected')?.pass, true)
 })
@@ -46,6 +50,8 @@ test('visual audit distinguishes blocked telemetry and browser rounding from rea
   assert.match(scriptSource, /baselineByPath\.has\(record\.path\)[\s\S]*record\.focusVisible\s*&&\s*record\.hasVisibleIndicator/)
   assert.match(scriptSource, /Math\.abs\(result\.page\.viewport\.innerWidth\s*-\s*result\.requestedViewport\.width\)\s*>\s*3/)
   assert.match(scriptSource, /details:not\(\[open\]\)/)
+  assert.match(scriptSource, /previewToolbarCsp/)
+  assert.match(scriptSource, /https:\/\/vercel\.live\/_next-live\/feedback\/feedback\.js/)
 })
 
 test('global skip link becomes fully visible immediately when keyboard focused', () => {
