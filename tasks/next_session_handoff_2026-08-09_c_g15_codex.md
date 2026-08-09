@@ -78,11 +78,13 @@
 
 ## 還沒做，不可宣稱完成
 
-1. 逐檔 diff 的 Claude Opus 4.8 與 Gemini 3.1 Pro fresh-context counterexample review 尚未完成；必須把 finding 逐項採納或用證據反駁。
-2. 桌面／平板／手機、light／dark／reduced-motion／400% zoom 的 immutable preview 96 案真實瀏覽器矩陣尚未完成。
-3. `tasks/c_g15_market_ui_benchmark_2026-08-09.md` 已列 25 個客觀商業/UI 維度；其中「未見」與「部分」不可冒充 100 分。
-4. 上述 Fly P0 與 attestation 缺口尚未修；Fly.io 此次只有唯讀與虛擬案例授權，不得修改、部署、重啟、縮放或寫 secrets。
-5. 未合併 main、未推 production，`https://jianyuan.life/` 尚未反映本分支。
+1. Claude Opus 4.8 與 Gemini 3.1 Pro 已各自完成完整 patch 反例審查，兩者結論都是 `RELEASE=HOLD`。採納／保留／不採用理由見 `tasks/c_g15_cross_model_review_2026-08-09.md`。
+2. 兩家共同確認 web 會漏接 Fly live 的 `detail/sub_summary` 計算異常 placeholder，且現有測試與實作共同漏接；這是尚未修正的 P0。
+3. Gemini 另指出 G15 目前仍是購買者單次聲明，沒有逐位成年成員的獨立同意與撤回紀錄。這項先列商業化／隱私發布阻擋，不在缺正式法律意見時自行宣稱違法。
+4. 桌面／平板／手機、light／dark／reduced-motion／400% zoom 的 immutable preview 96 案真實瀏覽器矩陣尚未完成。
+5. `tasks/c_g15_market_ui_benchmark_2026-08-09.md` 已列 25 個客觀商業/UI 維度；其中「未見」與「部分」不可冒充 100 分。
+6. 上述 Fly P0 與 attestation 缺口尚未修；Fly.io 此次只有唯讀與虛擬案例授權，不得修改、部署、重啟、縮放或寫 secrets。
+7. 未合併 main、未推 production，`https://jianyuan.life/` 尚未反映本分支。
 
 ## 接手後指令順序
 
