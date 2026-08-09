@@ -394,7 +394,7 @@ class ConsultationPdfPainter {
       this.doc.fillColor(accent).rect(66, 64, 76, 2).fill()
     })
     this.y = 94
-    this.drawWrapped('鑑源 · 當代鑑識卷宗', {
+    this.drawWrapped(`鑑源 · ${this.model.planTitle}諮詢報告`, {
       x: 66,
       width: 475,
       size: 8.5,
@@ -828,11 +828,11 @@ class ConsultationPdfPainter {
           this.doc.strokeColor(palette.bronzeSoft).lineWidth(0.55).moveTo(66, 795).lineTo(541, 795).stroke()
         })
         this.drawLine(`JianYuan · ${this.model.plan}`, 66, 806, { size: 6.8, color: palette.inkMuted }, 240, 'left', undefined, 'P', true)
-        this.drawLine('PRIVATE COPY', 301, 806, { size: 6.8, color: palette.inkMuted }, 240, 'right', undefined, 'P', true)
+        this.drawLine('個人專屬報告', 301, 806, { size: 6.8, color: palette.inkMuted }, 240, 'right', undefined, 'P', true)
         continue
       }
 
-      this.drawLine('鑑源 JIANYUAN · LIVING DOSSIER', PAGE.left, 24, {
+      this.drawLine('鑑源 JIANYUAN · 諮詢報告', PAGE.left, 24, {
         size: 7.1,
         color: palette.bronze,
         characterSpacing: 1.05,

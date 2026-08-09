@@ -10,6 +10,7 @@
 // 審計鏈:Codex 反例五輪清空 + Gemini 視覺 9/8.5/9.5/9.5 + $200 面板 40 維(SCORING_200USD.md)
 
 import { ETHICS_RULES } from '@/workflows/generate-report/plan-prompts'
+import { buildConsultationRelationshipPrompt } from '@/lib/consultation/relationship-context'
 
 // ── 正文禁用術語黑名單(與 qualityGate v6 同源;gate 端掃「## 附錄」之前的正文)──
 export const V6_BODY_TERM_BLACKLIST = [
@@ -46,17 +47,6 @@ const AGE_ADAPTATION: Record<V6AgeGroup, string> = {
   establishing: `【年齡層=成家立業】主軸=事業深化/財務結構/親密關係與家庭/此刻的重大選擇;時間軸到 60 歲。`,
   midlife: `【年齡層=中年】主軸=第二曲線/承重與轉型/健康節奏/關係重整;時間軸到 70 歲;「轉型」寫成選項不寫成危機。`,
   senior: `【年齡層=長者】主軸=傳承/健康節奏/關係與心境;禁壽命相關一切暗示;時間軸寫「往後十年」不寫終點。`,
-}
-
-function maritalAdaptation(maritalStatus?: string): string {
-  const s = (maritalStatus || '').toLowerCase()
-  if (s.includes('marri') || s === '已婚') {
-    return `【婚姻層=已婚】第三章寫「與伴侶的相處模式」:讀差修復/共同低潮分工/共讀指引(邀請對方核對);絕不判定婚姻吉凶成敗、不寫「離/合」預測;伴侶的內在只能寫「你這一端的模式」,對方由對方說了算。`
-  }
-  if (s.includes('single') || s === '未婚') {
-    return `【婚姻層=未婚】第三章寫「你在親密關係中的模式」與「你會吸引誰/該靠近誰」;不預設有無對象;不催婚不販賣焦慮。`
-  }
-  return `【婚姻層=未提供(中性、預設)】第三章完全不假設感情狀態:開頭明寫「這一章不假設你目前的感情狀態——單身、有伴、或在某段關係的路上,下面的模式都是傾向,由核對決定它們是否屬於你」。`
 }
 
 // ── v6 核心語言契約(全章節共用)──
@@ -160,9 +150,7 @@ function v6PartHeader(ageGroup: string, birthYear?: number): string {
   const g = lifeStageToV6(ageGroup, birthYear)
   return `${v6CoreRules()}
 
-${AGE_ADAPTATION[g]}
-
-${maritalAdaptation(undefined)}`
+${AGE_ADAPTATION[g]}`
 }
 
 export function buildCall1Prompt(ageGroup: string, clientNeed?: string, _locale?: string, birthYear?: number): string {
@@ -241,7 +229,7 @@ export function buildSingleCallV6C(
 
 ${AGE_ADAPTATION[ageGroup]}
 
-${maritalAdaptation(maritalStatus)}
+${buildConsultationRelationshipPrompt(maritalStatus)}
 ${needSection}${kbSection}
 【本次任務】為「${clientName}」寫完整的 v6 人生藍圖(人生手冊體)。依上方結構契約單次輸出全書。
 - 原型稱號:從盤面提煉一個專屬稱號(格式「把…的人」或同等白話),開卷第一卡立、收卷回收

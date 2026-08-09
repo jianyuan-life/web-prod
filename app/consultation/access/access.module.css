@@ -1,0 +1,175 @@
+.page {
+  --access-canvas: #111515;
+  --access-panel: #1d2220;
+  --access-ink: #f3eee5;
+  --access-heading: #fffaf1;
+  --access-muted: #bbb4aa;
+  --access-line: rgba(214, 181, 111, 0.24);
+  --access-accent: #dfbd74;
+  --access-cta: #dfbd74;
+  --access-cta-ink: #1b160f;
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(1.25rem, 5vw, 4rem);
+  color: var(--access-ink);
+  background:
+    radial-gradient(circle at 82% 14%, rgba(214, 181, 111, 0.13), transparent 25rem),
+    linear-gradient(145deg, #101414, #181c1b 52%, #111414);
+}
+
+:global([data-theme="light"]) .page {
+  --access-canvas: #eee5d7;
+  --access-panel: #fbf6ed;
+  --access-ink: #2f2a24;
+  --access-heading: #211d18;
+  --access-muted: #655e54;
+  --access-line: rgba(111, 78, 38, 0.22);
+  --access-accent: #7a531b;
+  --access-cta: #983c2e;
+  --access-cta-ink: #fffaf4;
+  background:
+    radial-gradient(circle at 82% 14%, rgba(151, 103, 38, 0.15), transparent 25rem),
+    linear-gradient(145deg, #eee4d5, #f6eee3 52%, #eae0d1);
+}
+
+.halo {
+  position: absolute;
+  top: 10%;
+  right: -8rem;
+  width: min(42vw, 27rem);
+  aspect-ratio: 1;
+  border: 1px solid var(--access-line);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4rem color-mix(in srgb, var(--access-accent) 3%, transparent);
+}
+
+.card {
+  position: relative;
+  width: min(100%, 42rem);
+  padding: clamp(1.65rem, 5vw, 3.25rem);
+  background: var(--access-panel);
+  border: 1px solid var(--access-line);
+  border-radius: 26px;
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.28);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--access-accent), transparent 74%);
+  border-radius: 26px 26px 0 0;
+}
+
+.kicker {
+  margin: 0 0 0.75rem;
+  color: var(--access-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.card h1 {
+  margin: 0;
+  color: var(--access-heading);
+  font-family: Georgia, "Noto Serif TC", serif;
+  font-size: clamp(2rem, 7vw, 3.35rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.17;
+  text-wrap: balance;
+}
+
+.status {
+  margin-top: 1.75rem;
+  padding: 1rem 1.1rem;
+  color: var(--access-muted);
+  background: color-mix(in srgb, var(--access-accent) 6%, transparent);
+  border: 1px solid var(--access-line);
+  border-radius: 14px;
+}
+
+.status p {
+  margin: 0;
+  line-height: 1.8;
+}
+
+.openingRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.spinner {
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 2px solid var(--access-line);
+  border-top-color: var(--access-accent);
+  border-radius: 50%;
+  animation: access-spin 800ms linear infinite;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.35rem;
+}
+
+.actions :is(a, button) {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.primaryAction {
+  color: var(--access-cta-ink);
+  background: var(--access-cta);
+  border: 1px solid color-mix(in srgb, var(--access-cta) 75%, black);
+}
+
+.secondaryAction {
+  color: var(--access-ink);
+  background: transparent;
+  border: 1px solid var(--access-line);
+}
+
+.tertiaryAction {
+  color: var(--access-muted);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.actions :is(a, button):focus-visible {
+  outline: 2px solid var(--access-accent);
+  outline-offset: 3px;
+}
+
+@keyframes access-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 520px) {
+  .actions {
+    display: grid;
+  }
+
+  .actions :is(a, button) {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}

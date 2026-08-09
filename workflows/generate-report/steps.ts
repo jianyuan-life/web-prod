@@ -32,7 +32,17 @@ import {
 import type { NormalizedConsultationChapter } from '@/lib/consultation/chapter-assembly'
 import type { FactLedger, PersonContext, ReportAgeContext } from '@/lib/consultation/report-contract'
 import { validateG15Selection, type G15SelectionReportRow } from '@/lib/checkout/validate-g15-selection'
+import { validateG15ConsultationContext } from '@/lib/checkout/g15-context'
+import { validateG15ConsentAttestation } from '@/lib/checkout/g15-consent'
+import { buildAgeContext } from '@/lib/consultation/age-context'
+import { BIRTH_TIME_DEPENDENT_SYSTEMS } from '@/lib/consultation/calculator-facts'
 import { readConsultationRuntimeReceipts } from '@/lib/consultation/runtime-config'
+import { buildConsultationRelationshipPrompt } from '@/lib/consultation/relationship-context'
+import { buildUntrustedClientQuestionBlock } from '@/lib/consultation/client-question'
+import {
+  assertCompleteConsultationCalculatorResult,
+} from '@/lib/consultation/legacy-calculator-safety'
+import { calculateAgeAsOf, cLifeStageForAge, type CPromptPeriodContext } from '@/prompts/c_plan_contract'
 // v5.10.88 Stage 1 USE_PLAN_V3 feature flag(SOP `tasks/prompt_v3_switch_sop_2026-05-08.md`):
 //   c_plan v2 vs v3 export 同 11 個 symbol 同 signature(已 grep 驗證)、namespace import 後 flag 切
 //   預設 false → production 仍走 v2、零風險;Vercel env `USE_PLAN_V3=true` → trigger redeploy 即生效 v3
@@ -63,10 +73,10 @@ type CPromptAdapter = Pick<typeof _cV2,
   'buildUserPrompt' | 'extractCall1Summary' | 'extractCall1And2Summary' |
   'SYSTEM_GROUPS' | 'FORBIDDEN_WORDS_BY_STAGE'>  // 後兩者被 _cPick() 直接取用(L2111/2131/2152/2934),漏了會 runtime undefined
 const _cV6Adapter: CPromptAdapter = _cV6  // 簽名不相容時這行編譯即錯
-function _cPick(): typeof _cV2 {
-  if (isV6('C')) return _cV6Adapter as typeof _cV2  // v6 人生手冊體(default OFF、USE_PLAN_V6_C='true' 才啟用;僅七出口保證存在)
-  if (isV4('C')) return _cV4 as unknown as typeof _cV2
-  if (process.env.USE_PLAN_V3 === 'true') return _cV3
+function _cPick(): CPromptAdapter {
+  if (isV6('C')) return _cV6Adapter  // v6 人生手冊體(default OFF、USE_PLAN_V6_C='true' 才啟用;僅七出口保證存在)
+  if (isV4('C')) return _cV4 as unknown as CPromptAdapter
+  if (process.env.USE_PLAN_V3 === 'true') return _cV3 as CPromptAdapter
   return _cV2
 }
 // 以下 wrapper 保留原 bare-identifier 呼叫點、但選版本延後到「呼叫時」(access-time、解 P1 #1 時序炸彈)
@@ -1066,7 +1076,10 @@ export async function loadReportRecord(reportId: string) {
 }
 
 // ── Step 1: 呼叫 Python API 排盤 ──
-export async function callPythonCalculate(birthData: BirthData) {
+export async function callPythonCalculate(
+  birthData: BirthData,
+  options: { consultationMode?: boolean } = {},
+) {
   "use step";
   await emitProgress({ step: '排盤運算', progress: 10, message: '正在計算十五大命理系統排盤...' })
 
@@ -1076,7 +1089,9 @@ export async function callPythonCalculate(birthData: BirthData) {
 
   let res: Response
   try {
-    const requestPayload = buildCalculatorRequestPayload(birthData)
+    const requestPayload = buildCalculatorRequestPayload(birthData, {
+      consultationMode: options.consultationMode === true,
+    })
     res = await fetch(`${PYTHON_API}/api/calculate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1101,8 +1116,11 @@ export async function callPythonCalculate(birthData: BirthData) {
   const result: CalcResult = await res.json()
   console.log(`排盤完成: ${result.analyses?.length || 0} 套系統`)
 
-  // 排盤結果完整性驗證：空結果或缺關鍵數據時重試
-  if (!result.analyses?.length) {
+  // C 諮詢報告要求完整 15 槽、無重複、無 partial failure；其他方案
+  // 保留原有路徑，避免改動 E3 等已凍結生成邏輯。
+  if (options.consultationMode === true) {
+    assertCompleteConsultationCalculatorResult(result)
+  } else if (!result.analyses?.length) {
     throw new RetryableError('排盤 API 回傳空結果（analyses 為空陣列）', { retryAfter: '15s' })
   }
   if (!result.client_data) {
@@ -1112,6 +1130,29 @@ export async function callPythonCalculate(birthData: BirthData) {
   return result
 }
 callPythonCalculate.maxRetries = 3
+
+function cPromptPeriodContext(birthData: BirthData): CPromptPeriodContext {
+  return {
+    asOf: typeof birthData.as_of === 'string' ? birthData.as_of : undefined,
+    targetYear: typeof birthData.target_year === 'number' ? birthData.target_year : undefined,
+    timeUnknown: birthData.time_unknown === true || birthData.time_mode === 'unknown',
+    birthYear: Number(birthData.year),
+    birthMonth: Number(birthData.month),
+    birthDay: Number(birthData.day),
+    relationshipStatus: typeof birthData.marital_status === 'string' ? birthData.marital_status : undefined,
+  }
+}
+
+function cAgeGroupAsOf(birthData: BirthData): string {
+  const context = cPromptPeriodContext(birthData)
+  const age = calculateAgeAsOf(
+    Number(birthData.year),
+    Number(birthData.month),
+    Number(birthData.day),
+    context.asOf,
+  )
+  return cLifeStageForAge(age)
+}
 
 // C／G15 consultation v1 only. Legacy plans (including E3) keep using the
 // byte-for-byte compatible unsigned client above.
@@ -2195,10 +2236,11 @@ export async function aiGenerateCall1(
   console.log('Call 1 開始：命格名片+人格畫像+事業+財運')
   await emitProgress({ step: 'AI分析', progress: 20, message: '正在分析命格名片、人格畫像、事業與財運...' })
 
-  const ageGroup = getAgeGroup(birthData.year)
-  const clientNeed = question || undefined
+  const ageGroup = cAgeGroupAsOf(birthData)
+  const context = cPromptPeriodContext(birthData)
+  const clientNeed = question ? buildUntrustedClientQuestionBlock(question) : undefined
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call1, birthData)
-  const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale, birthData.year)
+  const systemPrompt = `${buildCall1Prompt(ageGroup, clientNeed, birthData.locale, birthData.year, context)}\n\n${buildConsultationRelationshipPrompt(birthData.marital_status)}`
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 1', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -2209,16 +2251,18 @@ aiGenerateCall1.maxRetries = 3
 
 // ── Step 2b: C 方案 AI 生成 — Call 2（感情+健康+大運+流年） ──
 export async function aiGenerateCall2(
-  calcResult: CalcResult, birthData: BirthData, call1Content: string, reportId?: string,
+  calcResult: CalcResult, birthData: BirthData, call1Content: string, reportId?: string, question?: string,
 ) {
   "use step";
   console.log('Call 2 開始：感情+健康+大運+流年')
   await emitProgress({ step: 'AI分析', progress: 40, message: '正在分析感情、健康、大運走勢與流年重點...' })
 
-  const ageGroup = getAgeGroup(birthData.year)
+  const ageGroup = cAgeGroupAsOf(birthData)
+  const context = cPromptPeriodContext(birthData)
   const call1Summary = extractCall1Summary(call1Content)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call2, birthData)
-  const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale, birthData.year)
+  const clientQuestion = question ? `\n\n${buildUntrustedClientQuestionBlock(question)}` : ''
+  const systemPrompt = `${buildCall2Prompt(ageGroup, call1Summary, birthData.locale, birthData.year, context)}\n\n${buildConsultationRelationshipPrompt(birthData.marital_status)}${clientQuestion}`
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 2', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -2230,13 +2274,14 @@ aiGenerateCall2.maxRetries = 3
 // ── Step 2c: C 方案 AI 生成 — Call 3（一句話+刻意練習+寫給你的話） ──
 export async function aiGenerateCall3(
   calcResult: CalcResult, birthData: BirthData, call1Content: string, call2Content: string,
-  isRetry?: boolean, missingParts?: string[], reportId?: string,
+  isRetry?: boolean, missingParts?: string[], reportId?: string, question?: string,
 ) {
   "use step";
   console.log('Call 3 開始：一句話+刻意練習+寫給你的話')
   await emitProgress({ step: 'AI分析', progress: 60, message: '正在生成刻意練習與寫給你的話...' })
 
-  const ageGroup = getAgeGroup(birthData.year)
+  const ageGroup = cAgeGroupAsOf(birthData)
+  const context = cPromptPeriodContext(birthData)
   const call1and2Summary = extractCall1And2Summary(call1Content, call2Content)
   let userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call3, birthData)
 
@@ -2245,7 +2290,8 @@ export async function aiGenerateCall3(
   }
 
   const maxTokens = 128000
-  const systemPrompt = buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale, birthData.year)
+  const clientQuestion = question ? `\n\n${buildUntrustedClientQuestionBlock(question)}` : ''
+  const systemPrompt = `${buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale, birthData.year, context)}\n\n${buildConsultationRelationshipPrompt(birthData.marital_status)}${clientQuestion}`
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call 3', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -2468,34 +2514,52 @@ export async function loadFamilyReportsByIds(
 loadFamilyReportsByIds.maxRetries = 2
 
 // ── G15 家族藍圖：從報告中提取互動關鍵數據（不餵原文，避免 AI 重複個人分析）──
+function isUnknownG15BirthTime(bd: BirthData): boolean {
+  return bd.time_unknown === true || bd.time_mode === 'unknown'
+}
+
+function formatG15BirthProfile(bd: BirthData): string {
+  const date = `${bd.year}年${bd.month}月${bd.day}日`
+  if (isUnknownG15BirthTime(bd)) {
+    return `出生：${date}；出生時間未提供。不得把 12:00 舊資料內部占位當成真實出生時間或推論依據`
+  }
+  const hour = String(bd.hour).padStart(2, '0')
+  const minute = String(bd.minute ?? 0).padStart(2, '0')
+  return `出生：${date}${hour}:${minute}`
+}
+
 function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
   const lines: string[] = []
+  const timeUnknown = isUnknownG15BirthTime(bd)
 
   // 基本出生資料（從 birthData 直接取，最可靠）
   if (bd.year && bd.month && bd.day) {
-    lines.push(`出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour || '未知'}時`)
+    lines.push(formatG15BirthProfile(bd))
   }
 
   // 從報告中用 regex 提取各系統關鍵數據（每個系統取第一段摘要）
-  const systemPatterns: Array<{ name: string; pattern: RegExp }> = [
-    { name: '八字', pattern: /(?:八字|四柱)[：:]\s*(.+?)(?:\n|$)/i },
-    { name: '用神', pattern: /用神[：:]\s*(.+?)(?:\n|$)/i },
-    { name: '五行', pattern: /五行[：:]\s*(.+?)(?:\n|$)/i },
-    { name: '日主', pattern: /日主[為是]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '日柱', pattern: /日柱[：:為是]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '紫微命宮', pattern: /命宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '夫妻宮', pattern: /夫妻宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '子女宮', pattern: /子女宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '生肖', pattern: /生肖[：:為是]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '人類圖類型', pattern: /(?:人類圖|類型)[：:]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '人類圖權威', pattern: /(?:內在權威|權威)[：:]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '西洋太陽', pattern: /太陽[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '西洋月亮', pattern: /月亮[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '生命靈數', pattern: /(?:生命靈數|靈數)[：:為是]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '納音', pattern: /納音[：:]\s*(.+?)(?:\n|[，,。])/i },
+  const systemPatterns: Array<{ name: string; system: string; pattern: RegExp }> = [
+    { name: '八字', system: '八字四柱', pattern: /(?:八字|四柱)[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '用神', system: '八字四柱', pattern: /用神[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '五行', system: '八字四柱', pattern: /五行[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '日主', system: '八字四柱', pattern: /日主[為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '日柱', system: '八字四柱', pattern: /日柱[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '紫微命宮', system: '紫微斗數', pattern: /命宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '夫妻宮', system: '紫微斗數', pattern: /夫妻宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '子女宮', system: '紫微斗數', pattern: /子女宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '生肖', system: '生肖運勢', pattern: /生肖[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '人類圖類型', system: '人類圖', pattern: /(?:人類圖|類型)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '人類圖權威', system: '人類圖', pattern: /(?:內在權威|權威)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '西洋太陽', system: '西洋占星', pattern: /太陽[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '西洋月亮', system: '西洋占星', pattern: /月亮[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '生命靈數', system: '數字能量學', pattern: /(?:生命靈數|靈數)[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '姓名學', system: '姓名學', pattern: /(?:姓名學|人格|總格)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '塔羅', system: '塔羅牌', pattern: /(?:塔羅|牌義)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '納音', system: '八字四柱', pattern: /納音[：:]\s*(.+?)(?:\n|[，,。])/i },
   ]
 
   for (const sp of systemPatterns) {
+    if (timeUnknown && BIRTH_TIME_DEPENDENT_SYSTEMS.has(sp.system)) continue
     const match = reportContent.match(sp.pattern)
     if (match?.[1]) {
       // 只取前 80 字，避免過長
@@ -2504,14 +2568,14 @@ function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
   }
 
   // 如果 regex 提取結果太少（< 5 項），補充從報告各系統章節取前 2 行
-  if (lines.length < 5) {
+  if (!timeUnknown && lines.length < 5) {
     const sectionPattern = /【(.+?)】[^\n]*\n([^\n]*\n?[^\n]*)/g
     let sectionMatch
     let extraCount = 0
     while ((sectionMatch = sectionPattern.exec(reportContent)) !== null && extraCount < 8) {
       const sectionName = sectionMatch[1].trim()
       const sectionContent = sectionMatch[2].trim().slice(0, 150)
-      if (sectionContent && !lines.some(l => l.includes(sectionName))) {
+      if (sectionContent && !/九星(?:氣學)?/u.test(sectionName) && !lines.some(l => l.includes(sectionName))) {
         lines.push(`${sectionName}：${sectionContent}`)
         extraCount++
       }
@@ -2528,10 +2592,64 @@ function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
 // - 啟用方式:G15_PROMPT_V2_ENABLED=true 全開、或 G15_V2_TEST_REPORTS=<reportId,...> 白名單
 // - 對應 R5 strict eval 從 79.3 → 90+ 的真因修復(原本 v6.0 prompt 寫好但沒接線、LLM 看的仍是 v1)
 export async function aiGenerateG15(
-  familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string, reportId?: string,
+  familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string,
+  familyContext: BirthData, createdAt: string, reportId?: string,
 ) {
   "use step";
   await emitProgress({ step: 'AI分析', progress: 30, message: '正在分析家族成員互動關係...' })
+
+  const reportIds = Array.isArray(familyContext.report_ids)
+    ? familyContext.report_ids.filter((value): value is string => typeof value === 'string')
+    : []
+  const declaredContext = validateG15ConsultationContext(familyContext)
+  if (!declaredContext.ok) {
+    throw new FatalError(`G15 家庭關係與諮詢目標重新驗證失敗：${declaredContext.message}`)
+  }
+  const consent = validateG15ConsentAttestation({
+    attestation: familyContext.consent_attestation,
+    reportIds,
+    // clickwrap 在 checkout 已驗 30 分鐘時效；durable workflow 排隊後只重驗
+    // 內容、版本與 report-id hash，不讓正常排隊使既有同意失效。
+    allowExpired: true,
+  })
+  if (!consent.ok) throw new FatalError(`G15 資料使用同意重新驗證失敗：${consent.message}`)
+  if (reportIds.length !== familyReports.length || familyReports.length < 2 || familyReports.length > 6) {
+    throw new FatalError('G15 成員報告、授權清單與家庭人數不一致')
+  }
+
+  const createdInstant = new Date(createdAt)
+  if (!Number.isFinite(createdInstant.getTime())) throw new FatalError('G15 報告建立時間無法固定分析基準日')
+  const dateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Hong_Kong',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(createdInstant)
+  const dateValues = Object.fromEntries(dateParts.map((part) => [part.type, part.value]))
+  const asOfDate = `${dateValues.year}-${dateValues.month}-${dateValues.day}`
+  const targetYear = Number(dateValues.year)
+  const memberAges = familyReports.map((member) => {
+    const bd = member.birthData
+    const birthDate = `${String(bd.year).padStart(4, '0')}-${String(bd.month).padStart(2, '0')}-${String(bd.day).padStart(2, '0')}`
+    let ageYears: number
+    try {
+      ageYears = buildAgeContext({ birthDate, asOfDate }).ageYears
+    } catch {
+      throw new FatalError(`G15 成員 ${member.name} 的出生日期無法計算實足年齡`)
+    }
+    if (ageYears < 18) throw new FatalError(`G15 成員 ${member.name} 未滿 18 歲，現行成人家庭諮詢不得自動生成`)
+    return { name: member.name, ageYears }
+  })
+
+  const clientFamilyContext = `【客戶明示的家庭資料（最高優先；每一 Call 都必須遵守）】
+報告基準日 as_of：${asOfDate}
+年度分析起點 target_year：${targetYear}（只分析 ${targetYear}-${targetYear + 4}）
+成員實足年齡：${memberAges.map((member) => `${member.name} ${member.ageYears} 歲`).join('；')}
+客戶明示關係：
+${declaredContext.context.statedRelationships.map((relationship) => `- ${relationship}`).join('\n')}
+本次諮詢目標：
+${declaredContext.context.consultationGoals.map((goal) => `- ${goal}`).join('\n')}
+上述關係與目標是客戶原文，不是模型推論。不得推定父母、夫妻、親子、手足或任何未明示角色；資料沒寫時只用姓名描述，也不得補寫客戶未提出的家庭問題。`
 
   // ── Feature Flag:判斷走 v1 (認可版) 還是 v2 (LLM 共識版) ──
   const { getG15PromptVersion, buildG15Call1Prompt, buildG15Call2Prompt, buildG15Call3Prompt, extractG15Call1Summary, extractG15Call1And2Summary } = await import('@/prompts/g15_plan_v2')
@@ -2539,12 +2657,12 @@ export async function aiGenerateG15(
   console.log(`G15 prompt version: ${promptVersion} (reportId=${reportId})`)
 
   // ── 共用:組 user prompt(成員命理關鍵數據摘要)──
-  let baseUserPrompt = `家族藍圖分析 — 共 ${familyReports.length} 位成員\n\n`
+  let baseUserPrompt = `${clientFamilyContext}\n\n家族藍圖分析 — 共 ${familyReports.length} 位成員\n\n`
   for (let i = 0; i < familyReports.length; i++) {
     const member = familyReports[i]
     const bd = member.birthData
     baseUserPrompt += `=== 成員${i + 1}：${member.name} ===\n`
-    baseUserPrompt += `性別：${bd.gender === 'M' ? '男' : '女'}，出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour}時\n`
+    baseUserPrompt += `性別：${bd.gender === 'M' ? '男' : bd.gender === 'F' ? '女' : '未指定'}，${formatG15BirthProfile(bd)}\n`
     const keyData = extractKeyDataForFamily(member.reportContent, bd)
     baseUserPrompt += `命理關鍵數據：\n${keyData}\n\n`
   }

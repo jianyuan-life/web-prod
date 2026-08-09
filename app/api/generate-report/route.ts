@@ -23,6 +23,7 @@ import { isV4, isV6 } from '@/lib/plan-flags'  // v5.10.458:USE_PLAN_V4_C/G15 !=
 import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 import { consultationFallbackDecision } from '@/lib/consultation/fallback-policy'
+import { buildConsultationRelationshipPrompt } from '@/lib/consultation/relationship-context'
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
@@ -529,7 +530,10 @@ ${numA?.sub_summary ? `數字能量學摘要：${numA.sub_summary}` : ''}
 ════════════════════════════════════════\n`
       }
 
-      let userPrompt = `${keyDataBlock}${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
+      const cRelationshipContext = planCode === 'C'
+        ? `\n${buildConsultationRelationshipPrompt(birthData.marital_status)}\n`
+        : ''
+      let userPrompt = `${keyDataBlock}${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時${cRelationshipContext}
 八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
 農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
 ${analyses.length}套系統排盤完整數據：
@@ -703,6 +707,7 @@ ${analyses.length}套系統排盤完整數據：
       // v5.10.480:C 版本選擇單一出口(v6 > v4 > v2 legacy)、三個 fallback 段共用防漂移
       // v6 年齡取概略週歲(年差、與 c_plan_v6 getV6AgeGroup 分層粒度一致)
       const buildCFallbackSystemPrompt = (): string => {
+        let basePrompt: string
         if (isV6('C')) {
           // 實足年齡(過生日才加歲;年差會在生日前多一歲、AGE_ADAPTATION 分層邊界會套錯版本)
           const now = new Date()
@@ -710,11 +715,13 @@ ${analyses.length}套系統排盤完整數據：
           const bm = Number(birthData.month) || 1
           const bd = Number(birthData.day) || 1
           if (now.getMonth() + 1 < bm || (now.getMonth() + 1 === bm && now.getDate() < bd)) cAge--
-          return buildSingleCallV6C(birthData.name || '客戶', cAge, birthData.marital_status)
+          basePrompt = buildSingleCallV6C(birthData.name || '客戶', cAge, birthData.marital_status)
+        } else {
+          basePrompt = isV4('C')
+            ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
+            : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
         }
-        return isV4('C')
-          ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
-          : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+        return `${basePrompt}\n\n${buildConsultationRelationshipPrompt(birthData.marital_status)}`
       }
 
       // v5.10.480 E2E 實測(2026-08-02):v6 全書 ~15.5k 字,Opus 串流 200s 只到 8k=必超時;

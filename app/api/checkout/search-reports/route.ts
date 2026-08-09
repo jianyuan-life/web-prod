@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthEmail } from '@/lib/auth-helper'
+import { getAuthUser } from '@/lib/auth-helper'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
+import {
+  projectG15SearchReports,
+  type G15SearchReportRow,
+} from '@/lib/checkout/g15-search-results'
 
 function getSupabase() {
   return createServiceClient()
@@ -12,95 +16,72 @@ function getSupabase() {
 export async function GET(req: NextRequest) {
   try {
     // 身份驗證：必須登入才能使用
-    const authEmail = await getAuthEmail(req)
-    if (!authEmail) {
+    const authUser = await getAuthUser(req)
+    if (!authUser.email || !authUser.userId) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 })
     }
+    const normalizedAuthEmail = authUser.email.trim().toLowerCase()
+    const authUserId = authUser.userId.trim().toLowerCase()
 
     const { searchParams } = new URL(req.url)
     const emailParam = searchParams.get('email')?.trim().toLowerCase()
     const query = searchParams.get('q')?.trim()
 
     // 安全限制：email 參數必須與登入用戶一致，防止查詢其他用戶的報告
-    if (emailParam && emailParam !== authEmail.toLowerCase()) {
+    if (emailParam && emailParam !== normalizedAuthEmail) {
       return NextResponse.json({ error: '只能查詢自己的報告' }, { status: 403 })
     }
 
-    // 如果沒帶 email 也沒帶 q，但有登入 → 自動用登入 email 查詢「我的報告」
-    const email = emailParam || (!query ? authEmail : null)
-
-    if (!email && !query) {
-      return NextResponse.json({ error: '請提供 email 或搜尋關鍵字' }, { status: 400 })
-    }
-
     const supabase = getSupabase()
-
-    if (email) {
-      // 精確搜尋：取得該 email 下所有已完成的 C 方案報告
-      // v5.10.283 soft delete filter:已軟刪報告不應出現在 G15 家族藍圖選單
-      // v5.10.293:select user_id 供 audit log 比對
-      const { data, error } = await supabase
+    const selectColumns = 'id, client_name, plan_code, status, deleted_at, created_at, user_id, customer_email, birth_data'
+    const limit = query ? 10 : 20
+    const runOwnedQuery = (ownerColumn: 'user_id' | 'customer_email', ownerValue: string) => {
+      const baseQuery = supabase
         .from('paid_reports')
-        .select('id, client_name, plan_code, status, created_at, user_id')
-        .eq('customer_email', email)
+        .select(selectColumns)
         .eq('plan_code', 'C')
         .eq('status', 'completed')
+      const ownerBound = ownerColumn === 'customer_email'
+        ? baseQuery.eq('customer_email', ownerValue).is('user_id', null)
+        : baseQuery.eq('user_id', ownerValue)
+      const owned = ownerBound
         .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(20)
-
-      if (error) {
-        console.error('search-reports DB error:', error)
-        return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
-      }
-
-      // v5.10.293 audit log:G15 家族成員查詢 = email_fallback 路徑
-      try {
-        const { logAccessMatch } = await import('@/lib/auth-helper-server')
-        for (const r of (data || [])) {
-          void logAccessMatch(r.id, 'email_fallback', { email })
-        }
-      } catch { /* silent */ }
-
-      return NextResponse.json({
-        reports: (data || []).map(r => ({
-          id: r.id,
-          name: r.client_name || '未知',
-          createdAt: r.created_at,
-        })),
-      })
+      const filtered = query
+        ? owned.ilike('client_name', `%${query.replace(/[%_]/g, '\\$&')}%`)
+        : owned
+      return filtered.order('created_at', { ascending: false }).limit(limit)
     }
 
-    // 模糊搜尋：用姓名搜尋（ilike）
-    // 安全限制：只搜尋當前登入用戶 email 下的報告，防止探測其他用戶資料
-    if (query && query.length >= 1) {
-      // v5.10.283 soft delete filter:已軟刪報告不應出現在搜尋結果
-      const { data, error } = await supabase
-        .from('paid_reports')
-        .select('id, client_name, plan_code, status, created_at')
-        .eq('plan_code', 'C')
-        .eq('status', 'completed')
-        .ilike('customer_email', authEmail)
-        .ilike('client_name', `%${query.replace(/[%_]/g, '\\$&')}%`)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(10)
-
-      if (error) {
-        console.error('search-reports DB error:', error)
-        return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
-      }
-
-      return NextResponse.json({
-        reports: (data || []).map(r => ({
-          id: r.id,
-          name: r.client_name || '未知',
-          createdAt: r.created_at,
-        })),
-      })
+    // user_id 是現在帳戶的主鍵；精確 email 僅用來找回早期尚未回填 user_id 的舊報告。
+    // 分成兩次等值查詢，避免把 email 塞進 PostgREST `.or()` 字串造成 filter injection。
+    const [byUserId, byLegacyEmail] = await Promise.all([
+      runOwnedQuery('user_id', authUserId),
+      runOwnedQuery('customer_email', normalizedAuthEmail),
+    ])
+    if (byUserId.error || byLegacyEmail.error) {
+      console.error('search-reports DB error:', byUserId.error || byLegacyEmail.error)
+      return NextResponse.json({ error: '查詢失敗' }, { status: 500 })
     }
 
-    return NextResponse.json({ reports: [] })
+    const rowsById = new Map<string, G15SearchReportRow>()
+    for (const row of [...(byUserId.data || []), ...(byLegacyEmail.data || [])] as G15SearchReportRow[]) {
+      rowsById.set(row.id, row)
+    }
+    const rows = [...rowsById.values()]
+      .sort((left, right) => String(right.created_at || '').localeCompare(String(left.created_at || '')))
+      .slice(0, limit)
+
+    try {
+      const { logAccessMatch } = await import('@/lib/auth-helper-server')
+      for (const row of rows) {
+        const matchedVia = row.user_id?.trim().toLowerCase() === authUserId
+          ? 'user_id'
+          : 'email_fallback'
+        void logAccessMatch(row.id, matchedVia, { userId: authUserId, email: normalizedAuthEmail })
+      }
+    } catch { /* audit log 不阻塞報告選擇 */ }
+
+    return NextResponse.json(projectG15SearchReports(rows))
   } catch (err) {
     console.error('search-reports error:', err)
     return NextResponse.json({ error: '搜尋失敗' }, { status: 500 })

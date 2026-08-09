@@ -27,6 +27,8 @@ import { canonicalGregorianDate } from '@/lib/consultation/calendar-date'
 import { createSupabaseConsultationCostLedgerStore } from '@/lib/consultation/cost-store'
 import { createSupabaseConsultationChapterDraftStore } from '@/lib/consultation/chapter-store'
 import { assertGregorianConsultationBirthInput } from '@/lib/consultation/birth-input-policy'
+import { normalizeConsultationClientQuestion } from '@/lib/consultation/client-question'
+import { normalizeConsultationRelationshipStatus } from '@/lib/consultation/relationship-context'
 
 export const CONSULTATION_PROMPT_VERSION = 'consultation-report/v1.0.0'
 
@@ -185,6 +187,11 @@ export async function buildStructuredCReport(input: {
     receipts,
     input.calculatorResult,
   )
+  const relationshipStatus = normalizeConsultationRelationshipStatus(input.birthData.marital_status)
+  if (!relationshipStatus) {
+    throw new Error('C 結構化報告缺少經驗證的關係狀態')
+  }
+  const clientQuestion = normalizeConsultationClientQuestion(input.birthData.customer_note)
   const report = await generateConsultationReport({
     reportId: `report:${input.reportId}`,
     reportVersion: 2,
@@ -198,6 +205,10 @@ export async function buildStructuredCReport(input: {
       authorization: 'granted',
       calculatorFacts: normalized.normalized,
     }],
+    clientContext: {
+      relationshipStatus,
+      clientQuestion,
+    },
   }, dependencies(receipts, 'C', input.reportId))
   return {
     report,

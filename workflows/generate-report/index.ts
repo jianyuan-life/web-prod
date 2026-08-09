@@ -14,7 +14,6 @@ import {
   aiGenerateCall2,
   aiGenerateCall3,
   aiGenerateGeneric,
-  loadFamilyReports,
   loadFamilyReportsByIds,
   aiGenerateG15,
   aiGenerateR,
@@ -43,6 +42,11 @@ import {
   buildStructuredG15Report,
   buildConsultationCalculatorBirthData,
 } from './consultation-v1'
+import { consultationCalculatorEvidenceForGeneration } from '@/lib/consultation/legacy-calculator-safety'
+import {
+  buildUntrustedClientQuestionBlock,
+  normalizeConsultationClientQuestion,
+} from '@/lib/consultation/client-question'
 
 export async function generateReportWorkflow(reportId: string) {
   "use workflow";
@@ -68,20 +72,24 @@ export async function generateReportWorkflow(reportId: string) {
   // ── G15 家族藍圖：特殊流程（不排盤，直接讀取已有報告）──
   if (planCode === 'G15' && (birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports')) {
     try {
+      // 舊 email 查找沒有不可轉移的報告 ID，也無法證明目前登入者仍有權
+      // 使用每一位成員的資料。保留舊單供人工補件，禁止自動生成或寄送。
+      if (birthData.plan_type === 'family_email') {
+        await markReportNeedsHumanReview(
+          reportId,
+          'G15 舊版 email 選人缺少報告 ID 綁定與目前帳戶授權，需人工重新確認',
+        )
+        await closeProgressStream()
+        return { success: false, error: 'G15 舊版成員資料需人工重新確認' }
+      }
+
       const memberNames = (birthData.member_names || []) as string[]
 
-      // 載入所有成員的已完成人生藍圖（新版用 report ID，舊版用 email）
-      let familyReports
-      if (birthData.plan_type === 'family_reports' && birthData.report_ids) {
-        const reportIds = (birthData.report_ids || []) as string[]
-        familyReports = await loadFamilyReportsByIds(reportIds, memberNames, {
-          userId,
-          email: customerEmail,
-        })
-      } else {
-        const memberEmails = (birthData.member_emails || []) as string[]
-        familyReports = await loadFamilyReports(memberEmails, memberNames)
-      }
+      const reportIds = (birthData.report_ids || []) as string[]
+      const familyReports = await loadFamilyReportsByIds(reportIds, memberNames, {
+        userId,
+        email: customerEmail,
+      })
 
       const familyNames = familyReports.map(r => r.name).join('、')
       const familyBirthData = { ...familyReports[0].birthData, name: familyNames + ' 家族' }
@@ -149,31 +157,36 @@ export async function generateReportWorkflow(reportId: string) {
 
       // AI 生成家族互動分析
       const systemPrompt = PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C']
-      const result = await aiGenerateG15(familyReports, planCode, systemPrompt, reportId)
+      const result = await aiGenerateG15(familyReports, planCode, systemPrompt, birthData, createdAt, reportId)
       const reportContent = result.content
 
       if (!reportContent) {
-        await markReportFailed(reportId, 'AI 未回覆：AI 回傳空內容')
+        await markReportNeedsHumanReview(reportId, 'G15 AI 回傳空內容，禁止自動完成或寄送')
         await closeProgressStream()
-        return { success: false, error: 'AI 未回覆' }
+        return { success: false, error: 'G15 AI 內容需人工確認' }
       }
 
       // 品質閘門
-      // v5.10.285 P1 修(Codex L3 finding):G15 跨系統幻想禁區命中 → 轉 needs_human_review、不交付
       try {
         const qResult = await qualityGate(reportContent, 'G15', familyReports.length)
-        if (!qResult.passed) {
-          console.warn(`G15 品質閘門警告: ${qResult.warnings.join('; ')}`)
-          const hasCrossSys = qResult.hardFailures?.some(s => s.includes('[GLOBAL P0-CROSS-SYS]')) || false
-          if (hasCrossSys) {
-            const reasonMsg = `[跨系統幻想禁區命中、lesson #056、G15 不可交付] ${qResult.hardFailures?.slice(0, 3).join('; ').slice(0, 400)}`
-            await markReportNeedsHumanReview(reportId, reasonMsg, undefined, reportContent, 'claude-opus-4-6')
-            await closeProgressStream()
-            return { success: false, error: 'G15 跨系統幻想禁區命中、轉人工審核' }
-          }
+        if (qResult.hardFailures.length > 0) {
+          const reasonMsg = `[G15 品質硬門檻未通過，禁止交付] ${qResult.hardFailures.slice(0, 3).join('; ').slice(0, 400)}`
+          await markReportNeedsHumanReview(reportId, reasonMsg, undefined, reportContent, result.model)
+          await closeProgressStream()
+          return { success: false, error: 'G15 品質硬門檻未通過，已轉人工審核' }
         }
       } catch (e) {
         console.error('G15 品質閘門執行失敗:', e)
+        const gateError = e instanceof Error ? e.message : String(e)
+        await markReportNeedsHumanReview(
+          reportId,
+          `G15 品質閘門執行失敗，無法證明報告可交付：${gateError.slice(0, 300)}`,
+          undefined,
+          reportContent,
+          result.model,
+        )
+        await closeProgressStream()
+        return { success: false, error: 'G15 品質審查未完整完成' }
       }
 
       // AI 審核（5 LLM Post-Gen QA）
@@ -185,22 +198,46 @@ export async function generateReportWorkflow(reportId: string) {
           customerName: familyNamesList.join(' × '),
           // G15 家族藍圖 chartData 是多人合併，先不傳避免 prompt 過長
         })
-        if (review.fiveLLM) {
-          console.log(`G15 5 LLM QA: avg=${review.fiveLLM.avg}, min=${review.fiveLLM.min}, severity=${review.fiveLLM.severity}`)
-          // 5 LLM 黃色/紅色告警
-          if (review.fiveLLM.severity !== 'ok') {
-            const { notifyFiveLLMWarning, notifyFiveLLMCritical } = await import('@/lib/ai/observability/telegram')
-            if (review.fiveLLM.severity === 'red') {
-              await notifyFiveLLMCritical(reportId, 'G15', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.fiveLLM.criticalErrors)
-            } else {
-              await notifyFiveLLMWarning(reportId, 'G15', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.issues)
-            }
+        if (
+          !review.fiveLLM
+          || review.fiveLLM.severity === 'red'
+          || !review.fiveLLM.passed
+          || review.fiveLLM.criticalErrors.length > 0
+        ) {
+          if (review.fiveLLM?.severity === 'red') {
+            const { notifyFiveLLMCritical } = await import('@/lib/ai/observability/telegram')
+            await notifyFiveLLMCritical(reportId, 'G15', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.fiveLLM.criticalErrors)
           }
-        } else if (review.score < 70) {
-          console.warn(`G15 AI 審核分數偏低: ${review.score}`)
+          const reviewReason = review.fiveLLM
+            ? `severity=${review.fiveLLM.severity}, passed=${review.fiveLLM.passed}, critical=${review.fiveLLM.criticalErrors.length}`
+            : `審查結果不完整，只有 legacy score=${review.score}`
+          await markReportNeedsHumanReview(
+            reportId,
+            `G15 獨立審查未達可交付條件：${reviewReason}`,
+            undefined,
+            reportContent,
+            result.model,
+          )
+          await closeProgressStream()
+          return { success: false, error: 'G15 獨立審查未完成或未通過' }
+        }
+        console.log(`G15 5 LLM QA: avg=${review.fiveLLM.avg}, min=${review.fiveLLM.min}, severity=${review.fiveLLM.severity}`)
+        if (review.fiveLLM.severity === 'yellow') {
+          const { notifyFiveLLMWarning } = await import('@/lib/ai/observability/telegram')
+          await notifyFiveLLMWarning(reportId, 'G15', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.issues)
         }
       } catch (e) {
-        console.error('G15 AI 審核失敗（不阻塞）:', e)
+        console.error('G15 AI 審核執行失敗:', e)
+        const reviewError = e instanceof Error ? e.message : String(e)
+        await markReportNeedsHumanReview(
+          reportId,
+          `G15 獨立審查執行失敗，禁止自動交付：${reviewError.slice(0, 300)}`,
+          undefined,
+          reportContent,
+          result.model,
+        )
+        await closeProgressStream()
+        return { success: false, error: 'G15 獨立審查執行失敗' }
       }
 
       // 內容安全審查（G15 含多位成員名字，用於隱私交叉檢查）
@@ -261,9 +298,9 @@ export async function generateReportWorkflow(reportId: string) {
       }
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
-      await markReportFailed(reportId, `G15 家族藍圖生成失敗: ${errMsg.slice(0, 500)}`)
+      await markReportNeedsHumanReview(reportId, `G15 家族藍圖無法安全自動生成: ${errMsg.slice(0, 500)}`)
       await closeProgressStream()
-      return { success: false, error: 'G15 生成失敗' }
+      return { success: false, error: 'G15 已轉人工審核' }
     }
   }
 
@@ -442,14 +479,19 @@ export async function generateReportWorkflow(reportId: string) {
   let calculatorBirthData = birthData
   let attestedCalcResult: Awaited<ReturnType<typeof callPythonCalculateAttested>> | undefined
   try {
-    if (useConsultationV1 && planCode === 'C') {
+    if (planCode === 'C') {
       calculatorBirthData = buildConsultationCalculatorBirthData(birthData, createdAt)
     }
     if (useConsultationV1 && planCode === 'C') {
       attestedCalcResult = await callPythonCalculateAttested(calculatorBirthData)
       calcResult = attestedCalcResult.response
     } else {
-      calcResult = await callPythonCalculate(calculatorBirthData)
+      const rawCalcResult = planCode === 'C'
+        ? await callPythonCalculate(calculatorBirthData, { consultationMode: true })
+        : await callPythonCalculate(calculatorBirthData)
+      calcResult = planCode === 'C'
+        ? consultationCalculatorEvidenceForGeneration(rawCalcResult, calculatorBirthData)
+        : rawCalcResult
     }
   } catch (e) {
     const errMsg2 = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
@@ -536,8 +578,14 @@ export async function generateReportWorkflow(reportId: string) {
 
   try {
     if (planCode === 'C') {
+      const cBirthData = calculatorBirthData
       // C 方案也要讀取 customer_note（客戶在結帳時填的備注/問題）
-      const clientQuestion = (birthData.question || birthData.customer_note || birthData.topic || undefined) as string | undefined
+      const clientQuestion = normalizeConsultationClientQuestion(
+        cBirthData.question || cBirthData.customer_note || cBirthData.topic || undefined,
+      ) ?? undefined
+      const clientQuestionBlock = clientQuestion
+        ? buildUntrustedClientQuestionBlock(clientQuestion)
+        : undefined
 
       // ── v6 版本鎖:C 區塊開頭讀一次、全區塊沿用(防同單多次讀 env 造成生成/檢查版本撕裂)──
       const { isV6 } = await import('@/lib/plan-flags')
@@ -574,15 +622,15 @@ export async function generateReportWorkflow(reportId: string) {
             reportId,
             planCode: 'C',
             planPrompt: PLAN_SYSTEM_PROMPT['C'],
-            birthData: birthData as Record<string, unknown>,
+            birthData: cBirthData as Record<string, unknown>,
             chartData: calcResult as unknown as Record<string, unknown>,
             retrievedRules: rules,
-            customerNote: clientQuestion,
+            customerNote: clientQuestionBlock,
           })
 
           if (outcome.success && outcome.finalContent) {
             const appendix = buildAppendix(calcResult.analyses)
-            reportContent = cleanFinalReport(outcome.finalContent + '\n\n' + appendix, birthData.name)
+            reportContent = cleanFinalReport(outcome.finalContent + '\n\n' + appendix, cBirthData.name)
             aiModelUsed = 'team-pipeline'
             pipelineSuccess = true
             console.log(
@@ -606,9 +654,9 @@ export async function generateReportWorkflow(reportId: string) {
       // ── v2 舊 3-call 流程（fallback） ──
       if (!pipelineSuccess) {
         console.log('C 方案開始：3-call 順序執行')
-        const r1 = await aiGenerateCall1(calcResult, birthData, clientQuestion, reportId)
-        const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
-        const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
+        const r1 = await aiGenerateCall1(calcResult, cBirthData, clientQuestion, reportId)
+        const r2 = await aiGenerateCall2(calcResult, cBirthData, r1.content, reportId, clientQuestion)
+        const r3 = await aiGenerateCall3(calcResult, cBirthData, r1.content, r2.content, undefined, undefined, reportId, clientQuestion)
 
         // Call 3 完整性檢查(v6 用 v6 標記:唯一附錄+收卷信;v2/v4 用舊標記)
         let call3Content = r3.content
@@ -625,7 +673,7 @@ export async function generateReportWorkflow(reportId: string) {
           if (!hasClosingLetter) missingParts.push(useV6C ? '## 收卷:寫給客戶的一封信(回收原型稱號+三句話+三個開放問題)' : '寫給客戶的話（至少3段，帶命理依據的回顧過去+看見現在+展望未來）')
 
           // 重試 Call 3
-          const retryR3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, true, missingParts, reportId)
+          const retryR3 = await aiGenerateCall3(calcResult, cBirthData, r1.content, r2.content, true, missingParts, reportId, clientQuestion)
           call3Content = retryR3.content
         }
 
@@ -633,7 +681,7 @@ export async function generateReportWorkflow(reportId: string) {
         const appendix = useV6C ? '' : buildAppendix(calcResult.analyses)
 
         const rawContent = [r1.content, r2.content, call3Content, appendix].filter(Boolean).join('\n\n')
-        reportContent = cleanFinalReport(rawContent, birthData.name)
+        reportContent = cleanFinalReport(rawContent, cBirthData.name)
         aiModelUsed = r1.model
         console.log(`C 方案完成：${reportContent.length} 字（含附錄）`)
       }
@@ -683,9 +731,25 @@ export async function generateReportWorkflow(reportId: string) {
 
   // Step 2.5: Post-generation QA — 比對 AI 報告與排盤數據，自動修正幻覺
   try {
-    reportContent = validateReportAgainstData(reportContent, calcResult, birthData)
+    reportContent = validateReportAgainstData(
+      reportContent,
+      calcResult,
+      planCode === 'C' ? calculatorBirthData : birthData,
+    )
   } catch (e) {
-    // QA 失敗不阻塞報告生成
+    const qaError = e instanceof Error ? e.message : String(e)
+    if (planCode === 'C') {
+      const reason = `C 報告與排盤資料比對失敗: ${qaError.slice(0, 400)}`
+      try {
+        await markReportNeedsHumanReview(reportId, reason, undefined, reportContent, aiModelUsed)
+      } catch (markErr) {
+        console.error('C Post-generation QA 標記人工審核失敗:', markErr)
+        await markReportFailed(reportId, reason)
+      }
+      await closeProgressStream()
+      return { success: false, error: 'C 報告資料比對失敗，已停止交付' }
+    }
+    // 保留其他方案的現有行為；E3 凍結路徑不變。
     console.error('Post-generation QA 執行失敗（不阻塞）:', e)
   }
 
@@ -838,13 +902,24 @@ export async function generateReportWorkflow(reportId: string) {
     qualityRetryCount++
     console.log(`重新生成 C 方案（第 ${qualityRetryCount}/${MAX_QUALITY_RETRIES} 次重試）...`)
     try {
-      const clientQuestion = (birthData.question || birthData.customer_note || birthData.topic || undefined) as string | undefined
-      const r1 = await aiGenerateCall1(calcResult, birthData, clientQuestion, reportId)
-      const r2 = await aiGenerateCall2(calcResult, birthData, r1.content, reportId)
-      const r3 = await aiGenerateCall3(calcResult, birthData, r1.content, r2.content, undefined, undefined, reportId)
+      const clientQuestion = normalizeConsultationClientQuestion(
+        calculatorBirthData.question || calculatorBirthData.customer_note || calculatorBirthData.topic || undefined,
+      ) ?? undefined
+      const r1 = await aiGenerateCall1(calcResult, calculatorBirthData, clientQuestion, reportId)
+      const r2 = await aiGenerateCall2(calcResult, calculatorBirthData, r1.content, reportId, clientQuestion)
+      const r3 = await aiGenerateCall3(
+        calcResult,
+        calculatorBirthData,
+        r1.content,
+        r2.content,
+        undefined,
+        undefined,
+        reportId,
+        clientQuestion,
+      )
       const appendix = buildAppendix(calcResult.analyses)
       const rawContent = [r1.content, r2.content, r3.content, appendix].join('\n\n')
-      reportContent = cleanFinalReport(rawContent, birthData.name)
+      reportContent = cleanFinalReport(rawContent, calculatorBirthData.name)
       aiModelUsed = r1.model
       console.log(`C 方案重試第 ${qualityRetryCount} 次完成：${reportContent.length} 字`)
     } catch (retryErr) {

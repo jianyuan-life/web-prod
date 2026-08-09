@@ -76,6 +76,7 @@ function eligibleRows(ids = [REPORT_A, REPORT_B]) {
       hour: 12,
       minute: 0,
       gender: 'F',
+      marital_status: 'single',
       time_unknown: false,
       time_mode: 'exact',
       calendar_type: 'solar',
@@ -84,6 +85,9 @@ function eligibleRows(ids = [REPORT_A, REPORT_B]) {
       longitude: 121.5654,
       timezone: 'Asia/Taipei',
       timezone_offset: 8,
+      birth_country: 'TW',
+      birth_city: '台北（台灣）',
+      birth_location_precision: 'city',
       bazi_school: 'china_mainland',
       ayanamsa_type: 'lahiri',
     },
@@ -118,16 +122,20 @@ await test('E3 完全略過 C/G15 新契約，並保留原 birthData 物件與�
   }
 })
 
-await test('C 必須在付款前具備明確國曆與完整可重播排盤輸入', async () => {
+await test('C 必須在付款前具備明確國曆、完整可重播輸入與不可變報告期間', async () => {
   const valid = eligibleRows([REPORT_A])[0].birth_data
   const accepted = await prepareCheckoutBirthData({
     planCode: 'C',
     birthData: valid,
+    asOfDate: '2026-08-09',
     auth: {},
     queryReports: async () => { throw new Error('C 不應查詢 G15 報告') },
   })
   assert(accepted.ok)
-  assert(Object.is(accepted.birthData, valid), '合法 C 資料應保留同一物件')
+  assert(!Object.is(accepted.birthData, valid), '合法 C 資料必須以新物件固定報告期間')
+  assertEqual(accepted.birthData.as_of, '2026-08-09')
+  assertEqual(accepted.birthData.target_year, 2026)
+  assert(!('as_of' in valid), '不得反向改寫使用者的原始 birthData')
 
   for (const unsafe of [
     { ...valid, calendar_type: 'lunar' },
@@ -139,6 +147,7 @@ await test('C 必須在付款前具備明確國曆與完整可重播排盤輸入
     const rejected = await prepareCheckoutBirthData({
       planCode: 'C',
       birthData: unsafe,
+      asOfDate: '2026-08-09',
       auth: {},
       queryReports: async () => { throw new Error('C 不應查詢 G15 報告') },
     })
@@ -188,6 +197,7 @@ await test('合法 G15 只保留 report_ids，member_names 必須依 DB 回傳�
   const submittedConsent = consent([REPORT_B, REPORT_A])
   const result = await prepareCheckoutBirthData({
     planCode: 'G15',
+    asOfDate: '2026-08-09',
     birthData: {
       plan_type: 'family_reports',
       report_ids: [REPORT_B, REPORT_A],
@@ -211,6 +221,8 @@ await test('合法 G15 只保留 report_ids，member_names 必須依 DB 回傳�
     member_names: ['何紀萳', '何宣逸'],
     ...familyContext(),
     consent_attestation: submittedConsent,
+    as_of: '2026-08-09',
+    target_year: 2026,
   })
   assert(!JSON.stringify(result.birthData).includes('偽造'), 'client member_names 不得流入可信資料')
   assert(!('injected_private_field' in result.birthData), 'G15 未知 client 欄位不得流入訂單')

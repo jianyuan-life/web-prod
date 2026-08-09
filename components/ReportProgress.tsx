@@ -56,6 +56,13 @@ const PHASES_DEFAULT = [
   { label: '整合報告',   desc: '彙整所有系統結論，即將生成完整報告' },
 ]
 
+const PHASES_CONSULTATION = [
+  { label: '核對資料', desc: '核對出生資料、時間設定與排盤回傳內容' },
+  { label: '整理線索', desc: '把不同系統的支持、分歧與限制分開整理' },
+  { label: '撰寫報告', desc: '用白話把觀察放回你的生活情境與問題' },
+  { label: '完成交付', desc: '整理閱讀版與 PDF，完成後寄信通知' },
+]
+
 const PHASES_CHUMENJI = [
   { label: '奇門起局',   desc: '以時家奇門遁甲為您起局，計算天地盤干支' },
   { label: '時辰掃描',   desc: '逐時辰排算八方位吉凶，25 層古籍理論評分' },
@@ -64,6 +71,7 @@ const PHASES_CHUMENJI = [
 ]
 
 function getPhases(planCode: string) {
+  if (planCode === 'C' || planCode === 'G15') return PHASES_CONSULTATION
   return isChumenjiPlan(planCode) ? PHASES_CHUMENJI : PHASES_DEFAULT
 }
 
@@ -95,9 +103,19 @@ const FACTS_CHUMENJI = [
   '宮位生剋會影響盤面能量：宮生門為吉、宮剋門為門迫、需交叉驗證才能判定。',
 ]
 
+const CONSULTATION_WAITING_NOTES = [
+  '先記下你目前最想處理的一件事，閱讀報告時會更容易找到有用的段落。',
+  '報告中的描述若與實際經驗不符，不需要勉強套用；把差異記下來反而更有價值。',
+  '可以先想一個最近發生的具體情境，之後用它核對報告裡的觀察是否貼近生活。',
+  '重要決定仍以現實資料與合資格專業意見為準；報告適合用來整理問題與對話方向。',
+]
+
 function FunFacts({ planCode }: { planCode: string }) {
   const [idx, setIdx] = useState(0)
-  const facts = isChumenjiPlan(planCode) ? FACTS_CHUMENJI : FACTS_DEFAULT
+  const consultation = planCode === 'C' || planCode === 'G15'
+  const facts = consultation
+    ? CONSULTATION_WAITING_NOTES
+    : isChumenjiPlan(planCode) ? FACTS_CHUMENJI : FACTS_DEFAULT
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -117,7 +135,7 @@ function FunFacts({ planCode }: { planCode: string }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
             <div className="text-xs text-gold/75 font-medium tracking-wide">
-              邊等邊學｜命理小知識 <span className="text-gold/40">({idx + 1}/{facts.length})</span>
+              {consultation ? '等待時可以先做' : '邊等邊學｜命理小知識'} <span className="text-gold/40">({idx + 1}/{facts.length})</span>
             </div>
             <div className="flex gap-1">
               <button
@@ -230,6 +248,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
   const [backendSilentMin, setBackendSilentMin] = useState(0)
 
   const cfg = PLAN_CONFIG[planCode] ?? PLAN_CONFIG['C']
+  const consultation = planCode === 'C' || planCode === 'G15'
   // v5.3.72：E1/E2/E3/E4 走奇門評估面向、非 14 系統
   const systems = getSystemsForPlan(planCode).slice(0, cfg.systems)
   // 用「上限」作為時間基準，讓 pct 走得穩，不會超過 97% 又完不成
@@ -258,7 +277,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         const silentMin = Math.floor(silentMs / 60000)
         setBackendSilentMin(silentMin)
 
-        setPct(callProgress.pct)
+        setPct(previous => consultation ? Math.max(previous, callProgress.pct) : callProgress.pct)
         setCompleted(Math.min(Math.floor((callProgress.pct / 100) * cfg.systems), cfg.systems - 1))
         setRealMessage(
           `${callProgress.stage} 正在為您撰寫（已完成 ${callProgress.writtenChars.toLocaleString()} 字）`,
@@ -269,7 +288,7 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
       // 來源 2：emitProgress 階段值（排盤/品質檢查/儲存/寄信等非 AI 寫作階段）
       if (hasEmitProgress && generationProgress) {
         const realPct = Math.min(Math.max(generationProgress.progress || 0, 0), 97)
-        setPct(realPct)
+        setPct(previous => consultation ? Math.max(previous, realPct) : realPct)
         setCompleted(Math.min(Math.floor((realPct / 100) * cfg.systems), cfg.systems - 1))
         setRealMessage(generationProgress.message || null)
         setBackendSilentMin(0)
@@ -282,14 +301,14 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
       setRealMessage(null)
       const createdTime = new Date(createdAt).getTime()
       if (isNaN(createdTime) || totalMs <= 0) {
-        setPct(0)
+        setPct(previous => consultation ? Math.max(previous, 0) : 0)
         return
       }
       const elapsed = Date.now() - createdTime
       // 時間估算 fallback 上限 25%，防止「假 97%」欺騙客戶
       const fallbackCap = 25
       const rawPct = Math.min(Math.round((elapsed / (5 * 60 * 1000)) * fallbackCap), fallbackCap)
-      setPct(rawPct)
+      setPct(previous => consultation ? Math.max(previous, rawPct) : rawPct)
       setCompleted(Math.min(Math.floor((rawPct / 100) * cfg.systems), cfg.systems - 1))
       // Call 1 串流首存檔前 5 分鐘若無任何字數訊號，也當「後端可能卡住」
       const elapsedMin = Math.floor(elapsed / 60000)
@@ -319,8 +338,9 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
   // - pct > 80（後期） → 改用「單一估值」減少範圍不確定感（回應 deepseek）
   // - 前期中期 → 用區間
   const midRemain = Math.max(Math.ceil((remainMinMin + remainMinMax) / 2), 1)
-  const remainText =
-    pct >= 97
+  const remainText = consultation
+    ? '完成後會寄信通知'
+    : pct >= 97
       ? '即將完成，AI 正在為您撰寫最後章節'
       : elapsedMin >= cfg.maxMinutes
         ? '即將完成，請再稍候'
@@ -338,9 +358,11 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
 
   // 進度描述：前綴加上「第 X/4 步」，讓客戶一眼看到階段位置（回應 gemini）
   const stepPrefix = `第 ${phaseIdx + 1}/${phases.length} 步`
-  const progressDesc = realMessage
-    ? realMessage
-    : `${stepPrefix}｜${phase.desc}`
+  const progressDesc = consultation
+    ? `${stepPrefix}｜${phase.desc}`
+    : realMessage
+      ? realMessage
+      : `${stepPrefix}｜${phase.desc}`
 
   return (
     <div className="mt-4 space-y-4">
@@ -417,12 +439,14 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         </div>
         {/* 進度條意義說明（回應 gpt：部分用戶不明白進度條意義）*/}
         <div className="text-[10px] text-text-muted/60 leading-relaxed pt-0.5">
-          不關閉此頁亦可，報告完成會自動寄信通知您｜進度條反映引擎精算當前深度，並非單純倒數計時
+          {consultation
+            ? '可以離開此頁；完成後會寄信通知。百分比優先採用系統回傳進度，尚無新訊號時只顯示初始等待估算。'
+            : '不關閉此頁亦可，報告完成會自動寄信通知您｜進度條反映引擎精算當前深度，並非單純倒數計時'}
         </div>
       </div>
 
       {/* 系統格子（出門訣方案不顯示） */}
-      {cfg.systems > 1 && (
+      {!consultation && cfg.systems > 1 && (
         <div className="flex flex-wrap gap-1.5">
           {systems.map((s, i) => (
             <div key={s.name} title={s.name}
@@ -446,7 +470,9 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         <div className="space-y-0.5">
           <div className="text-emerald-300 font-medium">我們在為您精心製作報告，請放心等候</div>
           <div className="text-emerald-200/80">
-            付款已收妥、資料已加密保存。即使關閉此頁，報告完成時會自動寄信通知您，絕對不會遺失。
+            {consultation
+              ? '付款紀錄與委託資料已保存。即使關閉此頁，系統仍會繼續處理；完成後會寄信通知。若等待過久，可從「我的報告」查看或聯絡客服。'
+              : '付款已收妥、資料已加密保存。即使關閉此頁，報告完成時會自動寄信通知您，絕對不會遺失。'}
           </div>
         </div>
       </div>
@@ -459,12 +485,14 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
           className="inline-flex items-center gap-1 text-gold/70 hover:text-gold transition-colors underline-offset-2 hover:underline"
         >
           <span>{showWhyLong ? '▾' : '▸'}</span>
-          <span>為什麼需要 {cfg.minMinutes}–{cfg.maxMinutes} 分鐘？</span>
+          <span>{consultation ? '報告製作包含哪些步驟？' : `為什麼需要 ${cfg.minMinutes}–${cfg.maxMinutes} 分鐘？`}</span>
         </button>
         {showWhyLong && (
           <div className="mt-2 pl-3 border-l-2 border-gold/20 space-y-2 text-text-muted/85">
             <p className="leading-relaxed">
-              {isChumenjiPlan(planCode) ? (
+              {consultation ? (
+                <>人生藍圖與家族藍圖會先核對排盤資料，再把不同系統的支持、分歧與限制分開整理，最後才寫成可閱讀的生活情境與行動方向。實際時間會依資料完整度、報告長度與系統負載而異；完成後會寄信通知，不需要停留在此頁。</>
+              ) : isChumenjiPlan(planCode) ? (
                 <>鑒源古法奇門遁甲占事派擇吉——{
                   planCode === 'E4' ? '需排算一年 8,760 小時全局盤 + 12 張月盤'
                     : planCode === 'E3' ? '需排算未來 4 週、共 672 個時辰'
@@ -535,20 +563,36 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         <div className="rounded-lg bg-amber-500/10 border border-amber-500/25 px-3.5 py-2.5 text-xs text-amber-200/90 leading-relaxed">
           <div className="flex items-start gap-2">
             <span className="text-amber-400 flex-shrink-0">&#9888;</span>
-            <div className="space-y-1">
-              <div>
-                <strong className="text-amber-300">分析深度超出預期，已為您優先處理</strong>
-                ——您的命盤較為複雜，AI 正在加碼運算，請放心。
+            {consultation ? (
+              <div className="space-y-1">
+                <div>
+                  <strong className="text-amber-300">最近沒有收到新的製作進度</strong>
+                  ——目前無法從現有訊號判斷原因，這不代表報告已失敗。
+                </div>
+                <div className="text-amber-200/75">
+                  您可以重新整理此頁，重試取得最新狀態。若狀態仍未更新，請來信{' '}
+                  <a href="mailto:support@jianyuan.life" className="underline font-medium hover:text-amber-100">
+                    support@jianyuan.life
+                  </a>
+                  ，並附上訂單信箱，客服會協助查詢。
+                </div>
               </div>
-              <div className="text-amber-200/75">
-                建議您可以先關閉此頁稍後回來，報告完成時會自動寄信到您的信箱。
-                若等候超過 2 小時仍未完成，請來信{' '}
-                <a href="mailto:support@jianyuan.life" className="underline font-medium hover:text-amber-100">
-                  support@jianyuan.life
-                </a>
-                ，我們會立刻為您處理。您的資料與付款皆已完整保存，報告不會遺失。
+            ) : (
+              <div className="space-y-1">
+                <div>
+                  <strong className="text-amber-300">分析深度超出預期，已為您優先處理</strong>
+                  ——您的命盤較為複雜，AI 正在加碼運算，請放心。
+                </div>
+                <div className="text-amber-200/75">
+                  建議您可以先關閉此頁稍後回來，報告完成時會自動寄信到您的信箱。
+                  若等候超過 2 小時仍未完成，請來信{' '}
+                  <a href="mailto:support@jianyuan.life" className="underline font-medium hover:text-amber-100">
+                    support@jianyuan.life
+                  </a>
+                  ，我們會立刻為您處理。您的資料與付款皆已完整保存，報告不會遺失。
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -558,19 +602,35 @@ export default function ReportProgress({ createdAt, planCode, generationProgress
         <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-3.5 py-2.5 text-xs text-red-200/95 leading-relaxed">
           <div className="flex items-start gap-2">
             <span className="text-red-400 flex-shrink-0">&#9888;</span>
-            <div className="space-y-1">
-              <div>
-                <strong className="text-red-300">後端處理中，請稍候</strong>
-                ——系統已偵測到您的報告已超過 {backendSilentMin} 分鐘沒有新進度更新，我們的工程團隊會主動關注您的案件。
+            {consultation ? (
+              <div className="space-y-1">
+                <div>
+                  <strong className="text-red-300">最近沒有收到新的製作進度</strong>
+                  ——目前顯示已 {backendSilentMin} 分鐘沒有新進度；現有訊號不足以判斷原因。
+                </div>
+                <div className="text-red-200/80">
+                  請先重新整理此頁，重試取得最新狀態。若仍未更新，請來信{' '}
+                  <a href="mailto:support@jianyuan.life" className="underline font-medium hover:text-red-100">
+                    support@jianyuan.life
+                  </a>
+                  ，並附上訂單信箱，客服會協助確認報告狀態。
+                </div>
               </div>
-              <div className="text-red-200/80">
-                若等候超過 20 分鐘仍未完成，請直接來信{' '}
-                <a href="mailto:support@jianyuan.life" className="underline font-medium hover:text-red-100">
-                  support@jianyuan.life
-                </a>
-                ，附上您的訂單信箱，我們將於最短時間內為您處理。您的付款與資料皆已完整保存，報告不會遺失。
+            ) : (
+              <div className="space-y-1">
+                <div>
+                  <strong className="text-red-300">後端處理中，請稍候</strong>
+                  ——系統已偵測到您的報告已超過 {backendSilentMin} 分鐘沒有新進度更新，我們的工程團隊會主動關注您的案件。
+                </div>
+                <div className="text-red-200/80">
+                  若等候超過 20 分鐘仍未完成，請直接來信{' '}
+                  <a href="mailto:support@jianyuan.life" className="underline font-medium hover:text-red-100">
+                    support@jianyuan.life
+                  </a>
+                  ，附上您的訂單信箱，我們將於最短時間內為您處理。您的付款與資料皆已完整保存，報告不會遺失。
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

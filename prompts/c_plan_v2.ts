@@ -29,7 +29,20 @@
 // ============================================================
 
 import { getPersonaByDayMaster } from '@/lib/profiles'
+import { buildConsultationRelationshipPrompt } from '@/lib/consultation/relationship-context'
+import {
+  BIRTH_TIME_DEPENDENT_SYSTEMS,
+  CALCULATOR_SYSTEM_EVIDENCE_CLASS,
+} from '@/lib/consultation/calculator-facts'
 import { ETHICS_RULES } from '@/workflows/generate-report/plan-prompts'
+import {
+  buildCPromptPeriodInstruction,
+  buildUnknownBirthTimeInstruction,
+  calculateAgeAsOf,
+  cLifeStageForAge,
+  resolveCPromptPeriod,
+  type CPromptPeriodContext,
+} from './c_plan_contract'
 
 // ── 派別硬鎖（C/D/R 全方案共用，禁止跨派混寫）──
 const SCHOOL_LOCK = `【🔒 派別硬鎖（禁止混派混寫，違反視為不合格報告）】
@@ -352,16 +365,13 @@ ETHICS_RULES > SCHOOL_LOCK > 對外撰寫護欄(28 格局段) > **本內容護�
 // 8 段切法依據:Erikson 8 stages + Levinson eras + 紫微大限 10 年 + 八字大運 10 年 + Saturn return 28-30/56-60
 export type LifeStage = 'toddler' | 'child' | 'teen' | 'young_adult' | 'early_mid' | 'mid' | 'pre_senior' | 'elder' | 'adult'  // 'adult' = deprecated v5.5 enum、保留 backward-compat、新 callsite 不應返回
 
-export function getAgeGroup(birthYear: number): LifeStage {
-  const age = new Date().getFullYear() - birthYear
-  if (age <= 6) return 'toddler'      // 0-6 嬰幼兒
-  if (age <= 12) return 'child'        // 7-12 學齡兒
-  if (age <= 18) return 'teen'         // 13-18 青少年
-  if (age <= 30) return 'young_adult'  // 19-30 青年(Quarter-life crisis、Saturn return 28-30、Arnett emerging adulthood)
-  if (age <= 40) return 'early_mid'    // 31-40 早中年(Levinson Settling Down、結婚生子高峰、35 危機)
-  if (age <= 50) return 'mid'          // 41-50 中年(Jung Individuation、Mid-life Transition、U-curve 47 谷底)
-  if (age <= 60) return 'pre_senior'   // 51-60 中老年過渡(空巢、退休前奏、Saturn return 56-60)
-  return 'elder'                        // 61+ 長者(Erikson 統整 vs 絕望)
+export function getAgeGroup(
+  birthYear: number,
+  birthMonth = 1,
+  birthDay = 1,
+  asOf?: string,
+): LifeStage {
+  return cLifeStageForAge(calculateAgeAsOf(birthYear, birthMonth, birthDay, asOf))
 }
 
 // ── 取得當前年柱(動態 ganzhi、防 2026 寫死跨年爆) ──
@@ -383,64 +393,60 @@ export function computeCurrentYearGanzhi(date: Date = new Date()): string {
 const AGE_INSTRUCTIONS: Record<string, string> = {
   toddler: `【寫作對象：父母｜幼兒 0-6 歲】
 報告標題格式：「○○○ 人生藍圖（兒童專版）」
-- 用「您的孩子」「寶寶」稱呼孩子，用「您」稱呼父母
-- 語氣溫暖但犀利——好的直說好，問題直接戳，不繞彎
-- 聚焦：先天體質、性格種子、教養策略、兒童房風水、才藝方向
-- 絕對不寫：戀愛模式、桃花運、投資理財、職場策略、婚姻分析`,
+- 主要寫給父母看，用「您的孩子」稱呼孩子；不要假裝直接替幼兒做成人決定
+- 聚焦日常作息、情緒表達、學習興趣、親子互動與安全感
+- 建議要能讓照顧者今天就開始做，不貼負面標籤
+- 不談戀愛、婚姻、投資、職場或成人健康恐嚇`,
 
   child: `【寫作對象：父母｜兒童 7-12 歲】
 報告標題格式：「○○○ 人生藍圖（學齡兒童版）」
-- 用「您的孩子」「他/她」稱呼，像懂命理的教育顧問
-- 聚焦：學業方向、性格培養、社交引導、才藝發展、健康注意
-- 不寫：戀愛模式、桃花運、投資理財、婚姻分析`,
+- 主要寫給父母看，描述孩子的學習方式、情緒需求、同儕互動與興趣
+- 用可觀察的情境說明，不把一時表現寫成一生定局
+- 給父母具體的陪伴與溝通方法
+- 不談桃花、婚姻、投資或成人職涯`,
 
   teen: `【寫作對象：父母 + 本人｜青少年 13-18 歲】
 報告標題格式：「○○○ 人生藍圖（青少年版）」
-- 寫給父母用「您的孩子」，寫給本人用「你」像一個懂你的學長姊
-- 聚焦：升學方向、自我認同、情緒管理、社交、未來職業初探
-- 可淺談感情觀（引導型），但不寫桃花運或「幾歲遇到對的人」
-- 不寫：投資理財、婚姻分析、創業評估`,
+- 同時照顧本人與父母的視角，清楚標明是在對誰說話
+- 聚焦升學探索、自我認同、壓力調節、友誼、家庭溝通與職業初探
+- 關係內容只談界線與尊重，不預測桃花或幾歲遇到誰
+- 不寫投資、婚姻定論或創業成敗`,
 
   young_adult: `【寫作對象：本人｜青年 19-30 歲】
 報告標題格式：「○○○ 人生藍圖」
-- 直接用「你」稱呼、像同儕級陪伴而非說教長輩
-- 聚焦：自我探索 vs 承諾、職涯定位、感情模式啟蒙、財務獨立第一步、住居選擇
-- 涵蓋:Quarter-life crisis(承認 75% 同齡人有焦慮)、Saturn return 28-30、Arnett emerging adulthood 五特徵
-- 強調探索期合理性、不催促「30 前該完成 X」
-- 不寫:婚姻倦怠、退休規劃、晚年子女問題`,
+- 直接用「你」，像可靠的同齡顧問，不用長輩口吻說教
+- 聚焦職涯定位、財務獨立、重要關係、住居選擇與自我認識
+- 承認摸索與改變方向很正常，不催促「三十歲前必須完成什麼」
+- 不硬套婚姻、買房或單一路徑，也不提前談退休與晚年`,
 
   early_mid: `【寫作對象：本人｜早中年 31-40 歲】
 報告標題格式:「○○○ 人生藍圖」
-- 直接用「你」稱呼、直面決策壓力
-- 聚焦:升遷拼搏、結婚生子、房貸、雙薪衝突、父母老化提前、Levinson Settling Down
-- 涵蓋:三明治世代壓力、夾心優先順序、35 歲職場危機、第一胎平均 32-34
-- 強調「取捨哲學」、不過度催「成家立業」單軌
-- 不寫:退休、晚年照護(可預告 40-50)`,
+- 直接用「你」，正面處理工作、家庭、財務與時間分配的取捨
+- 不預設一定結婚、生子、買房或升主管；依客戶實際狀態寫
+- 建議要說清楚先後順序、代價與下一步
+- 不把尚未發生的退休或照護壓力寫成眼前事實`,
 
   mid: `【寫作對象：本人｜中年 41-50 歲】
 報告標題格式:「○○○ 人生藍圖」
-- 直接用「你」稱呼、深度反思語氣
-- 聚焦:Jung Individuation(整合 shadow)、轉職轉業、婚倦、子女青春期、父母失能、健康首次警訊
-- **用「Jung 人生下半場」框架取代「中年危機」恐嚇語**(Sub-agent 全球共識)
-- 涵蓋:Mid-life Transition(Levinson)、47 歲幸福 U 谷底反轉
-- 不寫:預言中年破財、預言父母離世具體日(永久禁)`,
+- 直接用「你」，協助盤點哪些責任值得留下、哪些需要重新安排
+- 聚焦職涯調整、家庭角色、健康管理、父母與子女的界線
+- 不把改變寫成「中年危機」，也不預設客戶一定有伴侶或子女
+- 不預言破財、疾病或親人離世`,
 
   pre_senior: `【寫作對象:本人｜中老年過渡 51-60 歲】
 報告標題格式:「○○○ 人生藍圖」
-- 直接用「你」稱呼、智者對話 + 賦權語氣
-- 聚焦:空巢、退休前奏、mentor 角色、父母過世、健康黃燈、Saturn return 56-60
-- 涵蓋:退休 SOP 5 維(財務+健康+社交+興趣+意義)、Encore careers、第二人生課程
-- **強調個體化完成期、不退場話術**
-- 不寫:預測壽命、子女不孝催費、養生品推銷`,
+- 直接用「你」，尊重經驗與自主，不把這個階段寫成退場
+- 聚焦工作轉換、退休準備、健康、社交、興趣與生活意義
+- 家庭內容依客戶實際資料，不預設空巢、喪親或子女關係
+- 不預測壽命、不製造子女不孝焦慮，也不推銷養生品`,
 
   elder: `【寫作對象:本人 + 預埋對子女｜長者 61+ 歲】
 報告標題格式:「○○○ 人生藍圖(智慧長者版)」
-- 用「您」稱呼、語氣尊重不哄
-- 雙軌寫:對長者尊重 + 預埋給子女理解段落(self_with_children 模式)
-- 聚焦:Life Review、智慧傳承、健康養生、晚運、心靈安頓、家族關係
-- 涵蓋:Erikson 統整 vs 絕望、Joan Erikson 第 9 階段(80+)、Gerotranscendence
-- 字級加大、結構簡化
-- ❌❌❌ **絕對禁**:壽命預測 / 嚴重病具體預言 / 「拖累子女」內疚 / 續命儀式 / 宗教恐嚇`,
+- 用「您」稱呼，尊重而不哄，不把年齡當成能力下降的證據
+- 聚焦生活回顧、經驗傳承、健康習慣、重要關係與心願安排
+- 若內容也給家人看，清楚區分本人意願與家人的支持方式
+- 結構簡單、句子清楚
+- 絕不預測壽命、重病、死亡，不製造「拖累子女」的內疚，也不談續命儀式`,
 
   // backward-compat:舊 'adult' enum value 保留(若 production code 還在用)
   adult: `【DEPRECATED — adult 已拆 4 段、改用 young_adult/early_mid/mid/pre_senior】
@@ -464,7 +470,7 @@ export const FORBIDDEN_WORDS_BY_STAGE: Record<LifeStage, string[]> = {
 }
 
 // ── 犀利版 system prompt（所有 call 共用）── v5.5 雙軌策略
-function getSystemPrompt(locale?: string, ageContext?: { age: number; stage: LifeStage; stageLabel: string; voice: string; currentYearGanzhi: string }): string {
+function getSystemPrompt(locale?: string, ageContext?: { age: number; stage: LifeStage; stageLabel: string; voice: string; currentYearGanzhi: string; asOf?: string; targetYear?: number }): string {
   const lang = locale === 'zh-CN' ? '簡體中文' : '繁體中文'
   // v5.7.39 鐵律 header(對應 v5.3.31 性別鐵律置頂前例、避免 AI 寫超齡內容)
   const ageHeader = ageContext ? `
@@ -475,12 +481,13 @@ function getSystemPrompt(locale?: string, ageContext?: { age: number; stage: Lif
 - **客戶當前年齡**:${ageContext.age} 歲
 - **人生階段**:${ageContext.stageLabel}(${ageContext.stage})
 - **寫作對象 / voice**:${ageContext.voice}
-- **當前年柱**:${ageContext.currentYearGanzhi}(動態算、勿寫死「2026 丙午年」)
+- **分析目標年**:${ageContext.targetYear ?? '依 user prompt'} 年(${ageContext.currentYearGanzhi})
+- **年齡基準日**:${ageContext.asOf ?? '依 user prompt'}
 
 **鐵律**:
 1. 任何超齡內容 = 報告作廢(2 歲不寫感情危機 / 70+ 不寫升學)
 2. voice 切換必嚴守(infant→對父母 / adult→對本人 / elder→雙軌對長者+子女)
-3. **流年動態替換**:prompt 內若出現「2026 丙午年」/「2026年丙午年」字眼、一律替換為「${ageContext.currentYearGanzhi}年(西元 ${new Date().getFullYear()}年)」、勿照抄寫死
+3. **流年時間鐵律**:只使用上述分析目標年與資料基準日；任何範例年份都不是客戶事實
 4. 違反禁詞清單(stage forbidden words)= quality gate fail
 5. 對 ${ageContext.stage} 階段、嚴格遵守該段 AGE_INSTRUCTIONS 紅線(寫作對象 / 禁寫項)
 ═══════════════════════════════════════════════════════════════
@@ -882,9 +889,18 @@ ${C_PLAN_CONTENT_GUARDRAILS_R1}`
 // 目標字數 ~12,000字，max_tokens 16000
 // ============================================================
 // v5.7.39 helper:from birthYear → age + stage + voice + currentYearGanzhi
-export function buildAgeContext(birthYear: number) {
-  const age = new Date().getFullYear() - birthYear
-  const stage = getAgeGroup(birthYear)
+export function buildAgeContext(birthYear: number, context: CPromptPeriodContext = {}): {
+  age: number
+  stage: LifeStage
+  stageLabel: string
+  voice: string
+  currentYearGanzhi: string
+} {
+  const period = resolveCPromptPeriod(context)
+  const birthMonth = context.birthMonth ?? 1
+  const birthDay = context.birthDay ?? 1
+  const age = calculateAgeAsOf(birthYear, birthMonth, birthDay, period.asOf)
+  const stage: LifeStage = cLifeStageForAge(age)
   const STAGE_LABEL: Record<LifeStage, string> = {
     toddler: '0-6 嬰幼兒',
     child: '7-12 學齡兒',
@@ -912,13 +928,23 @@ export function buildAgeContext(birthYear: number) {
     stage,
     stageLabel: STAGE_LABEL[stage],
     voice: VOICE[stage],
-    currentYearGanzhi: computeCurrentYearGanzhi(),
+    currentYearGanzhi: period.targetYearGanzhi,
   }
 }
 
-export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string, birthYear?: number): string {
-  const ageContext = birthYear ? buildAgeContext(birthYear) : undefined
+export function buildCall1Prompt(
+  ageGroup: string,
+  clientNeed?: string,
+  locale?: string,
+  birthYear?: number,
+  context: CPromptPeriodContext = {},
+): string {
+  const period = resolveCPromptPeriod(context)
+  const ageContext = birthYear ? buildAgeContext(birthYear, context) : undefined
   return `${getSystemPrompt(locale, ageContext)}
+
+${buildCPromptPeriodInstruction(period)}
+${buildUnknownBirthTimeInstruction(context.timeUnknown === true)}
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 ${clientNeed ? `\n【客戶特定需求】${clientNeed}\n所有分析請優先圍繞客戶的需求展開，但不要遺漏其他重要面向。` : ''}
@@ -952,9 +978,9 @@ ${clientNeed ? `\n【客戶特定需求】${clientNeed}\n所有分析請優先�
 
 > **你最該注意的課題**：一句話（附命理依據）
 
-> **2026 年你現在該做什麼**：一句話（具體行動）
+> **${period.targetYear} 年你現在該做什麼**：一句話（具體行動）
 
-然後用 200 字概括：「你的命格就像 ___，___ 是你的武器，___ 是你的盲點。{currentYearGanzhi}年 ___。」
+然後用 200 字概括：「你的命格就像 ___，___ 是你的武器，___ 是你的盲點。${period.targetYearGanzhi}年 ___。」
 
 這段文字要讓客戶讀完後心想：「靠，這也太準了吧，我要繼續看下去。」
 
@@ -981,7 +1007,7 @@ ${clientNeed ? `\n【客戶特定需求】${clientNeed}\n所有分析請優先�
 
 6. **關鍵字**：5-7 個詞概括你這個人(v5.7.30:給 design 彈性、命格名片 tag 顯示更豐富)
 
-7. **2026一句話**：用一句話概括2026丙午年對你的核心主題
+7. **${period.targetYear}一句話**：用一句話概括${period.targetYear}${period.targetYearGanzhi}年對你的核心主題
 
 ---
 
@@ -1083,11 +1109,17 @@ export function buildCall2Prompt(
   call1Summary: string,
   locale?: string,
   birthYear?: number,
+  context: CPromptPeriodContext = {},
 ): string {
-  const ageContext = birthYear ? buildAgeContext(birthYear) : undefined
+  const period = resolveCPromptPeriod(context)
+  const ageContext = birthYear ? buildAgeContext(birthYear, context) : undefined
   return `${getSystemPrompt(locale, ageContext)}
 
+${buildCPromptPeriodInstruction(period)}
+${buildUnknownBirthTimeInstruction(context.timeUnknown === true)}
+
 ${AGE_INSTRUCTIONS[ageGroup]}
+${buildConsultationRelationshipPrompt(context.relationshipStatus)}
 
 【前文摘要——保持一致性】
 ${call1Summary}
@@ -1096,24 +1128,24 @@ ${call1Summary}
 
 ---
 
-## 五、感情與人際
+## 五、關係與人際互動
 
-> 開頭一句話直戳感情痛點：「你最大的感情問題不是遇不到人，是 ___」——根據命格判斷。
+> 開頭先說清楚客戶在重要關係中的互動模式，不假設客戶有伴侶，也不替未提供資料的人下判斷。
 
 融合多系統分析，不按系統分列。**關鍵洞見用粗體**。
 
-### 你的感情模式
-你在親密關係中是什麼樣的人——**怎麼愛、怎麼被愛、最容易在哪裡卡住**。讓客戶讀到「對，我就是這樣」。
-交叉引用：八字夫妻宮/桃花星 + 紫微夫妻宮 + 西洋占星金星/火星/7宮 + 吠陀D-9分盤 + 塔羅靈魂牌 + 人類圖情緒中心
+### 你在重要關係中的互動方式
+依客戶已提供的關係狀態分析溝通、信任、親密與界線；若未提供或不願回答，只寫中性的人際模式，不推測伴侶、桃花或婚姻。
+命理依據只能使用本次可安全引用的排盤資料，不因章名而強迫使用夫妻宮或其他時間敏感欄位。
 
 ### 你的人際吸引力
 你吸引什麼樣的人、排斥什麼樣的人、在群體中扮演什麼角色。
 交叉引用：紫微交友宮 + 西洋占星11宮 + 人類圖類型 + 生肖人際特質
 
-### 感情時間表
-- 過去：感情上的重要轉折（具體年份）
-- 現在：當前感情狀態分析
-- 未來：下一個桃花旺期/感情關鍵期（具體年份）
+### 關係歷程與下一步
+- 過去：只描述客戶本人可能反覆出現的互動模式，不杜撰事件
+- 現在：依已提供的關係狀態分析；未提供就明說資料邊界
+- 未來：提出改善溝通與界線的時間窗口，不保證遇見誰或預測離合
 
 ### 人際改善方案
 具體到**「怎麼改」「什麼時候最適合改」**——不是「多社交」這種廢話，是「→ 每週主動約一個你覺得有距離的朋友吃飯，從 XX 月開始最有效」
@@ -1139,7 +1171,7 @@ ${call1Summary}
 ### 養生時間表
 - 器官時鐘 + 生物節律 → 每日最佳作息
 - 四季養生重點
-- 2026年健康特別注意月份
+- ${period.targetYear}年健康特別注意月份
 
 ---
 
@@ -1177,12 +1209,12 @@ ${call1Summary}
 
 ---
 
-## 八、2026流年重點
+## 八、${period.targetYear}流年重點
 
-> 開頭一句話定調：「2026 丙午年對你來說是 ___ 的一年」——用一個詞概括（如：翻身、蟄伏、收割、考驗）。
+> 開頭一句話定調：「${period.targetYear} ${period.targetYearGanzhi}年對你來說是 ___ 的一年」——用一個詞概括（如：翻身、蟄伏、收割、考驗）。
 
 ### 年度總論
-**一句話結論先行**，然後展開分析。丙午年的五行能量如何影響你的命格——是助力還是挑戰。
+**一句話結論先行**，然後展開分析。${period.targetYearGanzhi}年的傳統解讀如何影響你的命格——是助力還是挑戰。
 交叉引用：八字流年+歲運交互 + 紫微流年四化 + 西洋占星行運 + 吠陀當前 Dasha + 奇門流年 + 生肖犯太歲 + 數字流年數
 
 ### 12個月逐月分析
@@ -1221,9 +1253,14 @@ export function buildCall3Prompt(
   call1and2Summary: string,
   locale?: string,
   birthYear?: number,
+  context: CPromptPeriodContext = {},
 ): string {
-  const ageContext = birthYear ? buildAgeContext(birthYear) : undefined
+  const period = resolveCPromptPeriod(context)
+  const ageContext = birthYear ? buildAgeContext(birthYear, context) : undefined
   return `${getSystemPrompt(locale, ageContext)}
+
+${buildCPromptPeriodInstruction(period)}
+${buildUnknownBirthTimeInstruction(context.timeUnknown === true)}
 
 ${AGE_INSTRUCTIONS[ageGroup]}
 
@@ -1251,21 +1288,21 @@ ${call1and2Summary}
 每行最後一欄「共識度」用 🟢 高 / 🟡 中 / 🔴 低 標示(85%+ 系統指向同向 = 🟢、50-85% = 🟡、< 50% = 🔴)。
 
 **🆕 修 #3:允許「—」資料缺值欄(本欄專用、其他章節仍禁)**:
-- 若該系統 raw_data 對此面向**真的不可用**(如「南洋術數對 2026 流年無資料」)→ 該欄寫「—」**允許**
-- 不逼模型填 105 格實值、避免編造
+- 若該系統 raw_data 對此面向**真的不可用**(如「該系統對 ${period.targetYear} 流年無可用資料」)→ 該欄寫「—」**允許**
+- 不逼模型填沒有依據的格子、避免編造
 - 表格 footer 必加說明:「**註**:★ 為 0 / \`—\` 表該系統暫未涵蓋此面向、共識度計算僅取有值欄」
-- **但禁止整列全 「—」**(若整個面向 7 系統都缺、表示模型偷懶、不合格)、每列至少 8/15 系統有 ★
+- **但禁止整列全 「—」**。出生時間已提供時、每列至少 8/14 個可對客系統有依據；出生時間未提供時，只能使用實際傳入且未被 held 的系統，不得為達數量而補造。
 
 **範例(實值 + 允許缺值)**:
-| 面向 | 八字 | 紫微 | 奇門 | 風水 | 姓名 | 西占 | 吠陀 | 易經 | 人類圖 | 塔羅 | 數字 | 古占 | 生肖 | 節律 | 南洋 | 共識度 |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| 財運 | ★★★★ | ★★★ | ★★★ | ★★ | ★★ | ★★★ | ★★★★ | ★★ | ★★ | ★★★ | ★★★ | ★★ | ★★ | ★ | — | 🟢 高(78%) |
-| 事業 | ★★★★★| ★★★★| ★★★ | ★★ | ★★★ | ★★★★ | ★★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | ★★★ | ★★ | ★★ | — | 🟢 高(85%) |
-| 感情 | ★★★★ | ★★★★ | ★★ | ★★ | ★★ | ★★★★ | ★★★ | ★★ | ★★★ | ★★★★ | ★★★ | ★★ | ★★★ | ★★ | — | 🟡 中(70%) |
-| 健康 | ★★★ | ★★★★ | ★★ | ★★★ | ★ | ★★★ | ★★★ | ★★ | ★★ | ★★ | ★★ | ★★ | ★★★ | ★★★★ | — | 🟡 中(60%) |
-| 人際 | ★★★ | ★★★★ | ★★ | ★★ | ★★★ | ★★★★ | ★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | ★★ | ★★★ | ★★ | — | 🟢 高(72%) |
-| 學業/天賦 | ★★★★ | ★★★★ | ★★ | ★★ | ★★★ | ★★★ | ★★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | ★★★ | ★★ | ★★ | — | 🟢 高(75%) |
-| 心靈/成長 | ★★★ | ★★★★ | ★★ | ★★ | ★★ | ★★★ | ★★★★ | ★★★★ | ★★★★ | ★★★★ | ★★★ | ★★ | ★★ | ★★ | — | 🟢 高(70%) |
+| 面向 | 八字 | 紫微 | 奇門 | 風水 | 姓名 | 西占 | 吠陀 | 易經 | 人類圖 | 塔羅 | 數字 | 古占 | 生肖 | 節律 | 共識度 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 財運 | ★★★★ | ★★★ | ★★★ | ★★ | ★★ | ★★★ | ★★★★ | ★★ | ★★ | ★★★ | ★★★ | ★★ | ★★ | ★ | 🟢 高(78%) |
+| 事業 | ★★★★★| ★★★★| ★★★ | ★★ | ★★★ | ★★★★ | ★★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | ★★★ | ★★ | ★★ | 🟢 高(85%) |
+| 感情 | ★★★★ | ★★★★ | ★★ | ★★ | ★★ | ★★★★ | ★★★ | ★★ | ★★★ | ★★★★ | ★★★ | ★★ | ★★★ | ★★ | 🟡 中(70%) |
+| 健康 | ★★★ | ★★★★ | ★★ | ★★★ | ★ | ★★★ | ★★★ | ★★ | ★★ | ★★ | ★★ | ★★ | ★★★ | ★★★★ | 🟡 中(60%) |
+| 人際 | ★★★ | ★★★★ | ★★ | ★★ | ★★★ | ★★★★ | ★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | ★★ | ★★★ | ★★ | 🟢 高(72%) |
+| 學業/天賦 | ★★★★ | ★★★★ | ★★ | ★★ | ★★★ | ★★★ | ★★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | ★★★ | ★★ | ★★ | 🟢 高(75%) |
+| 心靈/成長 | ★★★ | ★★★★ | ★★ | ★★ | ★★ | ★★★ | ★★★★ | ★★★★ | ★★★★ | ★★★★ | ★★★ | ★★ | ★★ | ★★ | 🟢 高(70%) |
 
 **註**:★ 為 0 / \`—\` 表該系統暫未涵蓋此面向、共識度計算僅取有值欄。
 
@@ -1316,39 +1353,39 @@ ${call1and2Summary}
 
 ⚠️ **日期硬規格(v5.7.31 強要求、違反即重寫)**:
 - **本章 ALL 日期一律用「國曆」**(C 方案以國曆為主、客戶看日曆是國曆)
-- 寫日期時 **必須加「(國曆)」標籤**:範例「5/10 前(國曆)」、「2026 年 5 月 7 日(國曆)」
+- 寫日期時 **必須加「(國曆)」標籤**:範例「5/10 前(國曆)」、「${period.targetYear} 年 5 月 7 日(國曆)」
 - 若需提農曆對照、必標「農曆 X 月 X 日(對應國曆 YYYY-MM-DD)」
 - 完成期限欄、行動日期欄、所有時間錨點全部適用
 - 客戶常困惑「5/4 是國曆還農曆」、模糊 = 客戶投訴 = quality gate fail
 
-### 即刻(本月、2026-05 內、國曆)
+### 即刻(資料基準日 ${period.asOf} 起一個月內、國曆)
 列 3-5 個具體行動、每個附:
 - 為什麼是現在(命理依據)
 - 怎麼做(具體到「明天就能做的第一步」)
 - 什麼時候完成(**必標「國曆 X/X 前」**)
 
-### 短期(3-6 個月、2026 年 5 月至 10 月、國曆)
+### 短期(資料基準日起 3-6 個月、國曆)
 列 3-5 個布局型行動、每個附:
 - 對應大運/流年
 - 階段性檢查點(**用月份標、必標「國曆 X 月」**)
 
-### 長期(1-3 年、2026-2028、國曆)
+### 長期(1-3 年、${period.targetYear}-${period.targetYear + 2}、國曆)
 列 3-5 個方向性行動、每個附:
 - 對應未來大運/流年走勢
 - 結果定義(「3 年後你會 X」、**年份用國曆**)
 
 ---
 
-## 十三、年度運勢曲線(2026、P0-9 ASCII 曲線必繪)
+## 十三、年度運勢曲線(${period.targetYear}、P0-9 ASCII 曲線必繪)
 
-> 一句話讓客戶有感:「2026 丙午年、你的運勢不是平均分配、有高峰也有低谷、提前知道、提前布局。」
+> 一句話讓客戶有感:「${period.targetYear} ${period.targetYearGanzhi}年、你的運勢不是平均分配、有高峰也有低谷、提前知道、提前布局。」
 
 ### 🆕 P0-9 ASCII 年度曲線圖(必繪、依實際命盤填高低)
 
 用以下格式繪製 12 個月運勢曲線(★ 為當月評級、↑/↓ 為波動方向):
 
 \`\`\`
-2026 年運勢曲線(★ 滿 5 / 1 月→12 月)
+${period.targetYear} 年運勢曲線(★ 滿 5 / 1 月→12 月)
 
   5★ ┤        ●           ●  ●
   4★ ┤    ●       ●  ●         ●
@@ -1366,18 +1403,18 @@ ${call1and2Summary}
 
 | 月份 | 整體 | 財運 | 事業 | 感情 | 健康 | 重點主題(白話) |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---|
-| 2026-01 | ★★★ | ★★ | ★★★ | ★★ | ★★ | (依命盤填、如「年初蓄勢、不宜大動」)|
-| 2026-02 | ★★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | (依命盤填) |
-| 2026-03 | ★★★ | ★★★ | ★★★ | ★★ | ★★★ | (依命盤填) |
-| 2026-04 | ★★ | ★★ | ★★ | ★★ | ★★ | (依命盤填) |
-| 2026-05 | ★★★ | ★★★ | ★★★ | ★★★ | ★★ | (依命盤填) |
-| 2026-06 | ★★★★ | ★★★★ | ★★★★ | ★★★ | ★★★ | (依命盤填) |
-| 2026-07 | ★★★★ | ★★★★ | ★★★ | ★★★★ | ★★★ | (依命盤填) |
-| 2026-08 | ★★★ | ★★★ | ★★★ | ★★★ | ★★ | (依命盤填) |
-| 2026-09 | ★★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | (依命盤填) |
-| 2026-10 | ★★★ | ★★★ | ★★★ | ★★ | ★★★ | (依命盤填) |
-| 2026-11 | ★★ | ★★ | ★★ | ★★ | ★★ | (依命盤填) |
-| 2026-12 | ★★★ | ★★★ | ★★★ | ★★★ | ★★★ | (依命盤填) |
+| ${period.targetYear}-01 | ★★★ | ★★ | ★★★ | ★★ | ★★ | (依命盤填、如「年初蓄勢、不宜大動」)|
+| ${period.targetYear}-02 | ★★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | (依命盤填) |
+| ${period.targetYear}-03 | ★★★ | ★★★ | ★★★ | ★★ | ★★★ | (依命盤填) |
+| ${period.targetYear}-04 | ★★ | ★★ | ★★ | ★★ | ★★ | (依命盤填) |
+| ${period.targetYear}-05 | ★★★ | ★★★ | ★★★ | ★★★ | ★★ | (依命盤填) |
+| ${period.targetYear}-06 | ★★★★ | ★★★★ | ★★★★ | ★★★ | ★★★ | (依命盤填) |
+| ${period.targetYear}-07 | ★★★★ | ★★★★ | ★★★ | ★★★★ | ★★★ | (依命盤填) |
+| ${period.targetYear}-08 | ★★★ | ★★★ | ★★★ | ★★★ | ★★ | (依命盤填) |
+| ${period.targetYear}-09 | ★★★★ | ★★★ | ★★★★ | ★★★ | ★★★ | (依命盤填) |
+| ${period.targetYear}-10 | ★★★ | ★★★ | ★★★ | ★★ | ★★★ | (依命盤填) |
+| ${period.targetYear}-11 | ★★ | ★★ | ★★ | ★★ | ★★ | (依命盤填) |
+| ${period.targetYear}-12 | ★★★ | ★★★ | ★★★ | ★★★ | ★★★ | (依命盤填) |
 
 (以上 ★ 數量為示意、依實際命盤調整)
 
@@ -1501,7 +1538,7 @@ ${call1and2Summary}
 
 1. **十四系統交叉矩陣**(修 #3、對外清零 v5.10.122):7 面向 × 14 系統 × ★ 評級 + 共識度 🟢🟡🔴
    - 允許「—」**僅在資料缺值欄**(該系統真不可用時)、表格 footer 必加註說明
-   - 禁止「...」placeholder、禁止整列全 「—」、每列至少 8/15 系統有 ★
+   - 禁止「...」placeholder、禁止整列全 「—」、出生時間已提供時每列至少 8/14 系統有 ★
 2. **ASCII 年度曲線圖必繪**(P0-9):依範例格式、依實際命盤填高低
 3. **12 月 ★ 評分表必填 12 行**(P0-9):每行整體 + 財運 + 事業 + 感情 + 健康 + 重點主題、每格白話
 4. **TOP 5(非 TOP 3)+ 信心度 ●●●●○**(修 #7 全文同步):優勢 5 條 + 風險 5 條、每條附支持系統 + ●●●●○
@@ -1514,8 +1551,8 @@ ${call1and2Summary}
 
 【不合格判定（嚴格、任一不過 = 報告失敗）】:
 - 缺少任何一個章節(九-十七)→ 不合格
-- 交叉矩陣有「...」placeholder 或不滿 7×15 = 105 格 → 不合格
-- 矩陣整列全 「—」(超過 7/15 系統缺值)→ 不合格(模型偷懶)
+- 交叉矩陣有「...」placeholder；或出生時間已提供時不滿 7×14 = 98 格 → 不合格
+- 矩陣整列全 「—」；或出生時間已提供時超過 6/14 系統缺值 → 不合格
 - ASCII 年度曲線缺繪 → 不合格(P0-9)
 - 12 月 ★ 表不滿 12 行或某月空白 → 不合格(P0-9)
 - TOP 優勢 / 風險少於 5 條 → 不合格
@@ -1540,10 +1577,24 @@ export function buildUserPrompt(
   birthData: Record<string, any>,
 ): string {
   const cd = clientData
+  const timeUnknown = birthData.time_unknown === true || birthData.timeUnknown === true
+  const period = resolveCPromptPeriod({
+    asOf: birthData.as_of,
+    targetYear: birthData.target_year,
+    timeUnknown,
+    birthMonth: birthData.month,
+    birthDay: birthData.day,
+  })
+  const evidenceClasses = CALCULATOR_SYSTEM_EVIDENCE_CLASS as Record<string, string>
+  const usableAnalyses = analyses.filter((a: Record<string, any>) => {
+    if (typeof a.system !== 'string') return false
+    if (evidenceClasses[a.system] === 'held') return false
+    return !timeUnknown || !BIRTH_TIME_DEPENDENT_SYSTEMS.has(a.system)
+  })
 
   // ── 從排盤數據提取關鍵摘要資訊（防止 AI 幻覺）──
-  const westernData = analyses.find((a: Record<string, any>) => a.system === '西洋占星')
-  const numerologyData = analyses.find((a: Record<string, any>) => a.system === '數字能量學')
+  const westernData = usableAnalyses.find((a: Record<string, any>) => a.system === '西洋占星')
+  const numerologyData = usableAnalyses.find((a: Record<string, any>) => a.system === '數字能量學')
 
   // 從西洋占星 detail 中提取太陽/月亮/上升
   let sunSign = '', moonSign = '', ascSign = ''
@@ -1590,34 +1641,48 @@ export function buildUserPrompt(
     if (m) lifePathNumber = m[1]
   }
 
-  let prompt = `════════════════════════════════════════
+  const birthTimeText = timeUnknown
+    ? `出生日期：${birthData.year}年${birthData.month}月${birthData.day}日\n出生時間：未提供（12:00 僅為內部計算占位，不是真實出生時刻）`
+    : `出生：${birthData.year}年${birthData.month}月${birthData.day}日 ${birthData.hour}時${Number.isInteger(birthData.minute) ? `${String(birthData.minute).padStart(2, '0')}分` : ''}`
+  const usableSystemCount = new Set(
+    usableAnalyses
+      .filter((a: Record<string, any>) => systemFilter.includes(a.system))
+      .map((a: Record<string, any>) => a.system),
+  ).size
+
+  let prompt = `${buildCPromptPeriodInstruction(period)}
+${buildUnknownBirthTimeInstruction(timeUnknown)}
+
+【排盤與可用證據範圍】
+- 15 套 calculator 用於後端輸出完整性檢查；這只代表計算資料到齊，不代表 15 套都能支撐客戶結論。
+- 標準情況最多 14 套可對客引用；九星氣學目前為 held，不得出現在客戶結論或用來湊交叉數量。
+- 本次實際可安全引用 ${usableSystemCount} 套。只能引用下方實際提供的系統；不得為達宣稱數量而補造。
+
+════════════════════════════════════════
 【關鍵數據 — 禁止自行推算或記憶，必須從排盤數據複製】
 ════════════════════════════════════════
-流年：2026年是丙午年（不是乙巳年，不是丁未年，就是丙午年）
+目標流年：${period.targetYear}年為${period.targetYearGanzhi}年；所有年度分析只依本次排盤資料，不可憑記憶改寫。
 ${sunSign ? `太陽星座：${sunSign}` : ''}
 ${moonSign ? `月亮星座：${moonSign}` : ''}
 ${ascSign ? `上升星座：${ascSign}` : ''}
 ${lifePathNumber ? `生命靈數：${lifePathNumber}${lifePathCalc ? `（計算過程：${lifePathCalc}）` : ''}` : ''}
-八字：${cd.bazi || ''}
-用神：${cd.yongshen || ''}
+${timeUnknown ? '' : `八字：${cd.bazi || ''}`}
+${timeUnknown ? '' : `用神：${cd.yongshen || ''}`}
 ════════════════════════════════════════
 
 ## 客戶資料
 姓名：${birthData.name}
 性別：${birthData.gender === 'M' ? '男' : '女'}
-婚姻狀況：${birthData.marital_status === 'married' ? '已婚' : birthData.marital_status === 'unmarried' ? '未婚' : '未提供'}
-出生：${birthData.year}年${birthData.month}月${birthData.day}日 ${birthData.hour}時
-八字：${cd.bazi || ''}
-用神：${cd.yongshen || ''}
-五行分佈：${JSON.stringify(cd.five_elements || {})}
+${buildConsultationRelationshipPrompt(birthData.marital_status)}
+${birthTimeText}
+${timeUnknown ? '' : `八字：${cd.bazi || ''}`}
+${timeUnknown ? '' : `用神：${cd.yongshen || ''}`}
+${timeUnknown ? '' : `五行分佈：${JSON.stringify(cd.five_elements || {})}`}
 農曆：${cd.lunar_date || ''}
 納音：${cd.nayin || ''}
-命宮：${cd.ming_gong || ''}
+${timeUnknown ? '' : `命宮：${cd.ming_gong || ''}`}
 
-【🔴 婚姻狀況硬規則(v5.10.5、感情段個性化、違反 = 不合格)】
-- **已婚**:感情段聚焦「婚姻品質、夫妻宮分析、配偶溝通模式、家庭運勢、和老公/老婆互動」、**禁寫**「該找對象 / 桃花朵朵開 / 這年遇到 Mr. Right / 適婚年 / 何時結婚」等假設未婚的話術。流年感情段寫「夫妻互動、家庭和諧度」、不寫「桃花強旺易遇真愛」。
-- **未婚**:感情段聚焦「擇偶條件、桃花、適婚年、感情模式、戀愛卡點」、可寫遇到對的人時機、桃花旺月份。
-- **未提供**:中性敘述「感情運整體走勢」、不假設已婚 / 未婚、不寫「應該找 X」也不寫「夫妻關係 X」。
+【關係內容硬規則】以上「目前關係狀態」指令必須套用到感情、人際、流年與行動建議；不得把未提供的伴侶資料當成事實，也不得預測離合或替另一方判定內心。
 `
 
   // 注入人格封號（供命格名片使用）
@@ -1636,9 +1701,9 @@ ${lifePathNumber ? `生命靈數：${lifePathNumber}${lifePathCalc ? `（計算�
     prompt += `\n## 父母資料（幼兒/兒童版用）\n${JSON.stringify(birthData.parentData)}\n`
   }
 
-  prompt += `\n## 排盤數據（15系統完整數據，請交叉引用）\n`
+  prompt += `\n## 可安全引用的排盤數據（${usableSystemCount} 套；held 與出生時間敏感資料已排除）\n`
 
-  for (const a of analyses) {
+  for (const a of usableAnalyses) {
     if (!systemFilter.includes(a.system)) continue
 
     prompt += `\n### 【${a.system}】\n`
@@ -1691,7 +1756,7 @@ ${lifePathNumber ? `生命靈數：${lifePathNumber}${lifePathCalc ? `（計算�
 
   prompt += `\n---\n請根據以上排盤數據撰寫分析。
 【最高優先級規則】
-1. 2026年是丙午年。任何提到2026年流年的地方必須寫「丙午」。
+1. 分析目標年是 ${period.targetYear} 年（${period.targetYearGanzhi}年），資料基準日是 ${period.asOf}；不得改用模型當下日期。
 2. 每個論點必須引用排盤數據中的具體結果，不得編造。
 3. 太陽/月亮/上升星座、生命靈數等必須從排盤數據複製，禁止自行推算。
 4. 七政四餘的廟旺按十二宮判定，不混用西洋星座名稱。

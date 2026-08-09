@@ -1,5 +1,3 @@
-import { shouldUseConsultationReportV1 } from './runtime-config.ts'
-
 export type ConsultationFallbackDecision =
   | { mode: 'legacy_allowed' }
   | { mode: 'workflow_only'; plan: 'C' | 'G15'; reason: string }
@@ -7,13 +5,13 @@ export type ConsultationFallbackDecision =
 export function consultationFallbackDecision(
   planCode: string,
   birthData: { plan_type?: unknown } | null | undefined,
-  environment: Record<string, string | undefined> = process.env,
+  _environment: Record<string, string | undefined> = process.env,
 ): ConsultationFallbackDecision {
-  if (planCode === 'C' && shouldUseConsultationReportV1('C', environment)) {
+  if (planCode === 'C') {
     return {
       mode: 'workflow_only',
       plan: 'C',
-      reason: 'C consultation v1 必須由 durable workflow 生成，不得降級成交付舊報告',
+      reason: 'C 人生藍圖必須由可重試的完整工作流生成，不得降級為簡化備援報告',
     }
   }
   if (

@@ -267,7 +267,19 @@ registerHooks({
     if (fallbackGoldenParent) {
       if (specifier === 'next/server') {
         return {
-          url: pathToFileURL(resolve(projectRoot, 'node_modules', 'next', 'server.js')).href,
+          // Keep the immutable comparison independent of Next's CJS/ESM bridge.
+          // Node 24 can expose an undefined named NextResponse through the
+          // registered-hook boundary even though next/server.js exports it.
+          url: virtualModuleUrl(`
+            export class NextRequest extends Request {}
+            export class NextResponse extends Response {
+              static json(body, init = {}) {
+                const headers = new Headers(init.headers)
+                if (!headers.has('content-type')) headers.set('content-type', 'application/json')
+                return new NextResponse(JSON.stringify(body), { ...init, headers })
+              }
+            }
+          `),
           shortCircuit: true,
         }
       }

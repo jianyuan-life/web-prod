@@ -1,4 +1,5 @@
 // 結帳頁共用型別定義
+import type { ConsultationRelationshipStatus } from '@/lib/checkout/consultation-input-contract'
 
 export interface FamilyMember {
   name: string
@@ -58,6 +59,10 @@ export interface G15SearchResult {
   name: string
   emailHint?: string       // 隱私遮蔽的 email 提示
   createdAt?: string
+  eligible?: boolean
+  reasonCode?: string
+  reason?: string | null
+  eligibilityReason?: string
 }
 
 // 保留舊介面供相容（如有其他引用）
@@ -107,7 +112,10 @@ export interface CheckoutFormState {
   minute: string
   gender: string
   // v5.10.5 婚姻狀況(C/D/G15/R 個性化感情段、避免對已婚客戶寫「該找對象」誤導)
-  marital_status: 'married' | 'unmarried'
+  marital_status: ConsultationRelationshipStatus | 'unmarried'
+  guardian_name: string
+  guardian_relationship: string
+  guardian_consent: boolean
   address: string
   addressLat: number
   addressLng: number
@@ -115,6 +123,7 @@ export interface CheckoutFormState {
   cityLat: number
   cityLng: number
   cityTz: number
+  birthLocationPrecision: '' | 'city'
   // v5.2.4 國際化（Sprint 3）
   timezone: string       // IANA 如 'Asia/Taipei'，空字串代表舊流程（Nominatim 未帶時區）
   countryCode: string    // ISO 3166-1 alpha-2

@@ -96,6 +96,7 @@ function DashboardContent() {
   const [authFailed, setAuthFailed] = useState(false)
   // v5.3.1：API 失敗時顯示錯誤訊息，避免客戶以為「沒有報告」
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({})
   // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
   // 付款成功事件只觸發一次
@@ -294,22 +295,64 @@ function DashboardContent() {
   const [finalConfirmId, setFinalConfirmId] = useState<string | null>(null)
 
   const handleDelete = async (id: string) => {
-    setDeletingId(id)
-    setDeletedIds(prev => new Set(prev).add(id))
-    setReports(prev => prev.filter(r => r.id !== id))
-    try {
-      await fetch('/api/reports', {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-        credentials: 'include',
-        body: JSON.stringify({ id, email: userEmail }),
+    const reportToDelete = reports.find(report => report.id === id)
+    const consultationDeletion = !!reportToDelete && isConsultationPlan(reportToDelete.plan_code)
+
+    // E3 與其他既有方案保留原本的 optimistic 流程，避免改動其行為。
+    if (!consultationDeletion) {
+      setDeletingId(id)
+      setDeletedIds(prev => new Set(prev).add(id))
+      setReports(prev => prev.filter(r => r.id !== id))
+      try {
+        await fetch('/api/reports', {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+          credentials: 'include',
+          body: JSON.stringify({ id, email: userEmail }),
+        })
+      } catch {
+        setDeletedIds(prev => { const s = new Set(prev); s.delete(id); return s })
+      } finally {
+        setDeletingId(null)
+        setConfirmId(null)
+        setFinalConfirmId(null)
+      }
+      return
+    }
+
+    if (consultationDeletion) {
+      setDeletingId(id)
+      setDeleteErrors(prev => {
+        const next = { ...prev }
+        delete next[id]
+        return next
       })
-    } catch {
-      setDeletedIds(prev => { const s = new Set(prev); s.delete(id); return s })
-    } finally {
-      setDeletingId(null)
-      setConfirmId(null)
-      setFinalConfirmId(null)
+      try {
+        const res = await fetch('/api/reports', {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+          credentials: 'include',
+          body: JSON.stringify({ id, email: userEmail }),
+        })
+        if (!res.ok) {
+          setDeleteErrors(prev => ({
+            ...prev,
+            [id]: '目前無法從清單移除這份報告。報告仍保留在帳號中，請稍後再試；若問題持續，請聯絡客服。',
+          }))
+          return
+        }
+        setDeletedIds(prev => new Set(prev).add(id))
+        setReports(prev => prev.filter(r => r.id !== id))
+      } catch {
+        setDeleteErrors(prev => ({
+          ...prev,
+          [id]: '連線中斷，未能從清單移除這份報告。報告仍保留在帳號中，請檢查網路後再試。',
+        }))
+      } finally {
+        setDeletingId(null)
+        setConfirmId(null)
+        setFinalConfirmId(null)
+      }
     }
   }
 
@@ -794,6 +837,15 @@ function DashboardContent() {
                   <div className="dashboard-completed-note" role="status" aria-live="polite">
                     <CheckCircle2 size={17} aria-hidden="true" />
                     <span>這份報告已完成，現在可以開啟閱讀。</span>
+                  </div>
+                )}
+                {deleteErrors[r.id] && (
+                  <div
+                    className="dashboard-status-context dashboard-status-context--error"
+                    role="alert"
+                  >
+                    <TriangleAlert size={16} aria-hidden="true" />
+                    <span>{deleteErrors[r.id]}</span>
                   </div>
                 )}
                 {/* pending 時顯示進度條 */}

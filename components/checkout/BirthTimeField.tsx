@@ -9,9 +9,18 @@ interface BirthTimeFieldProps {
   minute: string
   onChange: (field: 'hour' | 'minute', val: string) => void
   idPrefix?: string
+  consultationWording?: boolean
 }
 
-export default function BirthTimeField({ timeMode, setTimeMode, hour, minute, onChange, idPrefix = 'checkout-birth-time' }: BirthTimeFieldProps) {
+export default function BirthTimeField({
+  timeMode,
+  setTimeMode,
+  hour,
+  minute,
+  onChange,
+  idPrefix = 'checkout-birth-time',
+  consultationWording = false,
+}: BirthTimeFieldProps) {
   return (
     <fieldset>
       <legend className="block text-xs text-text-muted mb-1">出生時間</legend>
@@ -35,7 +44,11 @@ export default function BirthTimeField({ timeMode, setTimeMode, hour, minute, on
       {timeMode === 'unknown' && (
         <div className="bg-white/5 border border-gold/10 rounded-lg px-4 py-3 text-text-muted text-sm" role="note">
           內部佔位時間不會用來支撐任何依賴時辰的結論；不必猜一個最接近的時辰。<br/>
-          <span className="text-[10px] text-text-muted/60">若之後找到出生證明，可以再用精確資料重新生成；目前報告會清楚標出停用項目。</span>
+          <span className="text-[10px] text-text-muted/60">
+            {consultationWording
+              ? '若之後找到出生證明，請聯絡客服核對是否適合重新生成；目前報告會清楚標出停用項目。'
+              : '若之後找到出生證明，可以再用精確資料重新生成；目前報告會清楚標出停用項目。'}
+          </span>
         </div>
       )}
       {timeMode === 'shichen' && (

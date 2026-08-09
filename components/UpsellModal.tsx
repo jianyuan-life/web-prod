@@ -3,7 +3,7 @@
 // ============================================================
 // 提示詞合集 Prompt 11 — Post-purchase Upsell Modal
 // ============================================================
-// 報告 completed 後彈 R/E2 折扣 24h modal。FF_UPSELL_MODAL 控制。
+// 報告 completed 後顯示相關方案。C → G15 只提供內容導覽；其他 legacy 分支保留既有顯示。
 // 方案名從 lib/plan-names PLAN_NAMES 取(SSOT、不 inline)。
 //
 // 🔴 自治邊界:UI = 自治;Stripe promo code 需老闆 Dashboard 預建
@@ -25,11 +25,19 @@ const UPSELL_MAP: Record<string, string> = {
   G15: 'E3',
 }
 
+const FAMILY_BLUEPRINT_UPSELL_COPY = {
+  eyebrow: '延伸閱讀 · 家族互動',
+  title: '把個人洞察帶進家人的相處日常',
+  description: '家族藍圖會把家人的人生藍圖放在同一個家庭脈絡中，整理互動優勢、容易誤解的地方，以及能一起練習的溝通方式。',
+  cta: '先了解家族藍圖內容',
+  ariaLabel: '了解家族藍圖',
+} as const
+
 export interface UpsellModalProps {
   sourcePlan: string
   /** GA4 事件回呼(呼叫端注入;缺則 no-op) */
   onEvent?: (name: 'upsell_shown' | 'upsell_clicked' | 'upsell_converted') => void
-  /** 點擊 CTA 導向(呼叫端帶 promo 的 checkout url builder) */
+  /** 點擊 legacy CTA 導向(呼叫端帶 promo 的 checkout url builder；G15 內容導覽不使用) */
   checkoutUrl?: (targetPlan: string) => string
 }
 
@@ -38,12 +46,13 @@ export default function UpsellModal({ sourcePlan, onEvent, checkoutUrl }: Upsell
   const [open, setOpen] = useState(true)
   if (!target || !open) return null
   const targetName = PLAN_NAMES[target] || target
+  const isFamilyBlueprint = target === 'G15'
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="專屬優惠"
+      aria-label={isFamilyBlueprint ? FAMILY_BLUEPRINT_UPSELL_COPY.ariaLabel : '專屬優惠'}
       style={{
         position: 'fixed',
         inset: 0,
@@ -67,13 +76,19 @@ export default function UpsellModal({ sourcePlan, onEvent, checkoutUrl }: Upsell
           border: '1px solid #B33A2E',
         }}
       >
-        <p style={{ color: '#B33A2E', fontWeight: 700, margin: '0 0 6px' }}>限時 24 小時 · 省 30%</p>
-        <h3 style={{ fontSize: 20, margin: '0 0 10px' }}>下一步,推薦你「{targetName}」</h3>
+        <p style={{ color: '#B33A2E', fontWeight: 700, margin: '0 0 6px' }}>
+          {isFamilyBlueprint ? FAMILY_BLUEPRINT_UPSELL_COPY.eyebrow : '限時 24 小時 · 省 30%'}
+        </p>
+        <h3 style={{ fontSize: 20, margin: '0 0 10px' }}>
+          {isFamilyBlueprint ? FAMILY_BLUEPRINT_UPSELL_COPY.title : <>下一步,推薦你「{targetName}」</>}
+        </h3>
         <p style={{ color: '#bbb', fontSize: 14, lineHeight: 1.7, margin: '0 0 18px' }}>
-          剛讀完報告的此刻,是把洞察化為行動的最佳時機。現在加購享專屬折扣。
+          {isFamilyBlueprint
+            ? FAMILY_BLUEPRINT_UPSELL_COPY.description
+            : '剛讀完報告的此刻,是把洞察化為行動的最佳時機。現在加購享專屬折扣。'}
         </p>
         <a
-          href={checkoutUrl ? checkoutUrl(target) : `/pricing?plan=${target}&utm_source=upsell&utm_medium=modal`}
+          href={isFamilyBlueprint ? '/family-blueprint?utm_source=upsell&utm_medium=modal' : checkoutUrl ? checkoutUrl(target) : `/pricing?plan=${target}&utm_source=upsell&utm_medium=modal`}
           onClick={() => onEvent?.('upsell_clicked')}
           style={{
             display: 'block',
@@ -86,7 +101,7 @@ export default function UpsellModal({ sourcePlan, onEvent, checkoutUrl }: Upsell
             textDecoration: 'none',
           }}
         >
-          以 30% off 加購 {targetName}
+          {isFamilyBlueprint ? FAMILY_BLUEPRINT_UPSELL_COPY.cta : <>以 30% off 加購 {targetName}</>}
         </a>
         <button
           onClick={() => setOpen(false)}

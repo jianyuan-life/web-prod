@@ -202,6 +202,13 @@ function makeDependencies(overrides = {}) {
   }
 }
 
+function cClientContext() {
+  return {
+    relationshipStatus: 'single',
+    clientQuestion: '我想釐清轉職與長期生活節奏的取捨。',
+  }
+}
+
 test('C 會依固定十主題分章，完成五萬字、年齡契約、facts、claims 與外部收據', async () => {
   assert.ok(pipeline, `pipeline 模組無法載入: ${loadError?.message || 'unknown error'}`)
   const factsByTopic = new Map()
@@ -220,6 +227,7 @@ test('C 會依固定十主題分章，完成五萬字、年齡契約、facts、c
       authorization: 'granted',
       calculatorFacts: makeCalculatorFacts('person:one', '一'),
     }],
+    clientContext: cClientContext(),
   }, makeDependencies({
     authorChapter: async (input) => {
       factsByTopic.set(input.job.topicId, [...input.job.factIds])
@@ -256,6 +264,9 @@ test('C 會依固定十主題分章，完成五萬字、年齡契約、facts、c
   assert.ok(factsByTopic.get('work_learning').every((factId) => !factId.includes('塔羅牌')))
   assert.equal(reviewInput.asOfDate, '2026-08-09')
   assert.equal(reviewInput.ageContexts[0].stage, 'early_mid')
+  assert.ok(report.factLedger.entries.some((fact) => fact.sourcePath === 'clientContext.relationshipStatus'))
+  assert.ok(report.factLedger.entries.some((fact) => fact.sourcePath === 'clientContext.clientQuestion'))
+  assert.ok(factsByTopic.get('core_pattern').includes('fact:client:question'))
 })
 
 test('G15 合併三人 facts 時 ID 不碰撞，並加入購買者授權聲明的家庭結構事實', async () => {
@@ -323,6 +334,7 @@ test('held 系統不進任何章節 prompt，fresh review 或 renderer input bin
       personId: 'person:one', displayName: '合成人物一', birthDate: '1990-01-01',
       authorization: 'granted', calculatorFacts: makeCalculatorFacts('person:one', '一'),
     }],
+    clientContext: cClientContext(),
   }
   let sawHeld = false
   const authorChapter = async (args) => {
@@ -367,6 +379,7 @@ test('章節輸出未過硬閘會帶著具體問題重寫，最多三次且不�
       personId: 'person:one', displayName: '合成人物一', birthDate: '1990-01-01',
       authorization: 'granted', calculatorFacts: makeCalculatorFacts('person:one', '一'),
     }],
+    clientContext: cClientContext(),
   }, makeDependencies({ authorChapter }))
 
   assert.deepEqual(attempts.slice(0, 2), ['core_pattern:1', 'core_pattern:2'])
@@ -387,6 +400,7 @@ test('相同 reportId 重入會延續成本台帳並重用已驗證章節，不�
       personId: 'person:one', displayName: '合成人物一', birthDate: '1990-01-01',
       authorization: 'granted', calculatorFacts: makeCalculatorFacts('person:one', '一'),
     }],
+    clientContext: cClientContext(),
   }
   let authorCalls = 0
   const author = makeAuthor()

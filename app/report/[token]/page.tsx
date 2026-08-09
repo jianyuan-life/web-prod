@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import pkg from '../../../package.json'
 // v5.3.43 移除 isomorphic-dompurify static import：
@@ -52,6 +52,7 @@ import { ChartSummaryCard } from '@/components/report/ChartSummaryCard'
 // 報告重構 2026-06-23:命格綜合卡(命格原型+天賦/課題、narrative_summary、黃金驗證過)
 import { ReportNarrativeCard } from '@/components/report/ReportNarrativeCard'
 import { validateAccessToken } from '@/lib/security/token-validator'
+import { buildConsultationAccessRoute, isConsultationPlan } from '@/lib/consultation/routes'
 // T13 v5.10.362(Master Plan Sprint 7、lesson #144 雙渲染器分裂修):
 // 把 Sprint 1 editorial 4 component wire 進 production legacy renderer
 // 原問題:editorial sweep 22 commit 全進 demo /r/[type]/[id]、production /report/[token] 0 受益
@@ -1469,6 +1470,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
   if (error || !data) return notFound()
 
   const report = data as ReportData
+
+  // C / G15 的舊連結只作相容入口，統一轉進隱藏 token 的新閱讀流程。
+  // E3 與其他既有方案維持原路由與 renderer，不受這次改造影響。
+  if (isConsultationPlan(report.plan_code)) {
+    redirect(buildConsultationAccessRoute(token))
+  }
 
   // v5.10.292 audit log:訪問追蹤 — token-based access 屬「anonymous」(非 auth.uid 也非 email_fallback)
   // 不阻塞 read path、失敗 silent

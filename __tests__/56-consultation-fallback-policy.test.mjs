@@ -6,19 +6,17 @@ import { fileURLToPath } from 'node:url'
 
 import { consultationFallbackDecision } from '../lib/consultation/fallback-policy.ts'
 
-test('C consultation v1 開啟後，fallback 必須 workflow-only；關閉時保留既有路徑', () => {
-  assert.deepEqual(
-    consultationFallbackDecision('C', {}, { USE_CONSULTATION_REPORT_V1_C: 'true' }),
-    {
-      mode: 'workflow_only',
-      plan: 'C',
-      reason: 'C consultation v1 必須由 durable workflow 生成，不得降級成交付舊報告',
-    },
-  )
-  assert.deepEqual(
-    consultationFallbackDecision('C', {}, { USE_CONSULTATION_REPORT_V1_C: 'false' }),
-    { mode: 'legacy_allowed' },
-  )
+test('C fallback 不受 feature flag 影響，始終禁止降級為簡化報告', () => {
+  for (const environment of [
+    { USE_CONSULTATION_REPORT_V1_C: 'true' },
+    { USE_CONSULTATION_REPORT_V1_C: 'false' },
+    {},
+  ]) {
+    const decision = consultationFallbackDecision('C', {}, environment)
+    assert.equal(decision.mode, 'workflow_only')
+    assert.equal(decision.plan, 'C')
+    assert.match(decision.reason, /不得降級/u)
+  }
 })
 
 test('G15 family 與 E3 的既有行為保持分離', () => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { internalGet, internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.373(429 友好倒數 + timeout)
 import { useRetryCountdown } from '@/components/hooks/useRetryCountdown'
@@ -10,6 +10,8 @@ interface PointsRedeemProps {
   orderAmount: number
   couponApplied: { code: string; discountAmount: number; message: string } | null
   onPointsChange: (pointsUsed: number, discountAmount: number) => void
+  enforceMutualExclusion?: boolean
+  couponLoading?: boolean
 }
 
 export default function PointsRedeem({
@@ -17,17 +19,24 @@ export default function PointsRedeem({
   orderAmount,
   couponApplied,
   onPointsChange,
+  enforceMutualExclusion = false,
+  couponLoading = false,
 }: PointsRedeemProps) {
   const [balance, setBalance] = useState(0)
   const [loading, setLoading] = useState(true)
   const [pointsInput, setPointsInput] = useState('')
   const [pointsUsed, setPointsUsed] = useState(0)
+  const [discountUsed, setDiscountUsed] = useState(0)
   const [error, setError] = useState('')
   const [validating, setValidating] = useState(false)
+  const pointsRequestInFlight = useRef(false)
   // T10 v5.10.353:429 倒數
   const { secondsLeft, isReady, start: startCountdown } = useRetryCountdown()
 
   const hasCoupon = !!couponApplied
+  const couponActiveRef = useRef(hasCoupon || couponLoading)
+  couponActiveRef.current = hasCoupon || couponLoading
+  const couponBlocksPoints = enforceMutualExclusion && (hasCoupon || couponLoading)
   const maxPoints = Math.min(balance, Math.floor(orderAmount))
 
   // 載入點數餘額
@@ -51,6 +60,7 @@ export default function PointsRedeem({
   useEffect(() => {
     if (hasCoupon && pointsUsed > 0) {
       setPointsUsed(0)
+      setDiscountUsed(0)
       setPointsInput('')
       setError('')
       onPointsChange(0, 0)
@@ -58,6 +68,15 @@ export default function PointsRedeem({
   }, [hasCoupon]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyPoints = async () => {
+    if (enforceMutualExclusion && (validating || !isReady || pointsRequestInFlight.current)) return
+    if (enforceMutualExclusion && hasCoupon) {
+      setError('已套用優惠碼；請先移除優惠碼，再使用積分折抵。')
+      return
+    }
+    if (enforceMutualExclusion && couponLoading) {
+      setError('優惠碼仍在確認中；完成後再選擇要使用優惠碼或積分。')
+      return
+    }
     const pts = parseInt(pointsInput)
     if (!pts || pts <= 0) {
       setError('請輸入有效的點數')
@@ -72,6 +91,7 @@ export default function PointsRedeem({
       return
     }
 
+    pointsRequestInFlight.current = true
     setValidating(true)
     setError('')
     try {
@@ -82,8 +102,11 @@ export default function PointsRedeem({
         pointsToUse: pts, planCode, orderAmount,
       }, { authToken: token }) as { success: boolean; pointsUsed?: number; discountAmount?: number; error?: string }
 
-      if (data.success && typeof data.pointsUsed === 'number') {
+      if (enforceMutualExclusion && couponActiveRef.current) {
+        setError('優惠碼已生效，本次未套用積分。若要改用積分，請先移除優惠碼。')
+      } else if (data.success && typeof data.pointsUsed === 'number') {
         setPointsUsed(data.pointsUsed)
+        setDiscountUsed(data.discountAmount ?? 0)
         onPointsChange(data.pointsUsed, data.discountAmount ?? 0)
       } else {
         setError(data.error || '驗證失敗')
@@ -97,12 +120,14 @@ export default function PointsRedeem({
         setError(err instanceof Error ? err.message : '網路錯誤、請稍後再試')
       }
     } finally {
+      pointsRequestInFlight.current = false
       setValidating(false)
     }
   }
 
   const removePoints = () => {
     setPointsUsed(0)
+    setDiscountUsed(0)
     setPointsInput('')
     setError('')
     onPointsChange(0, 0)
@@ -112,12 +137,18 @@ export default function PointsRedeem({
   if (!loading && balance <= 0) return null
 
   return (
-    <div className={`${hasCoupon ? 'opacity-30 pointer-events-none' : ''}`} aria-disabled={hasCoupon}>
+    <div
+      className={enforceMutualExclusion
+        ? couponBlocksPoints ? 'opacity-60' : ''
+        : `${hasCoupon ? 'opacity-30 pointer-events-none' : ''}`}
+      aria-disabled={enforceMutualExclusion ? couponBlocksPoints : hasCoupon}
+      aria-busy={enforceMutualExclusion ? validating : undefined}
+    >
       {loading ? (
-        <p className="text-text-muted text-xs" role="status">載入點數...</p>
+        <p className="text-text-muted text-xs" role="status">{enforceMutualExclusion ? '正在載入積分…' : '載入點數...'}</p>
       ) : pointsUsed > 0 ? (
         <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2">
-          <span className="text-green-400 text-sm" role="status">✓ 已折抵 {pointsUsed} 點（− USD {pointsUsed}）</span>
+          <span className="text-green-400 text-sm" role="status">✓ 已折抵 {pointsUsed} 點（− USD {enforceMutualExclusion ? discountUsed : pointsUsed}）</span>
           <button type="button" onClick={removePoints} className="text-xs text-text-muted/50 hover:text-red-400 transition-colors ml-2">取消</button>
         </div>
       ) : (
@@ -130,28 +161,40 @@ export default function PointsRedeem({
             <input
               id="checkout-points"
               type="number" min={1} max={maxPoints}
+              disabled={enforceMutualExclusion && hasCoupon}
               aria-invalid={!!error}
-              aria-describedby={error ? 'checkout-points-error' : undefined}
+              aria-describedby={error ? 'checkout-points-error' : couponBlocksPoints ? 'checkout-points-disabled-reason' : undefined}
               placeholder={`最多 ${maxPoints} 點`}
               value={pointsInput}
               onChange={(e) => { setPointsInput(e.target.value); setError('') }}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyPoints())}
-              className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-4 py-2 text-cream text-sm focus:border-green-500/40 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                if (!enforceMutualExclusion || (!validating && isReady)) applyPoints()
+              }}
+              className="flex-1 bg-white/5 border border-gold/10 rounded-lg px-4 py-2 text-cream text-sm focus:border-green-500/40 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <button
               type="button"
               onClick={applyPoints}
-              disabled={validating || !pointsInput.trim() || !isReady}
-              className="px-4 py-2 bg-gold/20 border border-gold/30 text-gold text-sm rounded-lg hover:bg-gold/30 disabled:opacity-40 whitespace-nowrap"
+              disabled={validating || !pointsInput.trim() || !isReady || (enforceMutualExclusion && hasCoupon) || (enforceMutualExclusion && couponLoading)}
+              className="px-4 py-2 bg-gold/20 border border-gold/30 text-gold text-sm rounded-lg hover:bg-gold/30 disabled:cursor-not-allowed disabled:opacity-40 whitespace-nowrap"
               aria-label={!isReady ? `${secondsLeft} 秒後可折抵` : '折抵點數'}
             >
               {validating
-                ? '...'
+                ? enforceMutualExclusion ? '確認中…' : '...'
                 : !isReady
                   ? `等 ${secondsLeft}s`
                   : '折抵'}
             </button>
           </div>
+          {couponBlocksPoints && (
+            <p id="checkout-points-disabled-reason" className="mt-1 text-xs text-text-muted" role="status">
+              {couponLoading
+                ? '優惠碼正在確認中，積分暫時停用。'
+                : '已套用優惠碼；若要改用積分，請先移除優惠碼。'}
+            </p>
+          )}
           {error && <p id="checkout-points-error" className="text-red-400 text-xs mt-1" role="alert">{error}</p>}
           {/* T10 v5.10.353 L1 QA 抓 ux 補:倒數 UI 即時顯示 */}
           {!isReady && (
