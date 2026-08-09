@@ -42,7 +42,10 @@ import {
   buildStructuredG15Report,
   buildConsultationCalculatorBirthData,
 } from './consultation-v1'
-import { consultationCalculatorEvidenceForGeneration } from '@/lib/consultation/legacy-calculator-safety'
+import {
+  assertNoLegacyCalculatorFailureMarkers,
+  consultationCalculatorEvidenceForGeneration,
+} from '@/lib/consultation/legacy-calculator-safety'
 import {
   buildUntrustedClientQuestionBlock,
   normalizeConsultationClientQuestion,
@@ -341,6 +344,8 @@ export async function generateReportWorkflow(reportId: string) {
           time_mode: member.time_mode || 'shichen',
         }
         const result = await callPythonCalculate(memberBirthData)
+        // R 每位成員各排一次盤。任何一位帶失敗標記就停,不要拿半套資料去合盤。
+        assertNoLegacyCalculatorFailureMarkers(result, planCode)
         memberResults.push(result)
       }
 
@@ -489,6 +494,9 @@ export async function generateReportWorkflow(reportId: string) {
       const rawCalcResult = planCode === 'C'
         ? await callPythonCalculate(calculatorBirthData, { consultationMode: true })
         : await callPythonCalculate(calculatorBirthData)
+      // D／R／legacy G15 走窄型失敗閘:不要求 15 槽,只要求沒有失敗標記。
+      // E1–E4 也會走到這裡,所以 gate 內部用方案白名單判斷、對它們是 no-op。
+      assertNoLegacyCalculatorFailureMarkers(rawCalcResult, planCode)
       calcResult = planCode === 'C'
         ? consultationCalculatorEvidenceForGeneration(rawCalcResult, calculatorBirthData)
         : rawCalcResult

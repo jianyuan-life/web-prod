@@ -24,6 +24,7 @@ import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 import { consultationFallbackDecision } from '@/lib/consultation/fallback-policy'
 import { buildConsultationRelationshipPrompt } from '@/lib/consultation/relationship-context'
+import { assertNoLegacyCalculatorFailureMarkers } from '@/lib/consultation/legacy-calculator-safety'
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
@@ -504,6 +505,18 @@ export async function POST(req: NextRequest) {
     if (!calcResult) {
       await markReportFailed(reportId, '排盤計算失敗：Python API 無回應或超時', dryRun)
       return NextResponse.json({ error: '排盤計算失敗', dryRun }, { status: 500 })
+    }
+
+    // D／R／legacy G15 的窄型失敗閘。這條 fallback 路徑特別需要它:下面
+    // buildGenericUserPrompt() 會把西洋占星的 sub_summary 當「關鍵數據」塞進
+    // prompt,而 live 形狀下那個值就是「計算異常」。沒有這個閘,失敗字串會
+    // 直接變成 AI 眼中的排盤事實。E1–E4 由 gate 內部的方案白名單排除。
+    try {
+      assertNoLegacyCalculatorFailureMarkers(calcResult, planCode)
+    } catch (gateError) {
+      const reason = gateError instanceof Error ? gateError.message : '排盤失敗'
+      await markReportFailed(reportId, `排盤未完整：${reason.slice(0, 200)}`, dryRun)
+      return NextResponse.json({ error: '排盤未完整', dryRun }, { status: 500 })
     }
 
     // Step 2: 構建 prompt 並呼叫 AI
