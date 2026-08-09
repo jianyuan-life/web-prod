@@ -11,7 +11,7 @@ Fly 六個發布阻斷（FLY-C01～C06）全部修完並轉綠，Web 端已接�
 | repo | 分支 | HEAD |
 |:--|:--|:--|
 | fortune-research | `claude/consultation-v1-calculate-20260809` | `3cb97f5` |
-| web-prod | `codex/checkout-tone-fix-20260809` | `e69f2521` |
+| web-prod | `codex/checkout-tone-fix-20260809` | `0a46393f` |
 
 兩邊 remote 皆 0 未推。web-prod 的 `main` 仍停在接手前的 `7beafb12`，一行未動。
 
@@ -165,7 +165,7 @@ manifest 第一版只收 `.py` 與 `.txt`，三個 calculator 實際載入的資
 | Fly 契約測試 | 92/92 |
 | Fly 部署收據測試 | 25/25 |
 | fortune 全套 | 838 passed / 3 failed / 1 skipped |
-| web 全套 | 807 passed / 0 failed / 2 skipped |
+| web 全套 | 809 passed / 0 failed / 2 skipped |
 | web type-check | PASS |
 | 乾淨 clone 預設 pre-deploy | PASS |
 | determinism sweep（兩探針） | 6 案例 × 120 surface 全 stable |
@@ -178,3 +178,28 @@ manifest 第一版只收 `.py` 與 `.txt`，三個 calculator 實際載入的資
 
 - 第三席報告的 **4 個 P2 未逐條處置**（完整報告：`team-out` receipt，2026-08-09T16:31 那份 Gemini 的與 sub-agent 那份）
 - 上半部列的三項拍板與四項授權，全部原封不動
+
+## P2-8　失敗閘漏看 `warnings`（唯一有實際繞過風險的 P2，已修）
+
+`report_generator.py` 在 calculator 例外時同時寫兩處：
+
+```
+detail   = f'計算異常：{e}'
+warnings = [f'此系統計算時發生錯誤：{e}']
+```
+
+而 `isCalculatorAnalysisFailure` 只看 `success` / `error` / `sub_summary` / `summary` / `detail`。**只要 `detail` 是中性字串，失敗就整個溜過 D／R／legacy G15 閘。**
+
+更難看的是測試在陪著漏：`__tests__/90` 的 fixture 明明帶了那個 `warnings`，卻只靠 `detail` 命中，所以把 fixture 的 detail 改成中性，測試會綠、閘會放行。
+
+修法要注意一個坑：原本的 `CALCULATOR_FAILURE_TEXT_PREFIX` 是 `^` 錨定「計算異常」，對不上 warnings 那句「此系統計算時發生錯誤」—— 直接把同一條 pattern 套到 `warnings` 上會完全沒作用。所以另立 `CALCULATOR_FAILURE_WARNING_PREFIX`，同樣 `^` 錨定，避免把「本次排盤未見計算異常」這種否定句誤判。
+
+## 其餘三個 P2：已知，未改，理由分別是
+
+- **P2-6 `_clock_freeze` 的 isinstance 反向不成立**。`FrozenDate` 是 `date` 的子類，但 `isinstance(frozen_datetime, date)` production 為 True、凍結後為 False（`nine_star_qi.py:110` 正是這種分支）。這是**測試輔助的限制**，不是產品缺陷；改它要動 freeze 機制本身，風險高於收益。
+- **P2-7 兩條弱斷言**。`test_consultation_v1_contract.py:608` 的 `'甲午' not in text or '時柱' not in text` 是析取式，只擋得住剛好等於 `甲午` 的那一種；`:967` 用原始碼字串比對，換個引號就通過。已另加三條硬斷言的新測試涵蓋同一件事，舊的沒清。**測試品質債，不影響行為。**
+- **P2-9 兩條未簽章出口**。`middleware.py` 的 `request_incomplete`(400) 與 `streaming_unsupported`(500) 在驗章語境已建立後仍走未簽章路徑，與模組自己宣告的不變式衝突。Node 端會以 `header.missing:*` fail closed，所以**不是偽造漏洞**。另外 422 直接回 pydantic 原始結構（含 `loc` 與 `input` 值），出生資料驗證失敗時 `input` 會是客戶輸入本身 —— 與 `ledger.py` 刻意不回 `error_type` 的姿態不一致。
+
+## 審查員明確查過但沒找到證據的（不要當待辦）
+
+swisseph 全域狀態污染 strict → legacy、held 進 prompt（`pipeline.ts:406`/`:672` 兩處都有 `filter`）、module-level 快取跨請求污染、middleware 註冊順序。另有一項他自己撤回的誤判（G15 沒接 v1）—— 但要注意 **G15 走逐成員路徑，P0-A 與 P0-B 對它成立且會放大**。
