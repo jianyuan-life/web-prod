@@ -1958,14 +1958,6 @@ body:has([data-report-shell]) #main-content {
   to { opacity: 1; transform: translateY(0); }
 }
 
-body:has([data-consultation-report]) #main-content {
-  padding-top: 0;
-}
-
-body:has([data-consultation-report]) .jy-footer {
-  display: none;
-}
-
 /* Free-tool upgrade — explicit scope, no fake completion or social proof. */
 .jy-upgrade {
   margin-block: clamp(3rem, 7vw, 5rem);

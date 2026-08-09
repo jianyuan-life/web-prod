@@ -4,9 +4,13 @@ import { join } from 'node:path'
 import { auditTaggedPdfBytes } from './fixtures/consultation-pdf/audit-tagged-pdf.mjs'
 
 let renderer
+let reportContract
 let loadError
 try {
-  renderer = await import('../lib/consultation/pdf/render.ts')
+  ;[renderer, reportContract] = await Promise.all([
+    import('../lib/consultation/pdf/render.ts'),
+    import('../lib/consultation/report-contract.ts'),
+  ])
 } catch (error) {
   loadError = error
 }
@@ -50,6 +54,7 @@ async function test(name, run) {
 console.log('\n--- C／G15 consultation PDF renderer ---')
 
 let renderedPdfBytes
+let basePdfModel
 
 await test('隨專案帶入的 CJK 字型雜湊值以 SHA-256 固定', async () => {
   assert(renderer, `PDF renderer 無法載入: ${loadError?.message || 'unknown error'}`)
@@ -100,11 +105,59 @@ await test('離線 CJK 字型可實際產生 PDF bytes', async () => {
     sources: ['本地合成資料'],
     generalLimitations: ['以實際經驗反覆核對。'],
   }
+  basePdfModel = structuredClone(model)
   const bytes = await renderer.renderConsultationPdfModel(model)
   renderedPdfBytes = bytes
   assert(bytes.byteLength > 5_000)
   assert(bytes.byteLength < renderer.MAX_RENDERED_PDF_BYTES, 'PDF 不得回退為完整 70 MB 字型嵌入')
   assert(Buffer.from(bytes).subarray(0, 5).toString('ascii') === '%PDF-')
+})
+
+await test('摘要與章首結論達欄位上限時會分頁，所有文字起點仍留在可閱讀頁界內', async () => {
+  assert(basePdfModel, '前置 PDF model 尚未建立')
+  const model = structuredClone(basePdfModel)
+  const boundedLongText = (maximum, tail) => {
+    const sentence = '這段內容保留完整語意，讓讀者可以逐步閱讀並在生活裡核對。'
+    return `${sentence.repeat(Math.ceil(maximum / sentence.length)).slice(0, maximum - tail.length)}${tail}`
+  }
+  model.quickItems[0].conclusion = boundedLongText(
+    reportContract.MAX_QUICK_CONCLUSION_CHARACTERS,
+    '快速結論尾端保留',
+  )
+  model.quickItems[0].selfCheck = boundedLongText(
+    reportContract.MAX_QUICK_SELF_CHECK_CHARACTERS,
+    '自我核對尾端保留',
+  )
+  model.chapters[0].conclusionSubtitle = boundedLongText(
+    reportContract.MAX_CONCLUSION_SUBTITLE_CHARACTERS,
+    '章首結論尾端保留',
+  )
+
+  const bytes = await renderer.renderConsultationPdfModel(model)
+  const audit = auditTaggedPdfBytes(bytes)
+  assert(audit.pages >= 8, `超長欄位預期產生多頁，實際只有 ${audit.pages} 頁`)
+  assert(audit.textBoundsVerified === true)
+  assert(audit.visualOrderVerified === true)
+})
+
+await test('renderer 防守性拒絕以大量換行製造空白語意頁', async () => {
+  assert(basePdfModel, '前置 PDF model 尚未建立')
+  const model = structuredClone(basePdfModel)
+  model.quickItems[0].conclusion = `可見內容${'\n'.repeat(1_999)}`
+  let rejection
+  try {
+    await renderer.renderConsultationPdfModel(model)
+  } catch (error) {
+    rejection = error
+  }
+  assert(rejection instanceof Error, '大量換行必須被 renderer 拒絕')
+  assert(/one semantic paragraph/u.test(rejection.message), rejection.message)
+})
+
+await test('整頁卡片的高度判斷必須連同段後距離計算，避免空白頁與頁底裁切', async () => {
+  const source = readFileSync(join(process.cwd(), 'lib', 'consultation', 'pdf', 'render.ts'), 'utf8')
+  assert(source.includes('if (height + 18 > PAGE.height - PAGE.top - PAGE.bottom)'))
+  assert(source.includes('if (totalHeight + 8 <= PAGE.height - PAGE.top - PAGE.bottom)'))
 })
 
 await test('所有實際文字色在三種紙色上都達 WCAG AA 4.5:1', async () => {
@@ -140,6 +193,7 @@ await test('PDF 有真實語意標記、文件語言與可驗證的閱讀順序'
   assert(audit.structureTags.P >= 1)
   assert(audit.readingOrderVerified === true)
   assert(audit.visualOrderVerified === true)
+  assert(audit.textBoundsVerified === true)
   assert(audit.artifactPolicyVerified === true)
   assert(audit.parentTreeVerified === true)
   assert(audit.allTextMarked === true)

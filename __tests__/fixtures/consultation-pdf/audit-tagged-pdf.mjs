@@ -55,6 +55,12 @@ function decodeStream(object) {
 
 function validateVisualOrder(pageNumber, positions) {
   assert(positions.length > 0, `page ${pageNumber} has no positioned semantic text`)
+  for (const position of positions) {
+    assert(
+      position.x >= 40 && position.x <= 555 && position.y >= 45 && position.y <= 795,
+      `page ${pageNumber} semantic text origin is outside the readable page bounds: ${JSON.stringify(position)}`,
+    )
+  }
   for (let index = 1; index < positions.length; index += 1) {
     const previous = positions[index - 1]
     const current = positions[index]
@@ -254,6 +260,7 @@ export function auditTaggedPdfBytes(pdfBytes) {
     expectedArtifactTextObjects: 2 + (Math.max(0, pages.length - 1) * 4),
     readingOrderVerified: true,
     visualOrderVerified: true,
+    textBoundsVerified: true,
     artifactPolicyVerified: true,
     parentTreeVerified: true,
     allTextMarked: true,

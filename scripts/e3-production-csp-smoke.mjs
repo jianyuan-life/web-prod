@@ -2,7 +2,7 @@
 
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { createServer as createNetServer } from 'node:net'
 import { dirname, join, resolve } from 'node:path'
@@ -18,13 +18,34 @@ import {
 import { createE3FixtureServer } from './lib/e3-fixture-server.mjs'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
-const projectRoot = resolve(scriptDir, '..')
-const fixturePath = join(projectRoot, '__tests__', 'fixtures', 'e3-freeze', 'runtime-fixtures.json')
+const argument = (name) => process.argv
+  .find((value) => value.startsWith(`--${name}=`))
+  ?.slice(name.length + 3)
+const projectRoot = resolve(argument('project-root') || resolve(scriptDir, '..'))
+const fixturePath = resolve(
+  argument('fixture-path')
+  || join(projectRoot, '__tests__', 'fixtures', 'e3-freeze', 'runtime-fixtures.json'),
+)
 const fixture = JSON.parse(readFileSync(fixturePath, 'utf8'))
 const USER_AGENT = 'Jianyuan-E3-Production-CSP-Smoke/1.0'
+const RUNTIME_GENERATED_FILES = ['next-env.d.ts', 'tsconfig.json', 'tsconfig.tsbuildinfo']
 
 function sha256File(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex')
+}
+
+function captureGeneratedFiles() {
+  return RUNTIME_GENERATED_FILES.map((relativePath) => {
+    const path = join(projectRoot, relativePath)
+    return { path, present: existsSync(path), bytes: existsSync(path) ? readFileSync(path) : null }
+  })
+}
+
+function restoreGeneratedFiles(records) {
+  for (const record of records) {
+    if (record.present) writeFileSync(record.path, record.bytes)
+    else rmSync(record.path, { force: true })
+  }
 }
 
 async function loadChromium() {
@@ -240,7 +261,12 @@ async function exerciseSurface(page, surface, baseUrl) {
     dashboard: '/dashboard?session_id=e3-freeze-completed',
     report: `/report/${fixture.report.access_token}`,
   }
-  await page.goto(`${baseUrl}${routes[surface]}`, { waitUntil: 'domcontentloaded', timeout: 45_000 })
+  const navigationResponse = await page.goto(`${baseUrl}${routes[surface]}`, { waitUntil: 'domcontentloaded', timeout: 45_000 })
+  if (!navigationResponse) throw new Error(`${surface} 缺少可驗證的主文件 response`)
+  const surfaceCspHeaders = inspectProductionCspHeaders(navigationResponse.headers())
+  if (!surfaceCspHeaders.ok) {
+    throw new Error(`${surface} production CSP headers 無效：${surfaceCspHeaders.errors.join(', ')}`)
+  }
   if (surface !== 'report') await assertHydrated(page)
 
   if (surface === 'home') {
@@ -263,9 +289,11 @@ async function exerciseSurface(page, surface, baseUrl) {
     await poll('E3 八個行事曆連結', async () => await calendarLinks.count() === 8)
     await poll('E3 報告 hydration', async () => await page.getByRole('heading', { name: '您的反饋對我們很重要', exact: true }).isVisible())
   }
+  return surfaceCspHeaders
 }
 
 async function main() {
+  const generatedFiles = captureGeneratedFiles()
   const buildIdPath = join(projectRoot, '.next', 'BUILD_ID')
   if (!existsSync(buildIdPath)) throw new Error('缺少 production build；請先執行 npm run build')
   const nextCli = join(projectRoot, 'node_modules', 'next', 'dist', 'bin', 'next')
@@ -296,6 +324,7 @@ async function main() {
     await buildProductionBundle(nextCli, smokeEnvironment)
   } catch (error) {
     await fixtureServer.close()
+    restoreGeneratedFiles(generatedFiles)
     throw error
   }
   const child = spawn(process.execPath, [nextCli, 'start', '--port', String(port), '--hostname', '127.0.0.1'], {
@@ -372,7 +401,7 @@ async function main() {
         })
 
         try {
-          await exerciseSurface(page, surface, baseUrl)
+          const surfaceCspHeaders = await exerciseSurface(page, surface, baseUrl)
           // Allow consent-safe telemetry and CSP reports triggered by the final
           // interaction to reach their deterministic local fixtures before the
           // fail-closed network snapshot is evaluated.
@@ -410,6 +439,7 @@ async function main() {
             cspConsoleMessageCount: cspConsoleMessages.length,
             benignPrefetchAbortCount: benignPrefetchAborts.length,
             benignFixtureAbortCount: benignFixtureAborts.length,
+            cspHeaders: surfaceCspHeaders,
           })
           console.log(`[${cases.length}/10] PASS ${surface}--${viewport.name}`)
         } finally {
@@ -447,6 +477,7 @@ async function main() {
     await browser?.close()
     await stopChild(child)
     await fixtureServer.close()
+    restoreGeneratedFiles(generatedFiles)
   }
 }
 

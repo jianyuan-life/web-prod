@@ -123,6 +123,25 @@ def _validate_parent_tree_key_range(
     ), "ParentTree /Limits must span the exact page-key range"
 
 
+def _validate_text_rect_bounds(
+    page_index: int,
+    page_width: float,
+    page_height: float,
+    text_rect: tuple[float, float, float, float],
+) -> None:
+    x0, y0, x1, y1 = text_rect
+    tolerance = 0.75
+    assert x0 >= -tolerance and y0 >= -tolerance, (
+        f"page {page_index + 1} text starts outside the page: {text_rect}"
+    )
+    assert x1 <= page_width + tolerance and y1 <= page_height + tolerance, (
+        f"page {page_index + 1} text ends outside the page: {text_rect}"
+    )
+    assert x1 >= x0 and y1 >= y0, (
+        f"page {page_index + 1} text rectangle is inverted: {text_rect}"
+    )
+
+
 def _run_policy_self_test() -> dict:
     import tempfile
 
@@ -176,6 +195,12 @@ def _run_policy_self_test() -> dict:
         lambda: _validate_parent_tree_key_range(3, [0, 1, 2], [999, -1]),
     )
 
+    _validate_text_rect_bounds(0, 595.28, 841.89, (48, 62, 547, 780))
+    expect_rejected(
+        "text-below-page-bounds",
+        lambda: _validate_text_rect_bounds(0, 595.28, 841.89, (48, 820, 547, 865)),
+    )
+
     with tempfile.TemporaryDirectory(prefix="jianyuan-pdf-audit-policy-") as directory:
         same_bytes_path = Path(directory) / "same-bytes.bin"
         same_bytes_path.write_bytes(b"audited bytes")
@@ -197,6 +222,7 @@ def _run_policy_self_test() -> dict:
         "body-hidden-as-artifact",
         "parent-tree-key-order",
         "parent-tree-limits",
+        "text-below-page-bounds",
         "receipt-same-bytes-toctou",
     ]
     return {"status": "passed", "rejectedCounterexamples": rejected}
@@ -299,15 +325,26 @@ def font_audit(reader: PdfReader) -> dict:
     return fonts
 
 
-def render_montage(pdf_bytes: bytes, output_directory: Path, plan: str) -> dict:
+def render_montage(pdf_bytes: bytes, output_directory: Path, artifact_key: str) -> dict:
     import fitz
     from PIL import Image, ImageDraw
 
     document = fitz.open(stream=pdf_bytes, filetype="pdf")
     try:
         thumbs: list[Image.Image] = []
+        text_rectangles = 0
         for page_index in range(len(document)):
             page = document[page_index]
+            for block in page.get_text("blocks"):
+                if len(block) < 5 or not str(block[4]).strip():
+                    continue
+                _validate_text_rect_bounds(
+                    page_index,
+                    float(page.rect.width),
+                    float(page.rect.height),
+                    tuple(float(value) for value in block[:4]),
+                )
+                text_rectangles += 1
             pixmap = page.get_pixmap(matrix=fitz.Matrix(0.24, 0.24), alpha=False)
             image = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
             thumbs.append(image)
@@ -326,15 +363,18 @@ def render_montage(pdf_bytes: bytes, output_directory: Path, plan: str) -> dict:
             montage.paste(image, (x, y))
             draw.text((x, 4 + row * cell_height), f"p.{index + 1}", fill="#292a28")
 
-        montage_path = output_directory / f"{plan.lower()}-all-pages-montage.png"
+        montage_path = output_directory / f"{artifact_key.lower()}-all-pages-montage.png"
         montage.save(montage_path, optimize=True)
 
-        sample_indices = sorted({0, len(document) // 2, len(document) - 1})
+        sample_indices = {0, len(document) // 2, len(document) - 1}
+        if "long_fields" in artifact_key.lower():
+            sample_indices.update(range(min(6, len(document))))
+        sample_indices = sorted(sample_indices)
         sample_paths = []
         for page_index in sample_indices:
             page = document[page_index]
             pixmap = page.get_pixmap(matrix=fitz.Matrix(1.45, 1.45), alpha=False)
-            sample_path = output_directory / f"{plan.lower()}-page-{page_index + 1:03d}.png"
+            sample_path = output_directory / f"{artifact_key.lower()}-page-{page_index + 1:03d}.png"
             pixmap.save(sample_path)
             sample_paths.append(str(sample_path))
 
@@ -342,6 +382,8 @@ def render_montage(pdf_bytes: bytes, output_directory: Path, plan: str) -> dict:
             "montage": str(montage_path),
             "samples": sample_paths,
             "renderedPageCount": len(thumbs),
+            "textRectangles": text_rectangles,
+            "textBoundsVerified": True,
         }
     finally:
         document.close()
@@ -810,7 +852,7 @@ def audit_one(spec: dict, output_directory: Path) -> dict:
             f"{spec['plan']}: page is not A4 ({width} x {height})"
         )
 
-    render = render_montage(pdf_bytes, output_directory, spec["plan"])
+    render = render_montage(pdf_bytes, output_directory, pdf_path.stem)
     assert render["renderedPageCount"] == page_count
     _assert_same_file_hash(pdf_path, pdf_sha256, f"{spec['plan']} PDF")
     return {

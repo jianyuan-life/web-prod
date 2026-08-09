@@ -573,6 +573,44 @@ test('摘要、自我核對、依據限制與 claim 邊界都屬交付面，高�
   }
 })
 
+test('摘要與章首結論保留寬裕篇幅，但逐欄上限會阻止單一欄位吞掉整份報告', () => {
+  const candidate = makeCompleteCReport()
+  candidate.readingLayers.quick_30s.items[0].conclusion = '甲'.repeat(
+    contract.MAX_QUICK_CONCLUSION_CHARACTERS + 1,
+  )
+  candidate.readingLayers.quick_30s.items[1].selfCheck = '乙'.repeat(
+    contract.MAX_QUICK_SELF_CHECK_CHARACTERS + 1,
+  )
+  candidate.chapters[0].conclusionSubtitle = '丙'.repeat(
+    contract.MAX_CONCLUSION_SUBTITLE_CHARACTERS + 1,
+  )
+  candidate.readingLayers.route_3m.chapters[0].conclusionSubtitle = (
+    candidate.chapters[0].conclusionSubtitle
+  )
+
+  const result = contract.validateConsultationReportContract(candidate)
+  assertEqual(result.ok, false)
+  assert(result.issues.some((issue) => issue.code === 'quick_30s.conclusion_too_long'))
+  assert(result.issues.some((issue) => issue.code === 'quick_30s.self_check_too_long'))
+  assert(result.issues.some((issue) => issue.code === 'chapter.conclusion_subtitle_too_long'))
+})
+
+test('摘要欄位拒絕換行炸彈，3 分鐘路徑也必須逐字綁定完整章節', () => {
+  const candidate = makeCompleteCReport()
+  candidate.readingLayers.quick_30s.items[0].conclusion = `結論${'\n'.repeat(20)}尾端`
+  candidate.readingLayers.quick_30s.items[1].selfCheck = `核對${'\u2028'.repeat(20)}尾端`
+  candidate.chapters[0].conclusionSubtitle = `章首${'\n'.repeat(20)}尾端`
+  candidate.readingLayers.route_3m.chapters[0].conclusionSubtitle = '與完整章節不一致'
+  candidate.readingLayers.route_3m.chapters[0].firstReadParagraphId = candidate.chapters[1].firstReadParagraphId
+
+  const result = contract.validateConsultationReportContract(candidate)
+  assertEqual(result.ok, false)
+  assert(result.issues.some((issue) => issue.code === 'quick_30s.conclusion_multiline'))
+  assert(result.issues.some((issue) => issue.code === 'quick_30s.self_check_multiline'))
+  assert(result.issues.some((issue) => issue.code === 'chapter.conclusion_subtitle_multiline'))
+  assert(result.issues.some((issue) => issue.code === 'route.chapter_content_mismatch'))
+})
+
 test('章節、段落、claim 與 fact 之間的雙向引用必須全部可反查', () => {
   const candidate = makeCompleteCReport()
   candidate.chapters[0].paragraphIds = ['paragraph:missing']

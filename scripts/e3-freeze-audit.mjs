@@ -4,22 +4,30 @@ import { spawn, spawnSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs'
 import { createRequire } from 'node:module'
 import { createServer as createNetServer } from 'node:net'
 import { arch, platform, release } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   classifyE3ConsoleErrors,
   compareE3Snapshots,
   classifyE3ProtectedSourceDifferences,
+  computeE3BaselineCorpusSha256,
+  createE3PerceptualFingerprintFromPng,
+  finalizeE3ReleaseDifferences,
   getE3ProtectedSurfaceManifest,
   getE3SurfaceCases,
+  hashCanonicalSourceContent,
   hashCanonicalSourceFile,
   replaceE3BaselineBundleAtomically,
   validateE3BaselineBundle,
@@ -35,8 +43,6 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = resolve(scriptDir, '..')
 const fixtureDir = join(projectRoot, '__tests__', 'fixtures', 'e3-freeze')
 const fixturePath = join(fixtureDir, 'runtime-fixtures.json')
-const baselinePath = join(fixtureDir, 'baseline.json')
-const baselineScreenshotDir = join(fixtureDir, 'screenshots')
 const mode = process.argv.includes('--record') ? 'record' : 'verify'
 const publicOnly = process.argv.includes('--public-only')
 const selectedCaseIds = new Set(
@@ -49,14 +55,29 @@ const keepCandidate = process.argv.includes('--keep')
 const sourceRootArgument = process.argv.find((argument) => argument.startsWith('--source-root='))?.slice('--source-root='.length)
 const runtimeRootArgument = process.argv.find((argument) => argument.startsWith('--runtime-root='))?.slice('--runtime-root='.length)
 const baseRefArgument = process.argv.find((argument) => argument.startsWith('--base-ref='))?.slice('--base-ref='.length)
+const baselineRootArgument = process.argv.find((argument) => argument.startsWith('--baseline-root='))?.slice('--baseline-root='.length)
+const releaseSessionArgument = process.argv.find((argument) => argument.startsWith('--release-session-id='))?.slice('--release-session-id='.length)
+const trustedBaselineCorpusArgument = process.argv
+  .find((argument) => argument.startsWith('--trusted-baseline-corpus-sha256='))
+  ?.slice('--trusted-baseline-corpus-sha256='.length)
+const candidateOutputDirArgument = process.argv
+  .find((argument) => argument.startsWith('--candidate-output-dir='))
+  ?.slice('--candidate-output-dir='.length)
+const runnerOwnershipTokenArgument = process.argv
+  .find((argument) => argument.startsWith('--runner-ownership-token='))
+  ?.slice('--runner-ownership-token='.length)
 const sourceRoot = sourceRootArgument ? resolve(sourceRootArgument) : projectRoot
 const runtimeRoot = runtimeRootArgument ? resolve(runtimeRootArgument) : sourceRoot
+const baselineRoot = baselineRootArgument ? resolve(baselineRootArgument) : fixtureDir
+const baselinePath = join(baselineRoot, 'baseline.json')
+const baselineScreenshotDir = join(baselineRoot, 'screenshots')
 const runId = randomUUID()
 const capturedAt = new Date().toISOString()
 const AUDIT_BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 const FONT_SETTLE_TIMEOUT_MS = 4_000
 const AUDIT_SUPPORT_PATHS = Object.freeze({
   script: fileURLToPath(import.meta.url),
+  releaseRunner: join(scriptDir, 'e3-freeze-release-audit.mjs'),
   core: join(scriptDir, 'lib', 'e3-freeze-core.mjs'),
   fixtureServer: join(scriptDir, 'lib', 'e3-fixture-server.mjs'),
   cspCore: join(scriptDir, 'lib', 'e3-production-csp-core.mjs'),
@@ -69,6 +90,94 @@ const RUNTIME_GENERATED_FILES = Object.freeze([
   'tsconfig.json',
   'tsconfig.tsbuildinfo',
 ])
+const HOST_ENVIRONMENT_KEYS = Object.freeze([
+  'APPDATA',
+  'COMSPEC',
+  'LOCALAPPDATA',
+  'NUMBER_OF_PROCESSORS',
+  'OS',
+  'PATH',
+  'PATHEXT',
+  'PROCESSOR_ARCHITECTURE',
+  'SYSTEMDRIVE',
+  'SYSTEMROOT',
+  'TEMP',
+  'TMP',
+  'USERPROFILE',
+  'WINDIR',
+])
+
+function normalizedPath(path) {
+  return resolve(path).replace(/[\\/]+$/, '').toLowerCase()
+}
+
+function assertSafeTransientDirectory(path, prefix, { mustNotExist = false } = {}) {
+  const resolvedPath = resolve(path)
+  if (
+    normalizedPath(dirname(resolvedPath)) !== normalizedPath(baselineRoot)
+    || !basename(resolvedPath).startsWith(prefix)
+    || normalizedPath(realpathSync(dirname(resolvedPath))) !== normalizedPath(realpathSync(baselineRoot))
+  ) throw new Error('E3 transient directory 必須是本次 baseline root 的直接子目錄')
+  if (mustNotExist && existsSync(resolvedPath)) throw new Error('E3 transient directory 已存在，拒絕覆寫')
+  if (existsSync(resolvedPath) && lstatSync(resolvedPath).isSymbolicLink()) {
+    throw new Error('E3 transient directory 禁止 symbolic link／junction')
+  }
+}
+
+function removeSafeTransientDirectory(path, prefix) {
+  if (!existsSync(path)) return
+  assertSafeTransientDirectory(path, prefix)
+  rmSync(path, { recursive: true, force: true })
+}
+
+function assertRunnerOwnedBaselineRoot() {
+  const ownerPath = join(baselineRoot, '.e3-release-owner.json')
+  const lockPath = join(baselineRoot, '.active.lock')
+  if (!existsSync(ownerPath) || !existsSync(lockPath) || !runnerOwnershipTokenArgument) {
+    throw new Error('E3 baseline root 缺少 runner ownership token／active lock')
+  }
+  const owner = JSON.parse(readFileSync(ownerPath, 'utf8'))
+  if (
+    owner?.schema !== 'e3-release-owner/v1'
+    || owner?.sessionId !== releaseSessionArgument
+    || owner?.tokenSha256 !== sha256(runnerOwnershipTokenArgument)
+    || owner?.runnerSha256 !== sha256(readFileSync(AUDIT_SUPPORT_PATHS.releaseRunner))
+  ) throw new Error('E3 baseline root runner ownership 驗證失敗')
+  if (mode === 'record' && (existsSync(baselinePath) || existsSync(baselineScreenshotDir))) {
+    throw new Error('E3 record 只接受 runner 新建且沒有既有 baseline/screenshots 的 session')
+  }
+}
+
+function assertNoRuntimeEnvironmentFiles(root) {
+  const loadedEnvironmentNames = new Set(['.env', '.env.local', '.env.production', '.env.production.local'])
+  const environmentFiles = readdirSync(root, { withFileTypes: true })
+    .filter((entry) => loadedEnvironmentNames.has(entry.name.toLowerCase()))
+    .map((entry) => entry.name)
+    .sort()
+  if (environmentFiles.length > 0) {
+    throw new Error(`E3 runtime 禁止載入未納入契約的 env files：${environmentFiles.join(', ')}`)
+  }
+}
+
+function pickHostEnvironment() {
+  const result = {}
+  for (const requestedKey of HOST_ENVIRONMENT_KEYS) {
+    const actualKey = Object.keys(process.env).find((key) => key.toUpperCase() === requestedKey)
+    if (actualKey && process.env[actualKey] != null) result[actualKey] = process.env[actualKey]
+  }
+  return result
+}
+
+function redactSensitiveOutput(value) {
+  let redacted = String(value ?? '')
+  for (const [key, secret] of Object.entries(process.env)) {
+    if (!/(SECRET|TOKEN|PASSWORD|API[_-]?KEY|AUTH|COOKIE|PRIVATE)/i.test(key) || !secret || secret.length < 6) continue
+    redacted = redacted.split(secret).join(`[REDACTED:${sha256(secret).slice(0, 12)}]`)
+  }
+  return redacted
+    .replace(/(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+/gi, '$1[REDACTED]')
+    .replace(/((?:api[_-]?key|secret|token|password)\s*[:=]\s*)[^\s,;]+/gi, '$1[REDACTED]')
+}
 
 function getAuditClientIp(caseIndex) {
   return `198.18.${Math.floor(caseIndex / 250)}.${(caseIndex % 250) + 1}`
@@ -82,11 +191,43 @@ function sha384Base64File(path) {
   return createHash('sha384').update(readFileSync(path)).digest('base64')
 }
 
+function getDependencyTreeContract(root) {
+  const relativePaths = [
+    'package.json',
+    'package-lock.json',
+    'node_modules/next/package.json',
+    'node_modules/next/dist/bin/next',
+    'node_modules/next/dist/server/next.js',
+    'node_modules/react/package.json',
+    'node_modules/react/cjs/react.production.js',
+    'node_modules/react-dom/package.json',
+    'node_modules/react-dom/cjs/react-dom-client.production.js',
+    'node_modules/next/dist/compiled/webpack/package.json',
+    'node_modules/next/dist/compiled/webpack/webpack.js',
+  ]
+  const records = relativePaths.map((relativePath) => {
+    const path = join(root, relativePath)
+    if (!existsSync(path)) throw new Error(`E3 dependency contract 缺少：${relativePath}`)
+    return { path: relativePath, sha256: sha256(readFileSync(path)) }
+  })
+  return {
+    schema: 'e3-dependency-tree/v1',
+    records,
+    sha256: sha256(stableJson(records)),
+  }
+}
+
 function syntheticSecret(label) {
   return `e3f_${sha256(`jianyuan-production-parity:${label}`)}`
 }
 
-function getProductionEnvironmentContract() {
+function getProductionEnvironmentContract(environment) {
+  const effectiveEnvironment = Object.fromEntries(
+    Object.entries(environment || {}).sort(([left], [right]) => left.localeCompare(right)),
+  )
+  if (effectiveEnvironment.E3_FREEZE_FIXTURE_ORIGIN) {
+    effectiveEnvironment.E3_FREEZE_FIXTURE_ORIGIN = 'http://127.0.0.1:{ephemeral-port}'
+  }
   return {
     schema: 'e3-production-parity-environment/v1',
     nodeEnv: 'production',
@@ -98,12 +239,14 @@ function getProductionEnvironmentContract() {
     visiblePlanCodes: ['C', 'G15', 'E3'],
     secrets: 'deterministic-synthetic-sha256/v1',
     nodePreload: 'scripts/lib/e3-production-fetch-preload.cjs',
+    effectiveEnvironmentKeys: Object.keys(effectiveEnvironment),
+    effectiveEnvironmentSha256: sha256(stableJson(effectiveEnvironment)),
   }
 }
 
 function createProductionParityEnvironment(fixtureOrigin) {
   return {
-    ...process.env,
+    ...pickHostEnvironment(),
     NODE_ENV: 'production',
     NEXT_TELEMETRY_DISABLED: '1',
     NEXT_PUBLIC_SITE_URL: 'https://jianyuan.life',
@@ -138,13 +281,16 @@ function captureRuntimeFileState(root) {
 }
 
 function restoreRuntimeFileState(records) {
+  const errors = []
   for (const record of records) {
-    if (record.existed) {
-      writeFileSync(record.path, record.bytes)
-    } else {
-      rmSync(record.path, { force: true })
+    try {
+      if (record.existed) writeFileSync(record.path, record.bytes)
+      else rmSync(record.path, { force: true })
+    } catch (error) {
+      errors.push(`${record.path}:${error instanceof Error ? error.message : String(error)}`)
     }
   }
+  if (errors.length > 0) throw new AggregateError(errors, 'E3 runtime files 還原不完整')
 }
 
 function materializeDeploymentScriptBytes(root) {
@@ -301,15 +447,16 @@ async function captureFontRecord(page, scope) {
   })
 }
 
-function buildProvenance({ git, runtimeGit, browserVersion, fontRecords, auditHashes, runtime }) {
+function buildProvenance({ git, runtimeGit, browserVersion, browserToolchain, fontRecords, auditHashes, runtime }) {
   return {
     schema: 'e3-freeze-provenance/v2',
     git,
     runtimeGit,
     tool: {
       name: 'e3-freeze-audit',
-      version: '4',
+      version: '5',
       scriptSha256: auditHashes.script,
+      releaseRunnerSha256: auditHashes.releaseRunner,
       coreSha256: auditHashes.core,
       fixtureServerSha256: auditHashes.fixtureServer,
       cspCoreSha256: auditHashes.cspCore,
@@ -322,6 +469,7 @@ function buildProvenance({ git, runtimeGit, browserVersion, fontRecords, auditHa
       version: browserVersion,
       userAgent: AUDIT_BROWSER_USER_AGENT,
       cspMode: 'bypassed-production-parity',
+      toolchain: browserToolchain,
     },
     runtime,
     fonts: createFontProvenance(fontRecords),
@@ -356,6 +504,31 @@ function getProtectedSourceHashes(root, manifest) {
       surfaces: item.surfaces,
     },
   ]))
+}
+
+function getProtectedCommitHashes(root, commit, manifest) {
+  return Object.fromEntries(manifest.map((item) => {
+    const result = spawnSync('git', ['show', `${commit}:${item.path}`], {
+      cwd: root,
+      encoding: null,
+      windowsHide: true,
+      maxBuffer: 16 * 1024 * 1024,
+    })
+    const present = result.status === 0
+    if (!present && item.baseOptional !== true) {
+      throw new Error(`可信 base commit 缺少 E3 protected surface：${item.path}`)
+    }
+    return [
+      item.path,
+      {
+        algorithm: 'sha256-lf/v1',
+        digest: present ? hashCanonicalSourceContent(result.stdout) : null,
+        present,
+        scope: item.scope,
+        surfaces: item.surfaces,
+      },
+    ]
+  }))
 }
 
 async function waitForTwoFrames(page) {
@@ -481,54 +654,152 @@ async function prepareStablePaint(page, scope) {
   await page.clock.pauseAt(browserNow + 1_000)
 }
 
+async function prepareIntegerAlignedRaster(page, scope) {
+  await scope.scrollIntoViewIfNeeded()
+  await waitForTwoFrames(page)
+  const box = await scope.boundingBox()
+  if (!box) throw new Error('E3 screenshot scope 沒有可用 bounding box')
+  const adjustment = { x: Math.round(box.x) - box.x, y: Math.round(box.y) - box.y }
+  const original = await scope.evaluate((root, nextAdjustment) => {
+    const computedTranslate = getComputedStyle(root).translate
+    if (computedTranslate && computedTranslate !== 'none') {
+      throw new Error(`E3 screenshot scope 已有 translate，拒絕覆寫：${computedTranslate}`)
+    }
+    const previous = {
+      value: root.style.getPropertyValue('translate'),
+      priority: root.style.getPropertyPriority('translate'),
+    }
+    root.style.setProperty('translate', `${nextAdjustment.x}px ${nextAdjustment.y}px`, 'important')
+    return previous
+  }, adjustment)
+  await waitForTwoFrames(page)
+  const aligned = await scope.boundingBox()
+  if (
+    !aligned
+    || Math.abs(aligned.x - Math.round(aligned.x)) > 0.001
+    || Math.abs(aligned.y - Math.round(aligned.y)) > 0.001
+  ) throw new Error('E3 screenshot scope 無法對齊整數 CSS pixel')
+  return async () => {
+    await scope.evaluate((root, previous) => {
+      if (previous.value) root.style.setProperty('translate', previous.value, previous.priority)
+      else root.style.removeProperty('translate')
+    }, original)
+    await waitForTwoFrames(page)
+  }
+}
+
 async function captureStableScreenshot(page, scope, auditCase) {
+  const restoreRasterAlignment = await prepareIntegerAlignedRaster(page, scope)
   let previousHash = ''
   let previousBuffer = null
   const attemptHashes = []
   const attemptBuffers = []
-  for (let attempt = 1; attempt <= 6; attempt += 1) {
-    const buffer = await scope.screenshot()
-    const hash = sha256(buffer)
-    attemptHashes.push(hash)
-    attemptBuffers.push(buffer)
-    if (hash === previousHash) {
+  try {
+    for (let attempt = 1; attempt <= 6; attempt += 1) {
+      const buffer = await scope.screenshot({
+        animations: 'disabled',
+        caret: 'hide',
+        scale: 'css',
+      })
+      const hash = sha256(buffer)
+      attemptHashes.push(hash)
+      attemptBuffers.push(buffer)
+      if (hash === previousHash) {
+        return {
+          buffer,
+          stability: { mode: 'fixed', cycleSha256: [hash] },
+        }
+      }
+      previousHash = hash
+      previousBuffer = buffer
+      await new Promise((resolveWait) => setTimeout(resolveWait, 50))
+    }
+    const stableTwoPhase = attemptHashes[0] === attemptHashes[2]
+      && attemptHashes[2] === attemptHashes[4]
+      && attemptHashes[1] === attemptHashes[3]
+      && attemptHashes[3] === attemptHashes[5]
+      && attemptHashes[0] !== attemptHashes[1]
+    if (stableTwoPhase) {
       return {
-        buffer,
-        stability: { mode: 'fixed', cycleSha256: [hash] },
+        buffer: attemptBuffers[0],
+        stability: {
+          mode: 'periodic-2',
+          cycleSha256: [attemptHashes[0], attemptHashes[1]],
+        },
       }
     }
-    previousHash = hash
-    previousBuffer = buffer
-    await new Promise((resolveWait) => setTimeout(resolveWait, 50))
+    throw new Error(`E3 screenshot 未能穩定到連續兩張相同：${auditCase.id}；attempts=${attemptHashes.join(',')};last=${sha256(previousBuffer)}`)
+  } finally {
+    await restoreRasterAlignment()
   }
-  const stableTwoPhase = attemptHashes[0] === attemptHashes[2]
-    && attemptHashes[2] === attemptHashes[4]
-    && attemptHashes[1] === attemptHashes[3]
-    && attemptHashes[3] === attemptHashes[5]
-    && attemptHashes[0] !== attemptHashes[1]
-  if (stableTwoPhase) {
-    return {
-      buffer: attemptBuffers[0],
-      stability: {
-        mode: 'periodic-2',
-        cycleSha256: [attemptHashes[0], attemptHashes[1]],
-      },
-    }
-  }
-  throw new Error(`E3 screenshot 未能穩定到連續兩張相同：${auditCase.id}；attempts=${attemptHashes.join(',')};last=${sha256(previousBuffer)}`)
 }
 
-async function loadChromium() {
-  try {
-    return (await import('playwright')).chromium
-  } catch {
-    for (const root of ['D:/npm-global/node_modules/', '/usr/lib/node_modules/']) {
-      try {
-        return createRequire(new URL(`file:///${root.replace(/\\/g, '/')}`))('playwright').chromium
-      } catch {}
+function hashBoundedRegularTree(root, label) {
+  const records = []
+  let totalBytes = 0
+  const pending = [root]
+  while (pending.length > 0) {
+    const current = pending.pop()
+    const stat = lstatSync(current)
+    if (stat.isSymbolicLink()) throw new Error(`${label} 禁止 symbolic link：${current}`)
+    if (stat.isDirectory()) {
+      for (const entry of readdirSync(current).sort().reverse()) pending.push(join(current, entry))
+      continue
     }
+    if (!stat.isFile()) throw new Error(`${label} 含非 regular file：${current}`)
+    totalBytes += stat.size
+    if (records.length >= 20_000 || totalBytes > 256 * 1024 * 1024) {
+      throw new Error(`${label} 超過 toolchain hash 上限`)
+    }
+    records.push({
+      path: relative(root, current).replace(/\\/g, '/'),
+      size: stat.size,
+      sha256: sha256(readFileSync(current)),
+    })
   }
-  throw new Error('找不到 Playwright；E3 freeze audit 不可降級為非瀏覽器檢查')
+  records.sort((left, right) => left.path.localeCompare(right.path))
+  return { root: realpathSync(root), files: records.length, bytes: totalBytes, sha256: sha256(stableJson(records)) }
+}
+
+function resolveBrowserToolchain(root) {
+  const requireRoots = [
+    join(root, 'node_modules'),
+    'D:/npm-global/node_modules',
+    '/usr/lib/node_modules',
+  ]
+  for (const moduleRoot of requireRoots) {
+    try {
+      const requireFromRoot = createRequire(join(moduleRoot, '__e3-verifier__.cjs'))
+      const playwrightPackagePath = requireFromRoot.resolve('playwright/package.json')
+      const playwrightCorePackagePath = requireFromRoot.resolve('playwright-core/package.json')
+      const playwrightRoot = dirname(playwrightPackagePath)
+      const playwrightCoreRoot = dirname(playwrightCorePackagePath)
+      const playwrightPackage = JSON.parse(readFileSync(playwrightPackagePath, 'utf8'))
+      const playwright = requireFromRoot('playwright')
+      const chromePath = [
+        process.env.CHROME_PATH,
+        'C:/Program Files/Google/Chrome/Application/chrome.exe',
+        'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+      ].find((path) => path && existsSync(path))
+      if (!chromePath) throw new Error('找不到受檢 Chrome/Edge executable')
+      const chromeStat = statSync(chromePath)
+      return {
+        chromium: playwright.chromium,
+        provenance: {
+          schema: 'e3-browser-toolchain/v1',
+          playwrightVersion: playwrightPackage.version,
+          playwright: hashBoundedRegularTree(playwrightRoot, 'Playwright'),
+          playwrightCore: hashBoundedRegularTree(playwrightCoreRoot, 'Playwright Core'),
+          browserExecutable: {
+            path: realpathSync(chromePath),
+            size: chromeStat.size,
+            sha256: sha256(readFileSync(chromePath)),
+          },
+        },
+      }
+    } catch {}
+  }
+  throw new Error('找不到可完整雜湊的 Playwright／Chrome toolchain；E3 freeze audit 不可降級')
 }
 
 async function reservePort() {
@@ -568,13 +839,56 @@ async function waitForPage(url, child, timeoutMs = 120_000) {
 }
 
 async function stopChild(child) {
-  if (!child || child.exitCode != null) return
+  const hasExited = () => child.exitCode != null || child.signalCode != null
+  if (!child || hasExited()) return
   child.kill('SIGTERM')
   await Promise.race([
     new Promise((resolveExit) => child.once('exit', resolveExit)),
     new Promise((resolveTimeout) => setTimeout(resolveTimeout, 5_000)),
   ])
-  if (child.exitCode == null) child.kill('SIGKILL')
+  if (!hasExited()) {
+    child.kill('SIGKILL')
+    await Promise.race([
+      new Promise((resolveExit) => child.once('exit', resolveExit)),
+      new Promise((resolveTimeout) => setTimeout(resolveTimeout, 5_000)),
+    ])
+  }
+  if (!hasExited()) throw new Error('next process 在 SIGKILL 後仍未退出')
+}
+
+async function cleanupProductionParityResources({
+  browser,
+  nextProcess,
+  fixtureServer,
+  deploymentScriptState,
+  runtimeFileState,
+}) {
+  const errors = []
+  const completed = {
+    browser: !browser,
+    nextProcess: !nextProcess,
+    fixtureServer: !fixtureServer,
+    deploymentScriptState: !deploymentScriptState,
+    runtimeFileState: !runtimeFileState,
+  }
+  const attempt = async (name, action) => {
+    try {
+      await action()
+      completed[name] = true
+    } catch (error) {
+      errors.push(`${name}:${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  if (browser) await attempt('browser', () => browser.close())
+  if (nextProcess) await attempt('nextProcess', () => stopChild(nextProcess))
+  if (fixtureServer) await attempt('fixtureServer', () => fixtureServer.close())
+  if (deploymentScriptState) {
+    await attempt('deploymentScriptState', () => restoreDeploymentScriptBytes(deploymentScriptState))
+  }
+  if (runtimeFileState) {
+    await attempt('runtimeFileState', () => restoreRuntimeFileState(runtimeFileState))
+  }
+  return { errors, completed }
 }
 
 function createSession(fixture) {
@@ -964,6 +1278,7 @@ async function captureSemanticSurface(scope) {
     const fields = [
       'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing',
       'color', 'background-color', 'border-top-color', 'border-top-width',
+      'background-image', 'filter', 'backdrop-filter', 'clip-path', 'mask-image',
       'border-radius', 'box-shadow', 'padding-top', 'padding-right',
       'padding-bottom', 'padding-left', 'margin-top', 'margin-right',
       'margin-bottom', 'margin-left', 'display', 'grid-template-columns',
@@ -983,16 +1298,107 @@ async function captureSemanticSurface(scope) {
     })
   })
 
+  const layoutContract = await scope.evaluate((root) => {
+    const round = (value) => Math.round(value * 100) / 100
+    const box = (element) => {
+      if (!element) return null
+      const rect = element.getBoundingClientRect()
+      return {
+        x: round(rect.x),
+        y: round(rect.y),
+        width: round(rect.width),
+        height: round(rect.height),
+        documentX: round(rect.x + window.scrollX),
+        documentY: round(rect.y + window.scrollY),
+      }
+    }
+    const shellStyleFields = [
+      'display', 'visibility', 'opacity', 'position', 'z-index', 'overflow-x',
+      'overflow-y', 'transform', 'font-size', 'line-height', 'color',
+      'background-color', 'background-image', 'border-top-width',
+      'border-top-color', 'box-shadow',
+    ]
+    const shellElement = (element, index) => {
+      const computed = getComputedStyle(element)
+      return {
+        index,
+        tag: element.tagName.toLowerCase(),
+        id: element.id || '',
+        classes: typeof element.className === 'string' ? element.className : element.getAttribute('class') || '',
+        box: box(element),
+        styles: Object.fromEntries(shellStyleFields.map((field) => [field, computed.getPropertyValue(field)])),
+      }
+    }
+    const shellElements = [
+      document.documentElement,
+      document.body,
+      ...[...document.body.querySelectorAll('*')]
+        .filter((element) => !element.matches('script,style,link,meta,template')),
+    ]
+    const bodyClone = document.body.cloneNode(true)
+    for (const implementationNode of bodyClone.querySelectorAll('script,style,link,meta,template')) {
+      implementationNode.remove()
+    }
+    const commentWalker = document.createTreeWalker(bodyClone, NodeFilter.SHOW_COMMENT)
+    const comments = []
+    while (commentWalker.nextNode()) comments.push(commentWalker.currentNode)
+    for (const comment of comments) comment.remove()
+    const viewportContract = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      devicePixelRatio: window.devicePixelRatio,
+      scrollX: round(window.scrollX),
+      scrollY: round(window.scrollY),
+      visualViewport: window.visualViewport ? {
+        width: round(window.visualViewport.width),
+        height: round(window.visualViewport.height),
+        offsetLeft: round(window.visualViewport.offsetLeft),
+        offsetTop: round(window.visualViewport.offsetTop),
+        scale: round(window.visualViewport.scale),
+      } : null,
+    }
+    return {
+      scopeBox: box(root),
+      viewportContract,
+      fullShell: {
+        bodyDom: bodyClone.outerHTML.trim(),
+        documentSize: {
+          scrollWidth: document.documentElement.scrollWidth,
+          scrollHeight: document.documentElement.scrollHeight,
+          clientWidth: document.documentElement.clientWidth,
+          clientHeight: document.documentElement.clientHeight,
+        },
+        landmarks: {
+          navbar: box(document.querySelector('.jy-navbar')),
+          footer: box(document.querySelector('.jy-footer')),
+          main: box(document.querySelector('main')),
+        },
+        renderTree: shellElements.map(shellElement),
+      },
+    }
+  })
+
   const renderTree = await scope.evaluate((root) => {
     const fields = [
       'font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing',
       'color', 'background-color', 'border-top-color', 'border-top-width',
+      'background-image', 'filter', 'backdrop-filter', 'clip-path', 'mask-image',
       'border-radius', 'box-shadow', 'padding-top', 'padding-right',
       'padding-bottom', 'padding-left', 'margin-top', 'margin-right',
       'margin-bottom', 'margin-left', 'display', 'visibility', 'opacity',
       'grid-template-columns', 'transform', 'position', 'fill', 'stroke',
       'stroke-width',
     ]
+    const pseudoFields = [
+      'content', 'display', 'visibility', 'opacity', 'position', 'inset',
+      'width', 'height', 'color', 'background-color', 'background-image',
+      'border-radius', 'box-shadow', 'filter', 'transform', 'clip-path',
+      'mask-image',
+    ]
+    const pseudoSnapshot = (element, pseudo) => {
+      const computed = getComputedStyle(element, pseudo)
+      return Object.fromEntries(pseudoFields.map((field) => [field, computed.getPropertyValue(field)]))
+    }
     return [root, ...root.querySelectorAll('*')].map((element, index) => {
       const computed = getComputedStyle(element)
       const rect = element.getBoundingClientRect()
@@ -1006,6 +1412,10 @@ async function captureSemanticSurface(scope) {
           height: Math.round(rect.height * 100) / 100,
         },
         styles: Object.fromEntries(fields.map((field) => [field, computed.getPropertyValue(field)])),
+        pseudo: {
+          before: pseudoSnapshot(element, '::before'),
+          after: pseudoSnapshot(element, '::after'),
+        },
       }
     })
   })
@@ -1015,7 +1425,180 @@ async function captureSemanticSurface(scope) {
     dom,
     aria,
     criticalStyles,
+    scopeBox: layoutContract.scopeBox,
+    viewportContract: layoutContract.viewportContract,
+    fullShellSha256: sha256(stableJson(layoutContract.fullShell)),
     renderTreeSha256: sha256(stableJson(renderTree)),
+  }
+}
+
+async function captureBehavioralSurface(page, scope, auditCase) {
+  const styleFields = [
+    'color', 'background-color', 'border-top-color', 'border-right-color',
+    'border-bottom-color', 'border-left-color', 'outline-color', 'outline-style',
+    'outline-width', 'outline-offset', 'box-shadow', 'opacity', 'transform',
+    'text-decoration-line', 'text-decoration-color', 'cursor',
+  ]
+  const motionFields = [
+    'animation-name', 'animation-duration', 'animation-delay',
+    'animation-timing-function', 'animation-iteration-count',
+    'animation-direction', 'animation-fill-mode', 'animation-play-state',
+    'transition-property', 'transition-duration', 'transition-delay',
+    'transition-timing-function', 'scroll-behavior',
+  ]
+  const cssKeyframesContract = await page.evaluate(() => {
+    const rules = []
+    const inaccessibleStylesheets = []
+    const normalizeCssText = (cssText) => cssText.replace(/\s+/g, ' ').trim()
+    const walk = (ruleList, conditions = [], parentRulePath = []) => {
+      for (const [ruleIndex, rule] of [...ruleList].entries()) {
+        const rulePath = [...parentRulePath, ruleIndex]
+        if (rule.type === CSSRule.KEYFRAMES_RULE) {
+          rules.push({
+            name: rule.name || '',
+            conditions,
+            rulePath,
+            cssText: normalizeCssText(rule.cssText),
+          })
+          continue
+        }
+        if (!('cssRules' in rule)) continue
+        let nested
+        try {
+          nested = rule.cssRules
+        } catch {
+          continue
+        }
+        const condition = typeof rule.conditionText === 'string'
+          ? `${rule.constructor?.name || 'group'}:${normalizeCssText(rule.conditionText)}`
+          : rule.constructor?.name || 'group'
+        walk(nested, [...conditions, condition], rulePath)
+      }
+    }
+    for (const [stylesheetIndex, stylesheet] of [...document.styleSheets].entries()) {
+      try {
+        walk(stylesheet.cssRules, [], [stylesheetIndex])
+      } catch {
+        let href = 'inline'
+        try {
+          href = stylesheet.href ? new URL(stylesheet.href, document.baseURI).pathname : 'inline'
+        } catch {}
+        inaccessibleStylesheets.push({ stylesheetIndex, href })
+      }
+    }
+    return { rules, inaccessibleStylesheets }
+  })
+  if (cssKeyframesContract.inaccessibleStylesheets.length > 0) {
+    throw new Error(`CSSOM keyframes 存在無法讀取的 stylesheet：${cssKeyframesContract.inaccessibleStylesheets.length}`)
+  }
+  const keyframesSha256 = sha256(stableJson(cssKeyframesContract))
+  const modes = []
+
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    await page.emulateMedia({ colorScheme: auditCase.theme, reducedMotion })
+    await waitForTwoFrames(page)
+    const motionContract = await scope.evaluate((root, fields) => (
+      [root, ...root.querySelectorAll('*')].map((element, index) => {
+        const computed = getComputedStyle(element)
+        return {
+          index,
+          tag: element.tagName.toLowerCase(),
+          id: element.id || '',
+          classes: typeof element.className === 'string' ? element.className : element.getAttribute('class') || '',
+          styles: Object.fromEntries(fields.map((field) => [field, computed.getPropertyValue(field)])),
+          pseudo: Object.fromEntries(['::before', '::after'].map((pseudo) => {
+            const pseudoStyle = getComputedStyle(element, pseudo)
+            return [pseudo, Object.fromEntries(fields.map((field) => [field, pseudoStyle.getPropertyValue(field)]))]
+          })),
+        }
+      })
+    ), motionFields)
+
+    const interactionContract = []
+    for (const [region, rootLocator] of [
+      ['scope', scope],
+      ['navbar', page.locator('.jy-navbar').first()],
+      ['footer', page.locator('.jy-footer').first()],
+      ['main', page.locator('main').first()],
+    ]) {
+      const present = await rootLocator.count() > 0
+      const regionContract = { region, present, controls: [] }
+      if (!present) {
+        interactionContract.push(regionContract)
+        continue
+      }
+      const interactive = rootLocator.locator(
+        'a[href],button,input,select,textarea,summary,[role="button"],[tabindex]:not([tabindex="-1"])',
+      )
+      const count = await interactive.count()
+      for (let index = 0; index < count; index += 1) {
+        const target = interactive.nth(index)
+        if (!await target.isVisible().catch(() => false)) continue
+        const describe = () => target.evaluate((element, fields) => {
+          const computed = getComputedStyle(element)
+          return {
+            tag: element.tagName.toLowerCase(),
+            id: element.id || '',
+            role: element.getAttribute('role') || '',
+            name: element.getAttribute('aria-label') || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 100) || '',
+            focus: element.matches(':focus'),
+            focusVisible: element.matches(':focus-visible'),
+            hover: element.matches(':hover'),
+            styles: Object.fromEntries(fields.map((field) => [field, computed.getPropertyValue(field)])),
+          }
+        }, styleFields)
+        const base = await describe()
+        let hover = { unavailable: true }
+        try {
+          await target.hover({ timeout: 2_000 })
+          hover = await describe()
+        } catch {}
+        await page.mouse.move(0, 0)
+        let focus = { unavailable: true }
+        try {
+          await target.focus()
+          focus = await describe()
+        } catch {}
+        await target.evaluate((element) => {
+          if (element instanceof HTMLElement) element.blur()
+        }).catch(() => {})
+        regionContract.controls.push({ index, base, hover, focus })
+      }
+      interactionContract.push(regionContract)
+    }
+
+    const shellContract = await page.evaluate((fields) => {
+      const snapshot = (selector) => {
+        const element = document.querySelector(selector)
+        if (!element) return null
+        const computed = getComputedStyle(element)
+        return {
+          tag: element.tagName.toLowerCase(),
+          id: element.id || '',
+          classes: typeof element.className === 'string' ? element.className : element.getAttribute('class') || '',
+          text: element.textContent?.replace(/\s+/g, ' ').trim() || '',
+          ariaLabel: element.getAttribute('aria-label') || '',
+          styles: Object.fromEntries(fields.map((field) => [field, computed.getPropertyValue(field)])),
+        }
+      }
+      return {
+        htmlClasses: document.documentElement.className,
+        bodyClasses: document.body.className,
+        navbar: snapshot('.jy-navbar'),
+        footer: snapshot('.jy-footer'),
+        main: snapshot('main'),
+      }
+    }, [...styleFields, ...motionFields])
+
+    modes.push({ reducedMotion, motionContract, interactionContract, shellContract })
+  }
+  await page.emulateMedia({ colorScheme: auditCase.theme, reducedMotion: 'reduce' })
+  await waitForTwoFrames(page)
+  return {
+    keyframeRules: cssKeyframesContract.rules,
+    inaccessibleKeyframeStylesheets: cssKeyframesContract.inaccessibleStylesheets,
+    keyframesSha256,
+    modes,
   }
 }
 
@@ -1024,6 +1607,7 @@ async function captureWithDeterministicLocalFont(page, scope, auditCase) {
 }
 
 async function captureSnapshot({ page, scope, auditCase, fixtureHash, browserVersion, screenshotDir, actualPayload, fontRecord, runtimeNotices, telemetryRequests }) {
+  const behavior = await captureBehavioralSurface(page, scope, auditCase)
   await prepareStablePaint(page, scope)
   let semanticBefore
   let screenshotCapture
@@ -1046,12 +1630,13 @@ async function captureSnapshot({ page, scope, auditCase, fixtureHash, browserVer
   const screenshotName = `${auditCase.id}.png`
   const screenshotPath = join(screenshotDir, screenshotName)
   const screenshotBuffer = screenshotCapture.buffer
+  const screenshotPerceptual = createE3PerceptualFingerprintFromPng(screenshotBuffer)
   writeFileSync(screenshotPath, screenshotBuffer)
 
   const payload = actualPayload || null
 
   return {
-    schema: 'e3-surface/v1',
+    schema: 'e3-surface/v3',
     id: auditCase.id,
     surface: auditCase.surface,
     state: auditCase.state,
@@ -1060,9 +1645,11 @@ async function captureSnapshot({ page, scope, auditCase, fixtureHash, browserVer
     path: auditCase.path,
     selector: auditCase.selector,
     ...semanticBefore,
+    behavior,
     screenshot: screenshotName,
     screenshotSha256: sha256(screenshotBuffer),
     screenshotStability: screenshotCapture.stability,
+    screenshotPerceptual,
     payload,
     payloadSha256: payload ? sha256(stableJson(payload)) : null,
     fixtureSha256: fixtureHash,
@@ -1075,19 +1662,31 @@ async function captureSnapshot({ page, scope, auditCase, fixtureHash, browserVer
   }
 }
 
-function diffSnapshots(baseline, candidate) {
+function diffSnapshots(baseline, candidate, {
+  baselineScreenshotDir: baselineImages,
+  candidateScreenshotDir: candidateImages,
+}) {
   const baselineById = new Map(baseline.snapshots.map((item) => [item.id, item]))
   const candidateById = new Map(candidate.snapshots.map((item) => [item.id, item]))
   const differences = []
+  const toleratedVisualDifferences = []
   for (const id of [...new Set([...baselineById.keys(), ...candidateById.keys()])].sort()) {
     if (!baselineById.has(id) || !candidateById.has(id)) {
       differences.push({ id, fields: ['missing-case'] })
       continue
     }
-    const result = compareE3Snapshots(baselineById.get(id), candidateById.get(id))
+    const baselineSnapshot = baselineById.get(id)
+    const candidateSnapshot = candidateById.get(id)
+    const result = compareE3Snapshots(baselineSnapshot, candidateSnapshot, {
+      baselineScreenshotBuffer: readFileSync(join(baselineImages, baselineSnapshot.screenshot)),
+      candidateScreenshotBuffer: readFileSync(join(candidateImages, candidateSnapshot.screenshot)),
+    })
     if (!result.ok) differences.push({ id, fields: result.differences.map((item) => item.field) })
+    if (result.ok && result.visualComparison?.mode === 'perceptual') {
+      toleratedVisualDifferences.push({ id, visualComparison: result.visualComparison })
+    }
   }
-  return differences
+  return { differences, toleratedVisualDifferences }
 }
 
 async function main() {
@@ -1106,6 +1705,20 @@ async function main() {
       throw new Error(`verify 禁止 source/runtime 分離：${rootValidation.errors.join(', ')}`)
     }
   }
+  if (!baselineRootArgument) {
+    throw new Error('canonical E3 audit 必須由 release runner 提供 --baseline-root')
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(releaseSessionArgument || '')) {
+    throw new Error('canonical E3 audit 必須由 release runner 提供有效 --release-session-id')
+  }
+  assertRunnerOwnedBaselineRoot()
+  assertNoRuntimeEnvironmentFiles(runtimeRoot)
+  if (mode === 'verify' && !candidateOutputDirArgument) {
+    throw new Error('canonical E3 verify 必須由 release runner 提供 --candidate-output-dir')
+  }
+  if (mode === 'record' && candidateOutputDirArgument) {
+    throw new Error('E3 record 禁止指定 --candidate-output-dir')
+  }
 
   const protectedSurfaceManifest = getE3ProtectedSurfaceManifest()
   const manifestResult = validateE3ProtectedSurfaceManifest(protectedSurfaceManifest)
@@ -1119,24 +1732,48 @@ async function main() {
   }
 
   const baseline = mode === 'verify' ? JSON.parse(readFileSync(baselinePath, 'utf8')) : null
+  const trustedBaseRef = baseRefArgument || 'origin/main'
+  if (trustedBaseRef !== 'origin/main') throw new Error('E3 parity 只接受 --base-ref=origin/main')
+  const inspectedContexts = mode === 'record'
+    ? assertRecordPreflight()
+    : {
+        git: inspectGitContext(sourceRoot, trustedBaseRef),
+        runtimeGit: inspectGitContext(runtimeRoot, trustedBaseRef),
+      }
+  const trustedBaseCommit = inspectedContexts.git.baseCommit
+  const trustedBaseHashes = getProtectedCommitHashes(
+    sourceRoot,
+    trustedBaseCommit,
+    protectedSurfaceManifest,
+  )
+  const trustContext = {
+    baseCommit: trustedBaseCommit,
+    protectedSourceSha256: trustedBaseHashes,
+    baselineCorpusSha256: trustedBaselineCorpusArgument,
+  }
+  if (mode === 'verify' && !/^[a-f0-9]{64}$/.test(trustedBaselineCorpusArgument || '')) {
+    throw new Error('verify 必須由 release runner 提供 --trusted-baseline-corpus-sha256')
+  }
   if (baseline) {
-    const baselineValidation = validateE3BaselineBundle(baseline, baselineScreenshotDir)
+    const baselineValidation = validateE3BaselineBundle(
+      baseline,
+      baselineScreenshotDir,
+      trustContext,
+    )
     if (!baselineValidation.ok) {
       throw new Error(`E3 baseline 不可信，禁止以此驗證：${baselineValidation.errors.join(', ')}`)
     }
   }
-  const inspectedContexts = mode === 'record'
-    ? assertRecordPreflight()
-    : {
-        git: inspectGitContext(sourceRoot, baseline.provenance.git.baseRef),
-        runtimeGit: inspectGitContext(runtimeRoot, baseline.provenance.git.baseRef),
-      }
   const preflightSourceHashes = getProtectedSourceHashes(sourceRoot, protectedSurfaceManifest)
   const preflightRuntimeHashes = getProtectedSourceHashes(runtimeRoot, protectedSurfaceManifest)
+  if (mode === 'record' && stableJson(preflightSourceHashes) !== stableJson(trustedBaseHashes)) {
+    throw new Error('E3 record source bytes 與可信 base commit 不一致')
+  }
   if (mode === 'record' && stableJson(preflightSourceHashes) !== stableJson(preflightRuntimeHashes)) {
     throw new Error('E3 record source/runtime protected bytes 不一致')
   }
   let sharedSourceDifferences = []
+  let sharedSourceCoverage = []
   if (mode === 'verify') {
     const sourceDifferences = classifyE3ProtectedSourceDifferences(
       baseline.protectedSourceSha256,
@@ -1144,6 +1781,10 @@ async function main() {
       protectedSurfaceManifest,
     )
     sharedSourceDifferences = sourceDifferences.shared.map((item) => item.path)
+    sharedSourceCoverage = sourceDifferences.shared.map((item) => ({
+      path: item.path,
+      requiredGates: [...item.coverage],
+    }))
     if (sourceDifferences.blocking.length > 0) {
       console.log(JSON.stringify({
         ok: false,
@@ -1154,6 +1795,7 @@ async function main() {
           fields: sourceDifferences.blocking.map((item) => item.path),
         }],
         sharedSourceDifferences,
+        sharedSourceCoverage,
         baselineCommit: baseline.provenance.git.baseCommit,
         candidateHead: inspectedContexts.git.head,
       }))
@@ -1181,15 +1823,26 @@ async function main() {
   let buildId
   let nextVersion
   let browserVersion
+  let browserToolchain
+  let runtimeProcessTermination
+  let dependencyTreeContract
   let verificationSucceeded = false
-  const stagedBaselinePath = join(fixtureDir, `.baseline-${runId}.json`)
+  let retainCandidateEvidence = false
+  const stagedBaselinePath = join(baselineRoot, `.baseline-${runId}.json`)
   const candidateDir = mode === 'record'
-    ? join(fixtureDir, `.screenshots-${runId}`)
-    : join(process.env.TEMP || process.cwd(), 'jianyuan-e3-freeze', runId)
+    ? join(baselineRoot, `.screenshots-${runId}`)
+    : resolve(candidateOutputDirArgument)
+  assertSafeTransientDirectory(
+    candidateDir,
+    mode === 'record' ? '.screenshots-' : '.candidate-staging-',
+    { mustNotExist: true },
+  )
 
   try {
     fixtureServer = await createE3FixtureServer({ fixture, port: 0 })
     runtimeFileState = captureRuntimeFileState(runtimeRoot)
+    dependencyTreeContract = getDependencyTreeContract(runtimeRoot)
+    browserToolchain = resolveBrowserToolchain(runtimeRoot)
     deploymentScriptState = materializeDeploymentScriptBytes(runtimeRoot)
     const devtoolsWarningSha384 = sha384Base64File(deploymentScriptState.path)
     productionEnvironment = createProductionParityEnvironment(fixtureServer.origin)
@@ -1212,13 +1865,10 @@ async function main() {
       })
     }
     await waitForPage(`${baseUrl}/`, nextProcess)
-    const chromium = await loadChromium()
-    const chromePath = [
-      process.env.CHROME_PATH,
-      'C:/Program Files/Google/Chrome/Application/chrome.exe',
-      'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-    ].find((path) => path && existsSync(path))
-    browser = await chromium.launch({ headless: true, executablePath: chromePath })
+    browser = await browserToolchain.chromium.launch({
+      headless: true,
+      executablePath: browserToolchain.provenance.browserExecutable.path,
+    })
     browserVersion = await browser.version()
     const fontRecords = []
     const allCases = getE3SurfaceCases()
@@ -1235,7 +1885,7 @@ async function main() {
     }
     const snapshots = []
 
-    mkdirSync(candidateDir, { recursive: true })
+    mkdirSync(candidateDir, { recursive: false })
 
     for (const [index, auditCase] of cases.entries()) {
       const context = await browser.newContext({
@@ -1358,16 +2008,24 @@ async function main() {
       }
     }
 
-    await browser.close()
-    browser = undefined
-    await stopChild(nextProcess)
-    nextProcess = undefined
-    await fixtureServer.close()
-    fixtureServer = undefined
-    restoreDeploymentScriptBytes(deploymentScriptState)
-    deploymentScriptState = undefined
-    restoreRuntimeFileState(runtimeFileState)
-    runtimeFileState = undefined
+    const cleanup = await cleanupProductionParityResources({
+      browser,
+      nextProcess,
+      fixtureServer,
+      deploymentScriptState,
+      runtimeFileState,
+    })
+    runtimeProcessTermination = nextProcess
+      ? { exitCode: nextProcess.exitCode, signalCode: nextProcess.signalCode }
+      : null
+    if (cleanup.completed.browser) browser = undefined
+    if (cleanup.completed.nextProcess) nextProcess = undefined
+    if (cleanup.completed.fixtureServer) fixtureServer = undefined
+    if (cleanup.completed.deploymentScriptState) deploymentScriptState = undefined
+    if (cleanup.completed.runtimeFileState) runtimeFileState = undefined
+    if (cleanup.errors.length > 0) {
+      throw new AggregateError(cleanup.errors, 'E3 production parity cleanup 不完整')
+    }
 
     const postflightSourceHashes = getProtectedSourceHashes(sourceRoot, protectedSurfaceManifest)
     if (stableJson(preflightSourceHashes) !== stableJson(postflightSourceHashes)) {
@@ -1381,12 +2039,17 @@ async function main() {
     if (stableJson(startupAuditHashes) !== stableJson(postflightAuditHashes)) {
       throw new Error('E3 稽核器、core、fixture server 或 fixture 在執行期間發生變動')
     }
+    const postflightBrowserToolchain = resolveBrowserToolchain(runtimeRoot)
+    if (stableJson(browserToolchain.provenance) !== stableJson(postflightBrowserToolchain.provenance)) {
+      throw new Error('E3 Playwright／browser toolchain 在稽核執行期間發生變動')
+    }
     const sourceHashes = postflightSourceHashes
     const runtimeHashes = postflightRuntimeHashes
     const provenance = buildProvenance({
       git: inspectedContexts.git,
       runtimeGit: inspectedContexts.runtimeGit,
       browserVersion,
+      browserToolchain: browserToolchain.provenance,
       fontRecords,
       auditHashes: startupAuditHashes,
       runtime: {
@@ -1394,13 +2057,16 @@ async function main() {
         bundler: 'webpack',
         nextVersion,
         buildId,
-        environmentContractSha256: sha256(stableJson(getProductionEnvironmentContract())),
+        processTermination: runtimeProcessTermination,
+        dependencyTreeSha256: dependencyTreeContract.sha256,
+        environmentContractSha256: sha256(stableJson(getProductionEnvironmentContract(productionEnvironment))),
         sourceSeparated: sourceRoot.toLowerCase() !== runtimeRoot.toLowerCase(),
       },
     })
     const result = {
-      schema: 'e3-freeze-baseline/v3',
+      schema: 'e3-freeze-baseline/v5',
       mode,
+      releaseSessionId: releaseSessionArgument,
       publicOnly,
       capturedAt,
       runId,
@@ -1417,15 +2083,29 @@ async function main() {
       if (!provenanceResult.ok) {
         throw new Error(`E3 baseline provenance 不完整：${provenanceResult.errors.join(', ')}`)
       }
-      mkdirSync(fixtureDir, { recursive: true })
+      mkdirSync(baselineRoot, { recursive: true })
       writeFileSync(stagedBaselinePath, `${JSON.stringify(result, null, 2)}\n`, 'utf8')
+      const baselineCorpusSha256 = computeE3BaselineCorpusSha256(result, candidateDir)
+      if (existsSync(baselinePath) || existsSync(baselineScreenshotDir)) {
+        throw new Error('E3 runner-owned session 在 record 期間出現既有 baseline/screenshots，拒絕覆寫')
+      }
       replaceE3BaselineBundleAtomically({
         baselinePath,
         screenshotDir: baselineScreenshotDir,
         candidateBaselinePath: stagedBaselinePath,
         candidateScreenshotDir: candidateDir,
+        trustContext: {
+          ...trustContext,
+          baselineCorpusSha256,
+        },
       })
-      console.log(JSON.stringify({ ok: true, mode, cases: snapshots.length, baselinePath }))
+      console.log(JSON.stringify({
+        ok: true,
+        mode,
+        cases: snapshots.length,
+        baselinePath,
+        baselineCorpusSha256,
+      }))
       return
     }
 
@@ -1436,7 +2116,12 @@ async function main() {
           snapshots: baseline.snapshots.filter((item) => selectedCaseIds.has(item.id)),
         }
       : baseline
-    const differences = diffSnapshots(comparisonBaseline, result)
+    const snapshotComparison = diffSnapshots(comparisonBaseline, result, {
+      baselineScreenshotDir,
+      candidateScreenshotDir: candidateDir,
+    })
+    let differences = snapshotComparison.differences
+    const toleratedVisualDifferences = snapshotComparison.toleratedVisualDifferences
     const sourceDifferences = classifyE3ProtectedSourceDifferences(
       baseline.protectedSourceSha256,
       sourceHashes,
@@ -1459,48 +2144,100 @@ async function main() {
       bundler: baseline.provenance.runtime?.bundler,
       nextVersion: baseline.provenance.runtime?.nextVersion,
       environmentContractSha256: baseline.provenance.runtime?.environmentContractSha256,
+      dependencyTreeSha256: baseline.provenance.runtime?.dependencyTreeSha256,
     }
     const candidateRuntimeContract = {
       mode: provenance.runtime?.mode,
       bundler: provenance.runtime?.bundler,
       nextVersion: provenance.runtime?.nextVersion,
       environmentContractSha256: provenance.runtime?.environmentContractSha256,
+      dependencyTreeSha256: provenance.runtime?.dependencyTreeSha256,
     }
     if (stableJson(baselineRuntimeContract) !== stableJson(candidateRuntimeContract)) {
       differences.push({ id: 'provenance', fields: ['runtime'] })
     }
+    differences = finalizeE3ReleaseDifferences(differences, toleratedVisualDifferences)
     verificationSucceeded = differences.length === 0
+    retainCandidateEvidence = toleratedVisualDifferences.length > 0
+    const candidateCorpusSha256 = computeE3BaselineCorpusSha256(result, candidateDir)
+    const comparisonReceipt = {
+      schema: 'e3-comparison-receipt/v1',
+      runId,
+      releaseSessionId: releaseSessionArgument,
+      capturedAt,
+      ok: verificationSucceeded,
+      cases: snapshots.length,
+      baseline: {
+        commit: trustedBaseCommit,
+        corpusSha256: trustedBaselineCorpusArgument,
+        documentSha256: sha256File(baselinePath),
+      },
+      candidate: {
+        head: inspectedContexts.git.head,
+        corpusSha256: candidateCorpusSha256,
+        documentSha256: sha256File(join(candidateDir, 'candidate.json')),
+      },
+      differences,
+      toleratedVisualDifferences,
+      sharedSourceDifferences,
+      sharedSourceCoverage,
+    }
+    let comparisonReceiptPath = join(candidateDir, 'comparison-receipt.json')
+    writeFileSync(comparisonReceiptPath, `${JSON.stringify(comparisonReceipt, null, 2)}\n`, 'utf8')
+    if (verificationSucceeded && !keepCandidate && !retainCandidateEvidence) {
+      const durableReceiptDir = join(process.env.TEMP || process.cwd(), 'jianyuan-e3-freeze-receipts')
+      mkdirSync(durableReceiptDir, { recursive: true })
+      const durableReceiptPath = join(durableReceiptDir, `${runId}.json`)
+      writeFileSync(durableReceiptPath, `${JSON.stringify(comparisonReceipt, null, 2)}\n`, 'utf8')
+      comparisonReceiptPath = durableReceiptPath
+    }
+    const comparisonReceiptSha256 = sha256File(comparisonReceiptPath)
     console.log(JSON.stringify({
       ok: verificationSucceeded,
       mode,
       cases: snapshots.length,
       differences,
+      toleratedVisualDifferences,
       sharedSourceDifferences,
-      candidateDir: verificationSucceeded && !keepCandidate ? null : candidateDir,
+      sharedSourceCoverage,
+      candidateDir: verificationSucceeded && !keepCandidate && !retainCandidateEvidence ? null : candidateDir,
+      comparisonReceiptPath,
+      comparisonReceiptSha256,
     }))
     if (!verificationSucceeded) process.exitCode = 1
   } catch (error) {
     const logTail = nextLogs.join('').split(/\r?\n/).filter(Boolean).slice(-30)
-    console.error(error instanceof Error ? error.stack : String(error))
-    if (logTail.length) console.error(`Next log tail:\n${logTail.join('\n')}`)
+    console.error(redactSensitiveOutput(error instanceof Error ? error.stack : String(error)))
+    if (logTail.length) console.error(`Next log tail:\n${redactSensitiveOutput(logTail.join('\n'))}`)
     process.exitCode = 1
   } finally {
-    if (browser) await browser.close()
-    await stopChild(nextProcess)
-    await fixtureServer?.close()
-    try {
-      restoreDeploymentScriptBytes(deploymentScriptState)
-      restoreRuntimeFileState(runtimeFileState || [])
-    } catch (cleanupError) {
-      console.error(`E3 production parity runtime 還原失敗：${cleanupError instanceof Error ? cleanupError.stack : String(cleanupError)}`)
+    const cleanup = await cleanupProductionParityResources({
+      browser,
+      nextProcess,
+      fixtureServer,
+      deploymentScriptState,
+      runtimeFileState,
+    })
+    if (cleanup.errors.length > 0) {
+      console.error(redactSensitiveOutput(`E3 production parity cleanup 不完整：${cleanup.errors.join(' | ')}`))
       process.exitCode = 1
     }
-    if (mode === 'verify' && verificationSucceeded && !keepCandidate) {
-      rmSync(candidateDir, { recursive: true, force: true })
+    try {
+      if (mode === 'verify' && verificationSucceeded && !keepCandidate && !retainCandidateEvidence) {
+        removeSafeTransientDirectory(candidateDir, '.candidate-staging-')
+      }
+    } catch (cleanupError) {
+      console.error(redactSensitiveOutput(`E3 candidate cleanup 失敗：${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`))
+      process.exitCode = 1
     }
-    if (mode === 'record') {
-      rmSync(stagedBaselinePath, { force: true })
-      rmSync(candidateDir, { recursive: true, force: true })
+    try {
+      if (mode === 'record') {
+        rmSync(stagedBaselinePath, { force: true })
+        removeSafeTransientDirectory(candidateDir, '.screenshots-')
+      }
+    } catch (cleanupError) {
+      console.error(redactSensitiveOutput(`E3 record cleanup 失敗：${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`))
+      process.exitCode = 1
     }
   }
 }

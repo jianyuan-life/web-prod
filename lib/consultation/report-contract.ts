@@ -26,6 +26,14 @@ export const MIN_PARAGRAPHS_PER_CHAPTER = {
 
 export const MIN_PARAGRAPH_CJK = 120
 export const MAX_PARAGRAPH_CJK = 1_600
+// These summary fields sit outside the 50k/100k long-form paragraph corpus.
+// Keep them generous enough for nuanced prose while bounding accidental model
+// dumps; the PDF renderer paginates every value up to these limits without
+// truncation or font shrinking.
+export const MAX_QUICK_CONCLUSION_CHARACTERS = 2_000
+export const MAX_QUICK_SELF_CHECK_CHARACTERS = 2_000
+export const MAX_CONCLUSION_SUBTITLE_CHARACTERS = 2_400
+const SUMMARY_LINE_BREAK_PATTERN = /[\r\n\u2028\u2029]/u
 export const REQUIRED_PARAGRAPH_KINDS = [
   'claim',
   'scene',
@@ -1079,6 +1087,26 @@ function validateConsultationReportContractUnsafe(input: unknown): ReportContrac
     }
   })
   chapters.forEach((chapter, index) => {
+    if (
+      typeof chapter.conclusionSubtitle === 'string'
+      && Array.from(chapter.conclusionSubtitle).length > MAX_CONCLUSION_SUBTITLE_CHARACTERS
+    ) {
+      issues.push({
+        code: 'chapter.conclusion_subtitle_too_long',
+        path: `chapters.${index}.conclusionSubtitle`,
+        message: `章首結論不得超過 ${MAX_CONCLUSION_SUBTITLE_CHARACTERS} 個字元`,
+      })
+    }
+    if (
+      typeof chapter.conclusionSubtitle === 'string'
+      && SUMMARY_LINE_BREAK_PATTERN.test(chapter.conclusionSubtitle)
+    ) {
+      issues.push({
+        code: 'chapter.conclusion_subtitle_multiline',
+        path: `chapters.${index}.conclusionSubtitle`,
+        message: '章首結論必須是單一段落，不得以大量換行製造空白頁',
+      })
+    }
     for (const paragraphId of chapter.paragraphIds ?? []) {
       const paragraph = paragraphById.get(paragraphId)
       if (!paragraph || paragraph.chapterId !== chapter.chapterId) {
@@ -1314,9 +1342,38 @@ function validateConsultationReportContractUnsafe(input: unknown): ReportContrac
         message: '30 秒層每項需有結論、自我核對與有效 claim',
       })
     }
+    if (Array.from(item.conclusion).length > MAX_QUICK_CONCLUSION_CHARACTERS) {
+      issues.push({
+        code: 'quick_30s.conclusion_too_long',
+        path: `readingLayers.quick_30s.items.${index}.conclusion`,
+        message: `30 秒結論不得超過 ${MAX_QUICK_CONCLUSION_CHARACTERS} 個字元`,
+      })
+    }
+    if (SUMMARY_LINE_BREAK_PATTERN.test(item.conclusion)) {
+      issues.push({
+        code: 'quick_30s.conclusion_multiline',
+        path: `readingLayers.quick_30s.items.${index}.conclusion`,
+        message: '30 秒結論必須是單一段落',
+      })
+    }
+    if (Array.from(item.selfCheck).length > MAX_QUICK_SELF_CHECK_CHARACTERS) {
+      issues.push({
+        code: 'quick_30s.self_check_too_long',
+        path: `readingLayers.quick_30s.items.${index}.selfCheck`,
+        message: `自我核對不得超過 ${MAX_QUICK_SELF_CHECK_CHARACTERS} 個字元`,
+      })
+    }
+    if (SUMMARY_LINE_BREAK_PATTERN.test(item.selfCheck)) {
+      issues.push({
+        code: 'quick_30s.self_check_multiline',
+        path: `readingLayers.quick_30s.items.${index}.selfCheck`,
+        message: '自我核對必須是單一段落',
+      })
+    }
   })
   const canonicalChapterOrder = chapters.map((chapter) => chapter.chapterId)
-  const routeChapterOrder = report?.readingLayers?.route_3m?.chapters?.map((chapter) => chapter.chapterId) ?? []
+  const routeChapters = report?.readingLayers?.route_3m?.chapters ?? []
+  const routeChapterOrder = routeChapters.map((chapter) => chapter.chapterId)
   const deepChapterOrder = report?.readingLayers?.deep_read?.chapterIds ?? []
   const routeChapterIds = new Set(routeChapterOrder)
   const deepChapterIds = new Set(deepChapterOrder)
@@ -1327,6 +1384,21 @@ function validateConsultationReportContractUnsafe(input: unknown): ReportContrac
       message: '3 分鐘路徑必須與完整報告使用同一章節順序',
     })
   }
+  routeChapters.forEach((routeChapter, index) => {
+    const canonicalChapter = chapters[index]
+    if (
+      !canonicalChapter
+      || routeChapter.chapterId !== canonicalChapter.chapterId
+      || routeChapter.conclusionSubtitle !== canonicalChapter.conclusionSubtitle
+      || routeChapter.firstReadParagraphId !== canonicalChapter.firstReadParagraphId
+    ) {
+      issues.push({
+        code: 'route.chapter_content_mismatch',
+        path: `readingLayers.route_3m.chapters.${index}`,
+        message: '3 分鐘路徑的章節結論與首讀段落必須逐字對齊完整報告',
+      })
+    }
+  })
   if (deepChapterOrder.join('|') !== canonicalChapterOrder.join('|')) {
     issues.push({
       code: 'deep_read.chapter_order_mismatch',

@@ -105,6 +105,7 @@ test('可攜式政策校準會拒絕假 tagged、視覺逆序與正文藏入 Art
   assert(calibration.rejectedCounterexamples.includes('body-hidden-as-artifact'))
   assert(calibration.rejectedCounterexamples.includes('parent-tree-key-order'))
   assert(calibration.rejectedCounterexamples.includes('parent-tree-limits'))
+  assert(calibration.rejectedCounterexamples.includes('text-below-page-bounds'))
   assert(calibration.rejectedCounterexamples.includes('receipt-same-bytes-toctou'))
 })
 

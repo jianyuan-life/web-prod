@@ -56,17 +56,98 @@ function describePolicy(value) {
   }
 }
 
+function hasWildcardDefaultSource(value) {
+  return String(value || '').split(',').some((policy) => policy.split(';').some((directive) => {
+    const [name = '', ...sources] = directive.trim().split(/\s+/)
+    return name.toLowerCase() === 'default-src' && sources.includes('*')
+  }))
+}
+
 export function inspectProductionCspHeaders(headers) {
   const enforced = describePolicy(getHeader(headers, 'content-security-policy'))
   const reportOnly = describePolicy(getHeader(headers, 'content-security-policy-report-only'))
   const errors = []
   if (!enforced.present) errors.push('enforced_csp_missing')
+  if (!reportOnly.present) errors.push('report_only_csp_missing')
+  if (hasWildcardDefaultSource(enforced.value)) errors.push('enforced_default_src_wildcard')
+  if (hasWildcardDefaultSource(reportOnly.value)) errors.push('report_only_default_src_wildcard')
   return {
     ok: errors.length === 0,
     errors,
     enforced,
     reportOnly,
   }
+}
+
+function hasActiveStrictReadinessHold(value) {
+  if (Array.isArray(value)) return value.length > 0
+  return value != null && value !== false
+}
+
+export function compareProductionCspReceipts(baseline, candidate) {
+  const errors = []
+  const indexCases = (receipt, label) => {
+    const indexed = new Map()
+    if (!Array.isArray(receipt?.cases)) {
+      errors.push(`${label}:cases_missing`)
+      return indexed
+    }
+    for (const item of receipt.cases) {
+      const id = String(item?.id || '')
+      if (!id || indexed.has(id)) {
+        errors.push(`${label}:${id || 'unknown'}:case_invalid`)
+        continue
+      }
+      indexed.set(id, item)
+    }
+    return indexed
+  }
+
+  const baselineCases = indexCases(baseline, 'baseline')
+  const candidateCases = indexCases(candidate, 'candidate')
+  if (hasActiveStrictReadinessHold(candidate?.strictReadinessHold)) {
+    errors.push('candidate:strict_readiness_hold')
+  }
+  if (candidate?.strictPolicyPromotionReady !== true) {
+    errors.push('candidate:strict_policy_promotion_not_ready')
+  }
+
+  for (const id of [...new Set([...baselineCases.keys(), ...candidateCases.keys()])].sort()) {
+    const baselineCase = baselineCases.get(id)
+    const candidateCase = candidateCases.get(id)
+    if (!baselineCase || !candidateCase) {
+      errors.push(`${id}:case_missing`)
+      continue
+    }
+    if (hasActiveStrictReadinessHold(candidateCase.strictReadinessHold)) {
+      errors.push(`${id}:strict_readiness_hold`)
+    }
+    for (const [key, errorName] of [['enforced', 'enforced'], ['reportOnly', 'report_only']]) {
+      const baselinePolicy = baselineCase?.cspHeaders?.[key]
+      const candidatePolicy = candidateCase?.cspHeaders?.[key]
+      const baselineSha256 = baselinePolicy?.sha256 ?? null
+      const candidateSha256 = candidatePolicy?.sha256 ?? null
+      for (const [label, policy, digest] of [
+        ['baseline', baselinePolicy, baselineSha256],
+        ['candidate', candidatePolicy, candidateSha256],
+      ]) {
+        if (policy?.present !== true) {
+          errors.push(`${id}:${label}_${errorName}_missing`)
+          continue
+        }
+        const expectedDigest = createHash('sha256').update(String(policy.value || ''), 'utf8').digest('hex')
+        if (!/^[a-f0-9]{64}$/.test(digest || '') || digest !== expectedDigest) {
+          errors.push(`${id}:${label}_${errorName}_hash_invalid`)
+        }
+      }
+      if (
+        baselinePolicy?.present !== candidatePolicy?.present
+        || baselineSha256 !== candidateSha256
+      ) errors.push(`${id}:${errorName}_sha256_mismatch`)
+    }
+  }
+
+  return { ok: errors.length === 0, errors: [...new Set(errors)] }
 }
 
 export function isFatalRuntimeConsoleError(message) {

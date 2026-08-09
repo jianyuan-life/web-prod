@@ -1,13 +1,32 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import vm from 'node:vm'
 import test from 'node:test'
+import ts from 'typescript'
 
 const root = process.cwd()
 const home = readFileSync(join(root, 'app', 'page.tsx'), 'utf8')
 const pricing = readFileSync(join(root, 'app', 'pricing', 'page.tsx'), 'utf8')
 const pricingCards = readFileSync(join(root, 'components', 'PricingCards.tsx'), 'utf8')
 const presentation = readFileSync(join(root, 'app', 'presentation.css'), 'utf8')
+
+function loadPublicSitemap() {
+  const source = readFileSync(join(root, 'app', 'sitemap.ts'), 'utf8')
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText
+  const sitemapModule = { exports: {} }
+  vm.runInNewContext(compiled, {
+    exports: sitemapModule.exports,
+    module: sitemapModule,
+    require(specifier) {
+      assert.equal(specifier, '@/lib/blog')
+      return { BLOG_POSTS: [] }
+    },
+  })
+  return sitemapModule.exports.default()
+}
 
 test('homepage removes unverified scale and obsolete entry-price claims', () => {
   for (const banned of ['44,421', 'US$29', '精準分析', '保證改運', '一定改運']) {
@@ -45,6 +64,22 @@ test('pricing gives C and G15 a full-brief route without adding one to E3', () =
   assert.match(pricing, /plan\.detailHref\s*&&/)
   assert.match(pricing, /先看完整交付內容/)
   assert.doesNotMatch(pricing, /code:\s*'E3'[\s\S]{0,500}detailHref:/)
+})
+
+test('public sitemap publishes both C and G15 product pages as current commercial routes', () => {
+  const entriesByUrl = new Map(loadPublicSitemap().map((entry) => [entry.url, entry]))
+
+  for (const url of [
+    'https://jianyuan.life/life-blueprint',
+    'https://jianyuan.life/family-blueprint',
+  ]) {
+    const entry = entriesByUrl.get(url)
+    assert.ok(entry, `${url} must be present in the public sitemap`)
+    assert.equal(entry.changeFrequency, 'weekly')
+    assert.equal(entry.priority, 0.9)
+    assert.equal(Object.prototype.toString.call(entry.lastModified), '[object Date]')
+    assert.equal(Number.isNaN(entry.lastModified.getTime()), false)
+  }
 })
 
 test('E3 home-card source remains byte-for-byte in its protected content contract', () => {

@@ -71,6 +71,20 @@ type DrawWrappedOptions = TextStyle & {
   structureType?: StructureTag
 }
 
+type PaginatedCardOptions = {
+  label: string
+  value: string
+  x: number
+  width: number
+  innerInset: number
+  background: string
+  accent?: string
+  border?: string
+  labelStyle: TextStyle & { structureType?: StructureTag }
+  valueStyle: TextStyle & { structureType?: StructureTag }
+  after: number
+}
+
 class ConsultationPdfPainter {
   readonly doc: PdfKitDocument
   readonly model: ConsultationPdfModel
@@ -261,6 +275,92 @@ class ConsultationPdfPainter {
     return this.splitLines(value, width, size).length * lineHeight
   }
 
+  /**
+   * Render one semantic value as as many bounded card segments as required.
+   * The value keeps a single structure element across page boundaries, so the
+   * tagged-PDF reading order remains identical to the visible reading order.
+   */
+  private paginatedCard(options: PaginatedCardOptions): void {
+    if (/[\r\n\u2028\u2029]/u.test(options.value)) {
+      throw new Error('Paginated summary cards require one semantic paragraph')
+    }
+    const topPadding = 10
+    const bottomPadding = 10
+    const labelLineHeight = options.labelStyle.lineHeight ?? options.labelStyle.size * 1.65
+    const labelAfter = 5
+    const valueLineHeight = options.valueStyle.lineHeight ?? options.valueStyle.size * 1.65
+    const textX = options.x + options.innerInset
+    const textWidth = options.width - (options.innerInset * 2)
+    const lines = this.splitLines(options.value, textWidth, options.valueStyle.size)
+    let lineIndex = 0
+    let firstSegment = true
+    let valueStructure: any
+
+    while (lineIndex < lines.length) {
+      const labelHeight = firstSegment ? labelLineHeight + labelAfter : 0
+      const minimumHeight = topPadding + labelHeight + valueLineHeight + bottomPadding
+      this.ensureSpace(minimumHeight)
+
+      const availableTextHeight = (
+        PAGE.height - PAGE.bottom - this.y - topPadding - labelHeight - bottomPadding
+      )
+      const linesOnSegment = Math.max(
+        1,
+        Math.min(lines.length - lineIndex, Math.floor(availableTextHeight / valueLineHeight)),
+      )
+      const segmentHeight = (
+        topPadding + labelHeight + (linesOnSegment * valueLineHeight) + bottomPadding
+      )
+      const top = this.y
+
+      this.artifact(() => {
+        this.doc.fillColor(options.background).rect(options.x, top, options.width, segmentHeight).fill()
+        if (options.accent) {
+          this.doc.fillColor(options.accent).rect(options.x, top, 2.2, segmentHeight).fill()
+        }
+        if (options.border) {
+          this.doc.strokeColor(options.border).lineWidth(0.8)
+            .moveTo(options.x, top).lineTo(options.x + options.width, top)
+            .moveTo(options.x, top + segmentHeight).lineTo(options.x + options.width, top + segmentHeight)
+            .stroke()
+        }
+      })
+
+      this.y = top + topPadding
+      if (firstSegment) {
+        this.drawWrapped(options.label, {
+          x: textX,
+          width: textWidth,
+          ...options.labelStyle,
+          lineHeight: labelLineHeight,
+          after: labelAfter,
+          allowPageBreak: false,
+          structureType: options.labelStyle.structureType,
+        })
+        valueStructure = this.createStructure(options.valueStyle.structureType ?? 'P')
+      }
+      for (const line of lines.slice(lineIndex, lineIndex + linesOnSegment)) {
+        this.drawLine(
+          line,
+          textX,
+          this.y,
+          options.valueStyle,
+          textWidth,
+          'left',
+          valueStructure,
+        )
+        this.y += valueLineHeight
+      }
+      lineIndex += linesOnSegment
+      this.y = top + segmentHeight
+      firstSegment = false
+
+      if (lineIndex < lines.length) this.addPage('body')
+    }
+    valueStructure.end()
+    this.y += options.after
+  }
+
   private sectionHeading(kicker: string, title: string, lead?: string): void {
     this.drawWrapped(kicker, {
       size: 7.8,
@@ -387,6 +487,38 @@ class ConsultationPdfPainter {
       const check = `可以怎麼核對：${item.selfCheck}`
       const checkHeight = this.measureWrapped(check, innerWidth, 8.8, 14)
       const height = 22 + conclusionHeight + checkHeight + 18
+      if (height > PAGE.height - PAGE.top - PAGE.bottom) {
+        this.paginatedCard({
+          label: String(index + 1).padStart(2, '0'),
+          value: item.conclusion,
+          x: PAGE.left,
+          width: CONTENT_WIDTH,
+          innerInset: 14,
+          background: palette.white,
+          accent: palette.vermilion,
+          labelStyle: {
+            size: 7.2,
+            color: palette.bronze,
+            lineHeight: 10,
+            characterSpacing: 1,
+          },
+          valueStyle: { size: 11.7, color: palette.ink, lineHeight: 18 },
+          after: 8,
+        })
+        this.paginatedCard({
+          label: '可以怎麼核對',
+          value: item.selfCheck,
+          x: PAGE.left,
+          width: CONTENT_WIDTH,
+          innerInset: 14,
+          background: palette.white,
+          accent: palette.vermilion,
+          labelStyle: { size: 7.2, color: palette.bronze, lineHeight: 10 },
+          valueStyle: { size: 8.8, color: palette.inkSoft, lineHeight: 14 },
+          after: 12,
+        })
+        return
+      }
       this.ensureSpace(height + 12)
       const top = this.y
       this.artifact(() => {
@@ -465,6 +597,27 @@ class ConsultationPdfPainter {
     const innerWidth = CONTENT_WIDTH - 30
     const textHeight = this.measureWrapped(chapter.conclusionSubtitle, innerWidth, 11.8, 18)
     const height = textHeight + 38
+    if (height + 18 > PAGE.height - PAGE.top - PAGE.bottom) {
+      this.paginatedCard({
+        label: '這章先記住',
+        value: chapter.conclusionSubtitle,
+        x: PAGE.left,
+        width: CONTENT_WIDTH,
+        innerInset: 15,
+        background: palette.white,
+        border: palette.bronze,
+        labelStyle: {
+          size: 7.2,
+          color: palette.bronze,
+          lineHeight: 10,
+          characterSpacing: 1.2,
+          structureType: 'H3',
+        },
+        valueStyle: { size: 11.8, color: palette.indigo, lineHeight: 18 },
+        after: 18,
+      })
+      return
+    }
     this.ensureSpace(height + 18)
     const top = this.y
     this.artifact(() => {
@@ -526,7 +679,7 @@ class ConsultationPdfPainter {
     const totalHeight = this.evidenceItemHeight(entry, lines)
     const innerWidth = CONTENT_WIDTH - 26
 
-    if (totalHeight <= PAGE.height - PAGE.top - PAGE.bottom) {
+    if (totalHeight + 8 <= PAGE.height - PAGE.top - PAGE.bottom) {
       this.ensureSpace(totalHeight + 8)
       const top = this.y
       this.artifact(() => {

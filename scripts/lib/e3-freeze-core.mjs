@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { Buffer } from 'node:buffer'
 import {
   existsSync,
   readFileSync,
@@ -6,9 +7,9 @@ import {
   rmSync,
 } from 'node:fs'
 import { isDeepStrictEqual } from 'node:util'
+import { inflateSync } from 'node:zlib'
 
-const VOLATILE_FIELDS = new Set(['capturedAt', 'runId'])
-const WEB_VITALS_VOLATILE_FIELDS = new Set(['id', 'value', 'delta'])
+const WEB_VITALS_VOLATILE_FIELDS = new Set(['id', 'value', 'delta', 'rating'])
 const NON_E3_VENDOR_LOADER_ENDPOINTS = new Set([
   '/_vercel/insights/script.js',
   '/_vercel/speed-insights/script.js',
@@ -16,6 +17,8 @@ const NON_E3_VENDOR_LOADER_ENDPOINTS = new Set([
 const NON_E3_EXPERIMENT_KEYS = new Set(['hero_cta_20260417'])
 
 const E3_PROTECTED_SURFACE_MANIFEST = Object.freeze([
+  { path: 'package.json', scope: 'shared', surfaces: ['home', 'pricing', 'checkout', 'dashboard', 'report'], reason: 'production runtime 與依賴契約' },
+  { path: 'package-lock.json', scope: 'shared', surfaces: ['home', 'pricing', 'checkout', 'dashboard', 'report'], reason: 'production dependency lockfile' },
   { path: 'components/checkout/ThemePicker.tsx', scope: 'e3-semantic', surfaces: ['checkout'], reason: 'E3 主題排序與選擇語意' },
   { path: 'components/checkout/TimeBlockPicker.tsx', scope: 'e3-semantic', surfaces: ['checkout'], reason: 'E3 可出行時段互動' },
   { path: 'components/checkout/ConfirmationModal.tsx', scope: 'e3-semantic', surfaces: ['checkout'], reason: 'E3 送出前確認內容與付款行為' },
@@ -44,6 +47,7 @@ const E3_PROTECTED_SURFACE_MANIFEST = Object.freeze([
   { path: 'components/PriceTag.tsx', scope: 'shared', surfaces: ['home', 'pricing'], reason: 'E3 價格幣別與 hydration 呈現' },
   { path: 'components/ReportFeedback.tsx', scope: 'shared', surfaces: ['report'], reason: 'E3 報告完成後的非同步回饋表面' },
   { path: 'app/layout.tsx', scope: 'shared', surfaces: ['home', 'pricing', 'checkout', 'dashboard', 'report'], reason: '全站殼層與共用 UI' },
+  { path: 'components/RouteChrome.tsx', scope: 'shared', surfaces: ['home', 'pricing', 'checkout', 'dashboard', 'report'], reason: '候選 route boundary 必須維持 E3 公開殼層', baseOptional: true },
   { path: 'public/scripts/devtools-warning.js', scope: 'shared', surfaces: ['home', 'pricing', 'checkout', 'dashboard', 'report'], reason: '全站殼層載入的既有 SRI 腳本；其基線錯誤也必須逐案一致' },
   { path: 'components/Tracker.tsx', scope: 'shared', surfaces: ['home', 'pricing', 'checkout', 'dashboard', 'report'], reason: 'E3 頁面瀏覽事件與停留時間 client 行為' },
   { path: 'components/ReferralCard.tsx', scope: 'shared', surfaces: ['dashboard'], reason: 'E3 儀表板推薦碼與積分的非同步內容' },
@@ -86,9 +90,82 @@ const REQUIRED_E3_PROTECTED_PATHS = Object.freeze(
   E3_PROTECTED_SURFACE_MANIFEST.map((item) => item.path),
 )
 
+const E3_SHARED_COVERAGE_OVERRIDES = Object.freeze({
+  'package.json': ['dependency-contract', 'csp-smoke'],
+  'package-lock.json': ['dependency-contract', 'csp-smoke'],
+  'app/api/checkout/route.ts': ['checkout-contract'],
+  'hooks/useCheckoutForm.ts': ['checkout-contract'],
+  'components/checkout/SinglePersonForm.tsx': ['checkout-contract'],
+  'components/checkout/BirthDataFields.tsx': ['checkout-contract'],
+  'components/checkout/BirthTimeField.tsx': ['checkout-contract'],
+  'lib/checkout/prepare-checkout-birth-data.ts': ['checkout-contract'],
+  'lib/checkout/server-checkout-contract.ts': ['checkout-contract'],
+  'app/api/generate-report/route.ts': ['generation-golden'],
+  'workflows/generate-report/index.ts': ['generation-golden'],
+  'workflows/generate-report/steps.ts': ['generation-golden'],
+  'lib/consultation/calculator-request.ts': ['generation-golden'],
+  'lib/report/completion-fallback-email.ts': ['email-route-contract'],
+  'app/api/cron/followup-email/route.ts': ['email-route-contract'],
+  'app/api/cron/feedback-reminder/route.ts': ['email-route-contract'],
+  'lib/consultation/routes.ts': ['email-route-contract', 'route-contract'],
+  'lib/consultation/runtime-config.ts': ['route-contract'],
+  'lib/consultation/fallback-policy.ts': ['generation-golden', 'route-contract'],
+  'components/RouteChrome.tsx': ['route-chrome-contract'],
+  'app/layout.tsx': ['route-chrome-contract', 'csp-smoke'],
+  'middleware.ts': ['route-contract', 'csp-smoke'],
+  'next.config.ts': ['csp-smoke'],
+  '.gitattributes': ['csp-smoke'],
+  'lib/plan-names.ts': ['checkout-contract', 'generation-golden'],
+  'components/Tracker.tsx': ['telemetry-contract'],
+  'components/FunnelPageHit.tsx': ['telemetry-contract'],
+  'app/report/[token]/ReportTracker.tsx': ['telemetry-contract'],
+  'components/WebVitalsReporter.tsx': ['telemetry-contract'],
+  'components/PrivacySafeVercelTelemetry.tsx': ['telemetry-contract'],
+  'lib/api.ts': ['telemetry-contract'],
+  'lib/security/client-audit.ts': ['telemetry-contract'],
+  'lib/security/private-route-redaction.ts': ['telemetry-contract', 'route-contract'],
+  'lib/security/client-error-telemetry.ts': ['telemetry-contract'],
+  'lib/monitoring/web-vitals.ts': ['telemetry-contract'],
+  'lib/funnel-tracker.ts': ['telemetry-contract'],
+  'app/api/track/route.ts': ['telemetry-contract'],
+  'app/api/track/funnel/route.ts': ['telemetry-contract'],
+  'app/api/error-report/route.ts': ['telemetry-contract'],
+  'app/api/web-vitals/route.ts': ['telemetry-contract'],
+})
+
+function coverageGatesForManifestItem(item) {
+  if (item.scope === 'e3-semantic') return ['exact-source']
+  return [...new Set([
+    'ui-static-parity',
+    'ui-behavior-parity',
+    ...(E3_SHARED_COVERAGE_OVERRIDES[item.path] || []),
+  ])].sort()
+}
+
 const SHA256_PATTERN = /^[a-f0-9]{64}$/
 const GIT_COMMIT_PATTERN = /^[a-f0-9]{40,64}$/
 const DEVTOOLS_WARNING_SRI_ERROR_PATTERN = /^Failed to find a valid digest in the 'integrity' attribute for resource '([^']+)' with computed SHA-384 integrity '([^']+)'\. The resource has been blocked\.$/
+const E3_PERCEPTUAL_FINGERPRINT_SCHEMA = 'e3-perceptual-rgb/v2'
+const E3_PERCEPTUAL_FINGERPRINT_WIDTH = 32
+const E3_PERCEPTUAL_FINGERPRINT_HEIGHT = 32
+// Calibrated with PNG-bound box averages from separate clean production builds:
+// identical semantic surfaces observed <= 0.00895, while the adversarial
+// full-frame +5 tint and 4x4 +40 patch both exceed 0.019. Independent mean-shift
+// and connected-area guards below prevent global and localized false passes.
+export const E3_PERCEPTUAL_RMSE_THRESHOLD = 0.012
+export const E3_PERCEPTUAL_MEAN_SHIFT_THRESHOLD = 0.003
+export const E3_PERCEPTUAL_MID_DELTA = 5
+export const E3_PERCEPTUAL_MID_COMPONENT_MIN_DIMENSION_LIMIT = 2
+export const E3_PERCEPTUAL_MID_COMPONENT_LONG_DIMENSION_LIMIT = 12
+export const E3_PERCEPTUAL_HIGH_DELTA = 12
+export const E3_PERCEPTUAL_HIGH_DELTA_PIXEL_LIMIT = 4
+export const E3_PERCEPTUAL_HIGH_DELTA_COMPONENT_LIMIT = 3
+const E3_PNG_MAX_WIDTH = 8_192
+const E3_PNG_MAX_HEIGHT = 16_384
+const E3_PNG_MAX_PIXELS = 16_000_000
+const E3_PNG_MAX_BYTES = 32 * 1024 * 1024
+const E3_PNG_MAX_COMPRESSED_BYTES = 24 * 1024 * 1024
+const E3_PNG_MAX_CHUNKS = 1_024
 
 const E3_VIEWPORTS = Object.freeze([
   { name: 'mobile', width: 390, height: 844 },
@@ -118,7 +195,6 @@ function normalizeValue(value) {
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value)
-        .filter(([key]) => !VOLATILE_FIELDS.has(key))
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([key, child]) => [key, normalizeValue(child)]),
     )
@@ -128,7 +204,10 @@ function normalizeValue(value) {
 }
 
 function normalizeE3TelemetryRequests(requests, state) {
-  return requests
+  const semanticRequests = []
+  const webVitalsRequests = []
+
+  const filteredRequests = requests
     .filter((request) => {
       const isVendorLoader = request?.method === 'GET'
         && NON_E3_VENDOR_LOADER_ENDPOINTS.has(request?.endpoint)
@@ -138,26 +217,41 @@ function normalizeE3TelemetryRequests(requests, state) {
         && NON_E3_EXPERIMENT_KEYS.has(request?.body?.experimentKey)
       return !isVendorLoader && !isKnownHomepageExperiment
     })
-    .map((request) => {
-      const normalized = normalizeValue(request)
-      if (
-        normalized?.endpoint === '/api/web-vitals'
-        && normalized?.method === 'POST'
-        && normalized.body
-        && typeof normalized.body === 'object'
-        && !Array.isArray(normalized.body)
-      ) {
-        normalized.body = Object.fromEntries(
-          Object.entries(normalized.body)
-            .filter(([key]) => !WEB_VITALS_VOLATILE_FIELDS.has(key)),
-        )
-      }
-      return normalizeValue(normalized)
-    })
+  for (const request of filteredRequests) {
+    const normalized = normalizeValue(request)
+    const isWebVitals = normalized?.endpoint === '/api/web-vitals'
+      && normalized?.method === 'POST'
+      && normalized.body
+      && typeof normalized.body === 'object'
+      && !Array.isArray(normalized.body)
+    if (!isWebVitals) {
+      semanticRequests.push(normalized)
+      continue
+    }
+
+    normalized.body = Object.fromEntries(
+      Object.entries(normalized.body)
+        .filter(([key]) => !WEB_VITALS_VOLATILE_FIELDS.has(key)),
+    )
+    webVitalsRequests.push(normalizeValue(normalized))
+  }
+
+  // Browser timing observers may deliver FCP/LCP/FID in a different order.
+  // Keep business/funnel requests in exact arrival order, but canonicalize only
+  // the derived Web Vitals subset so timing noise cannot mask or invent E3 flow changes.
+  webVitalsRequests.sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+  return [...semanticRequests, ...webVitalsRequests]
 }
 
 export function normalizeE3Snapshot(snapshot) {
-  const normalized = normalizeValue(structuredClone(snapshot))
+  const snapshotClone = structuredClone(snapshot)
+  // Only runner metadata is volatile. Business payloads may legitimately use
+  // the same field names and must remain byte-significant.
+  if (snapshotClone && typeof snapshotClone === 'object' && !Array.isArray(snapshotClone)) {
+    delete snapshotClone.capturedAt
+    delete snapshotClone.runId
+  }
+  const normalized = normalizeValue(snapshotClone)
   if (Array.isArray(normalized?.telemetryRequests)) {
     normalized.telemetryRequests = normalizeE3TelemetryRequests(
       normalized.telemetryRequests,
@@ -202,7 +296,387 @@ export function classifyE3ConsoleErrors(messages, {
   return { known, fatal }
 }
 
-export function compareE3Snapshots(baseline, candidate) {
+function paethPredictor(left, above, upperLeft) {
+  const estimate = left + above - upperLeft
+  const leftDistance = Math.abs(estimate - left)
+  const aboveDistance = Math.abs(estimate - above)
+  const upperLeftDistance = Math.abs(estimate - upperLeft)
+  if (leftDistance <= aboveDistance && leftDistance <= upperLeftDistance) return left
+  if (aboveDistance <= upperLeftDistance) return above
+  return upperLeft
+}
+
+function pngCrc32(buffer) {
+  let crc = 0xffffffff
+  for (const byte of buffer) {
+    crc ^= byte
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1))
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+function decodePngRgb(pngBuffer) {
+  const buffer = Buffer.isBuffer(pngBuffer) ? pngBuffer : Buffer.from(pngBuffer || [])
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+  if (buffer.length < signature.length || !buffer.subarray(0, 8).equals(signature)) {
+    throw new Error('invalid-png-signature')
+  }
+  if (buffer.length > E3_PNG_MAX_BYTES) throw new Error('png-input-too-large')
+
+  let offset = 8
+  let width = 0
+  let height = 0
+  let bitDepth = 0
+  let colorType = -1
+  let compression = -1
+  let filterMethod = -1
+  let interlace = -1
+  const idatChunks = []
+  let sawEnd = false
+  let sawHeader = false
+  let sawImageData = false
+  let chunkCount = 0
+  let compressedBytes = 0
+  while (offset + 12 <= buffer.length) {
+    chunkCount += 1
+    if (chunkCount > E3_PNG_MAX_CHUNKS) throw new Error('png-chunk-count-limit')
+    const length = buffer.readUInt32BE(offset)
+    const typeStart = offset + 4
+    const dataStart = offset + 8
+    const dataEnd = dataStart + length
+    const chunkEnd = dataEnd + 4
+    if (chunkEnd > buffer.length) throw new Error('invalid-png-chunk-length')
+    const type = buffer.toString('ascii', typeStart, dataStart)
+    const data = buffer.subarray(dataStart, dataEnd)
+    const storedCrc = buffer.readUInt32BE(dataEnd)
+    const computedCrc = pngCrc32(buffer.subarray(typeStart, dataEnd))
+    if (storedCrc !== computedCrc) throw new Error('invalid-png-crc')
+    if (!['IHDR', 'IDAT', 'IEND'].includes(type)) throw new Error(`unsupported-png-chunk:${type}`)
+    if (type === 'IHDR') {
+      if (offset !== 8 || sawHeader || length !== 13 || width !== 0 || height !== 0) {
+        throw new Error('invalid-png-ihdr')
+      }
+      sawHeader = true
+      width = data.readUInt32BE(0)
+      height = data.readUInt32BE(4)
+      bitDepth = data[8]
+      colorType = data[9]
+      compression = data[10]
+      filterMethod = data[11]
+      interlace = data[12]
+    } else if (type === 'IDAT') {
+      if (!sawHeader || sawEnd) throw new Error('invalid-png-idat-order')
+      sawImageData = true
+      compressedBytes += data.length
+      if (compressedBytes > E3_PNG_MAX_COMPRESSED_BYTES) {
+        throw new Error('png-compressed-input-too-large')
+      }
+      idatChunks.push(data)
+    } else if (type === 'IEND') {
+      if (!sawHeader || !sawImageData || sawEnd || length !== 0) throw new Error('invalid-png-iend')
+      sawEnd = true
+      offset = chunkEnd
+      if (offset !== buffer.length) throw new Error('invalid-png-trailing-bytes')
+      break
+    }
+    offset = chunkEnd
+  }
+
+  if (
+    !sawEnd
+    || !sawHeader
+    || !sawImageData
+    || width < 1
+    || height < 1
+    || width > E3_PNG_MAX_WIDTH
+    || height > E3_PNG_MAX_HEIGHT
+    || width * height > E3_PNG_MAX_PIXELS
+    || bitDepth !== 8
+    || ![2, 6].includes(colorType)
+    || compression !== 0
+    || filterMethod !== 0
+    || interlace !== 0
+    || idatChunks.length === 0
+  ) throw new Error('unsupported-png-contract')
+
+  const bytesPerPixel = colorType === 6 ? 4 : 3
+  const rowBytes = width * bytesPerPixel
+  const expectedInflatedLength = height * (rowBytes + 1)
+  const inflated = inflateSync(Buffer.concat(idatChunks), {
+    maxOutputLength: expectedInflatedLength,
+  })
+  if (inflated.length !== expectedInflatedLength) throw new Error('invalid-png-inflated-length')
+  const reconstructed = Buffer.alloc(height * rowBytes)
+  let sourceOffset = 0
+  for (let y = 0; y < height; y += 1) {
+    const filter = inflated[sourceOffset]
+    sourceOffset += 1
+    if (filter < 0 || filter > 4) throw new Error('unsupported-png-filter')
+    const rowOffset = y * rowBytes
+    const previousRowOffset = rowOffset - rowBytes
+    for (let x = 0; x < rowBytes; x += 1) {
+      const encoded = inflated[sourceOffset]
+      sourceOffset += 1
+      const left = x >= bytesPerPixel ? reconstructed[rowOffset + x - bytesPerPixel] : 0
+      const above = y > 0 ? reconstructed[previousRowOffset + x] : 0
+      const upperLeft = y > 0 && x >= bytesPerPixel
+        ? reconstructed[previousRowOffset + x - bytesPerPixel]
+        : 0
+      let predictor = 0
+      if (filter === 1) predictor = left
+      if (filter === 2) predictor = above
+      if (filter === 3) predictor = Math.floor((left + above) / 2)
+      if (filter === 4) predictor = paethPredictor(left, above, upperLeft)
+      reconstructed[rowOffset + x] = (encoded + predictor) & 0xff
+    }
+  }
+
+  const rgb = Buffer.alloc(width * height * 3)
+  for (let pixel = 0; pixel < width * height; pixel += 1) {
+    const source = pixel * bytesPerPixel
+    const target = pixel * 3
+    if (colorType === 2 || reconstructed[source + 3] === 255) {
+      rgb[target] = reconstructed[source]
+      rgb[target + 1] = reconstructed[source + 1]
+      rgb[target + 2] = reconstructed[source + 2]
+      continue
+    }
+    const alpha = reconstructed[source + 3]
+    for (let channel = 0; channel < 3; channel += 1) {
+      rgb[target + channel] = Math.round(
+        ((reconstructed[source + channel] * alpha) + (127 * (255 - alpha))) / 255,
+      )
+    }
+  }
+  return { width, height, rgb }
+}
+
+export function createE3PerceptualFingerprintFromPng(pngBuffer) {
+  const source = Buffer.isBuffer(pngBuffer) ? pngBuffer : Buffer.from(pngBuffer || [])
+  const decoded = decodePngRgb(source)
+  const cellCount = E3_PERCEPTUAL_FINGERPRINT_WIDTH * E3_PERCEPTUAL_FINGERPRINT_HEIGHT
+  const sums = new Float64Array(cellCount * 3)
+  const counts = new Uint32Array(cellCount)
+  for (let y = 0; y < decoded.height; y += 1) {
+    const targetY = Math.min(
+      E3_PERCEPTUAL_FINGERPRINT_HEIGHT - 1,
+      Math.floor((y * E3_PERCEPTUAL_FINGERPRINT_HEIGHT) / decoded.height),
+    )
+    for (let x = 0; x < decoded.width; x += 1) {
+      const targetX = Math.min(
+        E3_PERCEPTUAL_FINGERPRINT_WIDTH - 1,
+        Math.floor((x * E3_PERCEPTUAL_FINGERPRINT_WIDTH) / decoded.width),
+      )
+      const cell = (targetY * E3_PERCEPTUAL_FINGERPRINT_WIDTH) + targetX
+      const sourceOffset = ((y * decoded.width) + x) * 3
+      const targetOffset = cell * 3
+      sums[targetOffset] += decoded.rgb[sourceOffset]
+      sums[targetOffset + 1] += decoded.rgb[sourceOffset + 1]
+      sums[targetOffset + 2] += decoded.rgb[sourceOffset + 2]
+      counts[cell] += 1
+    }
+  }
+
+  const bytes = Buffer.alloc(cellCount * 3)
+  for (let cell = 0; cell < cellCount; cell += 1) {
+    if (counts[cell] === 0) throw new Error('empty-perceptual-cell')
+    for (let channel = 0; channel < 3; channel += 1) {
+      bytes[(cell * 3) + channel] = Math.round(sums[(cell * 3) + channel] / counts[cell])
+    }
+  }
+  return {
+    schema: E3_PERCEPTUAL_FINGERPRINT_SCHEMA,
+    algorithm: 'png-box-average-srgb/v1',
+    width: E3_PERCEPTUAL_FINGERPRINT_WIDTH,
+    height: E3_PERCEPTUAL_FINGERPRINT_HEIGHT,
+    sourcePngSha256: createHash('sha256').update(source).digest('hex'),
+    dataBase64: bytes.toString('base64'),
+  }
+}
+
+function decodeE3PerceptualFingerprint(fingerprint) {
+  if (
+    !fingerprint
+    || typeof fingerprint !== 'object'
+    || Array.isArray(fingerprint)
+    || fingerprint.schema !== E3_PERCEPTUAL_FINGERPRINT_SCHEMA
+    || fingerprint.algorithm !== 'png-box-average-srgb/v1'
+    || fingerprint.width !== E3_PERCEPTUAL_FINGERPRINT_WIDTH
+    || fingerprint.height !== E3_PERCEPTUAL_FINGERPRINT_HEIGHT
+    || !SHA256_PATTERN.test(fingerprint.sourcePngSha256 || '')
+    || typeof fingerprint.dataBase64 !== 'string'
+    || fingerprint.dataBase64.length === 0
+    || fingerprint.dataBase64.length % 4 !== 0
+    || !/^[A-Za-z0-9+/]+={0,2}$/.test(fingerprint.dataBase64)
+  ) return null
+
+  const bytes = Buffer.from(fingerprint.dataBase64, 'base64')
+  const expectedBytes = E3_PERCEPTUAL_FINGERPRINT_WIDTH
+    * E3_PERCEPTUAL_FINGERPRINT_HEIGHT
+    * 3
+  if (
+    bytes.length !== expectedBytes
+    || bytes.toString('base64') !== fingerprint.dataBase64
+  ) return null
+  return bytes
+}
+
+export function validateE3PerceptualFingerprint(fingerprint, pngBuffer = null) {
+  const bytes = decodeE3PerceptualFingerprint(fingerprint)
+  if (!bytes) return { ok: false, reason: 'invalid-fingerprint' }
+  if (pngBuffer == null) return { ok: true, reason: 'metadata-only' }
+  try {
+    const expected = createE3PerceptualFingerprintFromPng(pngBuffer)
+    return {
+      ok: isDeepStrictEqual(fingerprint, expected),
+      reason: isDeepStrictEqual(fingerprint, expected) ? 'png-bound' : 'png-binding-mismatch',
+    }
+  } catch {
+    return { ok: false, reason: 'invalid-source-png' }
+  }
+}
+
+function analyzeConnectedDeltaComponents(deltaPixels) {
+  const seen = new Set()
+  let largest = 0
+  let largestMinimumDimension = 0
+  let largestMaximumDimension = 0
+  for (let start = 0; start < deltaPixels.length; start += 1) {
+    if (!deltaPixels[start] || seen.has(start)) continue
+    const queue = [start]
+    seen.add(start)
+    let size = 0
+    let minimumX = E3_PERCEPTUAL_FINGERPRINT_WIDTH
+    let maximumX = 0
+    let minimumY = E3_PERCEPTUAL_FINGERPRINT_HEIGHT
+    let maximumY = 0
+    while (queue.length > 0) {
+      const current = queue.pop()
+      size += 1
+      const x = current % E3_PERCEPTUAL_FINGERPRINT_WIDTH
+      const y = Math.floor(current / E3_PERCEPTUAL_FINGERPRINT_WIDTH)
+      minimumX = Math.min(minimumX, x)
+      maximumX = Math.max(maximumX, x)
+      minimumY = Math.min(minimumY, y)
+      maximumY = Math.max(maximumY, y)
+      const neighbours = []
+      if (x > 0) neighbours.push(current - 1)
+      if (x + 1 < E3_PERCEPTUAL_FINGERPRINT_WIDTH) neighbours.push(current + 1)
+      if (y > 0) neighbours.push(current - E3_PERCEPTUAL_FINGERPRINT_WIDTH)
+      if (y + 1 < E3_PERCEPTUAL_FINGERPRINT_HEIGHT) neighbours.push(current + E3_PERCEPTUAL_FINGERPRINT_WIDTH)
+      for (const neighbour of neighbours) {
+        if (deltaPixels[neighbour] && !seen.has(neighbour)) {
+          seen.add(neighbour)
+          queue.push(neighbour)
+        }
+      }
+    }
+    largest = Math.max(largest, size)
+    largestMinimumDimension = Math.max(
+      largestMinimumDimension,
+      Math.min((maximumX - minimumX) + 1, (maximumY - minimumY) + 1),
+    )
+    largestMaximumDimension = Math.max(
+      largestMaximumDimension,
+      Math.max((maximumX - minimumX) + 1, (maximumY - minimumY) + 1),
+    )
+  }
+  return { largest, largestMinimumDimension, largestMaximumDimension }
+}
+
+export function compareE3PerceptualFingerprints(baseline, candidate) {
+  const baselineBytes = decodeE3PerceptualFingerprint(baseline)
+  const candidateBytes = decodeE3PerceptualFingerprint(candidate)
+  if (!baselineBytes || !candidateBytes) {
+    return {
+      ok: false,
+      normalizedRmse: null,
+      threshold: E3_PERCEPTUAL_RMSE_THRESHOLD,
+      reason: 'invalid-fingerprint',
+    }
+  }
+
+  let squaredError = 0
+  let absoluteError = 0
+  const channelSignedError = [0, 0, 0]
+  const highDeltaPixels = new Array(
+    E3_PERCEPTUAL_FINGERPRINT_WIDTH * E3_PERCEPTUAL_FINGERPRINT_HEIGHT,
+  ).fill(false)
+  const midDeltaPixels = new Array(
+    E3_PERCEPTUAL_FINGERPRINT_WIDTH * E3_PERCEPTUAL_FINGERPRINT_HEIGHT,
+  ).fill(false)
+  for (let index = 0; index < baselineBytes.length; index += 1) {
+    const delta = baselineBytes[index] - candidateBytes[index]
+    squaredError += delta * delta
+    absoluteError += Math.abs(delta)
+    channelSignedError[index % 3] += delta
+    if (Math.abs(delta) >= E3_PERCEPTUAL_HIGH_DELTA) {
+      highDeltaPixels[Math.floor(index / 3)] = true
+    }
+    if (Math.abs(delta) >= E3_PERCEPTUAL_MID_DELTA) {
+      midDeltaPixels[Math.floor(index / 3)] = true
+    }
+  }
+  const normalizedRmse = Math.sqrt(squaredError / baselineBytes.length) / 255
+  const normalizedMae = (absoluteError / baselineBytes.length) / 255
+  const pixels = E3_PERCEPTUAL_FINGERPRINT_WIDTH * E3_PERCEPTUAL_FINGERPRINT_HEIGHT
+  const normalizedMeanShiftByChannel = channelSignedError.map((value) => Math.abs(value / pixels) / 255)
+  const maxNormalizedMeanShift = Math.max(...normalizedMeanShiftByChannel)
+  const highDeltaPixelCount = highDeltaPixels.filter(Boolean).length
+  const highDeltaComponents = analyzeConnectedDeltaComponents(highDeltaPixels)
+  const midDeltaComponents = analyzeConnectedDeltaComponents(midDeltaPixels)
+  const largestHighDeltaComponent = highDeltaComponents.largest
+  const largestMidDeltaMinimumDimension = midDeltaComponents.largestMinimumDimension
+  const largestMidDeltaMaximumDimension = midDeltaComponents.largestMaximumDimension
+  const ok = normalizedRmse <= E3_PERCEPTUAL_RMSE_THRESHOLD
+    && maxNormalizedMeanShift <= E3_PERCEPTUAL_MEAN_SHIFT_THRESHOLD
+    && highDeltaPixelCount <= E3_PERCEPTUAL_HIGH_DELTA_PIXEL_LIMIT
+    && largestHighDeltaComponent <= E3_PERCEPTUAL_HIGH_DELTA_COMPONENT_LIMIT
+    && largestMidDeltaMinimumDimension <= E3_PERCEPTUAL_MID_COMPONENT_MIN_DIMENSION_LIMIT
+    && largestMidDeltaMaximumDimension <= E3_PERCEPTUAL_MID_COMPONENT_LONG_DIMENSION_LIMIT
+  return {
+    ok,
+    normalizedRmse,
+    normalizedMae,
+    normalizedMeanShiftByChannel,
+    maxNormalizedMeanShift,
+    highDeltaPixelCount,
+    largestHighDeltaComponent,
+    largestMidDeltaMinimumDimension,
+    largestMidDeltaMaximumDimension,
+    threshold: E3_PERCEPTUAL_RMSE_THRESHOLD,
+    meanShiftThreshold: E3_PERCEPTUAL_MEAN_SHIFT_THRESHOLD,
+    highDeltaPixelLimit: E3_PERCEPTUAL_HIGH_DELTA_PIXEL_LIMIT,
+    highDeltaComponentLimit: E3_PERCEPTUAL_HIGH_DELTA_COMPONENT_LIMIT,
+    midDeltaMinimumDimensionLimit: E3_PERCEPTUAL_MID_COMPONENT_MIN_DIMENSION_LIMIT,
+    midDeltaMaximumDimensionLimit: E3_PERCEPTUAL_MID_COMPONENT_LONG_DIMENSION_LIMIT,
+    reason: ok
+      ? 'within-threshold'
+      : 'visible-difference',
+  }
+}
+
+function validateE3SnapshotVisualMetadata(snapshot) {
+  const errors = []
+  if (!SHA256_PATTERN.test(snapshot?.screenshotSha256 || '')) errors.push('screenshot.hash_invalid')
+  const fingerprint = validateE3PerceptualFingerprint(snapshot?.screenshotPerceptual)
+  if (!fingerprint.ok) errors.push('screenshot.fingerprint_invalid')
+  if (snapshot?.screenshotPerceptual?.sourcePngSha256 !== snapshot?.screenshotSha256) {
+    errors.push('screenshot.fingerprint_source_mismatch')
+  }
+  if (
+    snapshot?.screenshotStability?.mode !== 'fixed'
+    || !isDeepStrictEqual(snapshot?.screenshotStability?.cycleSha256, [snapshot?.screenshotSha256])
+  ) errors.push('screenshot.not_fixed')
+  return { ok: errors.length === 0, errors }
+}
+
+export function compareE3Snapshots(baseline, candidate, {
+  baselineScreenshotBuffer = null,
+  candidateScreenshotBuffer = null,
+} = {}) {
   const normalizedBaseline = normalizeE3Snapshot(baseline)
   const normalizedCandidate = normalizeE3Snapshot(candidate)
   const fields = [...new Set([
@@ -218,10 +692,121 @@ export function compareE3Snapshots(baseline, candidate) {
       candidate: normalizedCandidate[field],
     }))
 
-  return {
-    ok: differences.length === 0,
-    differences,
+  const hasVisualMetadata = [normalizedBaseline, normalizedCandidate].some((snapshot) => (
+    'screenshotSha256' in snapshot
+    || 'screenshotStability' in snapshot
+    || 'screenshotPerceptual' in snapshot
+  ))
+  const baselineMetadata = hasVisualMetadata
+    ? validateE3SnapshotVisualMetadata(normalizedBaseline)
+    : { ok: true, errors: [] }
+  const candidateMetadata = hasVisualMetadata
+    ? validateE3SnapshotVisualMetadata(normalizedCandidate)
+    : { ok: true, errors: [] }
+  const baselineBinding = !hasVisualMetadata
+    ? { ok: true, reason: 'not-applicable' }
+    : baselineScreenshotBuffer == null
+      ? { ok: false, reason: 'missing-baseline-png' }
+      : validateE3PerceptualFingerprint(normalizedBaseline.screenshotPerceptual, baselineScreenshotBuffer)
+  const candidateBinding = !hasVisualMetadata
+    ? { ok: true, reason: 'not-applicable' }
+    : candidateScreenshotBuffer == null
+      ? { ok: false, reason: 'missing-candidate-png' }
+      : validateE3PerceptualFingerprint(normalizedCandidate.screenshotPerceptual, candidateScreenshotBuffer)
+  if (!baselineMetadata.ok || !candidateMetadata.ok) {
+    differences.push({
+      field: 'screenshotMetadata',
+      baseline: baselineMetadata.errors,
+      candidate: candidateMetadata.errors,
+    })
   }
+  if (!baselineBinding.ok || !candidateBinding.ok) {
+    differences.push({
+      field: 'screenshotBinding',
+      baseline: baselineBinding.reason,
+      candidate: candidateBinding.reason,
+    })
+  }
+  if (
+    differences.length === 0
+    && baselineMetadata.ok
+    && candidateMetadata.ok
+    && baselineBinding.ok
+    && candidateBinding.ok
+  ) {
+    return {
+      ok: true,
+      differences: [],
+      visualComparison: {
+        mode: 'exact',
+        normalizedRmse: 0,
+        threshold: E3_PERCEPTUAL_RMSE_THRESHOLD,
+      },
+    }
+  }
+
+  const visualFields = new Set([
+    'screenshotSha256',
+    'screenshotStability',
+    'screenshotPerceptual',
+  ])
+  const nonVisualDifferences = differences.filter(({ field }) => !visualFields.has(field))
+  const hashesDiffer = normalizedBaseline.screenshotSha256 !== normalizedCandidate.screenshotSha256
+  const fixedPaints = normalizedBaseline.screenshotStability?.mode === 'fixed'
+    && normalizedCandidate.screenshotStability?.mode === 'fixed'
+  const visualComparison = compareE3PerceptualFingerprints(
+    normalizedBaseline.screenshotPerceptual,
+    normalizedCandidate.screenshotPerceptual,
+  )
+
+  if (
+    nonVisualDifferences.length === 0
+    && hashesDiffer
+    && baselineMetadata.ok
+    && candidateMetadata.ok
+    && fixedPaints
+    && baselineBinding.ok
+    && candidateBinding.ok
+    && visualComparison.ok
+  ) {
+    return {
+      ok: true,
+      differences: [],
+      visualComparison: {
+        ...visualComparison,
+        mode: 'perceptual',
+      },
+    }
+  }
+
+  return {
+    ok: false,
+    differences,
+    visualComparison: {
+      ...visualComparison,
+      mode: 'blocked',
+      hashesDiffer,
+      fixedPaints,
+      baselineMetadataErrors: baselineMetadata.errors,
+      candidateMetadataErrors: candidateMetadata.errors,
+      baselineBinding: baselineBinding.reason,
+      candidateBinding: candidateBinding.reason,
+      nonVisualDifferenceFields: nonVisualDifferences.map(({ field }) => field),
+    },
+  }
+}
+
+export function finalizeE3ReleaseDifferences(differences, toleratedVisualDifferences) {
+  const result = Array.isArray(differences) ? differences.map((item) => ({ ...item })) : []
+  const diagnosticOnly = Array.isArray(toleratedVisualDifferences) ? toleratedVisualDifferences : []
+  if (diagnosticOnly.length > 0) {
+    result.push({
+      id: 'pixel-bytes-not-identical',
+      fields: diagnosticOnly.map((item) => item?.id || 'unknown'),
+      reason: 'E3 release requires exact PNG bytes; perceptual comparison is diagnostic only',
+    })
+  }
+  return result
 }
 
 export function getE3ProtectedFiles() {
@@ -232,6 +817,7 @@ export function getE3ProtectedSurfaceManifest() {
   return E3_PROTECTED_SURFACE_MANIFEST.map((item) => ({
     ...item,
     surfaces: [...item.surfaces],
+    coverage: coverageGatesForManifestItem(item),
   }))
 }
 
@@ -255,6 +841,7 @@ export function classifyE3ProtectedSourceDifferences(
     .map((path) => ({
       path,
       scope: manifestByPath.get(path)?.scope || 'unknown',
+      coverage: manifestByPath.get(path)?.coverage || [],
     }))
 
   return {
@@ -278,6 +865,9 @@ export function validateE3ProtectedSurfaceManifest(manifest) {
     if (!['e3-semantic', 'shared'].includes(item?.scope)) errors.push(`manifest.scope_invalid:${item?.path || 'unknown'}`)
     if (!Array.isArray(item?.surfaces) || item.surfaces.length === 0) errors.push(`manifest.surfaces_missing:${item?.path || 'unknown'}`)
     if (typeof item?.reason !== 'string' || !item.reason.trim()) errors.push(`manifest.reason_missing:${item?.path || 'unknown'}`)
+    if (!Array.isArray(item?.coverage) || item.coverage.length === 0) errors.push(`manifest.coverage_missing:${item?.path || 'unknown'}`)
+    if (item?.scope === 'shared' && !item.coverage?.includes('ui-static-parity')) errors.push(`manifest.shared_static_coverage_missing:${item?.path || 'unknown'}`)
+    if (item?.scope === 'shared' && !item.coverage?.includes('ui-behavior-parity')) errors.push(`manifest.shared_behavior_coverage_missing:${item?.path || 'unknown'}`)
   }
   return {
     ok: errors.length === 0,
@@ -328,6 +918,7 @@ export function validateE3BaselineProvenance(provenance) {
     !hasNonEmptyString(provenance.tool?.name)
     || !hasNonEmptyString(provenance.tool?.version)
     || !SHA256_PATTERN.test(provenance.tool?.scriptSha256 || '')
+    || !SHA256_PATTERN.test(provenance.tool?.releaseRunnerSha256 || '')
     || !SHA256_PATTERN.test(provenance.tool?.coreSha256 || '')
     || !SHA256_PATTERN.test(provenance.tool?.fixtureServerSha256 || '')
     || !SHA256_PATTERN.test(provenance.tool?.cspCoreSha256 || '')
@@ -340,6 +931,11 @@ export function validateE3BaselineProvenance(provenance) {
     || !hasNonEmptyString(provenance.browser?.version)
     || !hasNonEmptyString(provenance.browser?.userAgent)
     || provenance.browser?.cspMode !== 'bypassed-production-parity'
+    || !hasNonEmptyString(provenance.browser?.toolchain?.playwrightVersion)
+    || !SHA256_PATTERN.test(provenance.browser?.toolchain?.playwright?.sha256 || '')
+    || !SHA256_PATTERN.test(provenance.browser?.toolchain?.playwrightCore?.sha256 || '')
+    || !SHA256_PATTERN.test(provenance.browser?.toolchain?.browserExecutable?.sha256 || '')
+    || !Number.isSafeInteger(provenance.browser?.toolchain?.browserExecutable?.size)
   ) errors.push('provenance.browser_incomplete')
   if (
     provenance.runtime?.mode !== 'production-next-build-start'
@@ -410,11 +1006,78 @@ export function validateE3BaselineCaseCoverage(snapshotIds, publicOnly) {
   }
 }
 
-export function validateE3BaselineBundle(document, screenshotDir) {
+export function validateE3BaselineTrust(document, trustContext) {
+  const errors = []
+  if (
+    !trustContext
+    || !GIT_COMMIT_PATTERN.test(trustContext.baseCommit || '')
+    || !trustContext.protectedSourceSha256
+    || typeof trustContext.protectedSourceSha256 !== 'object'
+    || Array.isArray(trustContext.protectedSourceSha256)
+  ) return { ok: false, errors: ['baseline.trust_context_missing'] }
+  if (
+    document?.provenance?.git?.baseCommit !== trustContext.baseCommit
+    || document?.provenance?.runtimeGit?.baseCommit !== trustContext.baseCommit
+  ) errors.push('baseline.trusted_commit_mismatch')
+  if (!isDeepStrictEqual(document?.protectedSourceSha256, trustContext.protectedSourceSha256)) {
+    errors.push('baseline.trusted_source_hashes_mismatch')
+  }
+  return { ok: errors.length === 0, errors }
+}
+
+function canonicalCorpusValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalCorpusValue)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, canonicalCorpusValue(child)]),
+    )
+  }
+  return value
+}
+
+export function computeE3BaselineCorpusSha256(document, screenshotDir) {
+  if (!document || typeof document !== 'object' || !Array.isArray(document.snapshots)) {
+    throw new Error('baseline-corpus-document-invalid')
+  }
+  const screenshots = document.snapshots
+    .map((snapshot) => {
+      if (
+        snapshot?.screenshot !== `${snapshot?.id}.png`
+        || !/^[a-z0-9-]+\.png$/.test(snapshot?.screenshot || '')
+      ) throw new Error('baseline-corpus-screenshot-name-invalid')
+      const path = `${screenshotDir}/${snapshot.screenshot}`
+      if (!existsSync(path)) throw new Error('baseline-corpus-screenshot-missing')
+      const bytes = readFileSync(path)
+      return {
+        id: snapshot.id,
+        file: snapshot.screenshot,
+        bytes: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      }
+    })
+    .sort((left, right) => left.id.localeCompare(right.id))
+  const manifest = {
+    schema: 'e3-baseline-corpus/v1',
+    documentSha256: createHash('sha256')
+      .update(JSON.stringify(canonicalCorpusValue(document)), 'utf8')
+      .digest('hex'),
+    screenshots,
+  }
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalCorpusValue(manifest)), 'utf8')
+    .digest('hex')
+}
+
+export function validateE3BaselineBundle(document, screenshotDir, trustContext = null) {
   const errors = []
   if (!document || typeof document !== 'object') return { ok: false, errors: ['baseline.document_missing'] }
-  if (document.schema !== 'e3-freeze-baseline/v3') errors.push('baseline.schema_invalid')
+  if (document.schema !== 'e3-freeze-baseline/v5') errors.push('baseline.schema_invalid')
   if (document.mode !== 'record') errors.push('baseline.mode_invalid')
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(document.releaseSessionId || '')) {
+    errors.push('baseline.release_session_invalid')
+  }
   if (!SHA256_PATTERN.test(document.fixtureSha256 || '')) errors.push('baseline.fixture_hash_invalid')
   if (document.fixtureSha256 !== document.provenance?.tool?.fixtureSha256) errors.push('baseline.fixture_provenance_mismatch')
   const provenance = validateE3BaselineProvenance(document.provenance)
@@ -443,6 +1106,18 @@ export function validateE3BaselineBundle(document, screenshotDir) {
         || record.scope !== item.scope
         || !isDeepStrictEqual(record.surfaces, item.surfaces)
       ) errors.push(`baseline.protected_hash_invalid:${item.path}`)
+    }
+  }
+  errors.push(...validateE3BaselineTrust(document, trustContext).errors)
+  if (!SHA256_PATTERN.test(trustContext?.baselineCorpusSha256 || '')) {
+    errors.push('baseline.trusted_corpus_hash_missing')
+  } else {
+    try {
+      if (computeE3BaselineCorpusSha256(document, screenshotDir) !== trustContext.baselineCorpusSha256) {
+        errors.push('baseline.trusted_corpus_hash_mismatch')
+      }
+    } catch {
+      errors.push('baseline.trusted_corpus_hash_invalid')
     }
   }
   const protectedRuntimeHashes = document.protectedRuntimeSha256
@@ -487,7 +1162,7 @@ export function validateE3BaselineBundle(document, screenshotDir) {
       const aggregateFontRecord = aggregateFontsByCase.get(snapshot?.id)
       const { caseId: _caseId, ...fontRecordWithoutId } = aggregateFontRecord || {}
       if (
-        snapshot?.schema !== 'e3-surface/v1'
+        snapshot?.schema !== 'e3-surface/v3'
         || snapshot?.fixtureSha256 !== document.fixtureSha256
         || snapshot?.browserVersion !== document.provenance?.browser?.version
         || !expectedCase
@@ -507,11 +1182,28 @@ export function validateE3BaselineBundle(document, screenshotDir) {
         || snapshot?.aria == null
         || !Array.isArray(snapshot?.criticalStyles)
         || !SHA256_PATTERN.test(snapshot?.renderTreeSha256 || '')
+        || !Array.isArray(snapshot?.behavior?.modes)
+        || snapshot.behavior.modes.length !== 2
+        || !isDeepStrictEqual(
+          snapshot.behavior.modes.map((mode) => mode?.reducedMotion).sort(),
+          ['no-preference', 'reduce'],
+        )
+        || snapshot.behavior.modes.some((mode) => (
+          !Array.isArray(mode?.motionContract)
+          || !Array.isArray(mode?.interactionContract)
+          || !mode?.shellContract
+        ))
       ) errors.push(`baseline.snapshot_contract_invalid:${snapshot?.id || 'unknown'}`)
       if (
         snapshot?.screenshot !== `${snapshot?.id}.png`
         || !/^[a-z0-9-]+\.png$/.test(snapshot?.screenshot || '')
         || !SHA256_PATTERN.test(snapshot?.screenshotSha256 || '')
+        || snapshot?.screenshotStability?.mode !== 'fixed'
+        || !isDeepStrictEqual(
+          snapshot?.screenshotStability?.cycleSha256,
+          [snapshot?.screenshotSha256],
+        )
+        || !validateE3PerceptualFingerprint(snapshot?.screenshotPerceptual).ok
       ) {
         errors.push(`baseline.screenshot_metadata_invalid:${snapshot?.id || 'unknown'}`)
         continue
@@ -521,8 +1213,12 @@ export function validateE3BaselineBundle(document, screenshotDir) {
         errors.push(`baseline.screenshot_missing:${snapshot.id || snapshot.screenshot}`)
         continue
       }
-      const digest = createHash('sha256').update(readFileSync(path)).digest('hex')
+      const screenshotBytes = readFileSync(path)
+      const digest = createHash('sha256').update(screenshotBytes).digest('hex')
       if (digest !== snapshot.screenshotSha256) errors.push(`baseline.screenshot_hash_mismatch:${snapshot.id || snapshot.screenshot}`)
+      if (!validateE3PerceptualFingerprint(snapshot.screenshotPerceptual, screenshotBytes).ok) {
+        errors.push(`baseline.screenshot_fingerprint_mismatch:${snapshot.id || snapshot.screenshot}`)
+      }
     }
   }
   return { ok: errors.length === 0, errors: [...new Set(errors)] }
@@ -533,9 +1229,10 @@ export function replaceE3BaselineBundleAtomically({
   screenshotDir,
   candidateBaselinePath,
   candidateScreenshotDir,
+  trustContext,
 }) {
   const candidateDocument = JSON.parse(readFileSync(candidateBaselinePath, 'utf8'))
-  const validation = validateE3BaselineBundle(candidateDocument, candidateScreenshotDir)
+  const validation = validateE3BaselineBundle(candidateDocument, candidateScreenshotDir, trustContext)
   if (!validation.ok) throw new Error(`E3 candidate baseline 驗證失敗：${validation.errors.join(', ')}`)
 
   const suffix = `.backup-${process.pid}-${Date.now()}`

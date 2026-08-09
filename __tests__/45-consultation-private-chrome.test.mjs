@@ -7,8 +7,14 @@ import { isConsultationReaderPath } from '../lib/consultation/routes.ts'
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('consultation reader path classifier is narrow and does not capture legacy E3 reports', () => {
+  assert.equal(isConsultationReaderPath('/consultation/access'), true)
+  assert.equal(isConsultationReaderPath('/consultation/view'), true)
   assert.equal(isConsultationReaderPath('/consultation/token-123'), true)
   assert.equal(isConsultationReaderPath('/consultation/'), true)
+  assert.equal(isConsultationReaderPath('/consultation'), false)
+  assert.equal(isConsultationReaderPath('/consultation-offer'), false)
+  assert.equal(isConsultationReaderPath('/'), false)
+  assert.equal(isConsultationReaderPath('/pricing'), false)
   assert.equal(isConsultationReaderPath('/report/e3-token'), false)
   assert.equal(isConsultationReaderPath('/checkout?plan=E3'), false)
   assert.equal(isConsultationReaderPath(null), false)
@@ -16,6 +22,7 @@ test('consultation reader path classifier is narrow and does not capture legacy 
 
 test('private reader removes public chrome without hiding consent', () => {
   for (const path of [
+    'components/RouteChrome.tsx',
     'components/Navbar.tsx',
     'components/CookieConsent.tsx',
     'components/FirstVisitWarmBanner.tsx',
@@ -30,8 +37,19 @@ test('private reader removes public chrome without hiding consent', () => {
 
   const css = read('app/presentation.css')
   assert.match(css, /\.jy-cookie\.jy-cookie--consultation/u)
-  assert.match(css, /body:has\(\[data-consultation-report\]\) \.jy-footer/u)
-  assert.match(css, /body:has\(\[data-consultation-report\]\) #main-content/u)
+
+  const shell = read('components/RouteChrome.tsx')
+  assert.match(shell, /const isPrivateConsultation = isConsultationReaderPath\(pathname\?\.toLowerCase\(\)\)/u)
+  assert.match(shell, /id="main-content"[\s\S]{0,80}tabIndex=\{-1\}/u)
+  assert.match(shell, /!isPrivateConsultation && <Navbar \/>/u)
+  assert.match(shell, /!isPrivateConsultation && <GlobalBackToTop \/>/u)
+  assert.match(shell, /!isPrivateConsultation && footer/u)
+  assert.match(shell, /className=\{isPrivateConsultation \? undefined : 'pt-16'\}/u)
+
+  const layout = read('app/layout.tsx')
+  assert.match(layout, /<RouteChrome[\s\S]*footer=\{<footer className="jy-footer">/u)
+  assert.doesNotMatch(layout, /<main id="main-content" className="pt-16">/u)
+  assert.doesNotMatch(css, /body:has\(\[data-consultation-report\]\) (?:\.jy-footer|#main-content)/u)
 })
 
 test('consultation tokens receive the same private-edge protections as legacy reports', () => {

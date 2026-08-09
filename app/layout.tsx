@@ -5,11 +5,10 @@ import Image from 'next/image'
 import Script from 'next/script'
 import WebVitalsReporter from '@/components/WebVitalsReporter'
 import PrivacySafeVercelTelemetry from '@/components/PrivacySafeVercelTelemetry'
-import Navbar from '@/components/Navbar'
 import LocaleContent from '@/components/LocaleContent'
 import Tracker from '@/components/Tracker'
 import ReferralHandler from '@/components/ReferralHandler'
-import GlobalBackToTop from '@/components/GlobalBackToTop'
+import RouteChrome from '@/components/RouteChrome'
 import EmailLink from '@/components/EmailLink'
 import CookieConsent from '@/components/CookieConsent'
 import { GlobalToastProvider } from '@/components/report/shared/GlobalToast'
@@ -199,11 +198,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* v5.10.250 wire dead component:GlobalToastProvider 包整 app、開放 useToast() 全域可用 */}
         <GlobalToastProvider>
         <LocaleContent>
-        <Navbar />
-        {process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && <FirstVisitWarmBanner />}
-        <main id="main-content" className="pt-16">{children}</main>
-        <GlobalBackToTop />
-        <footer className="jy-footer">
+        <RouteChrome
+          beforeMain={process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && <FirstVisitWarmBanner />}
+          footer={<footer className="jy-footer">
           {/* 英文/簡體翻譯覆蓋範圍：v5.3.95 起 footer 納入 LocaleContent */}
           <div className="jy-footer__inner">
             {/* 古典分隔裝飾 */}
@@ -259,7 +256,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* v5.10.395 Warm Light Theme v1.1 — Footer 完整 theme + language settings(FF 控制)*/}
             {process.env.NEXT_PUBLIC_FF_WARM_LIGHT_THEME === 'true' && <ThemeLanguageSettings />}
           </div>
-        </footer>
+          </footer>}
+        >
+          {children}
+        </RouteChrome>
         </LocaleContent>
         </GlobalToastProvider>
         </ThemeProvider>

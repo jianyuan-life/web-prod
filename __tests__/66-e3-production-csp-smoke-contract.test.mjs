@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { suite, test, assert, assertEqual, done } from './harness.mjs'
 import {
+  compareProductionCspReceipts,
   inspectProductionCspHeaders,
   isFatalRuntimeConsoleError,
   isSameOriginHttpError,
@@ -13,6 +14,7 @@ import {
 suite('E3 production CSP smoke 契約')
 const projectRoot = fileURLToPath(new URL('../', import.meta.url))
 const script = readFileSync(new URL('../scripts/e3-production-csp-smoke.mjs', import.meta.url), 'utf8')
+const releaseRunner = readFileSync(new URL('../scripts/e3-freeze-release-audit.mjs', import.meta.url), 'utf8')
 const nextConfig = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8')
 const gitAttributes = readFileSync(new URL('../.gitattributes', import.meta.url), 'utf8')
 const fetchPreload = readFileSync(new URL('../scripts/lib/e3-production-fetch-preload.cjs', import.meta.url), 'utf8')
@@ -61,6 +63,103 @@ test('正式 CSP 標頭必存在並以 SHA-256 綁定，Report-Only 不可冒充
   })
   assertEqual(missing.ok, false)
   assert(missing.errors.includes('enforced_csp_missing'))
+})
+
+test('default-src 通配政策不得通過 production CSP gate', () => {
+  const wildcardEnforced = inspectProductionCspHeaders({
+    'content-security-policy': "default-src *; script-src 'self'",
+  })
+  assertEqual(wildcardEnforced.ok, false)
+  assert(wildcardEnforced.errors.includes('enforced_default_src_wildcard'))
+
+  const wildcardReportOnly = inspectProductionCspHeaders({
+    'content-security-policy': "default-src 'self'; script-src 'self'",
+    'content-security-policy-report-only': "default-src *; script-src 'self'",
+  })
+  assertEqual(wildcardReportOnly.ok, false)
+  assert(wildcardReportOnly.errors.includes('report_only_default_src_wildcard'))
+
+  const commaSeparated = inspectProductionCspHeaders({
+    'content-security-policy': "script-src 'self', default-src *",
+    'content-security-policy-report-only': "default-src 'self'",
+  })
+  assertEqual(commaSeparated.ok, false)
+  assert(commaSeparated.errors.includes('enforced_default_src_wildcard'))
+
+  const missingReportOnly = inspectProductionCspHeaders({
+    'content-security-policy': "default-src 'self'; script-src 'self'",
+  })
+  assertEqual(missingReportOnly.ok, false)
+  assert(missingReportOnly.errors.includes('report_only_csp_missing'))
+})
+
+test('base/candidate 每個 surface 的 enforced 與 Report-Only CSP SHA 必須完全相同，candidate 不得帶 strict hold', () => {
+  const headers = inspectProductionCspHeaders({
+    'content-security-policy': "default-src 'self'; script-src 'self'",
+    'content-security-policy-report-only': "default-src 'self'; script-src 'self' 'strict-dynamic'",
+  })
+  const baseline = {
+    strictReadinessHold: null,
+    strictPolicyPromotionReady: true,
+    cases: [
+      { id: 'home--mobile-dark', ok: true, strictReadinessHold: null, cspHeaders: structuredClone(headers) },
+      { id: 'report--desktop-light', ok: true, strictReadinessHold: null, cspHeaders: structuredClone(headers) },
+    ],
+  }
+  const candidate = structuredClone(baseline)
+  assertEqual(compareProductionCspReceipts(baseline, candidate).ok, true)
+
+  const enforcedDrift = structuredClone(candidate)
+  enforcedDrift.cases[0].cspHeaders.enforced.sha256 = 'a'.repeat(64)
+  const enforcedResult = compareProductionCspReceipts(baseline, enforcedDrift)
+  assertEqual(enforcedResult.ok, false)
+  assert(enforcedResult.errors.includes('home--mobile-dark:enforced_sha256_mismatch'))
+
+  const reportOnlyDrift = structuredClone(candidate)
+  reportOnlyDrift.cases[1].cspHeaders.reportOnly.sha256 = 'b'.repeat(64)
+  const reportOnlyResult = compareProductionCspReceipts(baseline, reportOnlyDrift)
+  assertEqual(reportOnlyResult.ok, false)
+  assert(reportOnlyResult.errors.includes('report--desktop-light:report_only_sha256_mismatch'))
+
+  const newHold = structuredClone(candidate)
+  newHold.strictReadinessHold = { reason: 'report_only_csp_violations', violationCount: 1 }
+  newHold.strictPolicyPromotionReady = false
+  newHold.cases[0].strictReadinessHold = { reason: 'report_only_csp_violations', violationCount: 1 }
+  const holdResult = compareProductionCspReceipts(baseline, newHold)
+  assertEqual(holdResult.ok, false)
+  assert(holdResult.errors.includes('candidate:strict_readiness_hold'))
+  assert(holdResult.errors.includes('home--mobile-dark:strict_readiness_hold'))
+
+  const missingEnforced = {
+    strictReadinessHold: null,
+    strictPolicyPromotionReady: true,
+    cases: [{
+      id: 'home--mobile-dark',
+      ok: true,
+      strictReadinessHold: null,
+      cspHeaders: { reportOnly: structuredClone(headers.reportOnly) },
+    }],
+  }
+  const missingResult = compareProductionCspReceipts(missingEnforced, structuredClone(missingEnforced))
+  assertEqual(missingResult.ok, false)
+  assert(missingResult.errors.includes('home--mobile-dark:baseline_enforced_missing'))
+  assert(missingResult.errors.includes('home--mobile-dark:candidate_enforced_missing'))
+
+  const missingReportOnlyReceipt = structuredClone(baseline)
+  for (const item of missingReportOnlyReceipt.cases) delete item.cspHeaders.reportOnly
+  const missingReportOnlyResult = compareProductionCspReceipts(
+    missingReportOnlyReceipt,
+    structuredClone(missingReportOnlyReceipt),
+  )
+  assertEqual(missingReportOnlyResult.ok, false)
+  assert(missingReportOnlyResult.errors.includes('home--mobile-dark:baseline_report_only_missing'))
+  assert(missingReportOnlyResult.errors.includes('home--mobile-dark:candidate_report_only_missing'))
+
+  const forgedValue = structuredClone(candidate)
+  forgedValue.cases[0].cspHeaders.enforced.value = "default-src 'none'"
+  const forgedResult = compareProductionCspReceipts(baseline, forgedValue)
+  assertEqual(forgedResult.ok, false)
+  assert(forgedResult.errors.includes('home--mobile-dark:candidate_enforced_hash_invalid'))
 })
 
 test('只有帶 Next prefetch 證據的同源 RSC ERR_ABORTED 可列診斷，其餘網路錯誤仍阻擋', () => {
@@ -161,6 +260,13 @@ test('production smoke 必須 fail closed 收集 runtime 與第一方網路錯�
   assert(script.includes('strictReadinessHold'), 'Report-Only 違規必須明列為 strict CSP 升級阻擋')
   assert(script.includes('strictPolicyPromotionReady'), 'Report-Only 尚有違規時不得宣稱 strict CSP 已可升 enforced')
   assert(script.includes("mode: 'production-next-start-no-csp-bypass'"))
+})
+
+test('CSP smoke 收據必須綁定每個 surface response，release runner 必須實際執行雙政策 parity', () => {
+  assert(script.includes('const navigationResponse = await page.goto'), '必須從各 surface 主文件 response 取 CSP')
+  assert(script.includes('cspHeaders: surfaceCspHeaders'), '每個 case 收據必須保存 enforced/Report-Only SHA')
+  assert(releaseRunner.includes('compareProductionCspReceipts'), 'release runner 必須呼叫 CSP parity gate')
+  assert(releaseRunner.includes('CSP policy parity 不成立'), 'CSP drift 必須 fail closed')
 })
 
 test('SRI 保護腳本跨 Windows checkout 必須固定 LF，避免本機假 mismatch', () => {
