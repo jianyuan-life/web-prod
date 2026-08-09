@@ -8,6 +8,12 @@ import {
 import { isDeepStrictEqual } from 'node:util'
 
 const VOLATILE_FIELDS = new Set(['capturedAt', 'runId'])
+const WEB_VITALS_VOLATILE_FIELDS = new Set(['id', 'value', 'delta'])
+const NON_E3_VENDOR_LOADER_ENDPOINTS = new Set([
+  '/_vercel/insights/script.js',
+  '/_vercel/speed-insights/script.js',
+])
+const NON_E3_EXPERIMENT_KEYS = new Set(['hero_cta_20260417'])
 
 const E3_PROTECTED_SURFACE_MANIFEST = Object.freeze([
   { path: 'components/checkout/ThemePicker.tsx', scope: 'e3-semantic', surfaces: ['checkout'], reason: 'E3 主題排序與選擇語意' },
@@ -92,7 +98,7 @@ const E3_VIEWPORTS = Object.freeze([
 ])
 
 const E3_SURFACE_STATES = Object.freeze([
-  { surface: 'home', state: 'home-card', path: '/', selector: 'article:has-text("月度精選")' },
+  { surface: 'home', state: 'home-card', path: '/', selector: 'article.jy-card:has(h3:text-is("月度精選"))' },
   { surface: 'pricing', state: 'pricing-card', path: '/pricing', selector: '#plan-e3' },
   { surface: 'checkout', state: 'checkout-initial', path: '/checkout?plan=E3', selector: '.checkout-main' },
   { surface: 'checkout', state: 'checkout-selected', path: '/checkout?plan=E3', selector: '.checkout-main' },
@@ -121,8 +127,45 @@ function normalizeValue(value) {
   return value
 }
 
+function normalizeE3TelemetryRequests(requests, state) {
+  return requests
+    .filter((request) => {
+      const isVendorLoader = request?.method === 'GET'
+        && NON_E3_VENDOR_LOADER_ENDPOINTS.has(request?.endpoint)
+      const isKnownHomepageExperiment = request?.method === 'POST'
+        && request?.endpoint === '/api/ab-events'
+        && state === 'home-card'
+        && NON_E3_EXPERIMENT_KEYS.has(request?.body?.experimentKey)
+      return !isVendorLoader && !isKnownHomepageExperiment
+    })
+    .map((request) => {
+      const normalized = normalizeValue(request)
+      if (
+        normalized?.endpoint === '/api/web-vitals'
+        && normalized?.method === 'POST'
+        && normalized.body
+        && typeof normalized.body === 'object'
+        && !Array.isArray(normalized.body)
+      ) {
+        normalized.body = Object.fromEntries(
+          Object.entries(normalized.body)
+            .filter(([key]) => !WEB_VITALS_VOLATILE_FIELDS.has(key)),
+        )
+      }
+      return normalizeValue(normalized)
+    })
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+}
+
 export function normalizeE3Snapshot(snapshot) {
-  return normalizeValue(structuredClone(snapshot))
+  const normalized = normalizeValue(structuredClone(snapshot))
+  if (Array.isArray(normalized?.telemetryRequests)) {
+    normalized.telemetryRequests = normalizeE3TelemetryRequests(
+      normalized.telemetryRequests,
+      normalized.state,
+    )
+  }
+  return normalized
 }
 
 export function classifyE3ConsoleErrors(messages, {

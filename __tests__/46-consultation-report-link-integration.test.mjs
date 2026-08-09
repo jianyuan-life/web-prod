@@ -5,17 +5,17 @@ import test from 'node:test'
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
 const integrations = [
-  ['lib/report/completion-fallback-email.ts', /buildReportRoute\(row\.plan_code, row\.access_token\)/u],
-  ['app/api/generate-report/route.ts', /buildReportRoute\(planCode, accessToken\)/u],
-  ['app/api/cron/followup-email/route.ts', /buildReportRoute\(planCode, report\.access_token\)/u],
-  ['app/api/cron/feedback-reminder/route.ts', /buildReportRoute\(report\.plan_code, report\.access_token\)/u],
-  ['workflows/generate-report/steps.ts', /buildReportRoute\(planCode, accessToken\)/u],
+  ['lib/report/completion-fallback-email.ts', /buildAbsoluteReportUrl\(siteUrl, row\.plan_code, row\.access_token\)/u],
+  ['app/api/generate-report/route.ts', /buildAbsoluteReportUrl\(siteUrl, planCode, accessToken\)/u],
+  ['app/api/cron/followup-email/route.ts', /buildAbsoluteReportUrl\(siteUrl, planCode, report\.access_token\)/u],
+  ['app/api/cron/feedback-reminder/route.ts', /buildAbsoluteReportUrl\('https:\/\/jianyuan\.life', report\.plan_code, report\.access_token\)/u],
+  ['workflows/generate-report/steps.ts', /buildAbsoluteReportUrl\(siteUrl, planCode, accessToken\)/u],
 ]
 
 test('every completion and follow-up surface uses the consultation route SSOT', () => {
   for (const [path, expectedCall] of integrations) {
     const source = read(path)
-    assert.match(source, /import \{ buildReportRoute \} from '@\/lib\/consultation\/routes'/u, `${path} must import route SSOT`)
+    assert.match(source, /import \{ buildAbsoluteReportUrl \} from '@\/lib\/consultation\/routes'/u, `${path} must import route SSOT`)
     assert.match(source, expectedCall, `${path} must route with its actual plan code`)
   }
 })

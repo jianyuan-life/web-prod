@@ -77,6 +77,126 @@ test('正規化只移除明確列入的 volatile 欄位', () => {
   assertEqual(normalized.payloadSha256, 'stable-payload')
 })
 
+test('首頁 E3 scope 必須鎖定月度精選方案卡本身', () => {
+  const homeCases = freeze.getE3SurfaceCases().filter((item) => item.state === 'home-card')
+  assert(homeCases.length > 0)
+  assert(homeCases.every((item) => (
+    item.selector === 'article.jy-card:has(h3:text-is("月度精選"))'
+  )))
+})
+
+test('telemetry parity 只忽略 Vercel loader 與 Web Vitals 非決定量測值', () => {
+  const funnelEvent = {
+    endpoint: '/api/track/funnel',
+    method: 'POST',
+    query: {},
+    body: { event: 'checkout_view', plan: 'E3' },
+  }
+  const baseline = {
+    telemetryRequests: [
+      {
+        endpoint: '/_vercel/insights/script.js',
+        method: 'GET',
+        query: {},
+        body: null,
+      },
+      {
+        endpoint: '/_vercel/speed-insights/script.js',
+        method: 'GET',
+        query: {},
+        body: null,
+      },
+      {
+        endpoint: '/api/web-vitals',
+        method: 'POST',
+        query: {},
+        body: {
+          id: 'v4-random-before',
+          value: 912,
+          delta: 912,
+          name: 'LCP',
+          navigationType: 'navigate',
+          page: '/checkout?plan=E3',
+          rating: 'good',
+          ts: 1786248000000,
+        },
+      },
+      funnelEvent,
+    ],
+  }
+  const candidate = {
+    telemetryRequests: [
+      {
+        endpoint: '/api/web-vitals',
+        method: 'POST',
+        query: {},
+        body: {
+          id: 'v4-random-after',
+          value: 1088,
+          delta: 176,
+          name: 'LCP',
+          navigationType: 'navigate',
+          page: '/checkout?plan=E3',
+          rating: 'good',
+          ts: 1786248000000,
+        },
+      },
+      structuredClone(funnelEvent),
+    ],
+  }
+
+  assertEqual(freeze.compareE3Snapshots(baseline, candidate).ok, true)
+
+  const changedMetric = structuredClone(candidate)
+  changedMetric.telemetryRequests[0].body.name = 'CLS'
+  assertEqual(freeze.compareE3Snapshots(baseline, changedMetric).ok, false)
+
+  const changedE3Event = structuredClone(candidate)
+  changedE3Event.telemetryRequests[1].body.plan = 'C'
+  assertEqual(freeze.compareE3Snapshots(baseline, changedE3Event).ok, false)
+})
+
+test('首頁 hero A/B impression 不得污染 E3 telemetry parity', () => {
+  const knownHomepageExperiment = {
+    endpoint: '/api/ab-events',
+    method: 'POST',
+    query: {},
+    body: {
+      eventType: 'impression',
+      experimentKey: 'hero_cta_20260417',
+      variant: 'B',
+      visitorId: 'synthetic-random-visitor',
+    },
+  }
+  const e3Event = {
+    endpoint: '/api/track/funnel',
+    method: 'POST',
+    query: {},
+    body: { event: 'checkout_view', plan: 'E3' },
+  }
+  const baseline = { state: 'home-card', telemetryRequests: [knownHomepageExperiment, e3Event] }
+  const candidate = { state: 'home-card', telemetryRequests: [structuredClone(e3Event)] }
+
+  assertEqual(freeze.compareE3Snapshots(baseline, candidate).ok, true)
+
+  const unknownExperiment = structuredClone(knownHomepageExperiment)
+  unknownExperiment.body.experimentKey = 'e3_card_experiment'
+  assertEqual(
+    freeze.compareE3Snapshots({ state: 'home-card', telemetryRequests: [unknownExperiment, e3Event] }, candidate).ok,
+    false,
+  )
+
+  const checkoutBaseline = {
+    state: 'checkout-confirmation',
+    telemetryRequests: [knownHomepageExperiment, e3Event],
+  }
+  const checkoutCandidate = {
+    state: 'checkout-confirmation',
+    telemetryRequests: [structuredClone(e3Event)],
+  }
+  assertEqual(freeze.compareE3Snapshots(checkoutBaseline, checkoutCandidate).ok, false)
+})
+
 test('protected files 覆蓋 E3 專屬 checkout、正式報告與方案 SSOT', () => {
   const files = freeze.getE3ProtectedFiles()
   for (const path of [

@@ -25,7 +25,7 @@ function makeEnvelope() {
     as_of: '2026-08-09',
     bazi_school: 'china_mainland',
     ayanamsa_type: 'lahiri',
-  })
+  }, { consultationMode: true })
   const requestHash = requestContract.hashCalculatorRequest(requestPayload)
   return {
     personId: 'person:synthetic',
@@ -79,6 +79,17 @@ function makeEnvelope() {
   }
 }
 
+function normalizeOrThrow(envelope) {
+  try {
+    return normalizer.normalizeCalculatorFacts(envelope)
+  } catch (error) {
+    const issueCodes = Array.isArray(error?.issues)
+      ? error.issues.map((issue) => `${issue.code}@${issue.path}`).join(', ')
+      : 'no structured issues'
+    throw new Error(`${error instanceof Error ? error.message : String(error)}: ${issueCodes}`, { cause: error })
+  }
+}
+
 test('15 套系統名與年度敏感集合是版本化單一來源', () => {
   assert(normalizer, `facts 模組無法載入: ${loadError?.message || 'unknown error'}`)
   assertEqual(normalizer.EXPECTED_CALCULATOR_SYSTEMS.length, 15)
@@ -90,7 +101,7 @@ test('15 套系統名與年度敏感集合是版本化單一來源', () => {
 })
 
 test('完整回應產生 client_data、time-confidence 與 15 個逐系統 facts，不跨系統揉成一句', () => {
-  const result = normalizer.normalizeCalculatorFacts(makeEnvelope())
+  const result = normalizeOrThrow(makeEnvelope())
 
   assertEqual(result.factLedger.status, 'complete')
   assertEqual(result.requestIdentity.displayName, '合成測試者')

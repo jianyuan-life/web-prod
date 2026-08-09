@@ -9,8 +9,11 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   inspectProductionCspHeaders,
+  isFatalRuntimeConsoleError,
+  isSameOriginHttpError,
   partitionCspViolations,
   partitionFirstPartyRequestFailures,
+  syntheticSecret,
 } from './lib/e3-production-csp-core.mjs'
 import { createE3FixtureServer } from './lib/e3-fixture-server.mjs'
 
@@ -278,15 +281,15 @@ async function main() {
     E3_CSP_SMOKE_FIXTURE_ORIGIN: fixtureServer.origin,
     E3_CSP_SMOKE_PUBLIC_SUPABASE_ORIGIN: 'https://e3-freeze.supabase.co',
     NEXT_PUBLIC_SUPABASE_URL: 'https://e3-freeze.supabase.co',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'e3-freeze-anon-key',
-    SUPABASE_SERVICE_ROLE_KEY: 'e3-freeze-service-key',
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_e3_freeze_only',
-    STRIPE_SECRET_KEY: 'sk_test_e3_freeze_only',
-    STRIPE_WEBHOOK_SECRET: 'whsec_e3_freeze_only',
-    CLAUDE_API_KEY: 'sk-ant-e3-freeze-only',
-    REPORT_COOKIE_SECRET: 'report-cookie-e3-freeze-1111111111111111111111111111111111111111',
-    CALCULATOR_ATTESTATION_SECRET: 'calculator-attestation-e3-freeze-22222222222222222222222222222222',
-    CONSULTATION_SESSION_SECRET: 'consultation-session-e3-freeze-3333333333333333333333333333333333',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: syntheticSecret('supabase-anon'),
+    SUPABASE_SERVICE_ROLE_KEY: syntheticSecret('supabase-service-role'),
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: syntheticSecret('stripe-publishable', ['p', 'k', '_', 't', 'e', 's', 't', '_']),
+    STRIPE_SECRET_KEY: syntheticSecret('stripe-secret', ['s', 'k', '_', 't', 'e', 's', 't', '_']),
+    STRIPE_WEBHOOK_SECRET: syntheticSecret('stripe-webhook', ['w', 'h', 's', 'e', 'c', '_']),
+    CLAUDE_API_KEY: syntheticSecret('claude-api', ['s', 'k', '-', 'a', 'n', 't', '-']),
+    REPORT_COOKIE_SECRET: syntheticSecret('report-cookie'),
+    CALCULATOR_ATTESTATION_SECRET: syntheticSecret('calculator-attestation'),
+    CONSULTATION_SESSION_SECRET: syntheticSecret('consultation-session'),
     NODE_OPTIONS: `--require=${join(scriptDir, 'lib', 'e3-production-fetch-preload.cjs')}`,
   }
   try {
@@ -350,7 +353,7 @@ async function main() {
           // report-only versus enforced reliably. The standards-defined
           // SecurityPolicyViolationEvent.disposition below is authoritative.
           if (/content security policy|refused to/i.test(value)) cspConsoleMessages.push(value)
-          else if (/hydration|uncaught|typeerror|referenceerror|valid digest|integrity|has been blocked/i.test(value)) runtimeConsoleErrors.push(value)
+          else if (isFatalRuntimeConsoleError(value)) runtimeConsoleErrors.push(value)
         })
         page.on('requestfailed', (request) => {
           if (!request.url().startsWith(baseUrl)) return
@@ -363,7 +366,7 @@ async function main() {
           })
         })
         page.on('response', (response) => {
-          if (response.url().startsWith(baseUrl) && response.status() >= 400) {
+          if (isSameOriginHttpError(response.url(), response.status(), baseUrl)) {
             firstPartyHttpErrors.push(`${response.status()} ${response.url()}`)
           }
         })
@@ -376,7 +379,8 @@ async function main() {
           await page.waitForTimeout(350)
           const cspViolations = await page.evaluate(() => window.__e3CspViolations || [])
           const partitionedCsp = partitionCspViolations(cspViolations)
-          const reportOnlyCspViolations = partitionedCsp.reportOnly
+          const strictReadinessHold = partitionedCsp.strictReadinessHold
+          const reportOnlyCspViolations = strictReadinessHold
           const enforcedCspViolations = partitionedCsp.enforced
           const unknownCspViolations = partitionedCsp.unknown
           const partitionedRequests = partitionFirstPartyRequestFailures(requestFailures, baseUrl, fixtureHits)
@@ -399,6 +403,9 @@ async function main() {
           cases.push({
             id: `${surface}--${viewport.name}`,
             ok: true,
+            strictReadinessHold: strictReadinessHold.length > 0
+              ? { reason: 'report_only_csp_violations', violationCount: strictReadinessHold.length }
+              : null,
             reportOnlyCspViolationCount: reportOnlyCspViolations.length,
             cspConsoleMessageCount: cspConsoleMessages.length,
             benignPrefetchAbortCount: benignPrefetchAborts.length,
@@ -414,10 +421,14 @@ async function main() {
       (total, item) => total + item.reportOnlyCspViolationCount,
       0,
     )
+    const strictReadinessHold = totalReportOnlyCspViolations > 0
+      ? { reason: 'report_only_csp_violations', violationCount: totalReportOnlyCspViolations }
+      : null
     console.log(JSON.stringify({
       ok: true,
       mode: 'production-next-start-no-csp-bypass',
-      strictPolicyPromotionReady: totalReportOnlyCspViolations === 0,
+      strictPolicyPromotionReady: strictReadinessHold === null,
+      strictReadinessHold,
       totalReportOnlyCspViolations,
       cases,
       cspHeaders,

@@ -24,7 +24,7 @@ function makeCalculatorFacts(personId, marker = '一', birthDate = '1990-01-01')
     name: `合成人物${marker}`, year, month, day, hour: 12, minute: 0,
     gender: 'female', target_year: 2026, as_of: '2026-08-09',
     bazi_school: 'china_mainland', ayanamsa_type: 'lahiri',
-  })
+  }, { consultationMode: true })
   const requestHash = calculatorRequest.hashCalculatorRequest(requestPayload)
   return normalizer.normalizeCalculatorFacts({
     personId,

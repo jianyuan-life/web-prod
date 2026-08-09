@@ -183,7 +183,7 @@ function calculatorPayload(person) {
     bazi_school: 'china_mainland',
     ayanamsa_type: 'lahiri',
     fold: 0,
-  })
+  }, { consultationMode: true })
 }
 
 function validateCalculatorResponse(response) {

@@ -3,8 +3,11 @@ import { fileURLToPath } from 'node:url'
 import { suite, test, assert, assertEqual, done } from './harness.mjs'
 import {
   inspectProductionCspHeaders,
+  isFatalRuntimeConsoleError,
+  isSameOriginHttpError,
   partitionCspViolations,
   partitionFirstPartyRequestFailures,
+  syntheticSecret,
 } from '../scripts/lib/e3-production-csp-core.mjs'
 
 suite('E3 production CSP smoke 契約')
@@ -35,6 +38,8 @@ test('Report-Only 只留證據，enforce 與未知 disposition 一律 fail close
   assertEqual(partitioned.reportOnly.length, 1)
   assertEqual(partitioned.enforced.length, 1)
   assertEqual(partitioned.unknown.length, 2)
+  assertEqual(partitioned.strictReadinessHold.length, 1)
+  assertEqual(partitioned.runtimeFailures.length, 3)
   assertEqual(partitioned.fatal.length, 3)
 })
 
@@ -95,6 +100,47 @@ test('只有帶 Next prefetch 證據的同源 RSC ERR_ABORTED 可列診斷，其
   assertEqual(partitioned.fatal.length, 2)
 })
 
+test('SRI digest mismatch 是 runtime fatal，單純提及 integrity 不可誤殺', () => {
+  assert(isFatalRuntimeConsoleError("Failed to find a valid digest in the 'integrity' attribute for resource"))
+  assert(isFatalRuntimeConsoleError('Subresource Integrity check failed: digest mismatch; resource has been blocked'))
+  assertEqual(isFatalRuntimeConsoleError('Subresource integrity check succeeded'), false)
+})
+
+test('只有真正同源的 4xx/5xx response 是第一方 runtime failure', () => {
+  const baseUrl = 'http://127.0.0.1:3000'
+  assert(isSameOriginHttpError(`${baseUrl}/api/reports`, 400, baseUrl))
+  assert(isSameOriginHttpError(`${baseUrl}/_next/chunk.js`, 503, baseUrl))
+  assertEqual(isSameOriginHttpError(`${baseUrl}/api/reports`, 399, baseUrl), false)
+  assertEqual(isSameOriginHttpError('http://127.0.0.1:3000.evil.invalid/x', 500, baseUrl), false)
+  assertEqual(isSameOriginHttpError('not a url', 500, baseUrl), false)
+})
+
+test('合成憑證只在執行期生成，保留 SDK 前綴且不同用途不共用值', () => {
+  const prefix = ['s', 'k', '_', 't', 'e', 's', 't', '_']
+  const first = syntheticSecret('stripe-secret', prefix)
+  const second = syntheticSecret('stripe-webhook', prefix)
+  assert(first.startsWith(prefix.join('')))
+  assert(first.length >= prefix.length + 64)
+  assertEqual(first, syntheticSecret('stripe-secret', prefix))
+  assert(first !== second)
+
+  for (const name of [
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'CLAUDE_API_KEY',
+    'REPORT_COOKIE_SECRET',
+    'CALCULATOR_ATTESTATION_SECRET',
+    'CONSULTATION_SESSION_SECRET',
+  ]) {
+    const assignment = script.match(new RegExp(`${name}:\\s*([^,\\n]+)`))
+    assert(assignment, `缺少 ${name} 合成環境值`)
+    assert(assignment[1].includes('syntheticSecret('), `${name} 不得寫死類憑證字串`)
+  }
+})
+
 test('production smoke 覆蓋 E3 五個客戶表面與雙尺寸', () => {
   for (const surface of ['home', 'pricing', 'checkout', 'dashboard', 'report']) {
     assert(script.includes(`'${surface}'`), `缺少 ${surface} surface`)
@@ -109,9 +155,10 @@ test('production smoke 必須 fail closed 收集 runtime 與第一方網路錯�
   for (const signal of ['pageErrors', 'cspConsoleMessages', 'enforcedCspViolations', 'unknownCspViolations', 'reportOnlyCspViolations', 'requestFailures', 'benignPrefetchAborts', 'benignFixtureAborts', 'firstPartyHttpErrors']) {
     assert(script.includes(signal), `缺少 ${signal}`)
   }
-  assert(script.includes('response.status() >= 400'), '第一方 4xx/5xx 均須阻擋，不可只看 5xx')
-  assert(script.includes('valid digest|integrity|has been blocked'), 'SRI mismatch 必須視為 runtime fatal')
+  assert(script.includes('isSameOriginHttpError'), '第一方 4xx/5xx 必須以精確 origin 比對後阻擋')
+  assert(script.includes('isFatalRuntimeConsoleError'), 'SRI mismatch 必須經可測試的 runtime classifier 阻擋')
   assert(script.includes('cspHeaders'), '收據必須綁定正式 CSP response headers')
+  assert(script.includes('strictReadinessHold'), 'Report-Only 違規必須明列為 strict CSP 升級阻擋')
   assert(script.includes('strictPolicyPromotionReady'), 'Report-Only 尚有違規時不得宣稱 strict CSP 已可升 enforced')
   assert(script.includes("mode: 'production-next-start-no-csp-bypass'"))
 })

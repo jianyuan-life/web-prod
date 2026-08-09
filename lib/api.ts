@@ -1,4 +1,8 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (
+  process.env.NODE_ENV === 'production'
+    ? 'https://fortune-reports-api.fly.dev'
+    : 'http://localhost:8080'
+)
 
 // v5.3.34 健壯化：加 30 秒 timeout（Python 排盤 API Fly.io 冷啟動可能慢）
 //   原本無 timeout → 若 Fly.io 死掉整個 fetch 會 hang 住 Next.js serverless 直到平台 kill

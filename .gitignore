@@ -9,3 +9,5 @@ node_modules/
 scripts/test_results.json
 audit_screenshots_freetools/
 _audit_ui/
+__pycache__/
+*.py[cod]

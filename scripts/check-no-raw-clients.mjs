@@ -26,6 +26,9 @@ const RULES = [
     label: 'raw fetch (應改用 lib/api.ts apiGet/apiPost、含 RateLimitError handling)',
     pattern: /(?<![\w.])fetch\s*\(/g,
     skipFiles: [
+      'scripts/e3-freeze-audit.mjs', // Playwright isolated fixture server; loopback only.
+      'scripts/e3-production-csp-smoke.mjs', // Production security smoke; loopback fixture traffic only.
+      '__tests__/66-e3-server-checkout-contract.test.mjs', // Route contract fixture; no runtime network call.
       'lib/api.ts',                 // 自身
       'lib/security/turnstile.ts',  // server-only Cloudflare API
       'lib/ai/observability/',      // observability fetch 已封 retry

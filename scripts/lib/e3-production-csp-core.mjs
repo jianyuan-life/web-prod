@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto'
 
+export function syntheticSecret(label, prefixParts = []) {
+  if (!label || !Array.isArray(prefixParts)) throw new TypeError('synthetic fixture label/prefix 無效')
+  const digest = createHash('sha256')
+    .update(['jianyuan', 'e3', 'production-csp-smoke', String(label)].join(':'))
+    .digest('hex')
+  return `${prefixParts.join('')}${digest}`
+}
+
 function normalizeViolation(violation) {
   return {
     blockedURI: String(violation?.blockedURI || ''),
@@ -22,11 +30,14 @@ export function partitionCspViolations(violations = []) {
     else unknown.push(violation)
   }
 
+  const runtimeFailures = [...enforced, ...unknown]
   return {
     reportOnly,
     enforced,
     unknown,
-    fatal: [...enforced, ...unknown],
+    strictReadinessHold: reportOnly,
+    runtimeFailures,
+    fatal: runtimeFailures,
   }
 }
 
@@ -55,6 +66,25 @@ export function inspectProductionCspHeaders(headers) {
     errors,
     enforced,
     reportOnly,
+  }
+}
+
+export function isFatalRuntimeConsoleError(message) {
+  const value = String(message || '')
+  if (/hydration|uncaught|typeerror|referenceerror/i.test(value)) return true
+  return (
+    /failed to find a valid digest[^\n]*integrity/i.test(value) ||
+    /subresource integrity[^\n]*(?:mismatch|invalid|fail|blocked)/i.test(value) ||
+    /integrity (?:attribute|metadata|digest)[^\n]*(?:mismatch|invalid|fail|blocked)/i.test(value)
+  )
+}
+
+export function isSameOriginHttpError(responseUrl, status, baseUrl) {
+  if (Number(status) < 400) return false
+  try {
+    return new URL(String(responseUrl)).origin === new URL(String(baseUrl)).origin
+  } catch {
+    return false
   }
 }
 
