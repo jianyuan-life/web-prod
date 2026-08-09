@@ -50,6 +50,10 @@ test('reader styling includes keyboard, reduced-motion, print, and mobile protec
   const css = read('components/consultation/reader/ConsultationReportReader.module.css')
 
   assert(css.includes(':focus-visible'), '鍵盤焦點必須清楚可見')
+  assert(
+    /\.shell a:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--vermilion\)\s*!important/su.test(css),
+    '閱讀器的朱砂焦點環必須覆蓋全域金色 !important 規則',
+  )
   assert(css.includes('@media (prefers-reduced-motion: reduce)'), '必須尊重 reduced motion')
   assert(css.includes('@media print'), '長報告必須有列印版面')
   assert(css.includes('min-height: 44px'), '互動目標不得小於 44px')

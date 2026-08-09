@@ -46,10 +46,8 @@ const nextConfig: NextConfig = {
   // 原 regex 過寬:`(jianyuan|fortune)[-a-z0-9]*\.fly\.dev` 仍 match `jianyuanevil.fly.dev`
   // fly.dev 是 shared domain、任何人能建 jianyuan-anything.fly.dev、必須具體 host 名
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
     const isProd = process.env.NODE_ENV === 'production'
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || (
-      isProd ? 'https://fortune-reports-api.fly.dev' : 'http://localhost:8080'
-    )
     // 嚴格 allowlist(production 已知 app 名稱、不允許 prefix 通配):
     const ALLOWED_PROD_HOSTS = [
       'jianyuan-life.fly.dev',

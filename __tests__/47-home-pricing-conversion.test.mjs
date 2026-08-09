@@ -24,6 +24,12 @@ test('homepage leads with C and G15 consultation outcomes and deep product route
   assert.match(home, /不把未知寫成確定/)
 })
 
+test('homepage systems navigation lands on method content instead of the C/G15 dossier cards', () => {
+  assert.match(home, /<section id="systems"[^>]*>[\s\S]*?分析方法[\s\S]*?可重播的計算/)
+  assert.match(home, /<section id="consultation-paths"[^>]*aria-labelledby="consultation-paths-title"/)
+  assert.equal((home.match(/id="systems"/g) || []).length, 1)
+})
+
 test('homepage explains the four reading layers and professional boundaries', () => {
   for (const phrase of ['30 秒', '3 分鐘', '深入閱讀', '依據附錄']) {
     assert.match(home, new RegExp(phrase))

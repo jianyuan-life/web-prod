@@ -118,6 +118,11 @@ test('motion is restrained, content remains visible, and reduced motion is suppo
   assert.doesNotMatch(css, /transition-duration:\s*0\.01ms/)
   assert.match(css, /transition:\s*none\s*!important/)
   assert.match(css, /focus-visible/)
+  assert.match(
+    css,
+    /\.root\s+:is\(a, summary\):focus-visible\s*\{[^}]*outline:\s*3px solid var\(--vermilion\)\s*!important/s,
+    '淺色諮詢頁的朱砂焦點環必須覆蓋全域金色 !important 規則',
+  )
   assert.match(css, /@media\s*\(max-width:/)
 })
 

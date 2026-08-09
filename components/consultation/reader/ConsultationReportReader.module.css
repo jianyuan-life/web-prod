@@ -828,8 +828,9 @@
 }
 
 .shell a:focus-visible {
-  outline: 3px solid var(--vermilion);
+  outline: 3px solid var(--vermilion) !important;
   outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(148, 59, 47, 0.2) !important;
 }
 
 @media (max-width: 980px) {

@@ -154,6 +154,19 @@ test('telemetry parity 只忽略 Vercel loader 與 Web Vitals 非決定量測值
   const changedE3Event = structuredClone(candidate)
   changedE3Event.telemetryRequests[1].body.plan = 'C'
   assertEqual(freeze.compareE3Snapshots(baseline, changedE3Event).ok, false)
+
+  const orderedEvents = {
+    state: 'checkout-confirmation',
+    telemetryRequests: [
+      { endpoint: '/api/track/funnel', method: 'POST', query: {}, body: { event: 'checkout_view', plan: 'E3' } },
+      { endpoint: '/api/track/funnel', method: 'POST', query: {}, body: { event: 'checkout_submit', plan: 'E3' } },
+    ],
+  }
+  const reversedEvents = {
+    ...orderedEvents,
+    telemetryRequests: [...orderedEvents.telemetryRequests].reverse(),
+  }
+  assertEqual(freeze.compareE3Snapshots(orderedEvents, reversedEvents).ok, false)
 })
 
 test('首頁 hero A/B impression 不得污染 E3 telemetry parity', () => {

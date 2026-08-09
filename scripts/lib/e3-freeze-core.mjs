@@ -154,7 +154,6 @@ function normalizeE3TelemetryRequests(requests, state) {
       }
       return normalizeValue(normalized)
     })
-    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
 }
 
 export function normalizeE3Snapshot(snapshot) {

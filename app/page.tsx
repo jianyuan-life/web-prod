@@ -232,7 +232,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="jy-section">
+      <section id="systems" className="jy-section">
         <div className="jy-container">
           <div className="jy-section-head">
             <div>
@@ -265,7 +265,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="systems" className="jy-section jy-section--ruled jy-home-consultation" aria-labelledby="consultation-paths-title">
+      <section id="consultation-paths" className="jy-section jy-section--ruled jy-home-consultation" aria-labelledby="consultation-paths-title">
         <div className="jy-container">
           <div className="jy-section-head">
             <div>
