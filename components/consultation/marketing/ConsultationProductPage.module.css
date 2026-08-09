@@ -36,6 +36,34 @@
     var(--paper);
 }
 
+:global([data-theme='dark']) .root {
+  --paper: #101722;
+  --paper-deep: #16202d;
+  --paper-bright: #1a2431;
+  --ink: #f1ece1;
+  --ink-soft: #bdc5c0;
+  --rule: rgba(241, 236, 225, 0.16);
+  --rule-strong: rgba(241, 236, 225, 0.3);
+  --vermilion: #df806d;
+  --accent: #8fa8cf;
+  --accent-soft: #26354b;
+  --accent-ink: #dbe5f6;
+  background:
+    linear-gradient(90deg, transparent 0 7.9%, rgba(241, 236, 225, 0.045) 8%, transparent 8.08%),
+    radial-gradient(circle at 82% 10%, rgba(143, 168, 207, 0.14), transparent 28rem),
+    var(--paper);
+}
+
+:global([data-theme='dark']) .family {
+  --accent: #91b89e;
+  --accent-soft: #253b31;
+  --accent-ink: #d6eadc;
+  background:
+    linear-gradient(90deg, transparent 0 7.9%, rgba(241, 236, 225, 0.045) 8%, transparent 8.08%),
+    radial-gradient(circle at 82% 10%, rgba(145, 184, 158, 0.14), transparent 28rem),
+    var(--paper);
+}
+
 .root *,
 .root *::before,
 .root *::after {
@@ -44,23 +72,6 @@
 
 .root a {
   color: inherit;
-}
-
-.skipLink {
-  position: fixed;
-  z-index: 100;
-  top: 0.75rem;
-  left: 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 2px solid var(--ink);
-  background: var(--paper-bright);
-  color: var(--ink);
-  transform: translateY(-180%);
-  transition: transform var(--motion-quick) ease-out;
-}
-
-.skipLink:focus {
-  transform: translateY(0);
 }
 
 .main {

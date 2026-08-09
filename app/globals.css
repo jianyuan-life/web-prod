@@ -946,7 +946,7 @@ textarea {
   font-weight: 700;
   font-size: 14px;
   border-radius: 8px;
-  transition: top 200ms ease-out;
+  transition: none;
 }
 .skip-link:focus-visible {
   top: 16px;

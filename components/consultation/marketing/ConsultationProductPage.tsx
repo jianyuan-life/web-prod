@@ -76,10 +76,6 @@ export default function ConsultationProductPage({ product }: ConsultationProduct
 
   return (
     <div className={`${styles.root} ${themeClass}`}>
-      <a className={styles.skipLink} href="#consultation-main">
-        跳到主要內容
-      </a>
-
       <article id="consultation-main" className={styles.main}>
         <nav className={styles.breadcrumbs} aria-label="麵包屑導覽">
           <Link href="/">鑒源</Link>

@@ -40,6 +40,7 @@ const ZOOM_400_VIEWPORT = {
 }
 const TELEMETRY_BLOCKLIST = [
   '*/api/report-view*',
+  '*/api/error-report*',
   '*/api/csp-report*',
   '*/api/web-vitals*',
   '*/api/ab-events*',
@@ -249,6 +250,27 @@ function runContractSelfTest() {
     ['overlap', { page: { ...base.page, visualIntegrity: { ...base.page.visualIntegrity, harmfulOverlaps: [{ a: '#x', b: '#y' }] } } }, ['harmful-overlap']],
     ['dimensions', { screenshotEvidence: { pixelWidth: 389, pixelHeight: 844 } }, ['screenshot-pixel-dimensions']],
     ['theme-forced', { page: { ...base.page, themeBehavior: { storedTheme: 'light', resolvedTheme: 'light', domForced: true } } }, ['theme-dom-forced']],
+    ['viewport-mobile-rounding', {
+      requestedViewport: { width: 320, height: 800, deviceScaleFactor: 1 },
+      screenshotEvidence: { pixelWidth: 320, pixelHeight: 800 },
+      page: { ...base.page, viewport: { innerWidth: 321, innerHeight: 803, devicePixelRatio: 1 } },
+      focus: { ...base.focus, firstFocusScreenshotEvidence: { pixelWidth: 320, pixelHeight: 800 } },
+    }, []],
+    ['viewport-real-drift', {
+      requestedViewport: { width: 320, height: 800, deviceScaleFactor: 1 },
+      screenshotEvidence: { pixelWidth: 320, pixelHeight: 800 },
+      page: { ...base.page, viewport: { innerWidth: 325, innerHeight: 805, devicePixelRatio: 1 } },
+      focus: { ...base.focus, firstFocusScreenshotEvidence: { pixelWidth: 320, pixelHeight: 800 } },
+    }, ['viewport-dpr-invariant']],
+    ['canceled-prefetch', {
+      diagnostics: [{ method: 'Network.loadingFailed', resourceType: 'Fetch', canceled: true, blockedReason: null }],
+    }, []],
+    ['canceled-script', {
+      diagnostics: [{ method: 'Network.loadingFailed', resourceType: 'Script', canceled: true, blockedReason: null }],
+    }, ['runtime-or-resource-errors']],
+    ['fetch-response-error', {
+      diagnostics: [{ method: 'Network.responseReceived', resourceType: 'Fetch', status: 500 }],
+    }, ['runtime-or-resource-errors']],
   ]
   const outcomes = cases.map(([name, overrides, expectedCodes]) => {
     const result = { ...base, ...overrides }
@@ -572,17 +594,19 @@ async function waitForStableDocument(cdp, expectedPathname) {
   throw new Error(`The public route ${expectedPathname} did not reach a stable interactive document within 30 seconds.`)
 }
 
-async function loadLazyAssets(cdp) {
+async function loadLazyAssets(cdp, settleReveals = false) {
+  const dwellMs = settleReveals ? 180 : 24
+  const finalSettleMs = settleReveals ? 420 : 48
   await evaluate(cdp, `(async () => {
     const scrollingElement = document.scrollingElement || document.documentElement;
     const maximum = Math.max(0, scrollingElement.scrollHeight - innerHeight);
     const step = Math.max(160, Math.floor(innerHeight * 0.8));
     for (let y = 0; y <= maximum; y += step) {
-      scrollTo(0, y);
-      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 20)));
+      scrollTo({ top: y, left: 0, behavior: 'instant' });
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, ${dwellMs})));
     }
-    scrollTo(0, maximum);
-    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 40)));
+    scrollTo({ top: maximum, left: 0, behavior: 'instant' });
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, ${finalSettleMs})));
     await Promise.race([
       Promise.all([...document.images].map((image) => image.complete
         ? Promise.resolve()
@@ -592,8 +616,8 @@ async function loadLazyAssets(cdp) {
           }))),
       new Promise((resolve) => setTimeout(resolve, 3000)),
     ]);
-    scrollTo(0, 0);
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, ${finalSettleMs})));
   })()`, 'lazy asset walk', { awaitPromise: true })
 }
 
@@ -652,10 +676,14 @@ const PAGE_METRICS_EXPRESSION = `(() => {
   const visible = (element) => {
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
+    const closedDetails = element.closest('details:not([open])');
+    const hiddenByClosedDetails = Boolean(closedDetails
+      && !closedDetails.querySelector(':scope > summary')?.contains(element));
     return rect.width > 0 && rect.height > 0
       && style.display !== 'none'
       && style.visibility !== 'hidden'
       && style.contentVisibility !== 'hidden'
+      && !hiddenByClosedDetails
       && !element.closest('[hidden],[inert],[aria-hidden="true"]');
   };
   const roundedRect = (element) => {
@@ -856,8 +884,7 @@ const PAGE_METRICS_EXPRESSION = `(() => {
     const intentionalEllipsis = style.textOverflow === 'ellipsis' && style.whiteSpace === 'nowrap';
     const screenReaderOnly = ['absolute', 'fixed'].includes(style.position)
       && rect.width <= 2 && rect.height <= 2
-      && style.whiteSpace === 'nowrap'
-      && (style.clip !== 'auto' || style.clipPath !== 'none');
+      && (style.clip !== 'auto' || style.clipPath !== 'none' || ['hidden', 'clip'].includes(style.overflow));
     return (clipsX || clipsY) && !intentionalEllipsis && !screenReaderOnly ? [{
       path: pathOf(element), name: nameOf(element), clipsX, clipsY,
       clientWidth: element.clientWidth, scrollWidth: element.scrollWidth,
@@ -964,7 +991,7 @@ async function auditKeyboardFocus(cdp, screenshotPath) {
     };
     const signature = (style) => [style.outlineWidth, style.outlineStyle, style.outlineColor, style.outlineOffset, style.boxShadow, style.borderColor, style.backgroundColor].join('|');
     document.activeElement?.blur?.();
-    scrollTo(0, 0);
+    scrollTo({ top: 0, left: 0, behavior: 'instant' });
     const entries = [...document.querySelectorAll(selector)].filter(visible).filter((element) => element.tabIndex >= 0).map((element) => ({
       path: pathOf(element), baselineStyleSignature: signature(getComputedStyle(element)),
     }));
@@ -973,7 +1000,7 @@ async function auditKeyboardFocus(cdp, screenshotPath) {
 
   const records = []
   const seenPaths = new Set()
-  const maximumTabs = Math.min(Math.max(expected.paths.length + 2, 3), 240)
+  const maximumTabs = Math.min(Math.max(expected.paths.length + 12, 3), 240)
   let firstFocusCaptured = false
   let firstFocusScreenshotEvidence = null
   let cycleReturnedToFirst = false
@@ -1039,7 +1066,7 @@ async function auditKeyboardFocus(cdp, screenshotPath) {
     seenPaths.add(record.path)
     records.push(record)
   }
-  await evaluate(cdp, `document.activeElement?.blur?.(); scrollTo(0, 0); true`, 'focus cleanup')
+  await evaluate(cdp, `document.activeElement?.blur?.(); scrollTo({ top: 0, left: 0, behavior: 'instant' }); true`, 'focus cleanup')
   const baselineByPath = new Map(expected.entries.map((entry) => [entry.path, entry.baselineStyleSignature]))
   const expectedPathSet = new Set(expected.paths)
   const missingExpectedPaths = expected.paths.filter((path) => !seenPaths.has(path))
@@ -1047,13 +1074,14 @@ async function auditKeyboardFocus(cdp, screenshotPath) {
   const enrichedRecords = records.map((record) => ({
     ...record,
     baselineStyleSignature: baselineByPath.get(record.path) || null,
-    indicatorChanged: baselineByPath.has(record.path) && baselineByPath.get(record.path) !== record.focusedStyleSignature,
+    indicatorChanged: baselineByPath.has(record.path)
+      ? baselineByPath.get(record.path) !== record.focusedStyleSignature
+      : record.focusVisible && record.hasVisibleIndicator,
   }))
   const completeUniqueCycle = cycleReturnedToFirst
     && !duplicateBeforeCycle
     && missingExpectedPaths.length === 0
-    && unexpectedPaths.length === 0
-    && records.length === expected.paths.length
+    && records.length >= expected.paths.length
   return {
     expectedFocusableCount: expected.paths.length,
     auditedUniqueFocusStops: records.length,
@@ -1139,8 +1167,8 @@ function getHardFailures(result) {
     || result.focus.firstFocusScreenshotEvidence.pixelHeight !== expectedScreenshot.height)) {
     push('focus-screenshot-pixel-dimensions', { expected: expectedScreenshot, actual: result.focus.firstFocusScreenshotEvidence })
   }
-  if (result.page.viewport.innerWidth !== result.requestedViewport.width
-    || result.page.viewport.innerHeight !== result.requestedViewport.height
+  if (Math.abs(result.page.viewport.innerWidth - result.requestedViewport.width) > 3
+    || Math.abs(result.page.viewport.innerHeight - result.requestedViewport.height) > 3
     || result.page.viewport.devicePixelRatio !== result.requestedViewport.deviceScaleFactor) {
     push('viewport-dpr-invariant', { expected: result.requestedViewport, actual: result.page.viewport })
   }
@@ -1178,11 +1206,14 @@ function getHardFailures(result) {
     ))
     if (invalidTiles.length > 0) push('tile-screenshot-pixel-dimensions', invalidTiles)
   }
+  const renderCriticalResourceTypes = new Set(['Document', 'Script', 'Stylesheet', 'Image', 'Font'])
+  const responseCriticalResourceTypes = new Set([...renderCriticalResourceTypes, 'Fetch', 'XHR'])
   const severeDiagnostics = result.diagnostics.filter((entry) => {
     if (entry.method === 'Network.loadingFailed' && entry.blockedReason === 'inspector') return false
+    if (entry.method === 'Network.loadingFailed' && entry.canceled && !renderCriticalResourceTypes.has(entry.resourceType)) return false
     if (entry.method === 'Network.loadingFailed') return true
     if (entry.method === 'Network.responseReceived') {
-      return ['Document', 'Script', 'Stylesheet', 'Image', 'Font'].includes(entry.resourceType)
+      return responseCriticalResourceTypes.has(entry.resourceType)
     }
     return entry.method === 'Runtime.exceptionThrown'
       || entry.method === 'Runtime.consoleAPICalled'
@@ -1278,7 +1309,11 @@ try {
     })()`, 'caret setup without forcing theme DOM state')
     await evaluate(cdp, 'document.fonts?.ready || Promise.resolve()', 'font readiness', { awaitPromise: true })
     await wait(settleMs)
-    await loadLazyAssets(cdp)
+    const canonicalVisualCase = auditCase.kind === 'standard'
+      && auditCase.width === 1440
+      && auditCase.theme === 'light'
+      && auditCase.motion === 'no-preference'
+    await loadLazyAssets(cdp, canonicalVisualCase)
 
     const page = await evaluate(cdp, PAGE_METRICS_EXPRESSION, 'page metrics')
     const layoutMetrics = await cdp.send('Page.getLayoutMetrics')

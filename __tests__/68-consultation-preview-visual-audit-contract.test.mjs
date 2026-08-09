@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 const script = 'scripts/consultation-preview-visual-audit.mjs'
+const scriptSource = readFileSync(script, 'utf8')
+const globalCss = readFileSync('app/globals.css', 'utf8')
 
 function run(args) {
   return spawnSync(process.execPath, [script, ...args], {
@@ -28,8 +31,27 @@ test('visual audit adversarial contract rejects every modeled false pass', () =>
     'overlap',
     'dimensions',
     'theme-forced',
+    'viewport-mobile-rounding',
+    'viewport-real-drift',
+    'canceled-prefetch',
+    'canceled-script',
+    'fetch-response-error',
   ])
   assert.equal(receipt.identityOutcomes.find((entry) => entry.name === 'mutable-alias-rejected')?.pass, true)
+})
+
+test('visual audit distinguishes blocked telemetry and browser rounding from real defects', () => {
+  assert.match(scriptSource, /\*\/api\/error-report\*/)
+  assert.match(scriptSource, /behavior:\s*'instant'/)
+  assert.match(scriptSource, /baselineByPath\.has\(record\.path\)[\s\S]*record\.focusVisible\s*&&\s*record\.hasVisibleIndicator/)
+  assert.match(scriptSource, /Math\.abs\(result\.page\.viewport\.innerWidth\s*-\s*result\.requestedViewport\.width\)\s*>\s*3/)
+  assert.match(scriptSource, /details:not\(\[open\]\)/)
+})
+
+test('global skip link becomes fully visible immediately when keyboard focused', () => {
+  const skipRule = globalCss.match(/\.skip-link\s*\{(?<body>[\s\S]*?)\}/)?.groups?.body || ''
+  assert.match(skipRule, /transition:\s*none/)
+  assert.doesNotMatch(skipRule, /transition:\s*top/)
 })
 
 test('release run fails closed without exact Git SHA and deployment ID', () => {

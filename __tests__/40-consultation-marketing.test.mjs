@@ -105,7 +105,7 @@ test('server-rendered component preserves semantic and structured-data essential
   assert.match(source, /<details/)
   assert.match(source, /aria-label=/)
   assert.match(source, /application\/ld\+json/)
-  assert.match(source, /skipLink/)
+  assert.doesNotMatch(source, /styles\.skipLink/)
 })
 
 test('motion is restrained, content remains visible, and reduced motion is supported', () => {
@@ -124,6 +124,7 @@ test('motion is restrained, content remains visible, and reduced motion is suppo
     '淺色諮詢頁的朱砂焦點環必須覆蓋全域金色 !important 規則',
   )
   assert.match(css, /@media\s*\(max-width:/)
+  assert.match(css, /:global\(\[data-theme=['"]dark['"]\]\)\s+\.root/)
 })
 
 test('single-column hero permits grid children to shrink inside a 390px viewport', () => {
