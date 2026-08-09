@@ -10,8 +10,8 @@ Fly 六個發布阻斷（FLY-C01～C06）全部修完並轉綠，Web 端已接�
 
 | repo | 分支 | HEAD |
 |:--|:--|:--|
-| fortune-research | `claude/consultation-v1-calculate-20260809` | `3948794` |
-| web-prod | `codex/checkout-tone-fix-20260809` | `d1812b4e` |
+| fortune-research | `claude/consultation-v1-calculate-20260809` | `3cb97f5` |
+| web-prod | `codex/checkout-tone-fix-20260809` | `e69f2521` |
 
 兩邊 remote 皆 0 未推。web-prod 的 `main` 仍停在接手前的 `7beafb12`，一行未動。
 
@@ -112,3 +112,69 @@ py -3.12 api_server/tools/deployment_receipt.py verify --receipt <receipt.json>
 2. 取得 preview 授權 → 開 immutable preview 只開 C／G15 flags → 跑 96 案矩陣與 synthetic E2E。
 3. 修 preview 找到的 findings → 再跑一輪 fresh-context 反例驗收。
 4. 全部清零後向老闆確認，才動 main 與 production；先 C，再獨立開 G15。
+
+---
+
+# 補記：第三席反例審查（2026-08-10，本文件上半寫完之後）
+
+上半部說「兩輪反例驗收」時，第三席還沒跑。跑完之後結論要改：**又抓到兩個整合層 P0，都會讓 C／G15 v1 一上線完全無法成案。**
+
+## 三家審查怎麼跑的
+
+`team_call --to claude` 從 Claude 根呼叫會被遞迴防護擋下（`provider cycle detected: claude,claude`）。這就是先前 work-state card 上「Claude team-call circuit open」的真正機制 —— 是設計上的封鎖，不是暫時故障。第三席改用唯讀 sub-agent 補。下一位要跑三家審查時不用再試 team_call 那條路。
+
+## P0-A　strict endpoint 拒絕每一個真實請求
+
+`lib/consultation/calculator-request.ts:111-113`：只要有座標就一定寫 `timezone_offset`，沒有任何路徑能省略。strict model 是 `extra='forbid'` 且沒宣告它。
+
+後果鏈：422 → 被正常簽章 → 通過 verifier → `steps.ts` 的 `!response.ok` 丟 `RetryableError` → `maxRetries=3` 跑完 → `markReportFailed`。**客戶付了錢的報告直接失敗，不是降級。**
+
+另一半：`bazi_school` / `ayanamsa_type` / `fold` 在 TS 端是條件式寫入，checkout 沒收集到就不送，而 strict model 三個都必填 → 同樣 422。
+
+**為什麼測不到**：跨語言 fixture 的 request 是 `generate_attestation_fixture.py` 裡手寫的 `SYNTHETIC_PAYLOAD`，不是 `buildCalculatorRequestPayload()` 的實際輸出。strict model 從頭到尾沒看過真正會送過來的東西。test 89 只驗 HMAC framing，不驗 schema。
+
+**修法**：`timezone_offset` 改為宣告而非忽略 —— IANA 時區仍是權威，但固定偏移若與該出生時刻的實際偏移矛盾（容差 1 分鐘）就 422，不替它挑贏家。TS 端三個欄位改為 consultationMode 一律明確送出。新增 `__tests__/91`，釘住 builder 輸出欄位集合與 strict model 宣告一致，兩邊任一漂移都紅。
+
+## P0-B　held 回應被真實消費端整包拒絕
+
+真的 Python held 回應（HTTP 200、6 套 held）餵進真的 `normalizeCalculatorFacts`，被**四條**獨立死因擋掉（審查報告列三條，第四條是實測時再挖到的）：
+
+1. `hasSubstantiveAnalysis` 要求 `detail` ≥200 字 → held slot 是 `empty_shell`
+2. payload 指紋只扣 `system`，6 個 held slot 逐 byte 相同 → `duplicate_payload`
+3. `hasCalculatorClientContract` 要求 4 組干支，「未知」只湊得出 3 組
+4. `five_elements_simple` 硬性要求總和 8（四柱 8 字），三柱只有 6
+
+任一條都足以讓 `time_unknown=true` 的 C／G15 永遠生不出報告。
+
+**修法**：新增 `isHeldCalculatorSlot()` 明確辨識 held 形狀；指紋比對與 substance 檢查都略過 held；client contract 在 `bazi` 帶「未知」時接受三柱與總和 6。反向守門：三柱但沒有「未知」標記仍要擋（時柱憑空消失是另一回事）、偽裝成 held 卻帶正文與分數的 slot 不得走豁免。`__tests__/92` 用 Python 嚴格端點實際產出的 held fixture，不是手寫的。
+
+## P1-3　我自己寫的驗證工具在誇大能力
+
+`determinism_sweep.py` 的 docstring 宣稱抓兩件事，實際只抓一件：它打的是 legacy 端點、完全沒碰嚴格端點，而且所有 worker 都凍在同一個日期，所以「讀行程時鐘而非 `as_of`」那條判準永遠不可能紅。
+
+已改成兩個各自紅得起來的探針：probe 1 凍日期、變 seed；probe 2 固定 seed 與 `as_of`，把凍結日期拉到 2026-08-09 / 2027-02-28 / 2029-12-31。端點改打嚴格端點。6 案例 × 120 surface，兩個探針皆 stable。
+
+## P1-4　康熙筆畫表漏在指紋外（我在收到報告前已自行抓到）
+
+manifest 第一版只收 `.py` 與 `.txt`，三個 calculator 實際載入的資料檔全在外：`calculators/data/kangxi_strokes.json`（1.2M，決定每個客戶的姓名學）、`event_logic_db.json`、`hip_main.dat`（51M 星表）。換掉筆畫表 → 所有姓名學結果變 → hash 一個字不動。已修，檔數 59 → 62。
+
+## 更新後的證據
+
+| 項目 | 結果 |
+|:--|:--|
+| Fly 契約測試 | 92/92 |
+| Fly 部署收據測試 | 25/25 |
+| fortune 全套 | 838 passed / 3 failed / 1 skipped |
+| web 全套 | 807 passed / 0 failed / 2 skipped |
+| web type-check | PASS |
+| 乾淨 clone 預設 pre-deploy | PASS |
+| determinism sweep（兩探針） | 6 案例 × 120 surface 全 stable |
+
+## 給下一位的一句話
+
+**三席審查總共抓到 7 個「自評全綠」時測不到的 P0。** 每一次宣稱通過之後，都還有人能在幾分鐘內找到真缺陷。最貴的一條是 fixture 用手寫 payload 而非真實 builder 輸出 —— 測了半天，測的是想像中的呼叫端。接手後若要標 verified，請先確認你的測試餵的是**真的生產者輸出**，不是你自己寫的樣本。
+
+## 仍未處理
+
+- 第三席報告的 **4 個 P2 未逐條處置**（完整報告：`team-out` receipt，2026-08-09T16:31 那份 Gemini 的與 sub-agent 那份）
+- 上半部列的三項拍板與四項授權，全部原封不動
