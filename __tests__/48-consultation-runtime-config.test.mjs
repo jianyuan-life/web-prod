@@ -26,7 +26,11 @@ test('feature flag 只可能開啟 C 與 G15，E3 即使誤設也永遠保持舊
 
 test('啟用前必須同時具備 calculator 版本、fresh review 與 renderer input binding 的 SHA-256 收據', () => {
   const valid = {
-    CALCULATOR_BUNDLE_VERSION: `fly-release/v1|app=fortune-reports-api|release=114|digest=sha256:${'c'.repeat(64)}|git=4f83f1523f13cacb35ae18e00795fee14263d27a`,
+    // calculator-bundle/v2: git SHA and calculator manifest hash are baked in at
+    // build time; the image digest comes from the deploy receipt after push.
+    // v1 asked the runtime to self-report a Fly release number and its own
+    // digest, which it cannot do — see runtime-config.ts.
+    CALCULATOR_BUNDLE_VERSION: `calculator-bundle/v2|app=fortune-reports-api|digest=sha256:${'c'.repeat(64)}|git=4f83f1523f13cacb35ae18e00795fee14263d27a|manifest=sha256:${'e'.repeat(64)}`,
     CALCULATOR_ATTESTATION_CODE_SHA256: 'd'.repeat(64),
     CALCULATOR_ATTESTATION_KEY_ID: 'primary',
     CALCULATOR_ATTESTATION_SECRET: 'test-only-attestation-secret-32-bytes-minimum',
@@ -43,6 +47,10 @@ test('啟用前必須同時具備 calculator 版本、fresh review 與 renderer 
   for (const missing of [
     { ...valid, CALCULATOR_BUNDLE_VERSION: '' },
     { ...valid, CALCULATOR_BUNDLE_VERSION: 'git:4f83f1523f13cacb35ae18e00795fee14263d27a' },
+    // 舊 v1 收據必須被拒絕,否則自我參照的 release identity 會被悄悄放回來
+    { ...valid, CALCULATOR_BUNDLE_VERSION: `fly-release/v1|app=fortune-reports-api|release=114|digest=sha256:${'c'.repeat(64)}|git=4f83f1523f13cacb35ae18e00795fee14263d27a` },
+    // v2 缺 manifest 段 = 沒有可重現的依賴指紋,不算完整身分
+    { ...valid, CALCULATOR_BUNDLE_VERSION: `calculator-bundle/v2|app=fortune-reports-api|digest=sha256:${'c'.repeat(64)}|git=4f83f1523f13cacb35ae18e00795fee14263d27a` },
     { ...valid, CALCULATOR_ATTESTATION_CODE_SHA256: 'pending' },
     { ...valid, CALCULATOR_ATTESTATION_KEY_ID: '' },
     { ...valid, CALCULATOR_ATTESTATION_SECRET: 'short' },

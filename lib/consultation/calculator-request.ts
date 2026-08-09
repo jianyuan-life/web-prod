@@ -1,5 +1,25 @@
 import { sha256HexSync } from './sha256.ts'
 
+// The two calculator endpoints, kept apart on purpose.
+//
+// `LEGACY_CALCULATE_PATH` is frozen: E3 月度精選 and E1–E4 depend on its exact
+// bytes, and the shared request model there still accepts unknown fields.
+//
+// `CONSULTATION_CALCULATE_PATH` is the strict C／G15 path.  It validates every
+// consultation field, reads "today" from the request's `as_of` instead of the
+// server clock, tells success apart from held and failed, and signs its exact
+// response bytes.  Only `callPythonCalculateAttested()` uses it.
+//
+// The signed `path` value is one of the twelve HMAC fields, so these strings
+// are a shared contract with the Python producer: change one side only and
+// verification fails closed.
+export const LEGACY_CALCULATE_PATH = '/api/calculate' as const
+export const CONSULTATION_CALCULATE_PATH = '/api/consultation/v1/calculate' as const
+
+export type CalculatorEndpointPath =
+  | typeof LEGACY_CALCULATE_PATH
+  | typeof CONSULTATION_CALCULATE_PATH
+
 export type CalculatorBirthInput = {
   name?: unknown
   year?: unknown

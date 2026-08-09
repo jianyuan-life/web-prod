@@ -14,7 +14,11 @@ import { notifyEmailFailed, notifyNeedsHumanReview } from '@/lib/ai/observabilit
 import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 import { extractNarrativeFromContent } from '@/lib/report/extract-narrative'  // v5.10.461 P0-4:敘事萃取 SSOT 抽 lib
 import { buildApologyEmail, hasApologyBeenSent } from '@/lib/report/apology-email'  // v5.10.461 P0-3:致歉信模板 SSOT 抽 lib + email_send_log 防重寄
-import { buildCalculatorRequestPayload, serializeCalculatorRequest } from '@/lib/consultation/calculator-request'
+import {
+  buildCalculatorRequestPayload,
+  serializeCalculatorRequest,
+  CONSULTATION_CALCULATE_PATH,
+} from '@/lib/consultation/calculator-request'
 import {
   CALCULATOR_ATTESTATION_NONCE_HEADER,
   CalculatorAttestationError,
@@ -1176,7 +1180,7 @@ export async function callPythonCalculateAttested(
   const timeout = setTimeout(() => controller.abort(), 60000)
   let response: Response
   try {
-    response = await fetch(`${PYTHON_API}/api/calculate`, {
+    response = await fetch(`${PYTHON_API}${CONSULTATION_CALCULATE_PATH}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1203,7 +1207,7 @@ export async function callPythonCalculateAttested(
       responseStatusCode: response.status,
       requestBody,
       method: 'POST',
-      path: '/api/calculate',
+      path: CONSULTATION_CALCULATE_PATH,
       expectedNonce: nonce,
       secret,
       expectedReleaseId: receipts.calculatorBundleVersion,

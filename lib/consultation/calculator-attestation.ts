@@ -5,6 +5,8 @@ import {
   timingSafeEqual,
 } from 'node:crypto'
 
+import type { CalculatorEndpointPath } from './calculator-request.ts'
+
 export const CALCULATOR_ATTESTATION_VERSION = 'jianyuan.fly.response.v1'
 export const CALCULATOR_ATTESTATION_ALGORITHM = 'HMAC-SHA256'
 export const CALCULATOR_ATTESTATION_NONCE_HEADER = 'X-Jianyuan-Attestation-Nonce'
@@ -121,7 +123,10 @@ export function verifyCalculatorResponseAttestation<T extends object>(input: {
   responseStatusCode: number
   requestBody: Uint8Array | string
   method: 'POST'
-  path: '/api/calculate'
+  // Both endpoints are accepted so the frozen v1 fixture keeps regressing while
+  // the live caller moves to the strict path.  The value is signed, so passing
+  // the wrong one for a given response is a route.mismatch, not a silent pass.
+  path: CalculatorEndpointPath
   expectedNonce: string
   secret: string
   expectedReleaseId: string

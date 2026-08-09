@@ -24,9 +24,23 @@ function isSha256(value: unknown): value is `sha256:${string}` {
   return typeof value === 'string' && /^sha256:[0-9a-f]{64}$/u.test(value)
 }
 
+// calculator-bundle/v2 — the release identity the Fly runtime can actually
+// stand behind.
+//
+// v1 was `fly-release/v1|app=…|release=<n>|digest=sha256:…|git=…`, which asked
+// the service to self-report a Fly release number and its own image digest.
+// Fly exposes neither reliably at runtime, and writing a digest back into the
+// image it names is circular — so the field was destined to hold a number
+// somebody made up.
+//
+// v2 carries only what can be baked in at build time (git SHA and a
+// deterministic calculator manifest hash) plus the image digest, which the
+// deploy orchestrator fills in from its external receipt after push. The Fly
+// platform release number, if it is still wanted, lives in that receipt as
+// metadata and never in a self-signed identity.
 function isCalculatorReleaseReceipt(value: unknown): value is string {
   return typeof value === 'string' &&
-    /^fly-release\/v1\|app=[a-z0-9-]+\|release=[1-9]\d*\|digest=sha256:[0-9a-f]{64}\|git=[0-9a-f]{40}$/u.test(value)
+    /^calculator-bundle\/v2\|app=[a-z0-9-]+\|digest=sha256:[0-9a-f]{64}\|git=[0-9a-f]{40}\|manifest=sha256:[0-9a-f]{64}$/u.test(value)
 }
 
 function isPublicIdentifier(value: unknown): value is string {
