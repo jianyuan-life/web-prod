@@ -24,8 +24,9 @@ import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { usePathname } from 'next/navigation'
 import { Sun, X } from 'lucide-react'
+import { isConsultationReaderPath } from '@/lib/consultation/routes'
 
-const DISMISS_KEY = 'jy_warm_banner_dismissed_v1'
+const DISMISS_STORAGE_NAME = 'jy_warm_banner_dismissed_v1'
 
 export function FirstVisitWarmBanner() {
   const { resolvedTheme, setTheme } = useTheme()
@@ -37,6 +38,7 @@ export function FirstVisitWarmBanner() {
   const onPrivateChrome = Boolean(
     pathname?.startsWith('/report/')
     || pathname?.startsWith('/r/')
+    || isConsultationReaderPath(pathname)
     || pathname?.startsWith('/dashboard')
     || pathname?.startsWith('/jamie'),
   )
@@ -49,7 +51,7 @@ export function FirstVisitWarmBanner() {
     // onReport 來自 usePathname、首載固定、不需進 deps。
     if (onPrivateChrome) return
     try {
-      const dismissed = window.localStorage.getItem(DISMISS_KEY)
+      const dismissed = window.localStorage.getItem(DISMISS_STORAGE_NAME)
       const themeSet = window.localStorage.getItem('theme')
       // 首訪 = 沒 theme key + 沒 dismiss
       if (!dismissed && !themeSet) {
@@ -71,7 +73,7 @@ export function FirstVisitWarmBanner() {
   const dismiss = (action: 'switch_light' | 'switch_dark' | 'dismiss') => {
     setVisible(false)
     try {
-      window.localStorage.setItem(DISMISS_KEY, String(Date.now()))
+      window.localStorage.setItem(DISMISS_STORAGE_NAME, String(Date.now()))
     } catch {
       /* ignore */
     }

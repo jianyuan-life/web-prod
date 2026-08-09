@@ -14,6 +14,7 @@ import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(Spri
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { checkCronAuth } from '@/lib/cron-auth'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
+import { buildAbsoluteReportUrl } from '@/lib/consultation/routes'
 
 // Vercel Cron 最長執行時間 60 秒
 export const maxDuration = 60
@@ -92,7 +93,7 @@ export async function GET(req: NextRequest) {
 
     // 發送反饋郵件
     try {
-      const reportUrl = `https://jianyuan.life/report/${report.access_token}`
+      const reportUrl = buildAbsoluteReportUrl('https://jianyuan.life', report.plan_code, report.access_token)
       const emailFont = isCN
         ? "'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif"
         : "'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif"

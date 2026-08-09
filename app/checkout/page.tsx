@@ -188,6 +188,13 @@ function CheckoutForm() {
             {/* 我的報告列表 */}
             {ctx.g15MyLoading ? (
               <div className="text-center text-text-muted text-sm py-4">載入您的報告中...</div>
+            ) : ctx.g15LoadError ? (
+              <div className="checkout-form-error rounded-xl p-4 text-sm" role="alert">
+                <p>{ctx.g15LoadError}</p>
+                <button type="button" onClick={ctx.loadMyReports} className="mt-2 text-gold underline underline-offset-2">
+                  重新載入
+                </button>
+              </div>
             ) : ctx.g15MyReports.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-text-muted">您帳號下的人生藍圖</p>
@@ -278,23 +285,73 @@ function CheckoutForm() {
                 {ctx.g15SearchQuery && !ctx.g15SearchLoading && ctx.g15SearchResults.length === 0 && (
                   <p className="text-text-muted/50 text-xs text-center py-2">找不到符合的報告，請確認姓名是否正確</p>
                 )}
+                {ctx.g15SearchError && <p className="checkout-form-error text-xs" role="alert">{ctx.g15SearchError}</p>}
               </div>
             )}
 
+            <fieldset className="space-y-4 rounded-xl border border-gold/15 bg-white/[0.025] p-4">
+              <legend className="px-2 text-sm font-semibold text-gold">讓報告理解你們真正的家庭情境</legend>
+              <div>
+                <label htmlFor="g15-relationship-context" className="block text-sm font-medium text-cream">
+                  成員之間的關係 <span className="text-red-300">*</span>
+                </label>
+                <p id="g15-relationship-context-hint" className="mt-1 text-xs leading-relaxed text-text-muted/70">
+                  請直接寫明誰是誰的父母、伴侶、孩子、手足或其他照顧關係；系統不會依年齡、性別或排序猜測。
+                </p>
+                <textarea
+                  id="g15-relationship-context"
+                  required minLength={8} maxLength={1200} rows={4}
+                  value={ctx.g15RelationshipContext}
+                  onChange={(event) => ctx.setG15RelationshipContext(event.target.value)}
+                  aria-describedby="g15-relationship-context-hint"
+                  placeholder="例如：何宣逸是父親、何紀萳是母親、何宥諄是孩子；目前主要由父母共同照顧孩子。"
+                  className="mt-2 w-full resize-y rounded-lg border border-gold/20 bg-dark-lighter px-3 py-3 text-sm leading-relaxed text-white placeholder:text-text-muted/40 focus:border-gold/60 focus:outline-none"
+                />
+                <p className="mt-1 text-right text-[11px] text-text-muted/50">{ctx.g15RelationshipContext.length}/1200</p>
+              </div>
+              <div>
+                <label htmlFor="g15-consultation-goals" className="block text-sm font-medium text-cream">
+                  這次最想理解或改善的事 <span className="text-red-300">*</span>
+                </label>
+                <p id="g15-consultation-goals-hint" className="mt-1 text-xs leading-relaxed text-text-muted/70">
+                  描述一至三個真實情境，例如溝通卡住、教養分工、家庭決策、界線或照顧壓力。報告會以此安排閱讀順序。
+                </p>
+                <textarea
+                  id="g15-consultation-goals"
+                  required minLength={8} maxLength={1200} rows={4}
+                  value={ctx.g15ConsultationGoals}
+                  onChange={(event) => ctx.setG15ConsultationGoals(event.target.value)}
+                  aria-describedby="g15-consultation-goals-hint"
+                  placeholder="例如：想理解親子溝通為何容易急躁，也想建立每週一次、不互相打斷的家庭會議。"
+                  className="mt-2 w-full resize-y rounded-lg border border-gold/20 bg-dark-lighter px-3 py-3 text-sm leading-relaxed text-white placeholder:text-text-muted/40 focus:border-gold/60 focus:outline-none"
+                />
+                <p className="mt-1 text-right text-[11px] text-text-muted/50">{ctx.g15ConsultationGoals.length}/1200</p>
+              </div>
+            </fieldset>
+
             {ctx.error && <p className="checkout-form-error text-sm" role="alert">{ctx.error}</p>}
 
-            {/* v5.10.269 GDPR/個資法 第三方授權 disclaimer(對應 Gemini L4 P0 audit) */}
-            <p className="text-xs text-text-muted/70 text-center leading-relaxed border-t border-gold/5 pt-3 mt-2">
-              您確認已獲所選家庭成員同意、代為使用其報告資料進行家族藍圖分析。
-              <br />
-              本服務遵守 <Link href="/privacy" className="text-gold/80 underline hover:text-gold">隱私政策</Link> 與 GDPR/個資法。
-            </p>
+            <label className="flex items-start gap-3 rounded-xl border border-gold/20 bg-gold/[0.05] p-4 text-left">
+              <input
+                type="checkbox"
+                checked={ctx.g15ConsentAccepted}
+                onChange={(event) => ctx.setG15ConsentAccepted(event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 accent-[#d5ae62]"
+                aria-describedby="g15-consent-description"
+              />
+              <span id="g15-consent-description" className="text-xs leading-relaxed text-text-muted/80">
+                我確認每位成年成員已明確同意本次分析；若所選成員包含未成年人，我是其法定監護人，
+                或已取得法定監護人的明確授權。授權範圍包含讀取其人生藍圖與出生資料。
+                我了解只要增減成員就必須重新確認；資料處理方式見{' '}
+                <Link href="/privacy" className="text-gold/90 underline hover:text-gold">隱私政策</Link>。
+              </span>
+            </label>
 
             <CheckoutSecurityNote />
 
             <button
               type="submit"
-              disabled={ctx.loading || ctx.g15Selected.length < 2}
+              disabled={ctx.loading || !ctx.isFormValid || !ctx.g15ConsentAccepted}
               className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
             >
               {ctx.loading ? '跳轉付款中...' : `檢查資料並付款 — USD ${ctx.finalPrice}`}

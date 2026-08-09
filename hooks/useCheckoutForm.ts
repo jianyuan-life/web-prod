@@ -14,6 +14,11 @@ import {
   type G15SelectedReport, type G15SearchResult,
 } from '@/components/checkout/types'
 import { isVisiblePlan } from '@/lib/plan-names'
+import {
+  G15_AUTHORITY_BASIS,
+  G15_CONSENT_POLICY_VERSION,
+  hashG15SelectedReportIds,
+} from '@/lib/checkout/g15-consent'
 
 export function useCheckoutForm() {
   const params = useSearchParams()
@@ -89,7 +94,12 @@ export function useCheckoutForm() {
   const [g15SearchQuery, setG15SearchQuery] = useState('')
   const [g15SearchResults, setG15SearchResults] = useState<G15SearchResult[]>([])
   const [g15SearchLoading, setG15SearchLoading] = useState(false)
+  const [g15ConsentAcceptedAt, setG15ConsentAcceptedAt] = useState('')
   const [g15MyLoading, setG15MyLoading] = useState(false)
+  const [g15RelationshipContext, setG15RelationshipContext] = useState('')
+  const [g15ConsultationGoals, setG15ConsultationGoals] = useState('')
+  const [g15LoadError, setG15LoadError] = useState('')
+  const [g15SearchError, setG15SearchError] = useState('')
 
   // 舊版保留（相容）
   const [g15Emails, setG15Emails] = useState<FamilyEmailEntry[]>([newFamilyEmail(), newFamilyEmail()])
@@ -138,7 +148,9 @@ export function useCheckoutForm() {
   // 表單驗證：判斷所有必填欄位是否完成
   const isFormValid = (() => {
     if (planCode === 'G15') {
-      return g15Selected.length >= 2
+      return g15Selected.length >= 2 &&
+        g15RelationshipContext.trim().length >= 8 &&
+        g15ConsultationGoals.trim().length >= 8
     }
     if (planCode === 'R') {
       const allMembersValid = rMembers.every(m => m.name.trim() !== '' && (m.birthCity || '').trim() !== '' && (m.cityLat || 0) !== 0)
@@ -313,16 +325,20 @@ export function useCheckoutForm() {
   // G15 導入模式:自動載入當前用戶的已完成人生藍圖
   const loadMyReports = async () => {
     setG15MyLoading(true)
+    setG15LoadError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
       // T10b v5.10.372 — internalGet 統一處理 429 + timeout
       const data = await internalGet('/api/checkout/search-reports', {
         authToken: session?.access_token,
       }) as { reports?: G15SearchResult[] }
-      if (data.reports) {
-        setG15MyReports(data.reports)
-      }
-    } catch { /* 靜默失敗、含 RateLimitError */ }
+      if (!Array.isArray(data.reports)) throw new Error('報告清單格式不完整')
+      setG15MyReports(data.reports)
+    } catch (err) {
+      setG15LoadError(err instanceof RateLimitError
+        ? `載入過於頻繁，請等 ${err.retryAfter} 秒後重試。`
+        : '目前無法載入您的人生藍圖報告，請重試；若持續發生，請聯絡客服。')
+    }
     finally { setG15MyLoading(false) }
   }
 
@@ -330,9 +346,11 @@ export function useCheckoutForm() {
   const searchG15Reports = async (query: string) => {
     if (!query.trim()) {
       setG15SearchResults([])
+      setG15SearchError('')
       return
     }
     setG15SearchLoading(true)
+    setG15SearchError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
       // T10b v5.10.372 — internalGet 統一處理
@@ -340,12 +358,16 @@ export function useCheckoutForm() {
         `/api/checkout/search-reports?q=${encodeURIComponent(query.trim())}`,
         { authToken: session?.access_token },
       ) as { reports?: G15SearchResult[] }
-      if (data.reports) {
-        // 過濾掉已選取的報告
-        const selectedIds = new Set(g15Selected.map(s => s.reportId))
-        setG15SearchResults(data.reports.filter((r: G15SearchResult) => !selectedIds.has(r.id)))
-      }
-    } catch { /* 靜默失敗 */ }
+      if (!Array.isArray(data.reports)) throw new Error('搜尋結果格式不完整')
+      // 過濾掉已選取的報告
+      const selectedIds = new Set(g15Selected.map(s => s.reportId))
+      setG15SearchResults(data.reports.filter((r: G15SearchResult) => !selectedIds.has(r.id)))
+    } catch (err) {
+      setG15SearchResults([])
+      setG15SearchError(err instanceof RateLimitError
+        ? `搜尋過於頻繁，請等 ${err.retryAfter} 秒後重試。`
+        : '搜尋暫時失敗，請稍後重試。')
+    }
     finally { setG15SearchLoading(false) }
   }
 
@@ -358,6 +380,7 @@ export function useCheckoutForm() {
       name: report.name,
       createdAt: report.createdAt,
     }])
+    setG15ConsentAcceptedAt('')
     // 從搜尋結果移除已選的
     setG15SearchResults(prev => prev.filter(r => r.id !== report.id))
   }
@@ -365,6 +388,11 @@ export function useCheckoutForm() {
   // G15 移除已選報告
   const removeG15Report = (reportId: string) => {
     setG15Selected(prev => prev.filter(s => s.reportId !== reportId))
+    setG15ConsentAcceptedAt('')
+  }
+
+  const setG15ConsentAccepted = (accepted: boolean) => {
+    setG15ConsentAcceptedAt(accepted ? new Date().toISOString() : '')
   }
 
   // G15 舊版 email 操作（保留相容）
@@ -399,7 +427,18 @@ export function useCheckoutForm() {
         alert('請至少選擇 2 位家庭成員的人生藍圖報告')
         return
       }
-      // G15 不需要出生資料確認（選的是已完成報告），直接提交
+      if (!g15ConsentAcceptedAt) {
+        alert('請先勾選並確認已取得每位成員的資料使用同意')
+        return
+      }
+      if (g15RelationshipContext.trim().length < 8) {
+        alert('請具體說明所選成員之間的家庭關係')
+        return
+      }
+      if (g15ConsultationGoals.trim().length < 8) {
+        alert('請說明這次最希望理解或改善的家庭議題')
+        return
+      }
       await confirmCheckout()
       return
     } else if (planCode !== 'R') {
@@ -453,6 +492,14 @@ export function useCheckoutForm() {
   // 確認後真正提交
   const confirmCheckout = async () => {
     setShowConfirmModal(false)
+    if (planCode === 'G15' && !g15ConsentAcceptedAt) {
+      setError('請先勾選並確認已取得每位成員的資料使用同意')
+      return
+    }
+    if (planCode === 'G15' && (g15RelationshipContext.trim().length < 8 || g15ConsultationGoals.trim().length < 8)) {
+      setError('請完整填寫家庭關係與本次諮詢目標')
+      return
+    }
     setLoading(true)
 
     // Phase 5 v5.10.382 — Turnstile bot 防護:有 site key 時必驗(沒設則 stub mode 自動 pass)
@@ -478,11 +525,22 @@ export function useCheckoutForm() {
       let birthData: Record<string, any> = {}
 
       if (planCode === 'G15') {
+        const selectedReportIds = g15Selected.map(s => s.reportId)
         // G15：傳送已選取的報告 ID，後端直接讀取報告資料
         birthData = {
           plan_type: 'family_reports',
-          report_ids: g15Selected.map(s => s.reportId),
+          report_ids: selectedReportIds,
           member_names: g15Selected.map(s => s.name),
+          stated_relationships: [g15RelationshipContext.trim()],
+          consultation_goals: [g15ConsultationGoals.trim()],
+          consent_attestation: {
+            accepted: true,
+            policy_version: G15_CONSENT_POLICY_VERSION,
+            accepted_at: g15ConsentAcceptedAt,
+            selected_report_ids_hash: await hashG15SelectedReportIds(selectedReportIds),
+            authority_basis: G15_AUTHORITY_BASIS,
+            minor_guardian_authority_confirmed: true,
+          },
         }
       } else {
         birthData = {
@@ -653,7 +711,11 @@ export function useCheckoutForm() {
     // G15 方案（導入模式）
     g15Selected, g15MyReports, g15MyLoading,
     g15SearchQuery, setG15SearchQuery, g15SearchResults, g15SearchLoading,
-    searchG15Reports, addG15Report, removeG15Report,
+    searchG15Reports, addG15Report, removeG15Report, loadMyReports,
+    g15RelationshipContext, setG15RelationshipContext,
+    g15ConsultationGoals, setG15ConsultationGoals,
+    g15LoadError, g15SearchError,
+    g15ConsentAccepted: Boolean(g15ConsentAcceptedAt), setG15ConsentAccepted,
     // G15 舊版 email（保留相容）
     g15Emails, updateG15Email, addG15Email, removeG15Email, g15VerifyLoading,
     // 家庭成員（保留供 UI 相容）

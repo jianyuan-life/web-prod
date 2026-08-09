@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server'
 import { getClientIp } from '@/lib/security/get-client-ip'
+import { redactConsultationUrl } from '@/lib/security/private-route-redaction'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
       name: String(payload.name),
       value,
       rating: String(payload.rating || 'unknown'),
-      page: String(payload.page || '/'),
+      page: redactConsultationUrl(String(payload.page || '/')),
     }))
 
     return new NextResponse(null, { status: 204 })

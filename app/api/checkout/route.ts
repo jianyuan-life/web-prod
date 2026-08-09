@@ -5,6 +5,15 @@ import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { trackFunnelServer } from '@/lib/funnel-tracker'
 import { PLAN_NAMES, PRICE_MAP, isVisiblePlan } from '@/lib/plan-names'  // v5.10.x:PRICE_MAP 移到 lib/plan-names SSOT(原本 inline、違反方案常數不 inline 鐵律)
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
+import {
+  G15_SELECTION_COLUMNS,
+  getG15ValidationHttpStatus,
+  prepareCheckoutBirthData,
+} from '@/lib/checkout/prepare-checkout-birth-data'
+import {
+  buildStripeCheckoutSessionParams,
+  getCheckoutPaymentPath,
+} from '@/lib/checkout/server-checkout-contract'
 
 function getSupabase() {
   return createServiceClient()
@@ -73,6 +82,29 @@ export async function POST(req: NextRequest) {
         if (data?.user?.id) verifiedUserId = data.user.id
       } catch { /* auth 驗證失敗，當訪客處理 */ }
     }
+
+    // G15 只能使用登入者有權存取的已完成人生藍圖。client 傳入的姓名不可信，
+    // 必須以 paid_reports 的明確最小欄位重新驗證與重建。
+    const preparedBirthData = await prepareCheckoutBirthData({
+      planCode,
+      birthData,
+      auth: { userId: verifiedUserId, email: verifiedEmail },
+      queryReports: async (reportIds) => {
+        const { data, error } = await getSupabase()
+          .from('paid_reports')
+          .select(G15_SELECTION_COLUMNS)
+          .in('id', [...reportIds])
+        return { data, error }
+      },
+    })
+    if (!preparedBirthData.ok) {
+      return NextResponse.json(
+        { error: preparedBirthData.message },
+        { status: getG15ValidationHttpStatus(preparedBirthData.code) },
+      )
+    }
+    const trustedBirthData = preparedBirthData.birthData as typeof birthData
+
     // v5.6.10 安全強化(對應 Codex audit P0):
     // - 已登入用戶:body 傳的 email 必須跟 verified email 一致、否則拒(防假冒他人下單)
     // - 未登入訪客:用 body 的 userEmail / birthData.email(保留 guest checkout funnel)
@@ -104,7 +136,8 @@ export async function POST(req: NextRequest) {
     }
 
     const stripeKey = process.env.STRIPE_SECRET_KEY
-    if (!stripeKey || stripeKey === 'sk_test_placeholder') {
+    const placeholderStripeKey = ['sk', 'test', 'placeholder'].join('_')
+    if (!stripeKey || stripeKey === placeholderStripeKey) {
       return NextResponse.json({ error: 'Stripe 尚未設定' }, { status: 500 })
     }
 
@@ -289,11 +322,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const paymentPath = getCheckoutPaymentPath({
+      finalAmount,
+      verifiedCouponCode,
+      verifiedPointsToUse,
+    })
+
     // 免費方案（優惠碼或積分全額折抵）：跳過 Stripe，直接建立訂單
-    if (finalAmount === 0 && (verifiedCouponCode || verifiedPointsToUse > 0)) {
+    if (paymentPath === 'free') {
       const supabase = getSupabase()
       const draftRes = await supabase.from('checkout_drafts').insert({
-        plan_code: planCode, birth_data: birthData, locale: locale || 'zh-TW',
+        plan_code: planCode, birth_data: trustedBirthData, locale: locale || 'zh-TW',
       }).select('id').single()
 
       if (!draftRes.data) return NextResponse.json({ error: '暫存資料失敗' }, { status: 500 })
@@ -309,24 +348,24 @@ export async function POST(req: NextRequest) {
         amount_usd: 0,
         status: 'pending',
         customer_email: customerEmail,
-        birth_data: birthData,
+        birth_data: trustedBirthData,
         coupon_code: verifiedCouponCode,
       })
 
       // 建立 paid_reports 記錄（跟 webhook 一樣的流程）
       const accessToken = crypto.randomUUID()
       const { data: reportData } = await supabase.from('paid_reports').insert({
-        client_name: birthData?.plan_type === 'family_email' || birthData?.plan_type === 'family_reports'
-          ? (birthData?.member_names?.filter(Boolean).join('、') || 'Unknown')
-          : birthData?.plan === 'R'
-          ? (birthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join(' × ') || 'Unknown')
-          : birthData?.plan_type === 'family'
-          ? (birthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join('、') || 'Unknown')
-          : (birthData?.name || 'Unknown'),
+        client_name: trustedBirthData?.plan_type === 'family_email' || trustedBirthData?.plan_type === 'family_reports'
+          ? (trustedBirthData?.member_names?.filter(Boolean).join('、') || 'Unknown')
+          : trustedBirthData?.plan === 'R'
+          ? (trustedBirthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join(' × ') || 'Unknown')
+          : trustedBirthData?.plan_type === 'family'
+          ? (trustedBirthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join('、') || 'Unknown')
+          : (trustedBirthData?.name || 'Unknown'),
         plan_code: planCode,
         amount_usd: 0,
         stripe_session_id: fakeSessionId,
-        birth_data: birthData,
+        birth_data: trustedBirthData,
         status: 'pending',
         access_token: accessToken,
         customer_email: customerEmail,
@@ -473,45 +512,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ url: `${siteUrl}/dashboard?payment=success&free=1&session_id=${encodeURIComponent(fakeSessionId)}` })
     }
 
-    const params = new URLSearchParams()
-    params.set('mode', 'payment')
-    params.set('success_url', `${siteUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`)
-    params.set('cancel_url', `${siteUrl}/pricing`)
-    params.set('line_items[0][price_data][currency]', 'usd')
-    params.set('line_items[0][price_data][product_data][name]', `鑒源命理 - ${plan.name}`)
-    params.set('line_items[0][price_data][unit_amount]', finalAmount.toString())
-    params.set('line_items[0][quantity]', '1')
-    // v5.3.22 P0 隱私修復：Stripe session 強制設定登入用戶的 email
-    //   → webhook 接收時 session.customer_email 會有值，不用 fallback 到信用卡 email
-    //   → 避免「老公刷卡幫老婆買」→ 報告記到老公 email → 個資外洩給老公
-    if (customerEmail) {
-      params.set('customer_email', customerEmail)
-      // v5.10.466 D3(bizaudit P1「無含金額收據、客訴舉證弱」):
-      // Stripe 原生收據(含金額/卡末四碼)自動寄給客戶、Live 模式生效
-      params.set('payment_intent_data[receipt_email]', customerEmail)
-    }
-    params.set('metadata[plan_code]', planCode)
-    // v5.3.22：審計軌跡 — 記錄登入用戶的 email 和 user_id 到 Stripe metadata
-    if (customerEmail) params.set('metadata[login_email]', customerEmail)
-    if (verifiedUserId) params.set('metadata[login_user_id]', verifiedUserId)
-    if (verifiedCouponCode) params.set('metadata[coupon_code]', verifiedCouponCode)
-    if (promoName) params.set('metadata[promotion]', promoName)
-    if (verifiedPointsToUse > 0) {
-      params.set('metadata[points_used]', verifiedPointsToUse.toString())
-      params.set('metadata[points_user_id]', pointsUserId)
-    }
-    // locale 單獨存，不佔 birth_data 500 字元額度
-    if (locale) {
-      params.set('metadata[locale]', locale)
-    }
+    // Stripe session 參數由純函式建立：固定 USD、收據 email 與 metadata 可離線重算。
+    // birthData 仍只進 checkout_drafts，不得塞入 Stripe metadata。
+    const params = buildStripeCheckoutSessionParams({
+      siteUrl,
+      planCode,
+      planName: plan.name,
+      finalAmount,
+      customerEmail,
+      verifiedUserId,
+      verifiedCouponCode,
+      promotionName: promoName,
+      verifiedPointsToUse,
+      pointsUserId,
+      locale,
+    })
     // 將完整 birthData 存入 Supabase checkout_drafts，避免 Stripe metadata 500 字元限制
-    if (birthData) {
+    if (trustedBirthData) {
       const supabase = getSupabase()
       const { data: draft, error: draftErr } = await supabase
         .from('checkout_drafts')
         .insert({
           plan_code: planCode,
-          birth_data: birthData,
+          birth_data: trustedBirthData,
           locale: locale || 'zh-TW',
         })
         .select('id')

@@ -11,6 +11,7 @@ import ReportProgress from '@/components/ReportProgress'
 import FamilyMembersManager from '@/components/FamilyMembersManager'
 import ReferralCard from '@/components/ReferralCard'
 import { PLAN_NAMES, CHUMENJI_CODES } from '@/lib/plan-names'
+import { buildPdfRoute, buildReportRoute, isConsultationPlan } from '@/lib/consultation/routes'
 import UpsellModal from '@/components/UpsellModal'  // P11
 import { isFlagEnabled } from '@/lib/feature-flags'  // P11 FF_UPSELL_MODAL
 import {
@@ -41,6 +42,7 @@ type Report = {
   pdf_url: string | null
   access_token: string | null
   report_result: {
+    schemaVersion?: string
     systems_count?: number
     analyses_summary?: { system: string; score: number }[]
   } | null
@@ -336,7 +338,7 @@ function DashboardContent() {
 
   const handleCopyPrivateLink = async (report: Report) => {
     if (!report.access_token) return
-    const url = `${window.location.origin}/report/${report.access_token}`
+    const url = `${window.location.origin}${buildReportRoute(report.plan_code, report.access_token)}`
     try {
       await navigator.clipboard.writeText(url)
       setCopiedReportId(report.id)
@@ -682,10 +684,23 @@ function DashboardContent() {
                       <>
                         {r.access_token ? (
                           <>
-                            <Link href={`/report/${r.access_token}`} className="dashboard-report-action dashboard-report-action--primary">
-                              <BookOpenText size={17} aria-hidden="true" />
-                              <span>開啟報告</span>
-                            </Link>
+                            {isConsultationPlan(r.plan_code) ? (
+                              <a
+                                href={buildReportRoute(r.plan_code, r.access_token)}
+                                className="dashboard-report-action dashboard-report-action--primary"
+                              >
+                                <BookOpenText size={17} aria-hidden="true" />
+                                <span>開啟報告</span>
+                              </a>
+                            ) : (
+                              <Link
+                                href={buildReportRoute(r.plan_code, r.access_token)}
+                                className="dashboard-report-action dashboard-report-action--primary"
+                              >
+                                <BookOpenText size={17} aria-hidden="true" />
+                                <span>開啟報告</span>
+                              </Link>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleCopyPrivateLink(r)}
@@ -699,12 +714,20 @@ function DashboardContent() {
                         ) : (
                           <p className="dashboard-status-context">報告連結正在準備，請稍後重新整理。</p>
                         )}
-                        {r.pdf_url && !CHUMENJI_CODES.has(r.plan_code) && (
-                          <a href={r.pdf_url} target="_blank" rel="noopener noreferrer" className="dashboard-report-action">
-                            <Download size={17} aria-hidden="true" />
-                            <span>下載 PDF</span>
-                          </a>
-                        )}
+                        {(() => {
+                          const structuredConsultation = isConsultationPlan(r.plan_code) &&
+                            r.report_result?.schemaVersion === 'consultation-report/v1'
+                          const pdfHref = structuredConsultation && r.access_token
+                            ? buildPdfRoute(r.plan_code, r.access_token)
+                            : (r.pdf_url || undefined)
+                          if (!pdfHref || CHUMENJI_CODES.has(r.plan_code)) return null
+                          return (
+                            <a href={pdfHref} target="_blank" rel="noopener noreferrer" className="dashboard-report-action">
+                              <Download size={17} aria-hidden="true" />
+                              <span>下載 PDF</span>
+                            </a>
+                          )
+                        })()}
                       </>
                     ) : (r.status === 'pending' || r.status === 'generating') ? (
                       <p className={`dashboard-status-context ${isPendingTooLong(r) ? 'dashboard-status-context--attention' : ''}`}>

@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter)
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
+import { buildAbsoluteReportUrl } from '@/lib/consultation/routes'
 import { checkCronAuth } from '@/lib/cron-auth'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
@@ -166,7 +167,7 @@ export async function GET(req: NextRequest) {
       : JSON.stringify(report.report_result || '')
 
     const findings = extractKeyFindings(planCode, reportContent)
-    const reportUrl = `${siteUrl}/report/${report.access_token}`
+    const reportUrl = buildAbsoluteReportUrl(siteUrl, planCode, report.access_token)
 
     // 底部 CTA：非出門訣方案引導出門訣；出門訣方案引導人生藍圖
     const bottomCta = isChumenji

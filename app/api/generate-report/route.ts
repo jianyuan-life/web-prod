@@ -12,6 +12,7 @@ import { validateReportAgainstData } from '@/workflows/generate-report/steps'
 import { v6CMachineWarnings } from '@/workflows/generate-report/v6-gate'  // v5.10.481:fallback 與 workflow 同一把 v6 尺(Codex 反例 P0)
 import { extractFullCharts } from '@/workflows/generate-report/extract-full-charts'  // v5.10.461 P0-4:fallback 補接 deterministic 排盤結構化
 import { extractNarrativeFromContent } from '@/lib/report/extract-narrative'  // v5.10.461 P0-4:fallback 補接敘事綜合萃取
+import { buildAbsoluteReportUrl } from '@/lib/consultation/routes'
 import { recordAIUsage } from '@/lib/ai-cost-tracker'
 import { PLAN_NAMES, isChumenjiPlan } from '@/lib/plan-names'
 import { PLAN_SYSTEM_PROMPT } from '@/workflows/generate-report/plan-prompts'  // v5.10.399:fallback 用 SSOT(含 v2/v4 wire + v5.10.x 全修補)、取代本檔脫節 inline 舊版
@@ -21,6 +22,7 @@ import { buildSingleCallV6C } from '@/prompts/c_plan_v6'  // v5.10.480:C fallbac
 import { isV4, isV6 } from '@/lib/plan-flags'  // v5.10.458:USE_PLAN_V4_C/G15 !== 'false' default on;isV6 default OFF
 import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
+import { consultationFallbackDecision } from '@/lib/consultation/fallback-policy'
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
@@ -409,9 +411,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '缺少出生資料' }, { status: 400 })
     }
 
-    // G15 家族藍圖必須走 Workflow，舊版 route 不支援
-    if (planCode === 'G15' && (birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports')) {
-      console.info('G15 家族藍圖應走 Workflow，此路由不支援')
+    // Structured C/G15 are workflow-only. A transient workflow failure must
+    // never silently convert a paid order into the legacy report contract.
+    const fallbackDecision = consultationFallbackDecision(planCode, birthData)
+    if (fallbackDecision.mode === 'workflow_only') {
+      console.info(`${fallbackDecision.plan} 結構化報告應走 Workflow，此路由不支援`)
       // dryRun(regression):G15 走 workflow path、此 fallback route 本就不支援。
       // 回 HTTP 200 + 明確 skip 訊號(非 400/error)、讓 regression script 標 SKIP 不是 FAIL
       // (L1 QA P1-2:抽樣含 G15 completed 報告時、避免誤導性 502 + 覆蓋盲區)
@@ -419,14 +423,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           ok: false,
           dryRun: true,
-          skipped: 'G15-workflow-only',
+          skipped: `${fallbackDecision.plan}-workflow-only`,
           report_id: reportId,
           plan_code: planCode,
-          reason: 'G15 家族藍圖僅走 durable workflow path、fallback generate-report 不支援、regression 無法經此 dry-run',
+          reason: `${fallbackDecision.reason}；fallback generate-report 不支援`,
         })
       }
-      await markReportFailed(reportId, 'G15 家族藍圖需透過 Workflow 生成，請重試', dryRun)
-      return NextResponse.json({ error: 'G15 需透過 Workflow 生成' }, { status: 400 })
+      await markReportFailed(reportId, `${fallbackDecision.reason}，請重試 Workflow`, dryRun)
+      return NextResponse.json(
+        { error: `${fallbackDecision.plan} 需透過 Workflow 生成` },
+        { status: 409 },
+      )
     }
 
     const retryCount = existingReport?.retry_count ?? 0
@@ -1060,7 +1067,7 @@ ${analyses.length}套系統排盤完整數據：
 
     // Step 5: 寄送報告 Email
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-    const reportUrl = `${siteUrl}/report/${accessToken}`
+    const reportUrl = buildAbsoluteReportUrl(siteUrl, planCode, accessToken)
 
     // 根據 locale 決定郵件語言
     const isCN = birthData.locale === 'zh-CN'

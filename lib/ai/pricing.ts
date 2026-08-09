@@ -1,8 +1,10 @@
 // ============================================================
-// 鑒源 AI 定價表（v5.3.5 單一真相源）
+// 鑒源 AI 定價表（單一真相源）
 // ============================================================
 // 所有 AI 呼叫點的成本計算都應該 import 這裡，不要各自寫 PRICING。
-// 數字來源：2026-04 各 provider 官方公告（USD / 1M tokens）
+// 最近核對：2026-08-08（USD / 1M tokens）
+// Anthropic：https://platform.claude.com/docs/en/about-claude/pricing
+// Google：https://ai.google.dev/gemini-api/docs/pricing
 //
 // 重要：moonshot 原生定價是 CNY，這裡統一換算成 USD（¥7.2 = $1）
 //
@@ -29,6 +31,30 @@ export interface PriceSpec {
   input: number          // USD per 1M input tokens
   output: number         // USD per 1M output tokens
   provider: ProviderTag  // 歸屬 provider（寫 log 用）
+  cache?: {
+    read: number
+    write5m?: number
+    write1h?: number
+    storagePerMillionTokenHour?: number
+  }
+  longContext?: {
+    aboveInputTokens: number
+    input: number
+    output: number
+    cacheRead?: number
+  }
+}
+
+export interface DetailedTokenUsage {
+  /** 完整 prompt context，用來判定 provider 的長 context 價格帶。 */
+  totalPromptTokensForTier: number
+  uncachedInputTokens: number
+  outputTokens: number
+  cacheWrite5mTokens?: number
+  cacheWrite1hTokens?: number
+  cacheReadTokens?: number
+  /** Gemini explicit cache 的 token 數 × 儲存小時。 */
+  cacheStorageTokenHours?: number
 }
 
 // CNY → USD
@@ -36,13 +62,18 @@ const CNY_PER_USD = 7.2
 const cnyToUsd = (cny: number) => Math.round((cny / CNY_PER_USD) * 1000) / 1000
 
 // ============================================================
-// 定價表（2026-04 現行價格）
+// 定價表（2026-08-08 現行價格）
 // 所有 model ID 統一用「小寫 + 連字號」做 key
 // ============================================================
 export const MODEL_PRICING: Record<string, PriceSpec> = {
   // ── Anthropic Claude ──
   'claude-opus-4-7':          { input: 15,   output: 75,  provider: 'anthropic' },
-  'claude-opus-4-6':          { input: 15,   output: 75,  provider: 'anthropic' },
+  'claude-opus-4-6':          {
+    input: 5,
+    output: 25,
+    provider: 'anthropic',
+    cache: { read: 0.5, write5m: 6.25, write1h: 10 },
+  },
   'claude-opus-4-5':          { input: 15,   output: 75,  provider: 'anthropic' },
   'claude-opus-4':            { input: 15,   output: 75,  provider: 'anthropic' },
   'claude-sonnet-4-6':        { input: 3,    output: 15,  provider: 'anthropic' },
@@ -75,6 +106,13 @@ export const MODEL_PRICING: Record<string, PriceSpec> = {
   'qwen-turbo':               { input: 0.04, output: 0.2, provider: 'qwen' },
 
   // ── Gemini (Google) ──
+  'gemini-3.1-pro-preview':   {
+    input: 2,
+    output: 12,
+    provider: 'gemini',
+    cache: { read: 0.2, storagePerMillionTokenHour: 4.5 },
+    longContext: { aboveInputTokens: 200_000, input: 4, output: 18, cacheRead: 0.4 },
+  },
   'gemini-2.5-flash':         { input: 0.3,  output: 2.5, provider: 'gemini' },
   'gemini-2.5-pro':           { input: 1.25, output: 10,  provider: 'gemini' },
   'gemini-1.5-flash':         { input: 0.075,output: 0.3, provider: 'gemini' },
@@ -122,6 +160,7 @@ function normalizeModel(model: string): string {
   if (m.startsWith('qwen-max')) return 'qwen-max'
   if (m.startsWith('qwen-plus')) return 'qwen-plus'
   if (m.startsWith('qwen-turbo')) return 'qwen-turbo'
+  if (m.startsWith('gemini-3.1-pro-preview')) return 'gemini-3.1-pro-preview'
   if (m.startsWith('gemini-2.5-flash')) return 'gemini-2.5-flash'
   if (m.startsWith('gemini-2.5-pro')) return 'gemini-2.5-pro'
   if (m.startsWith('gemini-1.5-flash')) return 'gemini-1.5-flash'
@@ -150,9 +189,74 @@ export function calcCostUsd(
   const key = normalizeModel(model)
   const spec = MODEL_PRICING[key]
   if (!spec) return 0
-  const inputCost = (Math.max(0, promptTokens) / 1_000_000) * spec.input
-  const outputCost = (Math.max(0, completionTokens) / 1_000_000) * spec.output
+  const effectiveSpec = spec.longContext && promptTokens > spec.longContext.aboveInputTokens
+    ? { ...spec, input: spec.longContext.input, output: spec.longContext.output }
+    : spec
+  const inputCost = (Math.max(0, promptTokens) / 1_000_000) * effectiveSpec.input
+  const outputCost = (Math.max(0, completionTokens) / 1_000_000) * effectiveSpec.output
   return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000
+}
+
+function checkedTokenCount(value: number | undefined, field: string): number {
+  const normalized = value ?? 0
+  if (!Number.isFinite(normalized) || normalized < 0 || !Number.isInteger(normalized)) {
+    throw new RangeError(`${field} 必須是非負整數`)
+  }
+  return normalized
+}
+
+/**
+ * 計算含 prompt-cache 的實際 provider 成本。呼叫端必須分開傳入
+ * provider usage 欄位，不能把 cache token 猜進一般 input tokens。
+ */
+export function calcDetailedCostUsd(model: string, usage: DetailedTokenUsage): number {
+  const key = normalizeModel(model)
+  const spec = MODEL_PRICING[key]
+  if (!spec) return 0
+  const totalPromptTokensForTier = checkedTokenCount(
+    usage.totalPromptTokensForTier,
+    'totalPromptTokensForTier',
+  )
+  const uncachedInputTokens = checkedTokenCount(usage.uncachedInputTokens, 'uncachedInputTokens')
+  const outputTokens = checkedTokenCount(usage.outputTokens, 'outputTokens')
+  const cacheWrite5mTokens = checkedTokenCount(usage.cacheWrite5mTokens, 'cacheWrite5mTokens')
+  const cacheWrite1hTokens = checkedTokenCount(usage.cacheWrite1hTokens, 'cacheWrite1hTokens')
+  const cacheReadTokens = checkedTokenCount(usage.cacheReadTokens, 'cacheReadTokens')
+  const cacheStorageTokenHours = checkedTokenCount(
+    usage.cacheStorageTokenHours,
+    'cacheStorageTokenHours',
+  )
+  const longTier = Boolean(
+    spec.longContext && totalPromptTokensForTier > spec.longContext.aboveInputTokens,
+  )
+  const inputRate = longTier ? spec.longContext!.input : spec.input
+  const outputRate = longTier ? spec.longContext!.output : spec.output
+  const cacheReadRate = longTier && spec.longContext?.cacheRead !== undefined
+    ? spec.longContext.cacheRead
+    : spec.cache?.read
+
+  if (cacheReadTokens > 0 && cacheReadRate === undefined) {
+    throw new RangeError(`${key} 未定義 cache read 定價`)
+  }
+  if (cacheWrite5mTokens > 0 && spec.cache?.write5m === undefined) {
+    throw new RangeError(`${key} 未定義 5m cache write 定價`)
+  }
+  if (cacheWrite1hTokens > 0 && spec.cache?.write1h === undefined) {
+    throw new RangeError(`${key} 未定義 1h cache write 定價`)
+  }
+  if (cacheStorageTokenHours > 0 && spec.cache?.storagePerMillionTokenHour === undefined) {
+    throw new RangeError(`${key} 未定義 cache storage 定價`)
+  }
+
+  const cost = (
+    uncachedInputTokens * inputRate +
+    outputTokens * outputRate +
+    cacheReadTokens * (cacheReadRate ?? 0) +
+    cacheWrite5mTokens * (spec.cache?.write5m ?? 0) +
+    cacheWrite1hTokens * (spec.cache?.write1h ?? 0) +
+    cacheStorageTokenHours * (spec.cache?.storagePerMillionTokenHour ?? 0)
+  ) / 1_000_000
+  return Math.round(cost * 1_000_000) / 1_000_000
 }
 
 /**

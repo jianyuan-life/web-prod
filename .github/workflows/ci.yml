@@ -28,6 +28,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -42,6 +44,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          # E3 golden tests execute immutable base commit d9bf... on every run.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -54,8 +59,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
           SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
-          STRIPE_SECRET_KEY: sk_test_placeholder
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+          STRIPE_SECRET_KEY: ci-only-not-a-credential
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ci-only-public-placeholder
           NEXT_PUBLIC_SITE_URL: https://jianyuan.life
           NEXT_PUBLIC_API_URL: https://placeholder.fly.dev
         run: npm run build

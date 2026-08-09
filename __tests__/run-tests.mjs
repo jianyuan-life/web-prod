@@ -12,6 +12,21 @@ const testFiles = readdirSync(__dirname)
   .filter(f => f.endsWith('.test.mjs'))
   .sort()
 
+const requiredReleaseTests = [
+  '35-e3-freeze-contract.test.mjs',
+  '36-e3-fixture-server.test.mjs',
+  '49-calculator-request.test.mjs',
+  '66-e3-production-csp-smoke-contract.test.mjs',
+  '66-e3-server-checkout-contract.test.mjs',
+  '67-e3-checkout-route-integration.test.mjs',
+  '68-e3-generation-golden-contract.test.mjs',
+]
+const missingReleaseTests = requiredReleaseTests.filter(file => !testFiles.includes(file))
+if (missingReleaseTests.length > 0) {
+  console.error(`缺少必要 release tests: ${missingReleaseTests.join(', ')}`)
+  process.exit(1)
+}
+
 let totalPassed = 0
 let totalFailed = 0
 let totalSkipped = 0
@@ -41,9 +56,21 @@ for (const file of testFiles) {
     totalPassed += stats.passed || 0
     totalFailed += stats.failed || 0
     totalSkipped += stats.skipped || 0
+    if (result.code !== 0 && !(stats.failed > 0)) {
+      totalFailed++
+      console.error(`  ${file} 非零退出碼 ${result.code}，但統計未回報失敗`)
+    }
   } catch {
-    // 如果解析失敗，視為該檔案整體失敗
-    if (result.code !== 0) totalFailed++
+    // node:test 會輸出 TAP/spec summary 而不是自製 harness JSON；
+    // 非零退出永遠算失敗，零退出則盡量把摘要納入統計，不把格式差異誤判為紅燈。
+    if (result.code !== 0) {
+      totalFailed++
+    } else {
+      const passMatch = result.stdout.match(/(?:^|\n)(?:#\s*|ℹ\s*)pass\s+(\d+)/u)
+      const skipMatch = result.stdout.match(/(?:^|\n)(?:#\s*|ℹ\s*)skipped\s+(\d+)/u)
+      totalPassed += passMatch ? Number(passMatch[1]) : 0
+      totalSkipped += skipMatch ? Number(skipMatch[1]) : 0
+    }
     if (result.stderr) console.error(`  stderr: ${result.stderr.slice(0, 200)}`)
   }
   console.log('')

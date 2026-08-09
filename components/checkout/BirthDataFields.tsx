@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import { displayTzOffset, isDstAt } from '@/lib/cities-with-tz'
 import BirthTimeField from './BirthTimeField'
@@ -16,13 +17,66 @@ interface BirthDataFieldsProps {
   onCountrySelect?: (country: Country, isMultiTz: boolean) => void
   onCancelCountry?: () => void
   needCityForCountry?: string
+  accessibleValidationEnabled?: boolean
+  validationAttempted?: boolean
+  nameInvalid?: boolean
+  yearInvalid?: boolean
+  cityInvalid?: boolean
 }
 
 export default function BirthDataFields({
   form, setForm, timeMode, setTimeMode,
   cityResults, onCitySearch, onCitySelect,
   onCountrySelect, onCancelCountry, needCityForCountry,
+  accessibleValidationEnabled = false,
+  validationAttempted = false,
+  nameInvalid = false,
+  yearInvalid = false,
+  cityInvalid = false,
 }: BirthDataFieldsProps) {
+  const [activeCityIndex, setActiveCityIndex] = useState(-1)
+  const cityListOpen = cityResults.length > 0
+  const showNameError = accessibleValidationEnabled && validationAttempted && nameInvalid
+  const showYearError = accessibleValidationEnabled && validationAttempted && yearInvalid
+  const showCityError = accessibleValidationEnabled && validationAttempted && cityInvalid
+
+  const selectLocation = (result: LocationSearchResult) => {
+    if (result.type === 'country') {
+      onCountrySelect?.(result.country, result.isMultiTz)
+    } else {
+      onCitySelect(result.city)
+    }
+    setActiveCityIndex(-1)
+  }
+
+  const handleCityKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!accessibleValidationEnabled) return
+
+    switch (event.key) {
+      case 'ArrowDown':
+        if (cityResults.length === 0) return
+        event.preventDefault()
+        setActiveCityIndex((current) => (current + 1) % cityResults.length)
+        break
+      case 'ArrowUp':
+        if (cityResults.length === 0) return
+        event.preventDefault()
+        setActiveCityIndex((current) => current <= 0 ? cityResults.length - 1 : current - 1)
+        break
+      case 'Enter':
+        if (activeCityIndex < 0 || !cityResults[activeCityIndex]) return
+        event.preventDefault()
+        selectLocation(cityResults[activeCityIndex])
+        break
+      case 'Escape':
+        if (!cityListOpen) return
+        event.preventDefault()
+        onCitySearch('')
+        setActiveCityIndex(-1)
+        break
+    }
+  }
+
   return (
     <>
       {/* 姓名 */}
@@ -32,8 +86,11 @@ export default function BirthDataFields({
           id="checkout-name"
           type="text" required placeholder="請輸入您的全名"
           value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+          aria-invalid={accessibleValidationEnabled ? showNameError : undefined}
+          aria-describedby={showNameError ? 'checkout-name-error' : undefined}
           className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-cream focus:border-gold/40 focus:outline-none"
         />
+        {showNameError && <p id="checkout-name-error" className="checkout-form-error mt-1 text-xs">請填寫姓名。</p>}
       </div>
 
       {/* 國曆/農曆切換 — v5.10.471 暫時下架農曆選項(2026-08-01 L4 審查發現 P0:
@@ -59,10 +116,14 @@ export default function BirthDataFields({
           <label htmlFor="checkout-birth-year" className="block text-xs text-text-muted mb-1">出生年</label>
           <input
             id="checkout-birth-year"
-            type="number" min="1920" max="2030"
+            type="number" min={accessibleValidationEnabled ? 1900 : 1920} max={accessibleValidationEnabled ? new Date().getFullYear() : 2030}
+            required={accessibleValidationEnabled || undefined}
             value={form.year} onChange={(e) => setForm(f => ({ ...f, year: e.target.value }))}
+            aria-invalid={accessibleValidationEnabled ? showYearError : undefined}
+            aria-describedby={showYearError ? 'checkout-birth-year-error' : undefined}
             className="w-full bg-white/5 border border-gold/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
           />
+          {showYearError && <p id="checkout-birth-year-error" className="checkout-form-error mt-1 text-xs">請填寫有效的出生年份。</p>}
         </div>
         <div>
           <label htmlFor="checkout-birth-month" className="block text-xs text-text-muted mb-1">{form.calendarType === 'lunar' ? '農曆月' : '月'}</label>
@@ -141,21 +202,28 @@ export default function BirthDataFields({
           type="text"
           role="combobox"
           aria-autocomplete="list"
-          aria-expanded={cityResults.length > 0}
+          aria-expanded={cityListOpen}
           aria-controls="checkout-city-results"
+          aria-activedescendant={accessibleValidationEnabled && activeCityIndex >= 0 ? `checkout-city-option-${activeCityIndex}` : undefined}
+          aria-invalid={accessibleValidationEnabled ? showCityError : undefined}
+          aria-describedby={showCityError ? 'checkout-birth-city-error' : undefined}
+          required={accessibleValidationEnabled || undefined}
           placeholder={needCityForCountry ? `輸入${needCityForCountry}的城市名` : '輸入地區名（如：台灣、香港、日本）'}
           value={form.birthCity}
-          onChange={(e) => onCitySearch(e.target.value)}
+          onChange={(e) => { setActiveCityIndex(-1); onCitySearch(e.target.value) }}
+          onKeyDown={handleCityKeyDown}
           className="w-full bg-white/5 border border-gold/10 rounded-lg px-4 py-2.5 text-white text-sm focus:border-gold focus:outline-none"
         />
-        {cityResults.length > 0 && (
+        {showCityError && <p id="checkout-birth-city-error" className="checkout-form-error mt-1 text-xs">請從搜尋結果中選定出生城市。</p>}
+        {cityListOpen && (
           <div id="checkout-city-results" className="absolute z-10 w-full mt-1 bg-dark border border-gold/20 rounded-lg overflow-hidden shadow-xl max-h-48 overflow-y-auto" role="listbox" aria-label="出生地區搜尋結果">
             {cityResults.map((r, idx) => r.type === 'country' ? (
-              <button key={`country-${r.country.name}`} type="button"
-                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 flex justify-between items-center"
-                onClick={() => onCountrySelect?.(r.country, r.isMultiTz)}
+              <button id={`checkout-city-option-${idx}`} key={`country-${r.country.name}`} type="button"
+                className={`w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 flex justify-between items-center ${activeCityIndex === idx ? 'bg-gold/10' : ''}`}
+                onMouseEnter={() => accessibleValidationEnabled && setActiveCityIndex(idx)}
+                onClick={() => selectLocation(r)}
                 role="option"
-                aria-selected="false"
+                aria-selected={activeCityIndex === idx}
               >
                 <span>{r.country.name}</span>
                 <span className="text-[10px] text-text-muted/60">
@@ -163,11 +231,12 @@ export default function BirthDataFields({
                 </span>
               </button>
             ) : (
-              <button key={`city-${r.city.name_en}-${idx}`} type="button"
-                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 flex justify-between items-center"
-                onClick={() => onCitySelect(r.city)}
+              <button id={`checkout-city-option-${idx}`} key={`city-${r.city.name_en}-${idx}`} type="button"
+                className={`w-full text-left px-4 py-2 text-sm text-white hover:bg-gold/10 border-b border-gold/5 last:border-0 flex justify-between items-center ${activeCityIndex === idx ? 'bg-gold/10' : ''}`}
+                onMouseEnter={() => accessibleValidationEnabled && setActiveCityIndex(idx)}
+                onClick={() => selectLocation(r)}
                 role="option"
-                aria-selected="false"
+                aria-selected={activeCityIndex === idx}
               >
                 <span>{r.city.name}（{r.city.country}）</span>
                 <span className="text-[10px] text-text-muted/60">UTC{r.city.tz >= 0 ? '+' : ''}{r.city.tz}</span>

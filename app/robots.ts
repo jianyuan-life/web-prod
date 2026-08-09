@@ -21,6 +21,7 @@ export default function robots(): MetadataRoute.Robots {
     '/dashboard/',
     '/auth/',
     '/report/', // 客戶專屬報告(含 access_token、絕不可被索引)
+    '/consultation/', // C／G15 新版私人報告
     '/checkout', // 結帳頁可能含 session_id
   ]
 

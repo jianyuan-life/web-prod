@@ -100,6 +100,8 @@ const MEDICAL: BlacklistItem[] = [
   { pattern: /不用看醫生|不用就醫|不需看醫/, category: 'medical', severity: 'block', reason: '勸阻就醫' },
   { pattern: /替代(醫療|治療|就醫)/, category: 'medical', severity: 'block', reason: '勸阻就醫' },
   { pattern: /停藥|停止服藥|不要吃藥/, category: 'medical', severity: 'block', reason: '勸阻服藥' },
+  { pattern: /(?:停止|停用|中斷|自行調整).{0,14}(?:醫師|醫生).{0,10}(?:開立|處方|藥物)/, category: 'medical', severity: 'block', reason: '要求自行中止醫囑' },
+  { pattern: /單靠.{0,12}(?:命盤|命理|八字|星盤).{0,14}(?:恢復|康復|痊癒|治好)/, category: 'medical', severity: 'block', reason: '以命理取代醫療' },
   { pattern: /絕症必(癒|好)|絕症可治/, category: 'medical', severity: 'block', reason: '醫療不實承諾' },
   { pattern: /命理治病|命盤治療|八字治病/, category: 'medical', severity: 'block', reason: '命理不能替代治療' },
   { pattern: /包(治|好|癒)/, category: 'medical', severity: 'block', reason: '醫療不實承諾' },
@@ -129,6 +131,8 @@ const INVESTMENT: BlacklistItem[] = [
   { pattern: /(買|投資|持有).{0,5}(股票|加密貨幣|虛擬貨幣|期貨|外匯).{0,10}(必|保證|一定).{0,3}(賺|漲)/, category: 'investment', severity: 'block', reason: '具體投資建議' },
   { pattern: /比特幣必漲|以太坊必漲|.{1,6}幣必漲/, category: 'investment', severity: 'block', reason: '加密貨幣預測' },
   { pattern: /(購買|投入)全部(身家|財產|積蓄)/, category: 'investment', severity: 'block', reason: '勸誘 all-in' },
+  { pattern: /(?:全部|所有).{0,8}(?:資產|資金|積蓄).{0,12}(?:集中|投入|買入)/, category: 'investment', severity: 'block', reason: '勸誘集中全部資產' },
+  { pattern: /(?:翻身|致富).{0,10}(?:唯一道路|唯一方法|唯一選擇)/, category: 'investment', severity: 'block', reason: '把投機寫成唯一道路' },
   { pattern: /借錢(投資|買股|炒作)/, category: 'investment', severity: 'block', reason: '勸誘借貸投資' },
   { pattern: /槓桿.{0,5}(到底|放大到最大)/, category: 'investment', severity: 'block', reason: '勸誘高槓桿' },
   { pattern: /買.{1,10}必然(發財|致富)/, category: 'investment', severity: 'block', reason: '投資過度承諾' },
@@ -159,6 +163,8 @@ const EXTREME_FORTUNE: BlacklistItem[] = [
   { pattern: /你們.{0,3}不可能(在一起|結婚|白頭)/, category: 'extreme_fortune', severity: 'block', reason: '關係死刑' },
   { pattern: /注定孤獨終老|注定單身一輩子/, category: 'extreme_fortune', severity: 'block', reason: '關係死刑' },
   { pattern: /這輩子嫁不出去|這輩子娶不到/, category: 'extreme_fortune', severity: 'block', reason: '關係死刑' },
+  { pattern: /(?:婚姻|關係).{0,14}(?:沒有|已無|不存在).{0,12}(?:修復空間|挽回可能)/, category: 'extreme_fortune', severity: 'block', reason: '關係死刑' },
+  { pattern: /(?:分開|離婚).{0,10}(?:唯一結局|唯一選擇|唯一道路)/, category: 'extreme_fortune', severity: 'block', reason: '關係死刑' },
 
   // 事業/財富死刑
   { pattern: /你這輩子.{0,5}(窮|沒錢|不會有錢|不會發達)/, category: 'extreme_fortune', severity: 'block', reason: '事業死刑' },
@@ -269,8 +275,8 @@ export const MODERATION_BLACKLIST: BlacklistItem[] = [
 ]
 
 // ────────────────────────────────────────────────────────────
-// 誤殺白名單：命理報告常見合法用語，但可能觸發 pattern
-// 在掃描前先把這些片段「抹掉」再走黑名單
+// 誤殺白名單：保留給舊呼叫者參考，但 scanBlacklist 絕不會先刪文字。
+// 先刪片段會讓「你一定會離婚，風險很高」被後綴白名單抹除關鍵語，造成 fail-open。
 // ────────────────────────────────────────────────────────────
 export const FALSE_POSITIVE_WHITELIST: RegExp[] = [
   // 命理常見討論（合理語境）
@@ -283,7 +289,7 @@ export const FALSE_POSITIVE_WHITELIST: RegExp[] = [
 ]
 
 /**
- * 將白名單命中處抹除，避免誤殺
+ * 舊相容 helper；不可將其輸出當成安全掃描輸入。
  */
 export function stripWhitelistedFragments(content: string): string {
   let cleaned = content
@@ -295,7 +301,7 @@ export function stripWhitelistedFragments(content: string): string {
 
 /**
  * 依黑名單掃描內文，回傳命中清單
- * @param content 待掃描文字（建議先用 stripWhitelistedFragments 清過）
+ * @param content 待掃描的原文；不可先刪除所謂安全片段
  * @returns 每項命中含分類、嚴重度、匹配片段、上下文
  */
 export interface BlacklistHit {
@@ -309,7 +315,9 @@ export interface BlacklistHit {
 
 export function scanBlacklist(content: string): BlacklistHit[] {
   const hits: BlacklistHit[] = []
-  const cleaned = stripWhitelistedFragments(content)
+  // 必須對原文掃描。目前黑名單均以完整高風險句式為 pattern，
+  // 中性的「離婚風險」「癌症家族史」本身不會命中，不需要先刪文字。
+  const cleaned = content
 
   for (const item of MODERATION_BLACKLIST) {
     const pattern = item.pattern

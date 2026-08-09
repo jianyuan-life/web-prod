@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js'
 import LocaleSwitcher from './LocaleSwitcher'
 import { ThemeToggleSimple } from './ThemeToggleSimple'
 import { getLocale, UI_TEXT } from '@/lib/i18n'
+import { isConsultationReaderPath } from '@/lib/consultation/routes'
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -92,7 +93,12 @@ export default function Navbar() {
 
   // v5.10.428:/jamie 後台有自己的 sidebar chrome、不渲染公開站 navbar
   // (UI 100 審查 P1:後台頂部洩漏公開 navbar = 系統介紹/登入/免費註冊 對 admin 無意義)
-  if (pathname?.startsWith('/jamie') || pathname?.startsWith('/report/') || pathname?.startsWith('/r/')) return null
+  if (
+    pathname?.startsWith('/jamie')
+    || pathname?.startsWith('/report/')
+    || pathname?.startsWith('/r/')
+    || isConsultationReaderPath(pathname)
+  ) return null
 
   return (
     <nav

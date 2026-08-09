@@ -1,5 +1,5 @@
 // ============================================================
-// Google Gemini Provider — 2.5 Pro 結構官
+// Google Gemini Provider — 3.1 Pro Preview 結構官
 // ============================================================
 // API: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={KEY}
 // 預設模型：gemini-2.5-pro
@@ -14,6 +14,7 @@ const TIMEOUT_MS = 180_000
 
 // 成本表（USD / 1M tokens）
 const PRICING: Record<string, { input: number; output: number }> = {
+  'gemini-3.1-pro-preview': { input: 2, output: 12 },
   'gemini-2.5-pro': { input: 1.25, output: 10 },
   'gemini-2.5-flash': { input: 0.075, output: 0.3 },
   'gemini-2.0-flash': { input: 0.075, output: 0.3 },
@@ -29,7 +30,7 @@ const SAFETY_SETTINGS = [
 export const geminiProvider: LLMProvider = {
   name: 'google',
   defaultModel: 'gemini-2.5-pro',
-  supportedModels: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+  supportedModels: ['gemini-3.1-pro-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
 
   async generate(req) {
     const t0 = Date.now()
@@ -108,7 +109,9 @@ export const geminiProvider: LLMProvider = {
       const parts: Array<{ text?: string }> = data?.candidates?.[0]?.content?.parts || []
       const content: string = parts.map((p) => p.text || '').join('')
       const promptTokens: number = data?.usageMetadata?.promptTokenCount || 0
-      const completionTokens: number = data?.usageMetadata?.candidatesTokenCount || 0
+      const completionTokens: number =
+        (data?.usageMetadata?.candidatesTokenCount || 0) +
+        (data?.usageMetadata?.thoughtsTokenCount || 0)
 
       // 被安全過濾器擋掉時候 candidates 會有 finishReason='SAFETY' 而 content 為空
       const finishReason: string | undefined = data?.candidates?.[0]?.finishReason
@@ -166,7 +169,9 @@ export const geminiProvider: LLMProvider = {
 
   estimateCost(promptTokens, completionTokens, model) {
     const m = model || this.defaultModel
-    const p = PRICING[m] || { input: 0, output: 0 }
+    const p = m === 'gemini-3.1-pro-preview' && promptTokens > 200_000
+      ? { input: 4, output: 18 }
+      : PRICING[m] || { input: 0, output: 0 }
     return (promptTokens * p.input + completionTokens * p.output) / 1_000_000
   },
 }

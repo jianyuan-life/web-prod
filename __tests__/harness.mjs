@@ -4,6 +4,7 @@
 // 實測:全套 205 PASS 只被計入 126)。done() 改輸出「檔案累計」,runner 取最後一行即為全檔真值。
 let _passed = 0, _failed = 0, _skipped = 0, _suiteName = ''
 let _totalPassed = 0, _totalFailed = 0, _totalSkipped = 0
+let _pending = Promise.resolve()
 
 export function suite(name) {
   _suiteName = name
@@ -12,15 +13,19 @@ export function suite(name) {
 }
 
 export function test(name, fn) {
-  try {
-    fn()
-    _passed++; _totalPassed++
-    console.log(`  [PASS] ${name}`)
-  } catch (e) {
-    _failed++; _totalFailed++
-    console.log(`  [FAIL] ${name}`)
-    console.log(`         ${e.message}`)
-  }
+  const execution = _pending.then(async () => {
+    try {
+      await fn()
+      _passed++; _totalPassed++
+      console.log(`  [PASS] ${name}`)
+    } catch (e) {
+      _failed++; _totalFailed++
+      console.log(`  [FAIL] ${name}`)
+      console.log(`         ${e instanceof Error ? e.message : String(e)}`)
+    }
+  })
+  _pending = execution
+  return execution
 }
 
 export function skip(name) {
@@ -44,9 +49,11 @@ export function assertIncludes(arr, item, msg) {
   }
 }
 
-export function done() {
+export async function done() {
+  await _pending
   // 最後一行輸出 JSON 供 runner 解析。
   // passed/failed/skipped = 本檔「累計」(跨所有 suite);多次呼叫 done() 時
   // runner 只讀最後一行,即為全檔真值 — 修 v5.10.470 前「只計最後一個 suite」的漏數。
   console.log(JSON.stringify({ suite: _suiteName, passed: _totalPassed, failed: _totalFailed, skipped: _totalSkipped }))
+  if (_totalFailed > 0) process.exitCode = 1
 }

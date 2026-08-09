@@ -3,6 +3,8 @@
 // 為什麼還要做客製:Vercel SpeedInsights tier 限月 25K 事件、過量會被 sample
 // 我們可以另外把 INP / LCP / CLS 寫到自己的 endpoint、long-term 留存
 
+import { isPrivateConsultationUrl, redactConsultationUrl } from '@/lib/security/private-route-redaction'
+
 export interface WebVitalMetric {
   id: string
   name: 'CLS' | 'INP' | 'FCP' | 'LCP' | 'TTFB' | 'FID'
@@ -22,6 +24,7 @@ export function reportWebVital(metric: WebVitalMetric) {
   // 只上報生產環境
   if (typeof window === 'undefined') return
   if (process.env.NODE_ENV !== 'production') return
+  if (isPrivateConsultationUrl(window.location.pathname)) return
 
   const payload = JSON.stringify({
     id: metric.id,
@@ -30,7 +33,7 @@ export function reportWebVital(metric: WebVitalMetric) {
     rating: metric.rating,
     delta: metric.delta,
     navigationType: metric.navigationType,
-    page: window.location.pathname,
+    page: redactConsultationUrl(window.location.pathname),
     ts: Date.now(),
   })
 

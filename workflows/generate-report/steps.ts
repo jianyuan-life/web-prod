@@ -7,13 +7,32 @@ import { getWritable } from 'workflow'
 import { FatalError, RetryableError } from 'workflow'
 import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter + headers + timeout)
 import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
-import { recordAIUsage } from '@/lib/ai-cost-tracker'
+import { estimateCostUsd, recordAIUsage } from '@/lib/ai-cost-tracker'
 import { isFlagEnabled } from '@/lib/feature-flags'  // Prompt 1: FF_AI_PROMPT_CACHE
 import { recordEmailSend } from '@/lib/email-send-log'
 import { notifyEmailFailed, notifyNeedsHumanReview } from '@/lib/ai/observability/telegram'
 import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 import { extractNarrativeFromContent } from '@/lib/report/extract-narrative'  // v5.10.461 P0-4:敘事萃取 SSOT 抽 lib
 import { buildApologyEmail, hasApologyBeenSent } from '@/lib/report/apology-email'  // v5.10.461 P0-3:致歉信模板 SSOT 抽 lib + email_send_log 防重寄
+import { buildCalculatorRequestPayload, serializeCalculatorRequest } from '@/lib/consultation/calculator-request'
+import {
+  CALCULATOR_ATTESTATION_NONCE_HEADER,
+  CalculatorAttestationError,
+  createCalculatorAttestationNonce,
+  verifyCalculatorResponseAttestation,
+  type VerifiedCalculatorResponse,
+} from '@/lib/consultation/calculator-attestation'
+import { buildAbsoluteReportUrl } from '@/lib/consultation/routes'
+import { geminiProvider } from '@/lib/ai/providers/gemini'
+import {
+  buildConsultationFreshReviewRequest,
+  CONSULTATION_REVIEW_DEFAULT_MODEL,
+  parseConsultationFreshReviewResponse,
+} from '@/lib/consultation/fresh-review'
+import type { NormalizedConsultationChapter } from '@/lib/consultation/chapter-assembly'
+import type { FactLedger, PersonContext, ReportAgeContext } from '@/lib/consultation/report-contract'
+import { validateG15Selection, type G15SelectionReportRow } from '@/lib/checkout/validate-g15-selection'
+import { readConsultationRuntimeReceipts } from '@/lib/consultation/runtime-config'
 // v5.10.88 Stage 1 USE_PLAN_V3 feature flag(SOP `tasks/prompt_v3_switch_sop_2026-05-08.md`):
 //   c_plan v2 vs v3 export 同 11 個 symbol 同 signature(已 grep 驗證)、namespace import 後 flag 切
 //   預設 false → production 仍走 v2、零風險;Vercel env `USE_PLAN_V3=true` → trigger redeploy 即生效 v3
@@ -144,7 +163,7 @@ interface AnalysisItem {
   raw_data?: Record<string, unknown>
 }
 
-interface CalcResult {
+export interface CalcResult {
   client_data: {
     bazi?: string
     yongshen?: string
@@ -972,7 +991,7 @@ export async function loadReportRecord(reportId: string) {
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('paid_reports')
-    .select('retry_count, status, birth_data, plan_code, access_token, customer_email')
+    .select('retry_count, status, birth_data, plan_code, access_token, customer_email, user_id, created_at')
     .eq('id', reportId)
     .single()
 
@@ -1040,7 +1059,9 @@ export async function loadReportRecord(reportId: string) {
     planCode: data.plan_code as string,
     accessToken: data.access_token as string,
     customerEmail: data.customer_email as string,
+    userId: data.user_id as string | null,
     retryCount: data.retry_count ?? 0,
+    createdAt: data.created_at as string,
   }
 }
 
@@ -1055,28 +1076,11 @@ export async function callPythonCalculate(birthData: BirthData) {
 
   let res: Response
   try {
+    const requestPayload = buildCalculatorRequestPayload(birthData)
     res = await fetch(`${PYTHON_API}/api/calculate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: birthData.name,
-        year: birthData.year, month: birthData.month, day: birthData.day,
-        hour: birthData.hour, minute: birthData.minute || 0,
-        gender: birthData.gender,
-        calendar_type: birthData.calendar_type || birthData.calendarType || 'solar',
-        lunar_leap: birthData.lunar_leap || birthData.lunarLeap || false,
-        time_unknown: birthData.time_unknown || false,
-        time_mode: birthData.time_mode || birthData.timeMode || 'shichen',
-        ...((birthData.latitude || birthData.cityLat) && (birthData.longitude || birthData.cityLng) ? {
-          latitude: birthData.latitude || birthData.cityLat,
-          longitude: birthData.longitude || birthData.cityLng,
-          timezone_offset: birthData.timezone_offset || birthData.cityTz || 8,
-        } : {}),
-        // Sprint 4 國際化：IANA 時區 + 地區資訊（Python BirthInput 自動算 DST）
-        ...(birthData.timezone ? { timezone: birthData.timezone } : {}),
-        ...(birthData.birth_city ? { birth_city: birthData.birth_city } : {}),
-        ...(birthData.birth_country ? { birth_country: birthData.birth_country } : {}),
-      }),
+      body: JSON.stringify(requestPayload),
       signal: controller.signal,
     })
   } catch (e) {
@@ -1108,6 +1112,76 @@ export async function callPythonCalculate(birthData: BirthData) {
   return result
 }
 callPythonCalculate.maxRetries = 3
+
+// C／G15 consultation v1 only. Legacy plans (including E3) keep using the
+// byte-for-byte compatible unsigned client above.
+export async function callPythonCalculateAttested(
+  birthData: BirthData,
+): Promise<VerifiedCalculatorResponse<CalcResult>> {
+  "use step";
+  await emitProgress({ step: '排盤運算', progress: 10, message: '正在核對排盤版本並完成十五套系統運算...' })
+
+  const secret = process.env.CALCULATOR_ATTESTATION_SECRET ?? ''
+  const receipts = readConsultationRuntimeReceipts()
+  if (new TextEncoder().encode(secret).length < 32) {
+    throw new FatalError('C／G15 排盤驗章金鑰未設定')
+  }
+  const payload = buildCalculatorRequestPayload(birthData, { consultationMode: true })
+  // Serialize once and retain these exact bytes until the Fly response passes
+  // request/response hash and HMAC verification.
+  const requestBody = serializeCalculatorRequest(payload)
+  const nonce = createCalculatorAttestationNonce()
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 60000)
+  let response: Response
+  try {
+    response = await fetch(`${PYTHON_API}/api/calculate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        [CALCULATOR_ATTESTATION_NONCE_HEADER]: nonce,
+      },
+      body: requestBody,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    clearTimeout(timeout)
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new RetryableError('排盤 API 超時（60秒）', { retryAfter: '10s' })
+    }
+    throw error
+  }
+  clearTimeout(timeout)
+
+  const responseBody = new Uint8Array(await response.arrayBuffer())
+  let verified: VerifiedCalculatorResponse<CalcResult>
+  try {
+    verified = verifyCalculatorResponseAttestation<CalcResult>({
+      responseBody,
+      responseHeaders: response.headers,
+      responseStatusCode: response.status,
+      requestBody,
+      method: 'POST',
+      path: '/api/calculate',
+      expectedNonce: nonce,
+      secret,
+      expectedReleaseId: receipts.calculatorBundleVersion,
+      expectedCalculatorCodeSha256: receipts.calculatorCodeSha256,
+      expectedKeyId: receipts.calculatorAttestationKeyId,
+    })
+  } catch (error) {
+    const code = error instanceof CalculatorAttestationError ? error.code : 'unknown'
+    throw new FatalError(`C／G15 排盤回應無法驗章（${code}）`)
+  }
+  if (!response.ok) {
+    throw new RetryableError(`已驗章的排盤 API 回傳 ${response.status}`, { retryAfter: '10s' })
+  }
+  if (!verified.response.analyses?.length || !verified.response.client_data) {
+    throw new RetryableError('已驗章的排盤 API 回應不完整', { retryAfter: '15s' })
+  }
+  return verified
+}
+callPythonCalculateAttested.maxRetries = 3
 
 // ── 出門訣引擎 Top 結果（E1=Top3 / E2=每週Top1×4）──
 export interface ChumenjiTopItem {
@@ -1996,7 +2070,11 @@ ${analyses.length}套系統排盤完整數據：
 async function callClaudeOnly(
   systemPrompt: string, userPrompt: string, maxTokens: number, label: string,
   reportId?: string,
-): Promise<{ content: string; model: string }> {
+): Promise<{
+  content: string
+  model: string
+  usage: { model: string; promptTokens: number; completionTokens: number; reportedCostUsd: number }
+}> {
   const model = 'claude-opus-4-6'
   const start = Date.now()
 
@@ -2075,7 +2153,16 @@ async function callClaudeOnly(
       )
     }
     console.log(`${label} 完成 (${model}): ${content.length} 字, tokens=${inputTokens}/${outputTokens}`)
-    return { content, model }
+    return {
+      content,
+      model,
+      usage: {
+        model,
+        promptTokens: effectiveInputTokens,
+        completionTokens: outputTokens,
+        reportedCostUsd: estimateCostUsd(model, effectiveInputTokens, outputTokens),
+      },
+    }
   } catch (err) {
     // 失敗（429/529/超時/AbortError 等）：寫一筆 error log，
     // 即使 tokens 未知也保留一筆紀錄以便後台統計失敗率
@@ -2185,6 +2272,109 @@ export async function aiGenerateGeneric(
 }
 aiGenerateGeneric.maxRetries = 2
 
+// ── C/G15 consultation-report/v1：單章結構化生成 ──
+// 只由新生成器 feature flag 呼叫；不接受 E 系列，也不改既有 prompt 路徑。
+export async function aiGenerateConsultationChapter(
+  systemPrompt: string,
+  userPrompt: string,
+  planCode: 'C' | 'G15',
+  topicId: string,
+  reportId: string,
+  maxOutputTokens: number,
+): Promise<{
+  rawDraft: unknown
+  model: string
+  usage: { model: string; promptTokens: number; completionTokens: number; reportedCostUsd: number }
+}> {
+  "use step";
+  await emitProgress({
+    step: '深度撰寫',
+    progress: 25,
+    message: `正在完成 ${topicId} 章節...`,
+  })
+  const result = await callClaudeOnly(
+    systemPrompt,
+    userPrompt,
+    maxOutputTokens,
+    `consultation_v1_${planCode}_${topicId}`,
+    reportId,
+  )
+  const content = result.content.trim()
+  if (!content.startsWith('{') || !content.endsWith('}') || /```/u.test(content)) {
+    return { rawDraft: content, model: result.model, usage: result.usage }
+  }
+  let rawDraft: unknown
+  try {
+    rawDraft = JSON.parse(content)
+  } catch (error) {
+    return {
+      rawDraft: { parseError: error instanceof Error ? error.message : String(error), raw: content },
+      model: result.model,
+      usage: result.usage,
+    }
+  }
+  if (!rawDraft || typeof rawDraft !== 'object' || Array.isArray(rawDraft)) {
+    return { rawDraft, model: result.model, usage: result.usage }
+  }
+  return { rawDraft, model: result.model, usage: result.usage }
+}
+aiGenerateConsultationChapter.maxRetries = 0
+
+export async function aiReviewConsultationDrafts(
+  input: {
+    plan: 'C' | 'G15'
+    reportId: `report:${string}`
+    contextHash: string
+    asOfDate: string
+    people: PersonContext[]
+    ageContexts: ReportAgeContext[]
+    facts: FactLedger['entries']
+    drafts: NormalizedConsultationChapter[]
+  },
+  releasePolicyReceipt: string,
+  maxOutputTokens: number,
+) {
+  "use step";
+  await emitProgress({
+    step: '獨立審閱',
+    progress: 82,
+    message: '正在逐項比對人物、年份、依據與行動建議...',
+  })
+  const request = buildConsultationFreshReviewRequest(input, releasePolicyReceipt)
+  const configuredModel = process.env.CONSULTATION_REVIEW_GEMINI_MODEL?.trim()
+  const model = configuredModel || CONSULTATION_REVIEW_DEFAULT_MODEL
+  if (model !== CONSULTATION_REVIEW_DEFAULT_MODEL) {
+    throw new FatalError(`C/G15 獨立審查只允許 ${CONSULTATION_REVIEW_DEFAULT_MODEL}`)
+  }
+  const response = await geminiProvider.generate({
+    model,
+    system: request.system,
+    user: request.user,
+    maxTokens: maxOutputTokens,
+    temperature: 0,
+    jsonMode: true,
+  })
+  if (response.error || !response.content.trim()) {
+    throw new FatalError(`fresh-context Gemini 審查失敗: ${response.error || 'empty response'}`)
+  }
+  const parsed = parseConsultationFreshReviewResponse({
+    rawResponse: response.content,
+    reviewerModel: response.model,
+    requestHash: request.requestHash,
+    releasePolicyReceipt,
+  })
+  return {
+    ...parsed,
+    usage: {
+      model: response.model,
+      promptTokens: response.usage.promptTokens,
+      completionTokens: response.usage.completionTokens,
+      reportedCostUsd: response.costUsd,
+    },
+  }
+}
+aiReviewConsultationDrafts.maxRetries = 0
+
 // ── G15 家族藍圖：載入家庭成員的已完成人生藍圖報告 ──
 export interface FamilyMemberReport {
   email: string
@@ -2236,35 +2426,41 @@ loadFamilyReports.maxRetries = 2
 // ── G15 家族藍圖（新版）：用 report ID 直接載入成員報告 ──
 export async function loadFamilyReportsByIds(
   reportIds: string[], memberNames: string[],
+  owner: { userId?: string | null; email?: string | null },
 ): Promise<FamilyMemberReport[]> {
   "use step";
   await emitProgress({ step: '載入資料', progress: 10, message: '正在載入家庭成員的人生藍圖報告...' })
 
   const supabase = getSupabase()
-  const results: FamilyMemberReport[] = []
-
-  for (let i = 0; i < reportIds.length; i++) {
-    const { data, error } = await supabase
-      .from('paid_reports')
-      .select('client_name, report_result, birth_data, customer_email')
-      .eq('id', reportIds[i])
-      .eq('plan_code', 'C')
-      .eq('status', 'completed')
-      .single()
-
-    if (error || !data) {
-      throw new FatalError(`找不到報告 ID: ${reportIds[i]} 的已完成人生藍圖`)
-    }
-
-    results.push({
-      email: data.customer_email || '',
-      name: data.client_name || memberNames[i] || '',
-      reportContent: typeof data.report_result === 'string'
-        ? data.report_result
-        : JSON.stringify(data.report_result || ''),
-      birthData: data.birth_data as BirthData,
-    })
+  const { data, error } = await supabase
+    .from('paid_reports')
+    .select('id,client_name,plan_code,status,deleted_at,user_id,customer_email,report_result,birth_data')
+    .in('id', reportIds)
+  const validation = await validateG15Selection({
+    selectedReportIds: reportIds,
+    auth: { userId: owner.userId, email: owner.email },
+    queryReports: async () => ({
+      data: (data ?? []) as unknown as G15SelectionReportRow[],
+      error,
+    }),
+  })
+  if (!validation.ok || !Array.isArray(data)) {
+    throw new FatalError(`G15 成員報告重新授權失敗: ${validation.ok ? 'QUERY_FAILED' : validation.code}`)
   }
+  type FamilyReportRow = G15SelectionReportRow & { report_result: unknown; birth_data: unknown }
+  const rowsById = new Map((data as unknown as FamilyReportRow[]).map((row) => [row.id.toLowerCase(), row]))
+  const results = validation.reportIds.map((reportId, index) => {
+    const row = rowsById.get(reportId)
+    if (!row?.birth_data) throw new FatalError(`G15 成員報告 ${reportId} 缺少出生資料`)
+    return {
+      email: row.customer_email || '',
+      name: validation.memberNames[index],
+      reportContent: typeof row.report_result === 'string'
+        ? row.report_result
+        : JSON.stringify(row.report_result || ''),
+      birthData: row.birth_data as BirthData,
+    }
+  })
 
   console.log(`載入 ${results.length} 份家庭成員報告（by ID）`)
   return results
@@ -4032,16 +4228,42 @@ export async function contentModerationStep(
   "use step";
   await emitProgress({ step: '內容審查', progress: 74, message: '正在執行內容安全審查...' })
 
+  let moderationModule: typeof import('@/lib/content-moderation')
+  let report: Awaited<ReturnType<typeof import('@/lib/content-moderation')['moderateContent']>>
   try {
-    const { moderateContent, logModerationEvent } = await import('@/lib/content-moderation')
-    const report = await moderateContent(reportContent, {
+    moderationModule = await import('@/lib/content-moderation')
+    report = await moderationModule.moderateContent(reportContent, {
       skipAi: options.skipAi,
       customerName: options.customerName,
       otherClientNames: options.otherClientNames,
+      requireCompleteAi: planCode === 'C' || planCode === 'G15',
     })
+  } catch {
+    // C/G15 新諮詢報告在審查器不可用時必須停在人工作業；
+    // E3 與其他既有方案維持原有 fallback，避免改動凍結方案的交付語意。
+    if (planCode === 'C' || planCode === 'G15') {
+      return {
+        action: 'hard_block' as const,
+        blocked: true,
+        warnings: ['內容安全審查暫時無法完成，報告已轉交人工確認'],
+        guardInstruction: '',
+        reason: 'moderation-unavailable-needs-human-review',
+        blacklistCount: 0,
+      }
+    }
+    return {
+      action: 'pass' as const,
+      blocked: false,
+      warnings: ['content-moderation 執行例外'],
+      guardInstruction: '',
+      reason: 'moderation-error-fallback',
+      blacklistCount: 0,
+    }
+  }
 
-    // 無論通過與否都記錄（方便日後稽核）
-    await logModerationEvent({
+  // 稽核紀錄是旁路；紀錄失敗不得覆寫已做出的 blocked/pass 判定。
+  try {
+    await moderationModule.logModerationEvent({
       reportId,
       planCode,
       action: report.action,
@@ -4052,31 +4274,22 @@ export async function contentModerationStep(
       contentPreview: reportContent.slice(0, 500),
       retryAttempt: options.retryAttempt ?? 0,
     })
+  } catch {
+    console.warn('[content-moderation] 稽核紀錄寫入失敗，保留原審查判定')
+  }
 
-    console.log(
-      `[content-moderation] ${reportId} ${planCode}: action=${report.action}, ` +
-      `黑名單命中 ${report.blacklistHits.length} 項, 警告 ${report.warnings.length} 項`,
-    )
+  console.log(
+    `[content-moderation] ${reportId} ${planCode}: action=${report.action}, ` +
+    `黑名單命中 ${report.blacklistHits.length} 項, 警告 ${report.warnings.length} 項`,
+  )
 
-    return {
-      action: report.action,
-      blocked: report.blocked,
-      warnings: report.warnings,
-      guardInstruction: report.guardInstruction || '',
-      reason: report.reason,
-      blacklistCount: report.blacklistHits.length,
-    }
-  } catch (e) {
-    // 審查自身失敗不阻塞報告交付（降級為 pass）
-    console.error('[content-moderation] 執行失敗，降級為 pass:', e)
-    return {
-      action: 'pass' as const,
-      blocked: false,
-      warnings: [`content-moderation 執行例外: ${e instanceof Error ? e.message : String(e)}`],
-      guardInstruction: '',
-      reason: 'moderation-error-fallback',
-      blacklistCount: 0,
-    }
+  return {
+    action: report.action,
+    blocked: report.blocked,
+    warnings: report.warnings,
+    guardInstruction: report.guardInstruction || '',
+    reason: report.reason,
+    blacklistCount: report.blacklistHits.length,
   }
 }
 contentModerationStep.maxRetries = 1
@@ -4098,6 +4311,7 @@ export async function saveReportToSupabase(
   top5Timings?: unknown,
   fullCharts?: unknown, // 報告重構 2026-06-23:deterministic 排盤結構化(五行/四柱/大運)、供綜合量化視覺;undefined 則不存(向後相容)
   narrative?: unknown, // 報告重構 2026-06-23:敘事綜合萃取(命格原型/天賦/課題、Gemini 忠於原文、黃金驗證過);undefined 則不存
+  consultationReport?: unknown, // C/G15 consultation-report/v1；feature flag 路徑才寫入
 ) {
   "use step";
   await emitProgress({ step: '儲存報告', progress: 90, message: '正在儲存報告...' })
@@ -4125,6 +4339,9 @@ export async function saveReportToSupabase(
   // 報告重構 2026-06-23:存敘事綜合萃取(命格原型/天賦/課題、Gemini 忠於原文、黃金驗證過)
   if (narrative && typeof narrative === 'object') {
     reportResult.narrative_summary = narrative
+  }
+  if (consultationReport && typeof consultationReport === 'object') {
+    reportResult.consultation_report = consultationReport
   }
 
   const supabase = getSupabase()
@@ -4267,7 +4484,7 @@ export async function sendReportEmail(
   // v5.7.13:改 PLAN_NAMES from lib/plan-names
   const planName = PLAN_NAMES[planCode] || '命理分析報告'
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-  const reportUrl = `${siteUrl}/report/${accessToken}`
+  const reportUrl = buildAbsoluteReportUrl(siteUrl, planCode, accessToken)
   const isCN = birthData.locale === 'zh-CN'
   const emailFont = isCN
     ? "'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif"

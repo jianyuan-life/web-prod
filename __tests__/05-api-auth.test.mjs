@@ -53,6 +53,13 @@ const PUBLIC_PATTERNS = [
   /\/ab-events\//,                         // A/B 測試事件追蹤(前端打點、無 PII)
   /\/free-qimen\//,                        // 免費奇門排盤(同 free-bazi)
   /\/unsubscribe\//,                       // 退訂(URL 帶 token、不需 admin)
+  /\/admin\/honeypot\//,                  // 故意公開的陷阱端點；middleware 限流並記錄命中
+  /\/auth\/turnstile-verify\//,           // 公開登入前的人機驗證
+  /\/csp-report\//,                        // 瀏覽器 CSP report sink
+  /\/error-report\//,                      // 公開前端錯誤回報（middleware 限流）
+  /\/health-check\//,                      // 公開健康檢查
+  /\/r\/\[type\]\/\[id\]\/pdf\//,      // 舊版高熵 report id 私密下載
+  /\/web-vitals\//,                        // 公開匿名效能 beacon
 ]
 
 // 需要 ADMIN_KEY 的端點
@@ -75,6 +82,7 @@ const AUTH_PATTERNS = [
   /checkout\/verify-family/,    // 家族驗證
   /\/points\/transfer/,         // 積分贈與(需登入、Authorization header)v5.4.15 新增
   /\/referral\/register/,       // 推薦碼註冊(需 user 認證)v5.4.15 新增
+  /\/consultation\//,           // 私人 C/G15 報告下載（高熵 access token）
 ]
 
 // 內部端點（由其他伺服器呼叫）
@@ -104,7 +112,9 @@ test(`發現 ${routeFiles.length} 個 API route 檔案`, () => {
 // 測試每個 admin 端點都有 ADMIN_KEY 驗證
 // v5.4.15 修:接受 ADMIN_KEY 字串 OR checkAdminAuth() helper(包裝 ADMIN_KEY、line 9 admin-auth.ts 真實在 process.env.ADMIN_KEY)
 test('所有 /admin/ 端點必須有 ADMIN_KEY 驗證', () => {
-  const adminRoutes = routeFiles.filter(f => ADMIN_PATTERNS.some(p => p.test(normPath(f))))
+  const adminRoutes = routeFiles.filter(f =>
+    ADMIN_PATTERNS.some(p => p.test(normPath(f))) && !isPublic(f)
+  )
   const unprotected = []
   for (const file of adminRoutes) {
     const content = readFileSync(file, 'utf-8')
@@ -124,7 +134,7 @@ test('所有 /cron/ 端點必須有 CRON_SECRET 驗證', () => {
   const unprotected = []
   for (const file of cronRoutes) {
     const content = readFileSync(file, 'utf-8')
-    if (!content.includes('CRON_SECRET')) {
+    if (!content.includes('CRON_SECRET') && !content.includes('checkCronAuth')) {
       unprotected.push(getRelativePath(file))
     }
   }
@@ -147,7 +157,11 @@ test('需認證端點必須有 Authorization 或 auth 驗證', () => {
                     content.includes('access_token') ||  // v5.4.15:報告 token 認
                     content.includes('admin.getUserById') ||  // v5.4.15:service role 驗 userId(referral/register 用)
                     content.includes('verifyAccessToken') ||
-                    content.includes('getAuthUserId')  // v5.4.15:lib/auth-helper.ts 統一 user id 取得(family-members / points 等)
+                    content.includes('getAuthUserId') ||  // v5.4.15:lib/auth-helper.ts 統一 user id 取得(family-members / points 等)
+                    content.includes('loadConsultationReport') || // C/G15 loader 以 access token 查詢、完整契約 fail closed
+                    content.includes('createConsultationPdfResponse') || // route 委派給私密 token loader + PDF fail-closed response
+                    content.includes('createConsultationSessionResponse') || // same-origin POST + bearer DB validation + HttpOnly cookie
+                    content.includes('createLegacyConsultationPdfRedirect') // legacy bearer 經 DB 驗證後換成 tokenless session
     if (!hasAuth) {
       unprotected.push(getRelativePath(file))
     }

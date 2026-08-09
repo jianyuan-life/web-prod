@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mobile reader rail fixture</title>
+    <link rel="stylesheet" href="../../../components/consultation/reader/ConsultationReportReader.module.css" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      .fixture-spacer { min-height: 900px; }
+    </style>
+  </head>
+  <body>
+    <main class="shell" data-plan="C">
+      <article class="paper">
+        <header class="masthead"><h1>人生藍圖</h1></header>
+        <div class="dossierGrid">
+          <aside class="rail">
+            <div class="railInner">
+              <p class="railTitle">閱讀路徑</p>
+              <nav aria-label="報告閱讀與下載導覽">
+                <ol>
+                  <li><a href="#quick-reading"><span>壹</span>30 秒先讀</a></li>
+                  <li><a href="#reading-route"><span>貳</span>3 分鐘導讀</a></li>
+                  <li><a href="#deep-reading"><span>參</span>完整報告</a></li>
+                  <li><a href="#evidence-appendix"><span>肆</span>依據與限制</a></li>
+                  <li class="downloadTab"><a href="#pdf"><span>伍</span>下載 PDF</a></li>
+                  <li class="dashboardTab"><a href="#dashboard"><span>陸</span>我的報告</a></li>
+                </ol>
+              </nav>
+              <a class="downloadLink" href="#pdf">下載 PDF 完整版</a>
+              <a class="dashboardLink" href="#dashboard">回到我的報告</a>
+            </div>
+          </aside>
+          <div class="contentColumn">
+            <section class="layer" id="quick-reading"><h2>30 秒先讀</h2></section>
+            <div class="fixture-spacer"></div>
+            <section class="layer" id="reading-route"><h2>3 分鐘導讀</h2></section>
+            <div class="fixture-spacer"></div>
+            <section class="layer" id="deep-reading"><h2>完整報告</h2></section>
+            <div class="fixture-spacer"></div>
+            <section class="layer" id="evidence-appendix"><h2>依據與限制</h2></section>
+          </div>
+        </div>
+      </article>
+    </main>
+  </body>
+</html>

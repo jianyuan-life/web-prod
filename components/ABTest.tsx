@@ -61,10 +61,10 @@ export function Experiment({
 /**
  * 宣告式 variant wrapper
  * 範例：
- *   <ABVariant experimentKey="pricing_c_20260417" variantKey="A">
+ *   <ABVariant experimentKey={EXPERIMENT_NAME} variantKey="A">
  *     <PriceTag amount={89} />
  *   </ABVariant>
- *   <ABVariant experimentKey="pricing_c_20260417" variantKey="B">
+ *   <ABVariant experimentKey={EXPERIMENT_NAME} variantKey="B">
  *     <PriceTag amount={99} />
  *   </ABVariant>
  *

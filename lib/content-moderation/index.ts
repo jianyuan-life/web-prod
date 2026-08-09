@@ -10,9 +10,8 @@ import {
   summarizeHits,
   type BlacklistHit,
   type ModerationCategory,
-} from './blacklist'
-import { moderateWithAI, type AiModerationResult } from './ai-moderator'
-import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
+} from './blacklist.ts'
+import { moderateWithAI, type AiModerationResult } from './ai-moderator.ts'
 
 export type ModerationAction =
   | 'pass'               // 全過
@@ -47,6 +46,8 @@ export interface ModerateOptions {
   /** 是否對隱私洩漏（其他客戶名字）做檢查 */
   customerName?: string
   otherClientNames?: string[]
+  /** C/G15 等交付級長報告要求 AI 審查覆蓋全文；provider 缺失或任一分塊失敗即 fail closed。 */
+  requireCompleteAi?: boolean
 }
 
 /**
@@ -87,9 +88,9 @@ export async function moderateContent(
   let ai: AiModerationResult | null = null
   if (!options.skipAi) {
     try {
-      ai = await moderateWithAI(content)
+      ai = await moderateWithAI(content, { requirePolicyCoverage: options.requireCompleteAi })
     } catch (err) {
-      console.error('[moderateContent] AI 審查例外（不阻塞）:', err)
+      console.error('[moderateContent] AI 審查例外:', err)
     }
   }
 
@@ -107,11 +108,19 @@ export async function moderateContent(
     warnings.push(`[AI] ${w}`)
   }
 
-  const blocked = blacklistSummary.blocked || aiBlocked
+  const incompleteRequiredReview = options.requireCompleteAi === true &&
+    (ai?.complete !== true || ai.policyCoverageComplete !== true)
+  const blocked = blacklistSummary.blocked || aiBlocked || incompleteRequiredReview
 
   let action: ModerationAction = 'pass'
   let reason = '全部通過'
-  if (blocked) {
+  if (incompleteRequiredReview) {
+    action = 'hard_block'
+    reason = ai
+      ? `AI 全文與政策審查未完成（${ai.reviewedCharacters}/${ai.totalCharacters} 字；政策覆蓋=${ai.policyCoverageComplete}）`
+      : 'AI 全文審查未執行'
+    warnings.push('內容安全審查尚未完整覆蓋全文，報告已轉交人工確認')
+  } else if (blocked) {
     // 只要命中任何 block 類別，都需要擋
     action = 'retry_with_guard'
     const reasons: string[] = []
@@ -138,7 +147,9 @@ export async function moderateContent(
     blacklistSummary,
     ai,
     reason,
-    guardInstruction: blocked ? buildGuardInstruction(blacklistHits, aiWarnings, ai) : undefined,
+    guardInstruction: blocked && !incompleteRequiredReview
+      ? buildGuardInstruction(blacklistHits, aiWarnings, ai)
+      : undefined,
   }
 }
 
@@ -219,7 +230,8 @@ export interface ModerationLogInput {
   severity?: 'red' | 'yellow' | 'info' | string
 }
 
-function getSupabase() {
+async function getSupabase() {
+  const { createServiceClient } = await import('../supabase.ts')
   return createServiceClient()
 }
 
@@ -229,7 +241,7 @@ function getSupabase() {
  */
 export async function logModerationEvent(input: ModerationLogInput): Promise<void> {
   try {
-    const supabase = getSupabase()
+    const supabase = await getSupabase()
 
     // v5.3.32：schema drift 修復
     //   實際 schema：layer(NOT NULL), severity(NOT NULL), content_sample, categories(jsonb),
@@ -299,7 +311,7 @@ export {
   MODERATION_BLACKLIST,
   FALSE_POSITIVE_WHITELIST,
   stripWhitelistedFragments,
-} from './blacklist'
-export { moderateWithAI } from './ai-moderator'
-export type { BlacklistHit, ModerationCategory, ModerationSeverity } from './blacklist'
-export type { AiModerationResult } from './ai-moderator'
+} from './blacklist.ts'
+export { moderateWithAI } from './ai-moderator.ts'
+export type { BlacklistHit, ModerationCategory, ModerationSeverity } from './blacklist.ts'
+export type { AiModerationResult } from './ai-moderator.ts'

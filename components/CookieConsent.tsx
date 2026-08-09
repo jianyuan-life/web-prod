@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { isConsultationReaderPath } from '@/lib/consultation/routes'
 
 const STORAGE_KEY = 'jy_cookie_consent_v1'
 
@@ -59,8 +60,10 @@ export default function CookieConsent() {
   // Cookie 彈窗在 report 閱讀頁右下角擋住 CTA「分享報告」+ 章節 cue + 五行進度條
   // v5.10.186 修(Codex GDPR finding):不能在 /report hide(GA4+Meta Pixel 仍 set cookie、違 GDPR)
   // 改:report 頁仍顯示、但 toast 移到頂部 max-w-sm、不擋下方 reading area
+  const isConsultationReport = isConsultationReaderPath(pathname)
   const isPrivateChrome = pathname?.startsWith('/report/')
     || pathname?.startsWith('/r/')
+    || isConsultationReport
     || pathname?.startsWith('/dashboard')
     || pathname?.startsWith('/jamie')
   const isFormFlow = pathname?.startsWith('/auth/')
@@ -99,6 +102,7 @@ export default function CookieConsent() {
       /* localStorage blocked, 仍然 apply 本 session */
     }
     applyConsent(full)
+    window.dispatchEvent(new CustomEvent<ConsentPrefs>('jy:consent-updated', { detail: full }))
     setShow(false)
   }
 
@@ -116,8 +120,11 @@ export default function CookieConsent() {
 
   if (!show) return null
 
-  // Mobile 參與正常文流，避免遮住 CTA、出生時間與表單錯誤；desktop 才使用非模態 toast。
-  const positionClass = isFormFlow
+  // Mobile 使用有高度上限的 bottom sheet，不參與文流、不把 hero 主動作推出首屏。
+  // Desktop 保留原本的右上／右下非模態 toast，表單流程仍使用文流卡片。
+  const positionClass = isConsultationReport
+    ? 'jy-cookie--consultation'
+    : isFormFlow
     ? 'jy-cookie--flow'
     : isPrivateChrome
       ? 'jy-cookie--top'
@@ -129,6 +136,7 @@ export default function CookieConsent() {
       aria-modal="false"
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-desc-short"
+      data-view={showCustom ? 'custom' : 'compact'}
       className={`jy-cookie ${positionClass}`}
     >
       <div>

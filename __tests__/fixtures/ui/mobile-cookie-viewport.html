@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-TW" data-theme="light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Mobile cookie viewport fixture</title>
+    <link rel="stylesheet" href="../../../app/presentation.css">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body { --font-body: Arial, sans-serif; font-family: Arial, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div
+      class="jy-cookie jy-cookie--bottom"
+      data-view="compact"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="cookie-consent-title"
+      aria-describedby="cookie-desc-short"
+    >
+      <div class="jy-cookie__compact">
+        <div>
+          <p id="cookie-consent-title" class="jy-cookie__title">Cookie 與隱私偏好</p>
+          <p id="cookie-desc-short" class="jy-cookie__copy">
+            必要 Cookie 維持登入與結帳；分析與行銷 Cookie 由你決定。詳見 <a href="#privacy">隱私政策</a>。
+          </p>
+        </div>
+        <div class="jy-cookie__actions">
+          <button class="jy-cookie__button jy-cookie__button--quiet" type="button">自訂偏好</button>
+          <button class="jy-cookie__button jy-cookie__button--quiet" type="button">僅使用必要項目</button>
+          <button class="jy-cookie__button jy-cookie__button--primary" type="button">全部接受</button>
+        </div>
+      </div>
+    </div>
+
+    <main id="main-content" style="padding-top: 4rem">
+      <div class="jy-page jy-home-page">
+        <section class="jy-hero">
+          <div class="jy-container jy-hero__grid">
+            <div class="jy-hero__copy">
+              <div class="jy-eyebrow">人生諮詢 · 家庭諮詢 · 可追回依據</div>
+              <h1 class="jy-display">先看清你的<strong>人生</strong>，<br>再理解<strong>一家人</strong></h1>
+              <p class="jy-lede">
+                鑒源把排盤事實、傳統詮釋、不同訊號與行動建議分開整理。先告訴你現在最值得處理的問題，再讓你自己決定要相信多少、採取什麼。
+              </p>
+              <div class="jy-actions" aria-label="主要諮詢入口">
+                <a href="#life" class="jy-button jy-button--primary">了解人生藍圖</a>
+                <a href="#family" class="jy-button jy-button--secondary">了解家族藍圖</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

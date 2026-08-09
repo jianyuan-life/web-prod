@@ -1,0 +1,242 @@
+{
+  "schema": "e3-fixtures/v1",
+  "fixed_time": "2026-08-09T04:00:00.000Z",
+  "auth": {
+    "user": {
+      "id": "e3f00000-0000-4000-8000-000000000001",
+      "aud": "authenticated",
+      "role": "authenticated",
+      "email": "e3-freeze@example.invalid",
+      "email_confirmed_at": "2026-08-01T00:00:00.000Z",
+      "user_metadata": {
+        "full_name": "E3 凍結測試人"
+      }
+    },
+    "session": {
+      "access_token": "e3-freeze-access-token",
+      "refresh_token": "e3-freeze-refresh-token",
+      "expires_at": 1893456000,
+      "expires_in": 315360000,
+      "token_type": "bearer"
+    }
+  },
+  "checkout": {
+    "expectedPayload": {
+      "planCode": "E3",
+      "birthData": {
+        "name": "E3 凍結測試人",
+        "year": 1990,
+        "month": 1,
+        "day": 1,
+        "hour": 12,
+        "minute": 0,
+        "gender": "M",
+        "marital_status": "unmarried",
+        "address": "",
+        "time_unknown": false,
+        "time_mode": "shichen",
+        "latitude": 23.69,
+        "longitude": 120.96,
+        "timezone_offset": 8,
+        "timezone": "Asia/Taipei",
+        "birth_country": "TW",
+        "birth_city": "台灣",
+        "calendar_type": "solar",
+        "available_time_slots": [
+          { "start": "23:00", "end": "01:00" },
+          { "start": "01:00", "end": "03:00" },
+          { "start": "03:00", "end": "05:00" }
+        ],
+        "topics": ["career", "wealth", "family"],
+        "topic_rank": { "career": 1, "wealth": 2, "family": 3 }
+      },
+      "locale": "zh-TW",
+      "userEmail": "e3-freeze@example.invalid"
+    }
+  },
+  "report": {
+    "id": "e3f00000-0000-4000-8000-000000000002",
+    "client_name": "E3 凍結測試人",
+    "customer_email": "e3-freeze@example.invalid",
+    "plan_code": "E3",
+    "amount_usd": 89,
+    "pdf_url": null,
+    "access_token": "e3Freeze_20260809_SyntheticToken_A1b2C3",
+    "birth_data": {
+      "name": "E3 凍結測試人",
+      "year": 1990,
+      "month": 1,
+      "day": 1,
+      "hour": 12,
+      "gender": "M",
+      "locale": "zh-TW",
+      "topics": ["career", "wealth", "family"],
+      "topic_rank": { "career": 1, "wealth": 2, "family": 3 }
+    },
+    "report_result": {
+      "ai_content": "## 月度精選測試報告\n\n這是 E3 介面凍結專用的完全合成資料，不代表任何命理判斷。",
+      "systems_count": 1,
+      "analyses_summary": [
+        { "system": "奇門遁甲", "score": 0 }
+      ],
+      "top5_timings": [
+        {
+          "rank": 1,
+          "week": 1,
+          "title": "第一週合成時窗 A",
+          "date": "2026-09-02",
+          "time_start": "07:00",
+          "time_end": "09:00",
+          "direction": "東",
+          "angle": "90°",
+          "reason": "合成介面資料，不作命理用途。",
+          "plain_advantage": "只用來固定卡片文字、順序與版面。",
+          "plain_purpose": ["介面驗證", "排版驗證", "可及性驗證"]
+        },
+        {
+          "rank": 2,
+          "week": 1,
+          "title": "第一週合成時窗 B",
+          "date": "2026-09-05",
+          "time_start": "13:00",
+          "time_end": "15:00",
+          "direction": "南",
+          "angle": "180°",
+          "reason": "合成介面資料，不作命理用途。",
+          "plain_advantage": "只用來固定卡片文字、順序與版面。",
+          "plain_purpose": ["介面驗證", "排版驗證", "可及性驗證"]
+        },
+        {
+          "rank": 3,
+          "week": 2,
+          "title": "第二週合成時窗 A",
+          "date": "2026-09-09",
+          "time_start": "09:00",
+          "time_end": "11:00",
+          "direction": "東南",
+          "angle": "135°",
+          "reason": "合成介面資料，不作命理用途。",
+          "plain_advantage": "只用來固定卡片文字、順序與版面。",
+          "plain_purpose": ["介面驗證", "排版驗證", "可及性驗證"]
+        },
+        {
+          "rank": 4,
+          "week": 2,
+          "title": "第二週合成時窗 B",
+          "date": "2026-09-12",
+          "time_start": "15:00",
+          "time_end": "17:00",
+          "direction": "西",
+          "angle": "270°",
+          "reason": "合成介面資料，不作命理用途。",
+          "plain_advantage": "只用來固定卡片文字、順序與版面。",
+          "plain_purpose": ["介面驗證", "排版驗證", "可及性驗證"]
+        },
+        {
+          "rank": 5,
+          "week": 3,
+          "title": "第三週合成時窗 A",
+          "date": "2026-09-16",
+          "time_start": "11:00",
+          "time_end": "13:00",
+          "direction": "北",
+          "angle": "0°",
+          "reason": "合成介面資料，不作命理用途。",
+          "plain_advantage": "只用來固定卡片文字、順序與版面。",
+          "plain_purpose": ["介面驗證", "排版驗證", "可及性驗證"]
+        },
+        {
+          "rank": 6,
+          "week": 3,
+          "title": "第三週合成時窗 B",
+          "date": "2026-09-19",
+          "time_start": "17:00",
+          "time_end": "19:00",
+          "direction": "西北",
+          "angle": "315°",
+          "reason": "合成介面資料，不作命理用途。",
+          "plain_advantage": "只用來固定卡片文字、順序與版面。",
+          "plain_purpose": ["介面驗證", "排版驗證", "可及性驗證"]
+        },
+        {
+          "rank": 7,
+          "week": 4,
+          "title": "第四週合成時窗 A",
+          "date": "2026-09-23",
+          "time_start": "05:00",
+          "time_end": "07:00",
+          "direction": "東北",
+          "angle": "45°",
+          "reason": "合成介面資料，不作命理用途。",
+          "plain_advantage": "只用來固定卡片文字、順序與版面。",
+          "plain_purpose": ["介面驗證", "排版驗證", "可及性驗證"]
+        },
+        {
+          "rank": 8,
+          "week": 4,
+          "title": "第四週合成時窗 B",
+          "date": "2026-09-26",
+          "time_start": "19:00",
+          "time_end": "21:00",
+          "direction": "西南",
+          "angle": "225°",
+          "reason": "合成介面資料，不作命理用途。",
+          "plain_advantage": "只用來固定卡片文字、順序與版面。",
+          "plain_purpose": ["介面驗證", "排版驗證", "可及性驗證"]
+        }
+      ]
+    },
+    "status": "completed",
+    "created_at": "2026-08-09T04:00:00.000Z",
+    "user_id": "e3f00000-0000-4000-8000-000000000001"
+  },
+  "referral": {
+    "code": "E3FREEZE",
+    "totalReferrals": 0,
+    "isActive": true
+  },
+  "dashboard": {
+    "pending": {
+      "id": "e3f00000-0000-4000-8000-000000000003",
+      "client_name": "E3 凍結測試人",
+      "plan_code": "E3",
+      "amount_usd": 89,
+      "status": "pending",
+      "pdf_url": null,
+      "access_token": null,
+      "report_result": null,
+      "created_at": "2026-08-09T03:55:00.000Z",
+      "error_message": null,
+      "retry_count": 0,
+      "generation_progress": { "step": "queued", "progress": 8, "message": "等待開始排算", "progress_updated_at": "2026-08-09T03:59:00.000Z" }
+    },
+    "completed": {
+      "id": "e3f00000-0000-4000-8000-000000000004",
+      "client_name": "E3 凍結測試人",
+      "plan_code": "E3",
+      "amount_usd": 89,
+      "status": "completed",
+      "pdf_url": null,
+      "access_token": "e3Freeze_20260809_SyntheticToken_A1b2C3",
+      "report_result": { "systems_count": 1, "analyses_summary": [{ "system": "奇門遁甲", "score": 0 }] },
+      "created_at": "2026-08-09T03:30:00.000Z",
+      "error_message": null,
+      "retry_count": 0,
+      "generation_progress": { "step": "completed", "progress": 100, "message": "報告已完成", "progress_updated_at": "2026-08-09T04:00:00.000Z" }
+    },
+    "failed": {
+      "id": "e3f00000-0000-4000-8000-000000000005",
+      "client_name": "E3 凍結測試人",
+      "plan_code": "E3",
+      "amount_usd": 89,
+      "status": "failed",
+      "pdf_url": null,
+      "access_token": null,
+      "report_result": null,
+      "created_at": "2026-08-09T03:30:00.000Z",
+      "error_message": "E3 凍結測試：合成失敗狀態",
+      "retry_count": 0,
+      "generation_progress": { "step": "failed", "progress": 42, "message": "需要重新處理", "progress_updated_at": "2026-08-09T03:50:00.000Z" }
+    }
+  }
+}

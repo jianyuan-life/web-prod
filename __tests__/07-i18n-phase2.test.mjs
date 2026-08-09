@@ -17,8 +17,8 @@
 // 另外驗證 cities.ts 的 searchCities fallback 有正確整合 cities-with-tz
 
 import { suite, test, assert, done } from './harness.mjs'
-import { readFileSync } from 'fs'
-import { join } from 'path'
+import { existsSync, readFileSync } from 'fs'
+import { join, resolve } from 'path'
 
 // 讀 cities-with-tz.ts 原始碼，做簡單 pattern 檢查（避免跑 Next.js import graph）
 const citiesTzSrc = readFileSync(
@@ -170,10 +170,16 @@ test('CheckoutFormState 型別含 countryCode: string', () => {
 
 suite('i18n Phase 2 — Sprint 4 後端 schema')
 
-const apiServerSrc = readFileSync(
-  join(process.cwd(), '..', 'Claude-鑑源命理研究部門', 'api_server', 'api_server.py'),
-  'utf-8',
-)
+const apiServerCandidates = [
+  process.env.JIANYUAN_FORTUNE_RESEARCH_ROOT,
+  join(process.cwd(), '..', 'Claude-鑑源命理研究部門'),
+  join(process.cwd(), '..', '..', 'Claude-鑑源', 'Claude-鑑源命理研究部門'),
+].filter(Boolean).map((candidate) => resolve(candidate))
+const apiServerPath = apiServerCandidates
+  .map((candidate) => join(candidate, 'api_server', 'api_server.py'))
+  .find((candidate) => existsSync(candidate))
+assert(apiServerPath, `找不到命理研究 repo；已檢查 ${apiServerCandidates.join('、')}，或請設定 JIANYUAN_FORTUNE_RESEARCH_ROOT`)
+const apiServerSrc = readFileSync(apiServerPath, 'utf-8')
 
 test('Python BirthRequest 有 timezone 欄位', () => {
   assert(apiServerSrc.includes('timezone: Optional[str]'), 'BirthRequest 缺 timezone')

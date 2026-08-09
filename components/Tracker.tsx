@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { reportClientFailure } from '@/lib/security/client-audit'
 import { internalPost } from '@/lib/api'  // T10b v5.10.374(timeout)
+import { isPrivateConsultationUrl, redactConsultationUrl } from '@/lib/security/private-route-redaction'
 
 // 自動追蹤每次頁面訪問 + 停留時間
 export default function Tracker() {
@@ -29,16 +30,18 @@ export default function Tracker() {
 
     const track = () => {
       if (pathname.startsWith('/admin')) return // 不追蹤管理後台
+      if (isPrivateConsultationUrl(pathname)) return // bearer token 不得進任何分析服務
+      const safePath = redactConsultationUrl(pathname)
 
       // GA4 路由變化追蹤（SPA 需手動觸發）
       if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).gtag) {
-        ;(window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'page_view', { page_path: pathname })
+        ;(window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'page_view', { page_path: safePath })
       }
 
       // T10b v5.10.374 — internalPost 統一處理(timeout 30s、429 silent fail)
       internalPost('/api/track', {
         session_id: sessionId.current,
-        page_path: pathname,
+        page_path: safePath,
         event_type: 'pageview',
         referrer: document.referrer || '',
       }).catch((e) => {
@@ -54,10 +57,10 @@ export default function Tracker() {
     return () => {
       clearTimeout(timer)
       const duration = Math.round((Date.now() - startTime.current) / 1000)
-      if (duration > 1 && duration < 1800) { // 1秒-30分鐘才記錄
+      if (!isPrivateConsultationUrl(pathname) && duration > 1 && duration < 1800) { // 1秒-30分鐘才記錄
         navigator.sendBeacon('/api/track', JSON.stringify({
           session_id: sessionId.current,
-          page_path: pathname,
+          page_path: redactConsultationUrl(pathname),
           event_type: 'duration',
           duration_seconds: duration,
         }))

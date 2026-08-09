@@ -3,9 +3,8 @@ import pkg from '../package.json'
 import Link from 'next/link'
 import Image from 'next/image'
 import Script from 'next/script'
-import { Analytics } from '@vercel/analytics/next'
-import { SpeedInsights } from '@vercel/speed-insights/next'
 import WebVitalsReporter from '@/components/WebVitalsReporter'
+import PrivacySafeVercelTelemetry from '@/components/PrivacySafeVercelTelemetry'
 import Navbar from '@/components/Navbar'
 import LocaleContent from '@/components/LocaleContent'
 import Tracker from '@/components/Tracker'
@@ -92,12 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Serif+TC:wght@400;500;600;700&display=swap"
         />
-        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
-        <link rel="dns-prefetch" href="https://connect.facebook.net" />
         <link rel="dns-prefetch" href="https://js.stripe.com" />
-        <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
-        <link rel="dns-prefetch" href="https://vitals.vercel-insights.com" />
         {/* v5.10.329 (Sprint 5 Gemini #2):Speculation Rules API — 邊緣預渲染熱門頁
             預期 LCP 改善 200-500ms(/pricing /about /blog /faq 為熱門 entry point)
             參考:https://developer.chrome.com/docs/web-platform/prerender-pages */}
@@ -120,6 +114,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       { not: { href_matches: '/dashboard*' } },
                       { not: { href_matches: '/auth/*' } },
                       { not: { href_matches: '/report/*' } },
+                      { not: { href_matches: '/consultation/*' } },
                       { not: { href_matches: '/checkout*' } },
                     ],
                   },
@@ -138,6 +133,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       { not: { href_matches: '/dashboard*' } },
                       { not: { href_matches: '/auth/*' } },
                       { not: { href_matches: '/report/*' } },
+                      { not: { href_matches: '/consultation/*' } },
                       { not: { href_matches: '/checkout*' } },
                     ],
                   },
@@ -147,96 +143,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }),
           }}
         />
-        {/* Meta Pixel (Facebook Pixel) — 只在設定環境變數時載入 */}
-        {process.env.NEXT_PUBLIC_META_PIXEL_ID && (
-          <>
-            <script
-                  dangerouslySetInnerHTML={{
-                __html: `
-                  !function(f,b,e,v,n,t,s)
-                  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-                  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-                  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-                  n.queue=[];t=b.createElement(e);t.async=!0;
-                  t.src=v;s=b.getElementsByTagName(e)[0];
-                  s.parentNode.insertBefore(t,s)}(window, document,'script',
-                  'https://connect.facebook.net/en_US/fbevents.js');
-                  // v5.6.10 (Codex L3 fix):預設拒絕 Meta Pixel 收集(GDPR 對齊)
-                  // 從 localStorage 讀已儲存偏好、若 marketing=true 則 grant、否則 revoke
-                  try {
-                    var stored = localStorage.getItem('jy_cookie_consent_v1');
-                    var prefs = stored ? JSON.parse(stored) : null;
-                    if (prefs && prefs.marketing) {
-                      fbq('consent', 'grant');
-                    } else {
-                      fbq('consent', 'revoke');
-                    }
-                  } catch(e) { fbq('consent', 'revoke'); }
-                  fbq('init', '${process.env.NEXT_PUBLIC_META_PIXEL_ID}');
-                  fbq('track', 'PageView');
-                `,
-              }}
-            />
-            <noscript>
-              <img
-                height="1"
-                width="1"
-                style={{ display: 'none' }}
-                src={`https://www.facebook.com/tr?id=${process.env.NEXT_PUBLIC_META_PIXEL_ID}&ev=PageView&noscript=1`}
-                alt=""
-              />
-            </noscript>
-          </>
-        )}
-        {/* Google Analytics 4 + Consent Mode v2 (v5.6.10 Round D:GDPR/ePrivacy 合規) */}
-        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <>
-            {/* Consent Mode v2 預設 denied、等用戶點 banner 才升級為 granted */}
-            <script
-                  dangerouslySetInnerHTML={{
-                __html: `
-                  window.dataLayer = window.dataLayer || [];
-                  function gtag(){dataLayer.push(arguments);}
-                  // v5.6.10: GDPR / ePrivacy default consent state(歐盟訪客預設拒絕、需主動同意)
-                  gtag('consent', 'default', {
-                    'ad_storage': 'denied',
-                    'ad_user_data': 'denied',
-                    'ad_personalization': 'denied',
-                    'analytics_storage': 'denied',
-                    'functionality_storage': 'granted',
-                    'security_storage': 'granted',
-                    'wait_for_update': 500
-                  });
-                  // 若用戶已透過 banner 同意、從 localStorage 讀取偏好
-                  try {
-                    var stored = localStorage.getItem('jy_cookie_consent_v1');
-                    if (stored) {
-                      var prefs = JSON.parse(stored);
-                      if (prefs.analytics) {
-                        gtag('consent', 'update', { 'analytics_storage': 'granted' });
-                      }
-                      if (prefs.marketing) {
-                        gtag('consent', 'update', {
-                          'ad_storage': 'granted',
-                          'ad_user_data': 'granted',
-                          'ad_personalization': 'granted'
-                        });
-                      }
-                    }
-                  } catch(e) {}
-                  gtag('js', new Date());
-                  gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', {
-                    page_path: window.location.pathname,
-                  });
-                `,
-              }}
-            />
-            <script
-              async
-                  src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
-            />
-          </>
-        )}
+        {/* isPrivateConsultationPath gating and consent checks live in the
+            client-only telemetry loader. Server HTML emits no tracking tags. */}
         {/* v5.10.330（Sprint 5 Gemini #1 SRI）：加 sha384 integrity 雜湊 + crossOrigin
             自家 script 安全（不會自動更新）;Stripe.js 因官方禁 SRI、不加（v3 自動更新防詐欺）*/}
         <Script
@@ -306,7 +214,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
                 <div className="flex flex-col">
                   <span className="text-gold font-serif text-xl font-semibold tracking-[4px]">鑒源</span>
-                  <span className="text-gold/40 text-[9px] tracking-[3px]">JIANYUAN</span>
+                  <span className="jy-footer__latin">JIANYUAN</span>
                 </div>
               </div>
               <p className="text-base text-text-muted font-medium tracking-wider">回到源頭 &middot; 看清本質</p>
@@ -355,12 +263,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </LocaleContent>
         </GlobalToastProvider>
         </ThemeProvider>
-        {/* v5.10.324:Vercel Analytics + Speed Insights(P0 #1 監控對齊)
-            - Analytics:即時 page-view + traffic source、不需 cookie consent(IP 匿名化)
-            - SpeedInsights:RUM Web Vitals(LCP/FID/CLS/INP/TTFB)
-            註:免費 tier 月 25K 事件、jianyuan.life 月流量遠低於此額度 */}
-        <Analytics />
-        <SpeedInsights />
+        {/* Google、Meta 與 Vercel telemetry 均由同一 client loader 進行路徑與同意檢查。 */}
+        <PrivacySafeVercelTelemetry
+          gaMeasurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}
+          metaPixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID}
+        />
         <WebVitalsReporter />
       </body>
     </html>

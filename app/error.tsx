@@ -8,6 +8,7 @@
 // - friendly 訊息 + a11y(role + aria-live)
 
 import { useEffect, useState } from 'react'
+import { redactConsultationUrl } from '@/lib/security/private-route-redaction'
 
 interface ErrorPageProps {
   error: Error & { digest?: string }
@@ -70,7 +71,7 @@ export default function Error({ error, reset }: ErrorPageProps) {
       digest: error.digest,
       message: error.message?.slice(0, 500),
       stack: error.stack?.split('\n').slice(0, 5).join(' | '),
-      url: typeof window !== 'undefined' ? window.location.pathname : '',
+      url: typeof window !== 'undefined' ? redactConsultationUrl(window.location.pathname) : '',
       ua: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 200) : '',
     }
     try {

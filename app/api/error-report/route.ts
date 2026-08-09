@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server'
 import { getClientIp } from '@/lib/security/get-client-ip'
 import { logAuditEvent, makeAuditEvent } from '@/lib/security/audit-event'
 import { captureException } from '@/lib/ai/observability/sentry-prod'
+import { buildClientErrorTelemetry } from '@/lib/security/client-error-telemetry'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -61,42 +62,27 @@ export async function POST(request: Request) {
       return new NextResponse(null, { status: 400 })
     }
 
-    // T9 v5.10.353 P1 修(L1 + L4 抓):用 'client-error' type、不再偽冒 rate-limit-exceeded
-    // Type guards 防 unknown 強轉 [object Object](L4 抓 P1 #5)
-    const safeStr = (v: unknown, max = 500): string => {
-      if (typeof v === 'string') return v.slice(0, max)
-      if (typeof v === 'number' || typeof v === 'boolean') return String(v).slice(0, max)
-      return ''
-    }
+    // Public input boundary:all downstream sinks consume the same sanitized
+    // object so an old client bundle or direct POST cannot leak report tokens.
+    const telemetry = buildClientErrorTelemetry(payload)
     logAuditEvent(
       makeAuditEvent('client-error', {
         ip,
-        pathname: safeStr(payload.url, 200),
-        userAgent: safeStr(payload.ua, 200),
+        pathname: telemetry.audit.pathname,
+        userAgent: telemetry.audit.userAgent,
         reason: 'client-error-boundary',
         severity: 'warn',
-        details: {
-          digest: safeStr(payload.digest, 50),
-          message: safeStr(payload.message, 500),
-          stack: safeStr(payload.stack, 1000),
-        },
+        details: telemetry.audit.details,
       }),
     )
 
     // Sentry 直送(若 DSN 設了)
     try {
       await captureException(
-        new Error(String(payload.message || 'client-error')),
+        new Error(telemetry.sentry.errorMessage),
         {
-          tags: {
-            source: 'client-error-page',
-            digest: String(payload.digest || 'no-digest'),
-          },
-          extra: {
-            url: String(payload.url || ''),
-            ua: String(payload.ua || '').slice(0, 200),
-            stack: String(payload.stack || '').slice(0, 1000),
-          },
+          tags: telemetry.sentry.tags,
+          extra: telemetry.sentry.extra,
         },
       )
     } catch {

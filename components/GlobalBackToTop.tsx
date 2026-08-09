@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { isConsultationReaderPath } from '@/lib/consultation/routes'
 
 /**
  * 全站「回到頂部」浮動按鈕
@@ -22,6 +23,7 @@ export default function GlobalBackToTop() {
 
   // 報告頁、後台不渲染（避免重疊）
   if (pathname?.startsWith('/report/')) return null
+  if (isConsultationReaderPath(pathname)) return null
   if (pathname?.startsWith('/jamie')) return null
 
   if (!show) return null

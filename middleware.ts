@@ -21,6 +21,10 @@ import { getFingerprint, shouldBlockByFingerprint } from '@/lib/security/fingerp
 import { validateAccessToken } from '@/lib/security/token-validator'
 import { checkTokenRateLimit } from '@/lib/security/token-rate-limit'
 import { logAuditEvent, makeAuditEvent } from '@/lib/security/audit-event'
+import {
+  buildConsultationAccessRoute,
+  isTokenlessConsultationPath,
+} from '@/lib/consultation/routes'
 
 // 每分鐘速率限制
 const rateLimit = new Map<string, { count: number; resetTime: number }>()
@@ -447,11 +451,110 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // C／G15 新閱讀器沿用同一組 token 格式與逐 token 速率限制；
+  // 保持既有 /report/* 分支原樣，避免改變 E3 runtime。
+  if (pathname.startsWith('/consultation/')) {
+    const tokenMatch = pathname.match(/^\/consultation\/([^\/]+)\/?$/)
+    const staticConsultationRoute = isTokenlessConsultationPath(pathname)
+    if (tokenMatch && !staticConsultationRoute) {
+      let token = ''
+      try {
+        token = decodeURIComponent(tokenMatch[1])
+      } catch {
+        token = ''
+      }
+      const tokenCheck = validateAccessToken(token)
+      if (!tokenCheck.valid) {
+        logAuditEvent(makeAuditEvent('token-invalid', {
+          ip,
+          country,
+          pathname: '/consultation/[private]',
+          userAgent: ua || undefined,
+          reason: tokenCheck.reason,
+          severity: 'warn',
+          details: {
+            tokenLength: token.length,
+            entropy: tokenCheck.entropy,
+          },
+        }))
+        const responseHeaders = {
+          'Content-Type': 'text/html',
+          'Cache-Control': 'no-store',
+          'X-Token-Reject': tokenCheck.reason || '1',
+        }
+        const pageResponse = brandedPageErrorResponse(
+          request,
+          pathname,
+          'report-not-found',
+          404,
+          responseHeaders,
+        )
+        if (pageResponse) return pageResponse
+        return new NextResponse(null, { status: 404, headers: responseHeaders })
+      }
+
+      const rateResult = checkTokenRateLimit(token, ip)
+      if (!rateResult.allowed) {
+        logAuditEvent(makeAuditEvent('rate-limit-exceeded', {
+          ip,
+          country,
+          pathname: '/consultation/[private]',
+          severity: rateResult.uniqueIps >= 8 ? 'error' : 'warn',
+          details: {
+            scope: 'token',
+            count: rateResult.count,
+            uniqueIps: rateResult.uniqueIps,
+          },
+        }))
+        const responseHeaders = {
+          'Content-Type': 'text/html',
+          'Cache-Control': 'no-store',
+          'X-Token-Reject': 'rate-limit',
+        }
+        const pageResponse = brandedPageErrorResponse(
+          request,
+          pathname,
+          'report-not-found',
+          404,
+          responseHeaders,
+        )
+        if (pageResponse) return pageResponse
+        return new NextResponse(null, { status: 404, headers: responseHeaders })
+      }
+
+      // Backward compatibility only: the first request to an old bearer URL may
+      // already exist in upstream access logs. Move it into a browser-only
+      // fragment, then let the Node session endpoint validate the completed
+      // C/G15 row before any report-scoped cookie is created. Edge middleware
+      // must never overwrite an existing reader session from format alone.
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        try {
+          const destination = new URL(buildConsultationAccessRoute(token), request.url)
+          const response = NextResponse.redirect(destination, 307)
+          response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0')
+          response.headers.set('Referrer-Policy', 'no-referrer')
+          response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
+          return response
+        } catch {
+          return new NextResponse(null, {
+            status: 503,
+            headers: {
+              'Cache-Control': 'private, no-store, no-cache, must-revalidate, max-age=0',
+              'Referrer-Policy': 'no-referrer',
+              'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet',
+            },
+          })
+        }
+      }
+    }
+  }
+
   // ────────────────────────────────────────────────────────
   // STAGE 3:私密路徑加 noindex / no-cache header
   // ────────────────────────────────────────────────────────
   const isPrivatePath =
     pathname.startsWith('/report/') ||
+    pathname.startsWith('/consultation/') ||
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/jamie') ||
     pathname.startsWith('/auth/')
@@ -503,7 +606,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/points/') ||
     pathname.startsWith('/api/referral/') ||
     pathname.startsWith('/api/family-members') ||
-    pathname.startsWith('/api/checkout')
+    pathname.startsWith('/api/checkout') ||
+    pathname.startsWith('/api/consultation/')
 
   if (isStateChange && !isCsrfExempt) {
     const csrfResult = checkCsrf(request, isSensitive)
@@ -549,6 +653,10 @@ export async function middleware(request: NextRequest) {
   if (path.startsWith('/api/free-')) {
     maxPerMinute = 5
     isFreeApi = true
+  } else if (path.startsWith('/api/consultation/')) {
+    // PDF rendering is CPU- and memory-intensive. Keep repeated private downloads
+    // bounded without changing the legacy /report or E3 paths.
+    maxPerMinute = 4
   } else if (path.includes('generate-report') || path.includes('workflows')) {
     maxPerMinute = 2
   } else if (path.includes('search-reports')) {

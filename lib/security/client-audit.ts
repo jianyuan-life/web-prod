@@ -15,6 +15,8 @@
 // - 上報 /api/error-report(T9 已建、edge runtime + audit-event helper)
 // - 不 throw、catch 內部所有 error、絕不影響 client 主邏輯
 
+import { redactConsultationUrl } from '@/lib/security/private-route-redaction'
+
 const ERROR_REPORT_ENDPOINT = '/api/error-report'
 
 export interface ClientFailureContext {
@@ -49,7 +51,7 @@ export function reportClientFailure(
       severity: context?.severity || 'warn',
       message: errMsg.slice(0, 500),
       stack: errStack?.split('\n').slice(0, 5).join(' | '),
-      url: window.location.pathname,
+      url: redactConsultationUrl(window.location.pathname),
       ua: navigator.userAgent.slice(0, 200),
       extra: context?.extra ? JSON.stringify(context.extra).slice(0, 1000) : undefined,
     }

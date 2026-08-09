@@ -1,16 +1,15 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import HeroCTAExperiment from '@/components/HeroCTAExperiment'
 import HomeGuided from '@/components/HomeGuided'
 import PricingCards from '@/components/PricingCards'
 
 export const metadata: Metadata = {
-  title: { absolute: '鑒源 JianYuan — 十四大命理系統精準分析｜八字、紫微斗數、奇門遁甲' },
-  description: '鑒源整合八字、紫微斗數、奇門遁甲、西洋占星等最多十四大東西方命理系統，以 44,421+ 條古籍規則交叉分析，為您提供性格天賦、事業財運、感情婚姻的完整命格報告。免費體驗，即時出結果。',
+  title: { absolute: '鑒源 JianYuan — 人生諮詢與家庭諮詢｜結論、依據、行動分層閱讀' },
+  description: '鑒源將多套命理系統的計算事實、傳統詮釋與可行動建議分層呈現。人生藍圖整理個人議題，家族藍圖整理家庭互動；保留資料限制與不同訊號，不把詮釋包裝成命定。',
   keywords: '命理, 八字, 紫微斗數, 奇門遁甲, 西洋占星, 命盤, 命格分析, 免費算命, 姓名學, 風水, 人類圖, 吠陀占星, 出門訣, 運勢',
   openGraph: {
-    title: '鑒源 JianYuan — 十四大命理系統精準分析',
-    description: '整合東西方十四大命理系統，一份報告看清性格天賦、事業方向、感情運勢。免費體驗，不需註冊。',
+    title: '鑒源 JianYuan — 人生與家庭的分層諮詢報告',
+    description: '先看結論，再追依據；把命理詮釋轉成可觀察的生活問題與下一步。',
     url: 'https://jianyuan.life',
     siteName: '鑒源 JianYuan',
     type: 'website',
@@ -18,52 +17,27 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '鑒源 JianYuan — 十四大命理系統精準分析',
-    description: '整合東西方十四大命理系統，一份報告看清性格天賦、事業方向、感情運勢。',
+    title: '鑒源 JianYuan — 人生與家庭的分層諮詢報告',
+    description: '從 30 秒重點到依據附錄，分層讀懂個人議題與家庭互動。',
   },
   alternates: { canonical: 'https://jianyuan.life' },
 }
 
-type SystemTier = 1 | 2 | 3
-
-const SYSTEMS: { name: string; tier: SystemTier; desc: string }[] = [
-  { name: '八字命理', tier: 1, desc: '性格底色、大運高低與事業、感情、財運的先天結構' },
-  { name: '紫微斗數', tier: 1, desc: '從十二宮位檢視一生發展方向與不同階段的重點' },
-  { name: '奇門遁甲', tier: 1, desc: '辨識適合行動的時間與方向，讓重要決策不只靠猜' },
-  { name: '風水堪輿', tier: 2, desc: '理解居住環境與個人運勢的互動，以及可執行的調整' },
-  { name: '西洋占星', tier: 2, desc: '由太陽、月亮與上升等位置理解外在表現與內在需求' },
-  { name: '姓名學', tier: 2, desc: '解讀名字在人際、事業與第一印象上的能量結構' },
-  { name: '吠陀占星', tier: 2, desc: '以印度占星的座標系統提供另一個人生軌跡視角' },
-  { name: '易經占卜', tier: 2, desc: '聚焦當下的一個問題，從卦象提取可理解的判斷線索' },
-  { name: '人類圖', tier: 2, desc: '理解個人的能量運作、決策方式與互動節奏' },
-  { name: '數字能量學', tier: 3, desc: '從出生日期補充天賦、空缺與年度成長主題' },
-  { name: '古典占星', tier: 3, desc: '以傳統天文觀測體系補充命格特質與流年走向' },
-  { name: '塔羅牌', tier: 3, desc: '映照潛意識與當下狀態，補足問題背後的心理視角' },
-  { name: '生肖運勢', tier: 3, desc: '整理太歲關係，以及年度中值得留意與把握的月份' },
-  { name: '生物節律', tier: 3, desc: '呈現體力、情緒與思維週期，協助安排每月節奏' },
-]
-
-const SYSTEM_GROUPS: { tier: SystemTier; label: string; note: string }[] = [
-  { tier: 1, label: '核心系統', note: '主要判斷' },
-  { tier: 2, label: '交叉系統', note: '補充驗證' },
-  { tier: 3, label: '參考系統', note: '擴展視角' },
-]
-
 const FAQS = [
   {
-    q: '鑒源的命理分析準確嗎？',
-    a: '排盤計算使用確定性算法，結果可重複驗證，並以數十部經典古籍提煉的規則進行解讀。鑒源的重點不是把單一系統說得更肯定，而是讓最多十四套系統互相核對；多數系統形成共識時，結論才會進入報告的主要判斷。',
+    q: '排盤可以驗算，是不是就等於人生預測一定準？',
+    a: '不等於。相同的資料、曆法、流派設定與程式版本應能重複得到相同盤面；但命理詮釋不是經實證保證的人生預測。報告會把計算事實、傳統詮釋與行動建議分開，並標示不確定性。',
   },
   {
     q: '報告多久可以收到？',
-    a: '付款後系統會自動開始運算。個人報告通常約 30 分鐘完成；出門訣需排算數百個時辰，通常需要 40 分鐘以上。完成後會立即寄送 Email 通知，也可以在儀表板查看分析進度。',
+    a: '付款後系統會自動開始運算。人生藍圖通常約 30–60 分鐘完成；家族藍圖依成員人數與可用資料而定。完成後會寄送 Email 通知，也可以在儀表板查看進度。',
   },
   {
     q: '需要提供什麼資料？',
-    a: '姓名、出生日期、出生時間與性別。出生時間越精確，依賴時辰的分析越完整；若不確定出生時間，可以選擇最接近的時辰，其他不依賴時辰的系統仍可正常分析。',
+    a: '姓名、出生日期、出生時間、出生地與必要的方案資料。不確定出生時間時，請如實標示已知範圍，不要猜一個時辰當作事實；受時間影響的部分會降低確定性或不出具。',
   },
   {
-    q: '十四套系統會不會互相矛盾？',
+    q: '不同系統會不會互相矛盾？',
     a: '不同系統觀察的角度不同，出現差異是正常的。報告會區分共同結論、補充視角與需要自行核對的部分，而不是強行把所有結果寫成一致。',
   },
   {
@@ -84,7 +58,7 @@ const FAQS = [
   },
   {
     q: '報告會不會讓我更焦慮？',
-    a: '鑒源以理解自己與找到方向為目標，不使用「命中注定」或製造恐懼的表達。遇到命盤中的挑戰，報告會說明判斷依據、可能影響與可執行的方向，最後的選擇仍由您決定。',
+    a: '鑒源以理解自己與整理問題為目標，不把挑戰寫成「命中注定」，也不用恐懼迫使你消費。若內容觸及急迫的醫療、法律、財務或心理健康風險，應先尋求合資格的專業協助，不用報告取代。',
   },
 ]
 
@@ -98,68 +72,100 @@ function ArrowIcon() {
 
 function ReportArtifact() {
   return (
-    <div className="jy-report-artifact jy-panel" aria-label="人生藍圖報告版面示意">
+    <div className="jy-report-artifact jy-panel" aria-label="諮詢報告四層閱讀示意">
       <div className="jy-report-artifact__top">
         <div className="jy-report-artifact__seal" aria-hidden="true">鑒源</div>
         <div className="jy-report-artifact__meta">
-          LIFE BLUEPRINT<br />版面示意 · 非真實個案
+          CONSULTATION DOSSIER<br />閱讀結構示意 · 非真實個案
         </div>
       </div>
       <div className="jy-report-artifact__body">
-        <div className="jy-report-artifact__label">3 分鐘先看懂</div>
-        <h2 className="jy-report-artifact__title">先給你結論，再帶你看見依據</h2>
+        <div className="jy-report-artifact__label">四層閱讀 · 各取所需</div>
+        <h2 className="jy-report-artifact__title">先知道現在要處理什麼，再決定讀多深</h2>
         <div className="jy-insight-list">
           <div className="jy-insight">
-            <span className="jy-insight__number">01</span>
-            <span className="jy-insight__text">三個最值得先理解的核心發現，放在完整章節之前。</span>
+            <span className="jy-insight__number">30 秒</span>
+            <span className="jy-insight__text">三個當前優先題，不用先穿過專門術語。</span>
           </div>
           <div className="jy-insight">
-            <span className="jy-insight__number">02</span>
-            <span className="jy-insight__text">每個重要判斷標示來自哪些命理系統與規則脈絡。</span>
+            <span className="jy-insight__number">3 分鐘</span>
+            <span className="jy-insight__text">把工作、關係、金錢與生活節奏排出順序。</span>
           </div>
           <div className="jy-insight">
-            <span className="jy-insight__number">03</span>
-            <span className="jy-insight__text">把詮釋轉成能採取、能避開，也能自行判斷的方向。</span>
+            <span className="jy-insight__number">深入閱讀</span>
+            <span className="jy-insight__text">用具體情境理解模式、例外與可練習的下一步。</span>
+          </div>
+          <div className="jy-insight">
+            <span className="jy-insight__number">依據附錄</span>
+            <span className="jy-insight__text">追回計算事實、系統訊號、相反觀點與資料限制。</span>
           </div>
         </div>
       </div>
       <div className="jy-report-artifact__footer" aria-label="報告資訊層級">
         <span>計算事實</span>
-        <span>交叉詮釋</span>
+        <span>傳統詮釋</span>
         <span>行動建議</span>
       </div>
     </div>
   )
 }
 
+const CONSULTATION_PATHS = [
+  {
+    code: 'C',
+    className: 'jy-home-consultation--life',
+    eyebrow: '人生諮詢',
+    title: '先把「我現在為什麼卡住」說清楚',
+    body: '整理你的天賦、壓力反應、關係模式與人生階段。重點不是貼標籤，而是找到現在能觀察、能調整的入口。',
+    notes: ['適合個人轉折與長期規劃', '依實際年齡調整閱讀重點', '包含 90 天行動與回顧頁'],
+    href: '/life-blueprint',
+    linkLabel: '看人生藍圖完整交付內容',
+  },
+  {
+    code: 'G15',
+    className: 'jy-home-consultation--family',
+    eyebrow: '家庭諮詢',
+    title: '再把「我們為什麼總在重複同一場衝突」攤開',
+    body: '把每個人的需要、防衛與溝通節奏放在同一張家庭地圖，不根據性別或長幼指定角色，也不找一個人負責所有問題。',
+    notes: ['需先有 2–8 份已完成的人生藍圖', '逐對整理互動而非只給總評', '含家庭會議腳本與共同練習'],
+    href: '/family-blueprint',
+    linkLabel: '看家族藍圖完整前置與交付',
+  },
+] as const
+
 export default function HomePage() {
   return (
-    <div className="jy-page">
+    <div className="jy-page jy-home-page">
       <HomeGuided />
 
       <section className="jy-hero">
         <div className="jy-container jy-hero__grid">
           <div className="jy-hero__copy">
-            <div className="jy-eyebrow">十四大系統 · 44,421 條規則庫打底</div>
+            <div className="jy-eyebrow">人生諮詢 · 家庭諮詢 · 可追回依據</div>
             <h1 className="jy-display">
-              不是多算一次，<br />
-              是讓 <strong>14 套系統</strong>互相對照
+              先看清你的<strong>人生</strong>，<br />
+              再理解<strong>一家人</strong>
             </h1>
             <p className="jy-lede">
-              把八字、紫微斗數、奇門遁甲與東西方命理放在同一份分析裡。
-              先呈現可核對的計算，再說明詮釋，最後給你能自行判斷的方向。
+              鑒源把排盤事實、傳統詮釋、不同訊號與行動建議分開整理。
+              先告訴你現在最值得處理的問題，再讓你自己決定要相信多少、採取什麼。
             </p>
-            <div className="jy-actions">
-              <HeroCTAExperiment />
-              <Link href="#report-example" className="jy-button jy-button--secondary">
-                先看報告怎麼讀 <ArrowIcon />
+            <div className="jy-actions" aria-label="主要諮詢入口">
+              <Link href="/life-blueprint" className="jy-button jy-button--primary">
+                了解人生藍圖 <ArrowIcon />
+              </Link>
+              <Link href="/family-blueprint" className="jy-button jy-button--secondary">
+                了解家族藍圖 <ArrowIcon />
               </Link>
             </div>
-            <div className="jy-reassurance" aria-label="免費體驗說明">
-              <span>30 秒免費速算</span>
-              <span>不需註冊</span>
-              <span>不需信用卡</span>
-              <span>資料加密傳輸</span>
+            <Link href="/tools/bazi" className="jy-home-free-link">
+              還沒準備委託？先用免費排盤看呈現方式 <ArrowIcon />
+            </Link>
+            <div className="jy-reassurance" aria-label="諮詢原則">
+              <span>不把未知寫成確定</span>
+              <span>依人生階段調整</span>
+              <span>保留分歧與例外</span>
+              <span>重大決定仍由你做</span>
             </div>
           </div>
 
@@ -167,24 +173,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="jy-section jy-section--compact" aria-label="服務重點">
+      <section className="jy-section jy-section--compact jy-home-briefing" aria-labelledby="home-briefing-title">
         <div className="jy-container">
-          <dl className="jy-grid-4">
-            <div className="jy-stat">
-              <dt className="jy-stat__value">14</dt>
-              <dd className="jy-stat__label">套東西方命理系統，依方案交叉分析</dd>
+          <h2 id="home-briefing-title" className="sr-only">委託前先知道的三件事</h2>
+          <dl className="jy-home-briefing__grid">
+            <div>
+              <dt>你會先看到</dt>
+              <dd>當前最重要的議題、可使用的資源，以及現在不必急著處理的事。</dd>
             </div>
-            <div className="jy-stat">
-              <dt className="jy-stat__value">44,421+</dt>
-              <dd className="jy-stat__label">條專業規則，整理自古籍與分析框架</dd>
+            <div>
+              <dt>會標示的限制</dt>
+              <dd>出生資料缺口、影響計算的設定、不同系統的相反訊號與無法推論的部分。</dd>
             </div>
-            <div className="jy-stat">
-              <dt className="jy-stat__value">30–60 分鐘</dt>
-              <dd className="jy-stat__label">多數付費報告的預計生成時間</dd>
-            </div>
-            <div className="jy-stat">
-              <dt className="jy-stat__value">US$29 起</dt>
-              <dd className="jy-stat__label">一次性付款，網頁閱讀與 PDF 保存</dd>
+            <div>
+              <dt>完成後怎麼用</dt>
+              <dd>先讀摘要，再依當下問題深入章節；把有感與不符合的部分都帶回生活驗證。</dd>
             </div>
           </dl>
         </div>
@@ -245,8 +248,8 @@ export default function HomePage() {
           <div className="jy-grid-3">
             <article className="jy-card jy-card--quiet jy-feature">
               <div className="jy-feature__number">CALCULATE</div>
-              <h3 className="jy-subheading">確定性排盤</h3>
-              <p className="jy-copy jy-copy--small">出生資料先經排盤與時間校正，生成可重複核對的命盤結果。</p>
+              <h3 className="jy-subheading">可重播的計算</h3>
+              <p className="jy-copy jy-copy--small">保留輸入資料、曆法、流派設定與程式版本，讓同一次排盤可重新核對。</p>
             </article>
             <article className="jy-card jy-card--accent jy-feature">
               <div className="jy-feature__number">CROSS-CHECK</div>
@@ -262,34 +265,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="systems" className="jy-section jy-section--ruled">
+      <section id="systems" className="jy-section jy-section--ruled jy-home-consultation" aria-labelledby="consultation-paths-title">
         <div className="jy-container">
           <div className="jy-section-head">
             <div>
-              <div className="jy-eyebrow">十四大系統</div>
-              <h2 className="jy-heading">各自回答不同問題，再共同核對</h2>
+              <div className="jy-eyebrow">兩份相連的卷宗</div>
+              <h2 id="consultation-paths-title" className="jy-heading">先整理個人，才能在家庭裡保留每個人</h2>
             </div>
             <p className="jy-lede">
-              核心系統負責主要判斷，交叉系統補足不同人生面向，參考系統提供額外視角。
-              實際使用數量依方案與問題類型而定。
+              人生藍圖是每位成員的個人底稿；家族藍圖再把已完成的個人底稿放在一起，看互動而不是把某一個人定義成問題。
             </p>
           </div>
 
-          <div className="jy-system-ledger jy-panel">
-            {SYSTEM_GROUPS.map((group) => (
-              <section className="jy-system-group" key={group.tier} aria-labelledby={`tier-${group.tier}`}>
-                <h3 id={`tier-${group.tier}`} className="jy-system-group__title">
-                  {group.label}<small>{group.note}</small>
-                </h3>
-                <ol className="jy-system-list">
-                  {SYSTEMS.filter((system) => system.tier === group.tier).map((system, index) => (
-                    <li key={system.name}>
-                      <b>{String(index + 1).padStart(2, '0')}</b>
-                      <span><strong>{system.name}</strong><br />{system.desc}</span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
+          <div className="jy-home-consultation__grid">
+            {CONSULTATION_PATHS.map((path, index) => (
+              <article className={`jy-home-consultation__card ${path.className}`} key={path.code}>
+                <header>
+                  <span className="jy-home-consultation__index" aria-hidden="true">0{index + 1}</span>
+                  <div>
+                    <div className="jy-home-consultation__code">{path.code} · {path.eyebrow}</div>
+                    <h3>{path.title}</h3>
+                  </div>
+                </header>
+                <p>{path.body}</p>
+                <ul>
+                  {path.notes.map((note) => <li key={note}>{note}</li>)}
+                </ul>
+                <Link href={path.href} className="jy-home-consultation__link">
+                  {path.linkLabel} <ArrowIcon />
+                </Link>
+              </article>
             ))}
           </div>
         </div>
@@ -299,12 +304,12 @@ export default function HomePage() {
         <div className="jy-container">
           <div className="jy-section-head">
             <div>
-              <div className="jy-eyebrow">常用方案</div>
-              <h2 className="jy-heading">先依你要解決的問題選擇</h2>
+              <div className="jy-eyebrow">完整方案</div>
+              <h2 className="jy-heading">看完內容邊界，再決定是否委託</h2>
             </div>
             <div>
               <p className="jy-lede">
-                所有價格都是一次性付款。方案卡會說明適合情境、分析範圍、交付內容與預計完成時間。
+                所有價格都是一次性付款。方案卡列出適合情境、分析範圍、交付內容與預計完成時間；付款前仍可回到 C 或 G15 的完整說明逐項核對。
               </p>
               <Link href="/pricing" className="jy-link inline-flex min-h-11 items-center gap-2 mt-4">
                 查看三個方案的完整說明 <ArrowIcon />

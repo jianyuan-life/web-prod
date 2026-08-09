@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import HistoricalFigures from '@/components/HistoricalFigures'
 import FamilyMemberPicker from './FamilyMemberPicker'
@@ -78,8 +79,34 @@ export default function SinglePersonForm({
   loading, error, finalPrice, totalPrice, pointsUsed, pointsDiscount, onPointsChange, couponApplied, isFormValid, onSubmit,
   showConfirmModal, onCloseConfirmModal, onConfirmCheckout,
 }: SinglePersonFormProps) {
+  const [validationAttempted, setValidationAttempted] = useState(false)
+  const currentYear = new Date().getFullYear()
+  const birthYear = Number.parseInt(form.year, 10)
+  const nameInvalid = form.name.trim() === ''
+  const yearInvalid = !Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear
+  const cityInvalid = form.birthCity.trim() === '' || form.cityLat === 0
+  const accessibleValidationEnabled = planCode === 'C'
+  const coreFormInvalid = accessibleValidationEnabled && (nameInvalid || yearInvalid || cityInvalid)
+
+  const handleAccessibleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    setValidationAttempted(true)
+
+    if (coreFormInvalid) {
+      event.preventDefault()
+      const firstInvalidId = nameInvalid
+        ? 'checkout-name'
+        : yearInvalid
+          ? 'checkout-birth-year'
+          : 'checkout-birth-city'
+      window.requestAnimationFrame(() => document.getElementById(firstInvalidId)?.focus())
+      return
+    }
+
+    onSubmit(event)
+  }
+
   return (
-    <form onSubmit={onSubmit} className="checkout-form-card space-y-4" aria-labelledby="single-person-form-heading">
+    <form onSubmit={handleAccessibleSubmit} className="checkout-form-card space-y-4" aria-labelledby="single-person-form-heading">
       <div>
         <p className="checkout-order-kicker">Birth record</p>
         <h2 id="single-person-form-heading" className="text-xl font-semibold text-cream">填寫分析資料</h2>
@@ -122,6 +149,11 @@ export default function SinglePersonForm({
         onCountrySelect={onCountrySelect}
         onCancelCountry={onCancelCountry}
         needCityForCountry={needCityForCountry}
+        accessibleValidationEnabled={accessibleValidationEnabled}
+        validationAttempted={validationAttempted}
+        nameInvalid={nameInvalid}
+        yearInvalid={yearInvalid}
+        cityInvalid={cityInvalid}
       />
 
       {/* 方案 D：分析主題 */}
@@ -317,8 +349,21 @@ export default function SinglePersonForm({
 
       <CheckoutSecurityNote />
 
+      {accessibleValidationEnabled && validationAttempted && coreFormInvalid && (
+        <div role="alert" id="checkout-validation-summary" className="checkout-form-error rounded-lg p-3 text-sm" tabIndex={-1}>
+          <p className="font-semibold">請先修正下列資料：</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {nameInvalid && <li>請填寫姓名。</li>}
+            {yearInvalid && <li>出生年份須介於 1900 與 {currentYear} 年。</li>}
+            {cityInvalid && <li>請從搜尋結果中選定出生城市，讓系統取得正確時區與座標。</li>}
+          </ul>
+        </div>
+      )}
+
       <button
-        type="submit" disabled={loading || !isFormValid}
+        type="submit" disabled={loading || (!accessibleValidationEnabled && !isFormValid)}
+        onClick={() => setValidationAttempted(true)}
+        aria-describedby={accessibleValidationEnabled && validationAttempted && coreFormInvalid ? 'checkout-validation-summary' : undefined}
         className={`w-full py-3.5 font-bold rounded-xl text-lg mt-4 transition-all ${
           isFormValid
             ? 'bg-gold text-dark btn-glow disabled:opacity-50'

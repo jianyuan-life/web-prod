@@ -9,17 +9,19 @@ import GoldMark from '@/components/GoldMark'
 const PLANS = {
   personal: [
     { code: 'C', name: '人生藍圖', price: 89, popular: true, systems: 14,
-      valueHint: '旗艦完整分析 · 每套系統僅 $6.4',
-      desc: '一份報告，看清人生全貌——性格天賦、事業方向、財運走勢、感情歸宿、大運機遇。十四套東西方系統交叉驗證，正文全白話直說結論，每個判斷都可展開核對命理依據',
-      suitableFor: '想一次看清自己的全貌，或站在人生十字路口需要方向的人；也是「家族藍圖」的前置基礎',
-      features: ['人生速覽——30 秒抓住你的核心定位', '原廠設定與底層邏輯——性格、天賦、行為模式', '核心競爭力與財富路徑', '感情與人際磁場', '精準診斷書——聚焦你當下最大的卡點', '未來五年戰略推演＋關鍵節點', '專屬開運與防禦清單', '刻意練習——具體可執行的改善計劃', '每個結論可展開「查看命理邏輯」核對依據', '網頁重點版＋PDF 完整版'],
+      valueHint: '從 30 秒重點到依據附錄，四層閱讀',
+      desc: '把反覆出現的選擇、關係與壓力模式整理成一份個人卷宗。計算事實、傳統詮釋、不同訊號與行動建議分開呈現，不用一句吉凶概括你的人生',
+      suitableFor: '正在工作、關係、居住或家庭角色轉換期，想先理清自己要處理什麼的人；也是家族藍圖的必要前置',
+      features: ['30 秒當前優先題與 3 分鐘決策摘要', '工作、關係、金錢與身心節奏主題章節', '依實際年齡與人生階段調整重點', '共識、相反訊號與資料限制分開標示', '90 天可觀察、可調整的小步驟', '計算事實與依據附錄', '網頁分層閱讀＋PDF 完整版'],
+      detailHref: '/life-blueprint',
     },
   ],
   family: [
     { code: 'G15', name: '家族藍圖', price: 59, systems: 14,
-      desc: '在每位家人各自完成「人生藍圖」後，系統調取所有成員的命格數據，深度分析家庭互動關係、溝通模式、共同運勢——讓你看見家人之間看不見的能量流動',
-      suitableFor: '前提：每位家庭成員需先購買「人生藍圖」（$89），家族藍圖專做互動分析',
-      features: ['需先完成每位成員的「人生藍圖」', '家族能量圖譜（五行互補/衝突分析）', '每對成員互動關係深度解析', '親子教養 / 夫妻相處具體建議', '家運走勢+共同行動指南', '寫給這個家的話'],
+      desc: '把 2–8 位成員已完成的人生藍圖放進同一張家庭地圖，整理家人之間的需要、壓力反應、溝通節奏與可修復的互動循環',
+      suitableFor: '前提：同一帳戶需有 2–8 份已完成的人生藍圖；適合想理解家庭互動，不想找一個人當戰犯的家庭',
+      features: ['每位成員都保留自己的視角', '每對成員的易懂與易誤讀之處', '觸發點、表面行為與未說出需要的循環', '不依性別或排序指定家庭角色', '家庭會議的開場、輪流、暫停與收尾腳本', '90 天共同練習與回顧問題'],
+      detailHref: '/family-blueprint',
     },
   ],
   chumenji: [
@@ -46,6 +48,7 @@ type Plan = {
   addPrice?: number
   suitableFor?: string
   valueHint?: string
+  detailHref?: string
 }
 
 const PLAN_PRESENTATION: Record<string, { delivery: string; eta: string }> = {
@@ -67,7 +70,7 @@ const COMPARE_ROWS = [
 const FAQS = [
   {
     q: '命理分析真的準確嗎？',
-    a: '鑒源的排盤使用確定性算法（壽星天文曆、Swiss Ephemeris），相同資料可得到相同盤面。解讀則以古籍規則與多套系統交叉分析；它提供的是可核對的觀察與行動參考，不是對人生結果的保證。',
+    a: '排盤能否重播，必須同時固定完整出生資料、分析基準日、地點與引擎版本，不能只說「同一生日就一定相同」。鑒源會把可核對條件與資料限制寫進報告；解讀提供的是跨系統觀察與行動參考，不是對人生結果的保證。',
   },
   {
     q: '報告多久生成？',
@@ -91,7 +94,7 @@ const FAQS = [
   },
   {
     q: '不確定出生時間怎麼辦？',
-    a: '可以選擇最接近的時辰。出生時間越精確，依賴時辰的分析越完整；姓名學、數字能量學、生肖運勢等不依賴精確時辰的系統仍可提供補充觀察。',
+    a: '請直接選「不確定」，不要猜最接近的時辰。凡實作會讀取時或分的系統都會停止用來支撐結論；目前只保留姓名學、數字能量學與不依賴時辰的有限反思內容，並在報告清楚標示限制。',
   },
   {
     q: '出門訣為什麼不提供「隔天」替代方案？',
@@ -174,6 +177,11 @@ function PlanCard({ plan, promotionAware }: { plan: Plan; promotionAware: boolea
       </div>
 
       <div className="jy-pricing-plan__action">
+        {plan.detailHref && (
+          <Link href={plan.detailHref} className="jy-pricing-plan__detail">
+            先看完整交付內容 <span aria-hidden="true">→</span>
+          </Link>
+        )}
         <PricingButton
           code={plan.code}
           popular={plan.popular}
@@ -276,16 +284,17 @@ export default function PricingPage() {
           <div className="jy-pricing-hero__copy">
             <div className="jy-eyebrow">方案目錄 · PRICING</div>
             <h1 className="jy-display jy-pricing-display">
-              <span>先看交付範圍，</span>
-              <span>再決定是否委託</span>
+              <span>先說清問題，</span>
+              <span>再選委託方式</span>
             </h1>
             <p className="jy-lede">
-              三個方案對應三種需求：看清自己、看懂家庭、抓準時機。價格皆為一次性付款；每張方案卡清楚列出適合情境、交付內容、完成時間與分析範圍。
+              想整理個人的轉折與反覆模式，先看人生藍圖；想理解家人之間的互動循環，先核對家族藍圖的前置。價格皆為一次性付款，付款前可逐項看完交付與邊界。
             </p>
             <div className="jy-actions">
-              <Link href="#personal-analysis" className="jy-button jy-button--primary">查看分析方案</Link>
-              <Link href="/tools/bazi" className="jy-button jy-button--secondary">先免費速算</Link>
+              <Link href="/life-blueprint" className="jy-button jy-button--primary">看人生藍圖委託書</Link>
+              <Link href="/family-blueprint" className="jy-button jy-button--secondary">看家族藍圖前置條件</Link>
             </div>
+            <Link href="/tools/bazi" className="jy-pricing-free-link">還在評估？先用免費排盤看呈現方式 <span aria-hidden="true">→</span></Link>
             <p className="jy-pricing-auth-note">
               購買前需先<Link href="/auth/signup" className="jy-link">免費註冊</Link>或<Link href="/auth/login" className="jy-link">登入</Link>；方案完成後保存在帳號中。
             </p>
@@ -329,17 +338,17 @@ export default function PricingPage() {
 
       <PlanSection
         id="personal-analysis"
-        eyebrow="個人 · PERSONAL"
-        title="一次看清完整人生全貌"
-        description="性格天賦、事業方向、財運走勢、感情歸宿、大運機遇——十四套東西方系統交叉驗證，正文白話直說結論，每個判斷都可核對命理依據。"
+        eyebrow="人生諮詢 · PERSONAL"
+        title="不把你概括成一句評語"
+        description="人生藍圖先整理當前最重要的議題，再逐步展開生活情境、相反訊號、資料限制與可練習的下一步。"
         plans={PLANS.personal}
       />
 
       <PlanSection
         id="relationship-analysis"
-        eyebrow="家庭 · FAMILY"
-        title="看見家人之間看不見的能量流動"
-        description="家族藍圖分析整個家庭的溝通與互動。方案有明確前置條件——每位成員需先完成人生藍圖，請先核對方案卡。"
+        eyebrow="家庭諮詢 · FAMILY"
+        title="看見互動循環，不找一個人當戰犯"
+        description="家族藍圖先保留每位成員的獨立視角，再逐對整理家庭互動。開始前，同一帳戶需有 2–8 份已完成的人生藍圖。"
         plans={PLANS.family}
       />
 

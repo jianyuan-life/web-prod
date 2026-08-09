@@ -1,3 +1,5 @@
+import { redactConsultationReferences } from './private-route-redaction.ts'
+
 // v5.10.345 (Sprint 6 收尾):統一安全事件 log 格式
 // 取代散落各處的 console.warn('[SOMETHING]', JSON.stringify({...}))
 // 統一格式 → Vercel logs / Datadog / Splunk 都好查、未來可路由到 Supabase 持久化
@@ -34,6 +36,26 @@ export interface AuditEvent {
   severity?: 'info' | 'warn' | 'error' | 'critical'
 }
 
+function sanitizeAuditValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+  if (typeof value === 'string') return redactConsultationReferences(value)
+  if (value === null || typeof value !== 'object') return value
+  if (depth >= 32) return '[redacted-depth]'
+  if (seen.has(value)) return '[circular]'
+  seen.add(value)
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeAuditValue(item, depth + 1, seen))
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, sanitizeAuditValue(item, depth + 1, seen)]),
+  )
+}
+
+/** Sanitize once before any console, Sentry, or future persistence sink. */
+export function sanitizeAuditEvent(event: AuditEvent): AuditEvent {
+  return sanitizeAuditValue(event) as AuditEvent
+}
+
 /**
  * 寫一條安全事件到 logs(後續可路由到 Supabase / Datadog)
  *
@@ -45,8 +67,9 @@ export interface AuditEvent {
  *   - critical:多次攻擊 / production fail-closed(admin lock、turnstile fail)
  */
 export function logAuditEvent(event: AuditEvent): void {
-  const severity = event.severity || 'warn'
-  const tag = `[AUDIT.${event.type.toUpperCase()}]`
+  const safeEvent = sanitizeAuditEvent(event)
+  const severity = safeEvent.severity || 'warn'
+  const tag = `[AUDIT.${safeEvent.type.toUpperCase()}]`
 
   // log level 對應 console method
   const fn =
@@ -57,15 +80,15 @@ export function logAuditEvent(event: AuditEvent): void {
         : console.info
 
   fn(tag, JSON.stringify({
-    ts: event.ts,
+    ts: safeEvent.ts,
     severity,
-    ip: event.ip,
-    country: event.country,
-    pathname: event.pathname,
-    method: event.method,
-    ua: event.userAgent?.slice(0, 200),
-    reason: event.reason,
-    ...event.details,
+    ip: safeEvent.ip,
+    country: safeEvent.country,
+    pathname: safeEvent.pathname,
+    method: safeEvent.method,
+    ua: safeEvent.userAgent?.slice(0, 200),
+    reason: safeEvent.reason,
+    ...safeEvent.details,
   }))
 
   // Phase 5 v5.10.383 — 嚴重事件(error/critical)同步上報 Sentry(老闆灌 SENTRY_DSN 後即生效)
@@ -75,21 +98,21 @@ export function logAuditEvent(event: AuditEvent): void {
       try {
         const { captureMessage } = await import('@/lib/ai/observability/sentry-prod')
         await captureMessage(
-          `${tag} ${event.reason || event.type}`,
+          `${tag} ${safeEvent.reason || safeEvent.type}`,
           severity === 'critical' ? 'fatal' : 'error',
           {
             tags: {
-              auditType: event.type,
-              ip: event.ip || 'unknown',
-              pathname: event.pathname || 'unknown',
-              method: event.method || 'unknown',
+              auditType: safeEvent.type,
+              ip: safeEvent.ip || 'unknown',
+              pathname: safeEvent.pathname || 'unknown',
+              method: safeEvent.method || 'unknown',
             },
             extra: {
-              userAgent: event.userAgent?.slice(0, 200),
-              country: event.country,
-              ...event.details,
+              userAgent: safeEvent.userAgent?.slice(0, 200),
+              country: safeEvent.country,
+              ...safeEvent.details,
             },
-            fingerprint: [`audit-event:${event.type}`],
+            fingerprint: [`audit-event:${safeEvent.type}`],
           },
         )
       } catch { /* Sentry 失敗不影響主流程 */ }

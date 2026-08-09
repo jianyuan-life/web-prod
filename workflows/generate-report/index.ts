@@ -8,6 +8,7 @@ import { extractFullCharts } from './extract-full-charts'
 import {
   loadReportRecord,
   callPythonCalculate,
+  callPythonCalculateAttested,
   callChumenjiTop,
   aiGenerateCall1,
   aiGenerateCall2,
@@ -36,6 +37,12 @@ import {
   type ChumenjiTopResult,
 } from './steps'
 import { isChumenjiPlan } from '@/lib/plan-names'
+import { shouldUseConsultationReportV1 } from '@/lib/consultation/runtime-config'
+import {
+  buildStructuredCReport,
+  buildStructuredG15Report,
+  buildConsultationCalculatorBirthData,
+} from './consultation-v1'
 
 export async function generateReportWorkflow(reportId: string) {
   "use workflow";
@@ -54,7 +61,9 @@ export async function generateReportWorkflow(reportId: string) {
     return { success: false, error: '載入記錄失敗' }
   }
 
-  const { birthData, planCode, accessToken, customerEmail } = record
+  const { birthData, planCode, accessToken, customerEmail, userId, createdAt } = record
+  // 單次 workflow 固定一次，避免長流程中環境變數改動造成同一份報告混用兩套格式。
+  const useConsultationV1 = shouldUseConsultationReportV1(planCode)
 
   // ── G15 家族藍圖：特殊流程（不排盤，直接讀取已有報告）──
   if (planCode === 'G15' && (birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports')) {
@@ -65,10 +74,77 @@ export async function generateReportWorkflow(reportId: string) {
       let familyReports
       if (birthData.plan_type === 'family_reports' && birthData.report_ids) {
         const reportIds = (birthData.report_ids || []) as string[]
-        familyReports = await loadFamilyReportsByIds(reportIds, memberNames)
+        familyReports = await loadFamilyReportsByIds(reportIds, memberNames, {
+          userId,
+          email: customerEmail,
+        })
       } else {
         const memberEmails = (birthData.member_emails || []) as string[]
         familyReports = await loadFamilyReports(memberEmails, memberNames)
+      }
+
+      const familyNames = familyReports.map(r => r.name).join('、')
+      const familyBirthData = { ...familyReports[0].birthData, name: familyNames + ' 家族' }
+
+      if (useConsultationV1 && birthData.plan_type === 'family_reports') {
+        const reportIds = (birthData.report_ids || []) as string[]
+        const structured = await buildStructuredG15Report({
+          reportId,
+          createdAt,
+          birthData,
+          familyReports,
+          reportIds,
+        })
+        const moderation = await contentModerationStep(
+          reportId,
+          structured.moderationText,
+          'G15',
+          { customerName: familyReports[0]?.name, otherClientNames: [] },
+        )
+        if (moderation.blocked) {
+          await markReportNeedsHumanReview(
+            reportId,
+            `G15 結構化內容安全審查未通過: ${moderation.reason}`,
+            undefined,
+            structured.plainText,
+            structured.aiModel,
+          )
+          await closeProgressStream()
+          return { success: false, error: 'G15 結構化內容需人工審核' }
+        }
+        await saveReportToSupabase(
+          reportId,
+          structured.plainText,
+          structured.aiModel,
+          structured.analysesSummary,
+          null,
+          undefined,
+          undefined,
+          undefined,
+          structured.report,
+        )
+        try {
+          await sendReportEmail(
+            reportId,
+            customerEmail,
+            accessToken,
+            familyBirthData,
+            planCode,
+            structured.plainText,
+            familyReports.length,
+          )
+        } catch (e) {
+          console.error('G15 結構化報告 Email 寄送失敗（報告已完成）:', e)
+        }
+        await closeProgressStream()
+        return {
+          success: true,
+          reportId,
+          contentLength: structured.plainText.length,
+          systemsCount: structured.analysesSummary.length,
+          aiModel: structured.aiModel,
+          consultationVersion: structured.report.schemaVersion,
+        }
       }
 
       // AI 生成家族互動分析
@@ -135,15 +211,27 @@ export async function generateReportWorkflow(reportId: string) {
           otherClientNames: [],  // G15 本來就包含多位家人名字，不做隱私比對
         })
         if (modResult.blocked) {
-          console.warn(`G15 內容審查被標記：${modResult.reason}（不阻塞交付，但已記錄）`)
+          await markReportNeedsHumanReview(
+            reportId,
+            `G15 內容安全審查未通過: ${modResult.reason}`,
+            undefined,
+            reportContent,
+            result.model,
+          )
+          await closeProgressStream()
+          return { success: false, error: 'G15 內容需人工審核' }
         }
       } catch (e) {
-        console.error('G15 內容審查失敗（不阻塞）:', e)
+        await markReportNeedsHumanReview(
+          reportId,
+          'G15 內容安全審查未完整完成',
+          undefined,
+          reportContent,
+          result.model,
+        )
+        await closeProgressStream()
+        return { success: false, error: 'G15 內容審查未完整完成' }
       }
-
-      // G15 用全體成員名字
-      const familyNames = familyReports.map(r => r.name).join('、')
-      const familyBirthData = { ...familyReports[0].birthData, name: familyNames + ' 家族' }
 
       // 生成 PDF
       let pdfUrl: string | null = null
@@ -351,8 +439,18 @@ export async function generateReportWorkflow(reportId: string) {
 
   // Step 1: 排盤計算
   let calcResult
+  let calculatorBirthData = birthData
+  let attestedCalcResult: Awaited<ReturnType<typeof callPythonCalculateAttested>> | undefined
   try {
-    calcResult = await callPythonCalculate(birthData)
+    if (useConsultationV1 && planCode === 'C') {
+      calculatorBirthData = buildConsultationCalculatorBirthData(birthData, createdAt)
+    }
+    if (useConsultationV1 && planCode === 'C') {
+      attestedCalcResult = await callPythonCalculateAttested(calculatorBirthData)
+      calcResult = attestedCalcResult.response
+    } else {
+      calcResult = await callPythonCalculate(calculatorBirthData)
+    }
   } catch (e) {
     const errMsg2 = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
     await markReportFailed(reportId, `排盤計算失敗: ${errMsg2.slice(0, 500)}`)
@@ -364,6 +462,72 @@ export async function generateReportWorkflow(reportId: string) {
   const analysesSummary = analyses.map((a: { system: string; score: number }) => ({
     system: a.system, score: a.score,
   }))
+
+  if (useConsultationV1 && planCode === 'C') {
+    try {
+      const structured = await buildStructuredCReport({
+        reportId,
+        createdAt,
+        birthData: calculatorBirthData,
+        calculatorResult: attestedCalcResult!,
+      })
+      const moderation = await contentModerationStep(
+        reportId,
+        structured.moderationText,
+        'C',
+        { customerName: birthData.name, otherClientNames: [] },
+      )
+      if (moderation.blocked) {
+        await markReportNeedsHumanReview(
+          reportId,
+          `C 結構化內容安全審查未通過: ${moderation.reason}`,
+          undefined,
+          structured.plainText,
+          structured.aiModel,
+        )
+        await closeProgressStream()
+        return { success: false, error: 'C 結構化內容需人工審核' }
+      }
+      await saveReportToSupabase(
+        reportId,
+        structured.plainText,
+        structured.aiModel,
+        structured.analysesSummary,
+        null,
+        undefined,
+        structured.fullCharts,
+        undefined,
+        structured.report,
+      )
+      try {
+        await sendReportEmail(
+          reportId,
+          customerEmail,
+          accessToken,
+          birthData,
+          planCode,
+          structured.plainText,
+          structured.analysesSummary.length,
+        )
+      } catch (e) {
+        console.error('C 結構化報告 Email 寄送失敗（報告已完成）:', e)
+      }
+      await closeProgressStream()
+      return {
+        success: true,
+        reportId,
+        contentLength: structured.plainText.length,
+        systemsCount: structured.analysesSummary.length,
+        aiModel: structured.aiModel,
+        consultationVersion: structured.report.schemaVersion,
+      }
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
+      await markReportFailed(reportId, `C 結構化報告生成失敗: ${errMsg.slice(0, 500)}`)
+      await closeProgressStream()
+      return { success: false, error: 'C 結構化報告生成失敗' }
+    }
+  }
 
   // Step 2: AI 生成報告內容
   let reportContent = ''
@@ -722,23 +886,39 @@ export async function generateReportWorkflow(reportId: string) {
   }
 
   // Step 3.7: 內容安全審查（黑名單 + AI Moderation）
-  // 發現 block 類別會記錄到 moderation_log 並呼叫 admin 審查頁面；不直接阻塞交付
-  // （若未來要改為硬擋，把下方 markReportFailed 放開即可）
+  // C/G15 是深度人生與家庭諮詢：命中或無法完整執行時一律轉人工。
+  // 其他既有方案維持原有交付政策；本次不改 E3 行為。
   try {
     const modResult = await contentModerationStep(reportId, reportContent, planCode, {
       customerName: typeof birthData.name === 'string' ? birthData.name : undefined,
     })
     if (modResult.blocked) {
-      console.warn(
-        `⚠️ 內容審查發現 ${modResult.blacklistCount} 項違規（${planCode}）: ${modResult.reason}`,
-      )
-      // TODO（未來若要強擋）:
-      //   await markReportFailed(reportId, `內容安全審查失敗: ${modResult.reason}`)
-      //   await closeProgressStream()
-      //   return { success: false, error: '內容審查阻擋' }
+      if (planCode === 'C' || planCode === 'G15') {
+        await markReportNeedsHumanReview(
+          reportId,
+          `${planCode} 內容安全審查未通過: ${modResult.reason}`,
+          undefined,
+          reportContent,
+          aiModelUsed,
+        )
+        await closeProgressStream()
+        return { success: false, error: `${planCode} 內容需人工審核` }
+      }
+      console.warn(`內容審查發現 ${modResult.blacklistCount} 項違規（${planCode}）: ${modResult.reason}`)
     }
   } catch (e) {
-    console.error('內容審查失敗（不阻塞）:', e)
+    if (planCode === 'C' || planCode === 'G15') {
+      await markReportNeedsHumanReview(
+        reportId,
+        `${planCode} 內容安全審查未完整完成`,
+        undefined,
+        reportContent,
+        aiModelUsed,
+      )
+      await closeProgressStream()
+      return { success: false, error: `${planCode} 內容審查未完整完成` }
+    }
+    console.error('內容審查失敗（維持既有方案政策）:', e)
   }
 
   // Step 3.6: E1/E2/E3 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）

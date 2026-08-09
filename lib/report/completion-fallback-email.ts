@@ -10,6 +10,7 @@ import { sendEmailWithRetry } from '@/lib/resend-helper'
 import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { createServiceClient } from '@/lib/supabase'
 import { PLAN_NAMES } from '@/lib/plan-names'
+import { buildAbsoluteReportUrl } from '@/lib/consultation/routes'
 
 export async function sendCompletionEmailIfMissing(reportId: string, source: string): Promise<{ sent: boolean; reason: string }> {
   try {
@@ -45,7 +46,7 @@ export async function sendCompletionEmailIfMissing(reportId: string, source: str
     const planName = PLAN_NAMES[row.plan_code] || '命理報告'
     const isCN = typeof (row.birth_data as Record<string, unknown>)?.locale === 'string' && (row.birth_data as Record<string, unknown>).locale === 'zh-CN'
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-    const reportUrl = `${siteUrl}/report/${row.access_token}`
+    const reportUrl = buildAbsoluteReportUrl(siteUrl, row.plan_code, row.access_token)
     const subject = isCN ? `您的${planName}报告已完成` : `您的${planName}報告已完成`
     const brand = isCN ? '鉴 源' : '鑒 源'
     const cta = isCN ? '查看我的报告' : '查看我的報告'

@@ -35,6 +35,9 @@ const RULES = [
       // scripts 豁免逐檔列名(不整目錄放行:migration/backfill/含 service-key 營運腳本仍要受掃 — Codex 反例)
       'scripts/validate_tone_charter.mjs',  // 外部 OpenAI REST、離線 QA 腳本、非 app runtime
       'scripts/weekly_briefing.mjs',        // Supabase/Resend REST、cron 週報腳本、無 @/lib alias;讀彙總不寫入
+      'scripts/e3-freeze-audit.mjs',        // Playwright 隔離 fixture server；只連 loopback、非 app runtime
+      '__tests__/36-e3-fixture-server.test.mjs', // 隔離 HTTP fixture contract 測試、只連 loopback
+      '__tests__/41-consultation-checkout-aliases.test.mjs', // 以 fetch 驗 Route Handler wire-level redirect
     ],
   },
   {
