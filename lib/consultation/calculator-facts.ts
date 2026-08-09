@@ -251,6 +251,20 @@ function hasTextDiversity(
     bigrams.size / Math.max(1, characters.length - 1) >= 0.08
 }
 
+// A slot the calculator deliberately did not compute, because the input cannot
+// support it. Today the only reason is an unknown birth time. It carries no
+// analysis text and no score precisely so that it can never be mistaken for a
+// reading — which also means every validator that looks for substance has to
+// recognise it rather than call it an empty shell.
+export function isHeldCalculatorSlot(value: unknown): boolean {
+  return isRecord(value) &&
+    value.status === 'held' &&
+    typeof value.reason === 'string' &&
+    value.reason.length > 0 &&
+    value.detail === null &&
+    value.score === null
+}
+
 function hasCalculatorClientContract(value: unknown): boolean {
   if (!isRecord(value)) return false
   const requiredText = ['name', 'birth_date', 'gender', 'bazi', 'yongshen']
@@ -267,11 +281,28 @@ function hasCalculatorClientContract(value: unknown): boolean {
   const weighted = elementValues('five_elements')
   const simple = elementValues('five_elements_simple')
   if (!weighted || !simple) return false
-  if (simple.some((entry) => !Number.isInteger(entry)) || simple.reduce((sum, entry) => sum + entry, 0) !== 8) return false
+  // 四柱 = 8 個字（4 天干 + 4 地支）。時辰未提供時計算器只算三柱，總和是 6，
+  // 因為它拒絕用佔位中午生出第四柱——那正是我們要的行為。硬性要求 8 會把
+  // 每一份未知時辰的報告擋掉。
+  const baziTextForPillars = normalizedIdentityText(value.bazi)
+  const declaredUnknownHour = baziTextForPillars.includes('未知')
+  const expectedSimpleTotal = declaredUnknownHour ? 6 : 8
+  if (simple.some((entry) => !Number.isInteger(entry)) ||
+      simple.reduce((sum, entry) => sum + entry, 0) !== expectedSimpleTotal) return false
   const weightedTotal = weighted.reduce((sum, entry) => sum + entry, 0)
-  if (weightedTotal < 6 || weightedTotal > 12) return false
-  const baziPairs = normalizedIdentityText(value.bazi).match(/[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]/gu) ?? []
-  return baziPairs.length === 4 && /[木火土金水]/u.test(String(value.yongshen))
+  const weightedFloor = declaredUnknownHour ? 4 : 6
+  if (weightedTotal < weightedFloor || weightedTotal > 12) return false
+  const baziText = baziTextForPillars
+  const baziPairs = baziText.match(/[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]/gu) ?? []
+  // Three pillars plus an explicit 未知 hour is the correct shape when the
+  // customer did not give a birth time — the calculator masks the hour pillar
+  // rather than inventing one from a placeholder noon. Demanding four pairs
+  // unconditionally rejected every unknown-birth-time report.
+  // 「未知」must be present: three pairs and nothing else would mean the hour
+  // pillar simply went missing, which is a different and unexplained failure.
+  const hourPillarDeclaredUnknown = baziPairs.length === 3 && baziText.includes('未知')
+  const pillarsOk = baziPairs.length === 4 || hourPillarDeclaredUnknown
+  return pillarsOk && /[木火土金水]/u.test(String(value.yongshen))
 }
 
 function normalizedDetailForSimilarity(value: unknown): string {
@@ -445,8 +476,14 @@ function validateEnvelope(envelope: CalculatorFactsEnvelope): CalculatorFactsIss
   if (missing.length > 0 || unknown.length > 0) {
     issues.push({ code: 'analyses.system_set_mismatch', path: 'response.analyses', message: 'analysis 系統集合與版本化契約不一致' })
   }
+  // Held slots are meant to look alike: each one is
+  // {status:'held', reason:'birth_time_unknown', detail:null, score:null}.
+  // Fingerprinting them next to real readings makes six identical shells
+  // collide into duplicate_payload, which would reject every unknown-birth-time
+  // report. Only substantive readings are compared with each other.
   const payloadFingerprints = envelope.response.analyses.map((entry) => {
     if (!isRecord(entry)) return ''
+    if (isHeldCalculatorSlot(entry)) return ''
     const { system: _system, ...payload } = entry
     return sha256(payload)
   })
@@ -483,6 +520,10 @@ function validateEnvelope(envelope: CalculatorFactsEnvelope): CalculatorFactsIss
     const markerCount = (CALCULATOR_SYSTEM_MARKERS[system] ?? [])
       .filter((marker) => detail.toLocaleLowerCase('zh-TW').includes(marker.toLocaleLowerCase('zh-TW')))
       .length
+    // A held slot is a declared absence, not a thin reading. Substance checks
+    // do not apply to it; what applies is that its shape is exactly the held
+    // schema, which isHeldCalculatorSlot already established.
+    if (isHeldCalculatorSlot(entry)) return
     const hasError = isCalculatorAnalysisFailure(entry)
     if (hasError) {
       issues.push({ code: 'analysis.partial_failure', path: `response.analyses.${index}`, message: `系統 ${names[index] || index} 回傳失敗 placeholder` })

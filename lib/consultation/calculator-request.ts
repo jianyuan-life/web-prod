@@ -119,22 +119,36 @@ export function buildCalculatorRequestPayload(
   if (consultationMode && typeof birthData.as_of === 'string' && /^\d{4}-\d{2}-\d{2}$/u.test(birthData.as_of)) {
     payload.as_of = birthData.as_of
   }
-  if (consultationMode && typeof birthData.bazi_school === 'string' && birthData.bazi_school.trim()) {
-    const school = birthData.bazi_school.trim()
-    if (!['china_mainland', 'japan_takaki', 'japan_abetaizan', 'korea'].includes(school)) {
+  // In consultation mode these three are always written, never omitted.
+  //
+  // They used to be conditional, so a checkout that had not collected a school
+  // simply left the field out — and the strict endpoint declares all three as
+  // required, which meant a 422, three retries and a failed paid report. The
+  // deeper reason to send them explicitly: an absent field leaves the server
+  // to pick a default, and "the server quietly picked a 流派" is the exact
+  // failure FLY-C01 was about. Sending the value makes what was used auditable
+  // in the signed request bytes.
+  //
+  // The defaults here are the product defaults, stated once:
+  //   bazi_school   china_mainland  子初換日, the 中國/台灣 mainstream
+  //   ayanamsa_type lahiri          Indian government 1956 official
+  //   fold          0               non-ambiguous local times only have fold 0
+  if (consultationMode) {
+    const rawSchool = typeof birthData.bazi_school === 'string' ? birthData.bazi_school.trim() : ''
+    if (rawSchool && !['china_mainland', 'japan_takaki', 'japan_abetaizan', 'korea'].includes(rawSchool)) {
       throw new RangeError('consultation bazi_school 不支援')
     }
-    payload.bazi_school = school
-  }
-  const ayanamsa = birthData.ayanamsa_type ?? birthData.ayanamsa
-  if (consultationMode && typeof ayanamsa === 'string' && ayanamsa.trim()) {
-    const type = ayanamsa.trim()
-    if (!['lahiri', 'raman', 'krishnamurti', 'kp'].includes(type)) {
+    payload.bazi_school = rawSchool || 'china_mainland'
+
+    const rawAyanamsa = birthData.ayanamsa_type ?? birthData.ayanamsa
+    const ayanamsa = typeof rawAyanamsa === 'string' ? rawAyanamsa.trim() : ''
+    if (ayanamsa && !['lahiri', 'raman', 'krishnamurti', 'kp'].includes(ayanamsa)) {
       throw new RangeError('consultation ayanamsa_type 不支援')
     }
-    payload.ayanamsa_type = type
+    payload.ayanamsa_type = ayanamsa || 'lahiri'
+
+    payload.fold = birthData.fold === 1 ? 1 : 0
   }
-  if (consultationMode && (birthData.fold === 0 || birthData.fold === 1)) payload.fold = birthData.fold
   return payload
 }
 
