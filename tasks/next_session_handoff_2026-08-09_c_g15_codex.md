@@ -39,12 +39,16 @@
 
 ## Fly.io 唯讀驗算新增的 P0 阻擋
 
-完整證據：`tasks/fly_readonly_validation_2026-08-09.md`。
+Live 證據：`tasks/fly_readonly_validation_2026-08-09.md`。三份 fresh-context contract／determinism／attestation 審計與 Claude 實作規格：`tasks/fly_consultation_contract_handoff_2026-08-09.md`。
 
 1. **未知時辰被忽略**：同一虛構案例標示未知時辰與明確 12:00 的 raw SHA 完全相同，15 個 system hash 也全同，且未知時辰輸出仍含 12:00 與完整時柱。Claude 必須先修 Fly calculator 的 unknown-time contract，並用時間相依系統的負向斷言鎖住。
 2. **Fly 仍把錯誤 placeholder 算成成功**：西洋占星回傳 `計算異常：'planet_name'`，API 仍回 HTTP 200、`systems_count=15`，且沒有 `partial_failures`／`failed_systems`。web 的 C 生成閘已能拒絕這個 live 形狀，且不會把合法 `score=0` 或「未見計算異常」誤擋；Fly 成功清單／ledger 仍未修。
 3. **structured v1 attestation 不存在**：帶 nonce 的 live response 缺少全部 13 個 attestation headers；Fly production code 與 secret names 也未見 `CALCULATOR_ATTESTATION_*`。在 Fly 與 Vercel 兩端完成同一 release/code hash/HMAC contract 前，不得開啟 `USE_CONSULTATION_REPORT_V1_C/G15`。
 4. 同一虛構案例 3/3 bytes 一致只證明 deterministic，**不證明命理規則正確**。
+5. **時間契約未成立**：Fly 完全忽略 `as_of`；15 套中 13 套仍讀 process clock、9 套不接 `target_year`。即使 Web 把 `created_at` 固定為 HKT 基準日，也不能保證日後重生成同一排盤。
+6. **C/G15 奇門沒有真正採出生時間**：`SYSTEM_PAIRS` 雖宣告 `time_source='birth'`，dispatcher 未傳入，calculator 會落回 `now`。
+7. **流派與 DST 欄位也被丟棄**：`bazi_school`、`ayanamsa_type`、`fold` 均未進入 `BirthInput`；非預設八字／吠陀流派與 fold 1 歷史人物可被靜默改盤。
+8. **release identity 需要先重設**：Fly runtime 無法可靠自證目前 Web regex要求的 release number＋image digest；必須用乾淨 build context、calculator manifest與外部 deployment receipt，不能只補 13 個自報 header。
 
 ## 本輪已解掉的舊失敗
 
@@ -97,4 +101,4 @@ git diff --check
 node --test __tests__/43-calculator-facts-normalizer.test.mjs __tests__/84-consultation-calculator-fail-closed.test.mjs __tests__/88-c-fallback-route-unreachable.test.mjs
 ```
 
-接手順序：先修 Fly unknown-time 與 placeholder/partial ledger → 為 D／R／legacy G15 建 route-level RED 測試與窄型 failure-marker gate（E1–E4 排除、E3 零變更）→ 乾淨 clone 預設 `npm run pre-deploy` → Claude/Gemini counterexample review → 修正 findings → immutable Vercel preview 96 案 → 只 stage 任務檔案 → 取得 production/main 最終確認後合併、push → 輪詢 Vercel 版本 → production 真機截圖與 0×5xx 驗證。
+接手順序：先讀 `fly_consultation_contract_handoff_2026-08-09.md`，在乾淨 fortune-research worktree新增 C/G15 專用 `/api/consultation/v1/calculate`，修 request/context/奇門/西占/strict ledger → 實作 exact-byte attestation與外部 deployment receipt → 為 D／R／legacy G15 建 route-level RED 測試與窄型 failure-marker gate（E1–E4 排除、E3 零變更）→ 乾淨 clone 預設 `npm run pre-deploy` → Claude/Gemini counterexample review → 修正 findings → immutable Vercel preview 96 案 → 只 stage 任務檔案 → 取得 production/main 最終確認後合併、push → 輪詢 Vercel 版本 → production 真機截圖與 0×5xx 驗證。
