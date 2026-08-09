@@ -14,11 +14,20 @@ test('C and G15 deletion waits for a successful response and exposes an inline e
   )
 
   assert.match(handler, /isConsultationPlan\(reportToDelete\.plan_code\)/u)
-  assert.match(handler, /if \(!res\.ok\)[\s\S]*setDeleteErrors[\s\S]*return/u)
+  assert.match(handler, /await internalDelete\('\/api\/reports',\s*\{[\s\S]*authToken,[\s\S]*body: \{ id, email: userEmail \}/u)
 
   const safeBranch = handler.slice(handler.indexOf('if (consultationDeletion)'))
-  assert.ok(safeBranch.indexOf('if (!res.ok)') >= 0)
-  assert.ok(safeBranch.indexOf('setReports(prev => prev.filter') > safeBranch.indexOf('if (!res.ok)'))
+  const requestIndex = safeBranch.indexOf("await internalDelete('/api/reports'")
+  const removeIndex = safeBranch.indexOf('setReports(prev => prev.filter')
+  const catchIndex = safeBranch.indexOf('} catch (error)')
+  const inlineErrorIndex = safeBranch.indexOf('setDeleteErrors', catchIndex)
+
+  assert.ok(requestIndex >= 0, 'C/G15 must call the shared DELETE client')
+  assert.doesNotMatch(safeBranch.slice(0, requestIndex), /setReports\(prev => prev\.filter/u)
+  assert.ok(removeIndex > requestIndex, 'C/G15 must remain visible until DELETE succeeds')
+  assert.ok(catchIndex > removeIndex, 'the successful removal must stay inside the try block')
+  assert.ok(inlineErrorIndex > catchIndex, 'DELETE rejection must be surfaced inline')
+  assert.match(safeBranch.slice(catchIndex), /ApiError \|\| error instanceof RateLimitError/u)
 
   assert.match(dashboard, /deleteErrors\[r\.id\][\s\S]*role="alert"/u)
   assert.match(dashboard, /無法從清單移除/u)

@@ -65,12 +65,13 @@ test('public copy states the 14-system method without unsupported efficacy claim
 test('C is framed as a layered life consultation rather than a prediction dump', () => {
   const product = CONSULTATION_PRODUCTS.C
   const copy = strings(product)
-  assert.match(copy, /30 秒/)
-  assert.match(copy, /3 分鐘/)
+  assert.match(copy, /重點先讀/)
+  assert.match(copy, /主題閱讀導航/)
   assert.match(copy, /深入閱讀/)
   assert.match(copy, /依據附錄/)
-  assert.match(copy, /90 天/)
+  assert.match(copy, /分階段行動/)
   assert.match(copy, /人生階段/)
+  assert.doesNotMatch(copy, /30 秒|3 分鐘|90 天/)
 })
 
 test('G15 requires 2–8 completed C reports and protects family roles', () => {
@@ -80,7 +81,9 @@ test('G15 requires 2–8 completed C reports and protects family roles', () => {
   assert.match(copy, /已完成/)
   assert.match(copy, /人生藍圖/)
   assert.match(copy, /不會依性別或排序指定父母角色/)
-  assert.match(copy, /監護人/)
+  assert.match(copy, /未成年人專屬的內容與監護流程尚未開放/)
+  assert.match(copy, /目前不接受新增或納入未成年人報告/)
+  assert.doesNotMatch(copy, /監護人同意|取得監護人同意|監護人流程已開放/)
 })
 
 test('both products disclose reflective scope and professional-service boundaries', () => {

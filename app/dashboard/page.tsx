@@ -12,6 +12,7 @@ import FamilyMembersManager from '@/components/FamilyMembersManager'
 import ReferralCard from '@/components/ReferralCard'
 import { PLAN_NAMES, CHUMENJI_CODES } from '@/lib/plan-names'
 import { buildPdfRoute, buildReportRoute, isConsultationPlan } from '@/lib/consultation/routes'
+import { ApiError, RateLimitError, internalDelete } from '@/lib/api'
 import UpsellModal from '@/components/UpsellModal'  // P11
 import { isFlagEnabled } from '@/lib/feature-flags'  // P11 FF_UPSELL_MODAL
 import {
@@ -43,6 +44,9 @@ type Report = {
   access_token: string | null
   report_result: {
     schemaVersion?: string
+    consultation_report?: {
+      schemaVersion?: string
+    } | null
     systems_count?: number
     analyses_summary?: { system: string; score: number }[]
   } | null
@@ -67,6 +71,45 @@ type Report = {
 // v5.3.95 對外 14 套(原 15 套清零、E2 v2.0 月家奇門古法為主、其他輔助)
 const PLAN_SYSTEMS: Record<string, number> = {
   C: 14, D: 0, G15: 14, R: 0, E1: 1, E2: 1, E3: 1, E4: 1,
+}
+
+type DashboardPdfReport = Pick<
+  Report,
+  'access_token' | 'pdf_url' | 'plan_code' | 'report_result'
+>
+
+function safeStoredPdfHref(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4096) return undefined
+  if (/[\s\p{Cc}]/u.test(value)) return undefined
+  if (value.startsWith('/') && !value.startsWith('//')) return value
+  try {
+    const parsed = new URL(value)
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return undefined
+    return value
+  } catch {
+    return undefined
+  }
+}
+
+function resolveDashboardPdfHref(report: DashboardPdfReport): string | undefined {
+  // 出門訣系列維持既有行事曆交付，不在此新增 PDF 行為。
+  if (CHUMENJI_CODES.has(report.plan_code)) return undefined
+
+  const storedPdfHref = safeStoredPdfHref(report.pdf_url)
+  if (!isConsultationPlan(report.plan_code)) return storedPdfHref
+
+  const contract = report.report_result?.consultation_report
+  const structured = typeof contract === 'object'
+    && contract !== null
+    && contract.schemaVersion === 'consultation-report/v1'
+  if (!structured || !report.access_token) return storedPdfHref
+
+  try {
+    return buildPdfRoute(report.plan_code, report.access_token) ?? storedPdfHref
+  } catch {
+    // A malformed historic token must not crash the whole report library.
+    return storedPdfHref
+  }
 }
 
 const getReportStatus = (status: string) => {
@@ -328,25 +371,19 @@ function DashboardContent() {
         return next
       })
       try {
-        const res = await fetch('/api/reports', {
-          method: 'DELETE',
-          headers: getAuthHeaders(),
-          credentials: 'include',
-          body: JSON.stringify({ id, email: userEmail }),
+        await internalDelete('/api/reports', {
+          authToken,
+          body: { id, email: userEmail },
         })
-        if (!res.ok) {
-          setDeleteErrors(prev => ({
-            ...prev,
-            [id]: '目前無法從清單移除這份報告。報告仍保留在帳號中，請稍後再試；若問題持續，請聯絡客服。',
-          }))
-          return
-        }
         setDeletedIds(prev => new Set(prev).add(id))
         setReports(prev => prev.filter(r => r.id !== id))
-      } catch {
+      } catch (error) {
+        const requestReachedServer = error instanceof ApiError || error instanceof RateLimitError
         setDeleteErrors(prev => ({
           ...prev,
-          [id]: '連線中斷，未能從清單移除這份報告。報告仍保留在帳號中，請檢查網路後再試。',
+          [id]: requestReachedServer
+            ? '目前無法從清單移除這份報告。報告仍保留在帳號中，請稍後再試；若問題持續，請聯絡客服。'
+            : '連線中斷，未能從清單移除這份報告。報告仍保留在帳號中，請檢查網路後再試。',
         }))
       } finally {
         setDeletingId(null)
@@ -758,12 +795,8 @@ function DashboardContent() {
                           <p className="dashboard-status-context">報告連結正在準備，請稍後重新整理。</p>
                         )}
                         {(() => {
-                          const structuredConsultation = isConsultationPlan(r.plan_code) &&
-                            r.report_result?.schemaVersion === 'consultation-report/v1'
-                          const pdfHref = structuredConsultation && r.access_token
-                            ? buildPdfRoute(r.plan_code, r.access_token)
-                            : (r.pdf_url || undefined)
-                          if (!pdfHref || CHUMENJI_CODES.has(r.plan_code)) return null
+                          const pdfHref = resolveDashboardPdfHref(r)
+                          if (!pdfHref) return null
                           return (
                             <a href={pdfHref} target="_blank" rel="noopener noreferrer" className="dashboard-report-action">
                               <Download size={17} aria-hidden="true" />

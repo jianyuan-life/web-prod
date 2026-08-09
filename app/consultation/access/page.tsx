@@ -52,9 +52,9 @@ export default function ConsultationAccessPage() {
 
   const failed = state !== 'opening'
   return (
-    <main className={styles.page} aria-labelledby="access-title">
+    <div className={styles.page}>
       <div className={styles.halo} aria-hidden="true" />
-      <section className={styles.card}>
+      <section className={styles.card} aria-labelledby="access-title">
           <p className={styles.kicker}>鑑源 · 私人報告</p>
           <h1 id="access-title">
             {failed ? '這次無法開啟報告' : '正在開啟你的私人報告'}
@@ -99,6 +99,6 @@ export default function ConsultationAccessPage() {
             </nav>
           )}
       </section>
-    </main>
+    </div>
   )
 }
