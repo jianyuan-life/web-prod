@@ -26,7 +26,7 @@
 
 ## 已驗證（最終收尾）
 
-- `npm test`：`766 pass / 0 fail / 2 skip`。
+- `npm test`：`774 pass / 0 fail / 2 skip`（98 個 test files）。
 - `npm run type-check`：PASS。
 - `npm run check:no-raw-clients`：PASS，raw fetch 維持既有 baseline 80，沒有新增例外。
 - C／G15 相關閱讀、PDF、Dashboard、DELETE body 批次：19 檔、111 項斷言 PASS。
@@ -42,7 +42,7 @@
 完整證據：`tasks/fly_readonly_validation_2026-08-09.md`。
 
 1. **未知時辰被忽略**：同一虛構案例標示未知時辰與明確 12:00 的 raw SHA 完全相同，15 個 system hash 也全同，且未知時辰輸出仍含 12:00 與完整時柱。Claude 必須先修 Fly calculator 的 unknown-time contract，並用時間相依系統的負向斷言鎖住。
-2. **錯誤 placeholder 被算成成功**：西洋占星回傳 `計算異常：'planet_name'`，API 仍回 HTTP 200、`systems_count=15`，且沒有 `partial_failures`／`failed_systems`。Claude 必須同步修 Fly 成功清單與 web `legacy-calculator-safety.ts` 的 error-shaped detection；任何 placeholder 都要阻止 prompt、PDF、completed 與 email。
+2. **Fly 仍把錯誤 placeholder 算成成功**：西洋占星回傳 `計算異常：'planet_name'`，API 仍回 HTTP 200、`systems_count=15`，且沒有 `partial_failures`／`failed_systems`。web 的 C 生成閘已能拒絕這個 live 形狀，且不會把合法 `score=0` 或「未見計算異常」誤擋；Fly 成功清單／ledger 仍未修。
 3. **structured v1 attestation 不存在**：帶 nonce 的 live response 缺少全部 13 個 attestation headers；Fly production code 與 secret names 也未見 `CALCULATOR_ATTESTATION_*`。在 Fly 與 Vercel 兩端完成同一 release/code hash/HMAC contract 前，不得開啟 `USE_CONSULTATION_REPORT_V1_C/G15`。
 4. 同一虛構案例 3/3 bytes 一致只證明 deterministic，**不證明命理規則正確**。
 
@@ -79,12 +79,13 @@
 ## 還沒做，不可宣稱完成
 
 1. Claude Opus 4.8 與 Gemini 3.1 Pro 已各自完成完整 patch 反例審查，兩者結論都是 `RELEASE=HOLD`。採納／保留／不採用理由見 `tasks/c_g15_cross_model_review_2026-08-09.md`。
-2. 兩家共同確認 web 會漏接 Fly live 的 `detail/sub_summary` 計算異常 placeholder，且現有測試與實作共同漏接；這是尚未修正的 P0。
+2. 兩家共同確認的 C web placeholder 漏接已修：live 同形資料、否定句反例與 `summary` alias 均有行為測試；C fallback 也已用真實 POST handler 證明三種 flag 狀態皆在 calculator／AI 前停止。Fly ledger 與 unknown-time 仍是 P0。
 3. Gemini 另指出 G15 目前仍是購買者單次聲明，沒有逐位成年成員的獨立同意與撤回紀錄。這項先列商業化／隱私發布阻擋，不在缺正式法律意見時自行宣稱違法。
 4. 桌面／平板／手機、light／dark／reduced-motion／400% zoom 的 immutable preview 96 案真實瀏覽器矩陣尚未完成。
 5. `tasks/c_g15_market_ui_benchmark_2026-08-09.md` 已列 25 個客觀商業/UI 維度；其中「未見」與「部分」不可冒充 100 分。
 6. 上述 Fly P0 與 attestation 缺口尚未修；Fly.io 此次只有唯讀與虛擬案例授權，不得修改、部署、重啟、縮放或寫 secrets。
-7. 未合併 main、未推 production，`https://jianyuan.life/` 尚未反映本分支。
+7. Gemini 的收尾反例審查另確認非 C legacy route 仍缺 failure-marker gate。獨立盤點證明完整 15 槽 assertion 只適用 C：D 取 5–8 套、R 取 8 套、G15 canonical family 路徑不重算、E1–E4 另走奇門，E3 golden fixture 只有 4 套。接手時只為 D／R／legacy G15 建窄型失敗閘，不要求 15 槽，並完全排除 E1–E4。
+8. 未合併 main、未推 production，`https://jianyuan.life/` 尚未反映本分支。
 
 ## 接手後指令順序
 
@@ -93,7 +94,7 @@ python D:/ClaudeData/ops-standard/bin/improvement_loop.py status --context
 python D:/ClaudeData/ops-standard/bin/work_state.py context --cwd "D:/Users/Desktop/Claude專案/Claude-鑑源-worktrees/web-checkout-tone-fix-20260809"
 git status --short
 git diff --check
-node --test __tests__/38-g15-selection-validator.test.mjs __tests__/40-consultation-marketing.test.mjs __tests__/42-consultation-reader-surface.test.mjs __tests__/46-consultation-report-link-integration.test.mjs
+node --test __tests__/43-calculator-facts-normalizer.test.mjs __tests__/84-consultation-calculator-fail-closed.test.mjs __tests__/88-c-fallback-route-unreachable.test.mjs
 ```
 
-接手順序：先修 Fly unknown-time 與 placeholder/partial ledger → web「發現錯誤即停止」回歸 → 乾淨 clone 預設 `npm run pre-deploy` → Claude/Gemini counterexample review → 修正 findings → immutable Vercel preview 96 案 → 只 stage 任務檔案 → 取得 production/main 最終確認後合併、push → 輪詢 Vercel 版本 → production 真機截圖與 0×5xx 驗證。
+接手順序：先修 Fly unknown-time 與 placeholder/partial ledger → 為 D／R／legacy G15 建 route-level RED 測試與窄型 failure-marker gate（E1–E4 排除、E3 零變更）→ 乾淨 clone 預設 `npm run pre-deploy` → Claude/Gemini counterexample review → 修正 findings → immutable Vercel preview 96 案 → 只 stage 任務檔案 → 取得 production/main 最終確認後合併、push → 輪詢 Vercel 版本 → production 真機截圖與 0×5xx 驗證。

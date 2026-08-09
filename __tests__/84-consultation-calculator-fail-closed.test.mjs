@@ -53,6 +53,53 @@ test('partial failures and error-shaped analyses stop generation', () => {
   assert.throws(() => assertCompleteConsultationCalculatorResult(failedAnalysis), /失敗/u)
 })
 
+test('the observed Fly calculation-error placeholder cannot enter C generation', () => {
+  const livePlaceholder = completeResult()
+  const westernIndex = livePlaceholder.analyses.findIndex((analysis) => analysis.system === '西洋占星')
+  livePlaceholder.analyses[westernIndex] = {
+    system: '西洋占星',
+    score: 0,
+    sub_summary: '計算異常',
+    detail: "計算異常：'planet_name'",
+  }
+
+  assert.throws(
+    () => consultationCalculatorEvidenceForGeneration(livePlaceholder, { time_unknown: false }),
+    /西洋占星.*失敗/u,
+  )
+})
+
+test('a legitimate zero score and a negated diagnostic sentence are not failure placeholders', () => {
+  const legitimateZero = completeResult()
+  const westernIndex = legitimateZero.analyses.findIndex((analysis) => analysis.system === '西洋占星')
+  legitimateZero.analyses[westernIndex] = {
+    system: '西洋占星',
+    score: 0,
+    sub_summary: '排盤資料完整',
+    detail: '所有必要欄位均已產生，未見計算異常。',
+    success: true,
+  }
+
+  assert.doesNotThrow(
+    () => consultationCalculatorEvidenceForGeneration(legitimateZero, { time_unknown: false }),
+  )
+})
+
+test('the existing summary-shaped analysis cannot hide a calculation failure', () => {
+  const summaryPlaceholder = completeResult()
+  const westernIndex = summaryPlaceholder.analyses.findIndex((analysis) => analysis.system === '西洋占星')
+  summaryPlaceholder.analyses[westernIndex] = {
+    system: '西洋占星',
+    score: 0,
+    summary: '計算異常：ephemeris unavailable',
+  }
+
+  assert.throws(
+    () => consultationCalculatorEvidenceForGeneration(summaryPlaceholder, { time_unknown: false }),
+    /西洋占星.*失敗/u,
+  )
+})
+
 test('the held fifteenth system never supports customer conclusions', () => {
   const safe = consultationCalculatorEvidenceForGeneration(completeResult(), { time_unknown: false })
   assert.equal(safe.analyses.length, 14)

@@ -163,6 +163,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const CALCULATOR_FAILURE_TEXT_PREFIX = /^(?:計算異常|計算失敗|calculator\s+error)(?:$|[\s:'"（(\[])/iu
+
+function hasFailureValue(value: unknown): boolean {
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  if (isRecord(value)) return Object.keys(value).length > 0
+  return Boolean(value)
+}
+
+function hasCalculatorFailureText(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  return CALCULATOR_FAILURE_TEXT_PREFIX.test(value.normalize('NFKC').trim())
+}
+
+export function isCalculatorAnalysisFailure(value: unknown): boolean {
+  if (!isRecord(value)) return false
+  return value.success === false ||
+    hasFailureValue(value.error) ||
+    hasCalculatorFailureText(value.sub_summary) ||
+    hasCalculatorFailureText(value.summary) ||
+    hasCalculatorFailureText(value.detail)
+}
+
 function isIsoDate(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false
   const [year, month, day] = value.split('-').map(Number)
@@ -460,10 +483,7 @@ function validateEnvelope(envelope: CalculatorFactsEnvelope): CalculatorFactsIss
     const markerCount = (CALCULATOR_SYSTEM_MARKERS[system] ?? [])
       .filter((marker) => detail.toLocaleLowerCase('zh-TW').includes(marker.toLocaleLowerCase('zh-TW')))
       .length
-    const hasError = entry.success === false ||
-      (typeof entry.error === 'string' && entry.error.trim().length > 0) ||
-      /計算異常|計算失敗|calculator\s+error/iu.test(`${summary}\n${detail}`) ||
-      (entry.score === 0 && /異常|失敗|error/iu.test(summary))
+    const hasError = isCalculatorAnalysisFailure(entry)
     if (hasError) {
       issues.push({ code: 'analysis.partial_failure', path: `response.analyses.${index}`, message: `系統 ${names[index] || index} 回傳失敗 placeholder` })
     } else if (!hasSubstantiveAnalysis(entry)) {

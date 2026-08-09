@@ -283,6 +283,15 @@ test('dispatcher 的 score=0 計算異常 placeholder 與任何 error 欄位都�
   }
 })
 
+test('排盤正文中的否定診斷句不得被誤判為 failure placeholder', () => {
+  const healthy = makeEnvelope()
+  const western = healthy.response.analyses.find((analysis) => analysis.system === '西洋占星')
+  western.score = 0
+  western.detail += ' 本次必要欄位皆已產生，未見計算異常。'
+
+  assertEqual(normalizer.normalizeCalculatorFacts(healthy).factLedger.status, 'complete')
+})
+
 test('15 個只有 system/score 的空殼不得冒充完整排盤', () => {
   const emptyShell = makeEnvelope()
   emptyShell.response.analyses = normalizer.EXPECTED_CALCULATOR_SYSTEMS.map((system) => ({

@@ -2,6 +2,7 @@ import {
   BIRTH_TIME_DEPENDENT_SYSTEMS,
   CALCULATOR_SYSTEM_EVIDENCE_CLASS,
   EXPECTED_CALCULATOR_SYSTEMS,
+  isCalculatorAnalysisFailure,
   type CalculatorAnalysis,
 } from './calculator-facts.ts'
 
@@ -56,7 +57,7 @@ export function assertCompleteConsultationCalculatorResult(
     }
     if (seen.has(system)) throw new Error(`排盤系統重複：${system}`)
     seen.add(system)
-    if (rawAnalysis.success === false || hasEntries(rawAnalysis.error)) {
+    if (isCalculatorAnalysisFailure(rawAnalysis)) {
       throw new Error(`${system} 排盤失敗，報告已停止生成`)
     }
     if (typeof rawAnalysis.score !== 'number' || !Number.isFinite(rawAnalysis.score)) {
