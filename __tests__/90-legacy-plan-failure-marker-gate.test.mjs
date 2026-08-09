@@ -129,3 +129,26 @@ test('錯誤訊息要指名是哪一套,不能只說「排盤失敗」', () => {
     assert.doesNotMatch(error.message, /planet_name/u, '不要把內部例外字串轉給客戶端訊息')
   }
 })
+
+test('detail 中性但 warnings 帶失敗字串,仍要擋', () => {
+  // producer 兩處都寫:detail 是「計算異常：{e}」,warnings 是
+  // 「此系統計算時發生錯誤：{e}」。原本只看 detail/sub_summary/summary,
+  // 所以把 detail 換成中性字串就能整個繞過閘。
+  const result = healthyResult(6)
+  result.analyses[2].detail = '本系統已完成基本計算'
+  result.analyses[2].sub_summary = '正常'
+  result.analyses[2].warnings = ["此系統計算時發生錯誤：'planet_name'"]
+  for (const plan of ['D', 'R', 'G15']) {
+    assert.throws(
+      () => assertNoLegacyCalculatorFailureMarkers(result, plan),
+      /系統3/u,
+      `${plan} 沒有從 warnings 認出失敗`,
+    )
+  }
+})
+
+test('warnings 裡的一般提醒不得被誤判為失敗', () => {
+  const result = healthyResult(5)
+  result.analyses[1].warnings = ['本次排盤未見計算異常', '流年變動較大,宜保守']
+  assert.doesNotThrow(() => assertNoLegacyCalculatorFailureMarkers(result, 'D'))
+})

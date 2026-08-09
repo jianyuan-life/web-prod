@@ -177,13 +177,34 @@ function hasCalculatorFailureText(value: unknown): boolean {
   return CALCULATOR_FAILURE_TEXT_PREFIX.test(value.normalize('NFKC').trim())
 }
 
+// The warnings array carries a different wording from the summary fields:
+// report_generator.py writes `此系統計算時發生錯誤：{e}` there while the detail
+// gets `計算異常：{e}`. Anchored at the start, like the other matcher, so that
+// prose mentioning an error in passing — 「本次排盤未見計算異常」 — is not
+// mistaken for one.
+const CALCULATOR_FAILURE_WARNING_PREFIX = /^(?:此系統計算時發生錯誤|系統計算失敗)(?:$|[\s:'"（(\[：])/iu
+
+function hasCalculatorFailureWarning(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  const text = value.normalize('NFKC').trim()
+  return CALCULATOR_FAILURE_WARNING_PREFIX.test(text) || CALCULATOR_FAILURE_TEXT_PREFIX.test(text)
+}
+
 export function isCalculatorAnalysisFailure(value: unknown): boolean {
   if (!isRecord(value)) return false
+  // `warnings` is checked because the producer writes the failure there too:
+  // report_generator.py builds both `detail: f'計算異常：{e}'` and
+  // `warnings: [f'此系統計算時發生錯誤：{e}']`. Reading only the summary fields
+  // meant a placeholder whose detail happened to be neutral would sail through
+  // the D／R／legacy G15 gate — and the gate's own fixture was passing on
+  // `detail` alone, so nothing would have noticed.
+  const warnings = Array.isArray(value.warnings) ? value.warnings : []
   return value.success === false ||
     hasFailureValue(value.error) ||
     hasCalculatorFailureText(value.sub_summary) ||
     hasCalculatorFailureText(value.summary) ||
-    hasCalculatorFailureText(value.detail)
+    hasCalculatorFailureText(value.detail) ||
+    warnings.some((entry) => hasCalculatorFailureWarning(entry))
 }
 
 function isIsoDate(value: unknown): value is string {
