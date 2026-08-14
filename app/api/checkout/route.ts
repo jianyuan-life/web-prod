@@ -11,9 +11,25 @@ import {
   prepareCheckoutBirthData,
 } from '@/lib/checkout/prepare-checkout-birth-data'
 import {
+  G15_CONSENT_RECEIPT_COLUMNS,
+  G15_CONSENT_SELECTION_COLUMNS,
+} from '@/lib/checkout/g15-independent-consent'
+import {
   buildStripeCheckoutSessionParams,
   getCheckoutPaymentPath,
 } from '@/lib/checkout/server-checkout-contract'
+import { assertConsultationCalculatorReady } from '@/lib/consultation/calculator-readiness.server'
+import {
+  bindConsultationOrderReleaseContract,
+  shouldUseConsultationReportV1,
+} from '@/lib/consultation/runtime-config'
+import {
+  operationalErrorClass,
+  operationalFingerprint,
+} from '@/lib/security/operational-telemetry'
+
+const CHECKOUT_PROVIDER_ERROR = '目前無法建立付款頁，請稍後再試'
+const CHECKOUT_INTERNAL_ERROR = '結帳服務暫時無法使用，請稍後再試'
 
 function getSupabase() {
   return createServiceClient()
@@ -22,7 +38,7 @@ function getSupabase() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { planCode, birthData, totalPrice, locale, couponCode, couponDiscount, userEmail, pointsToUse } = body
+    const { planCode, birthData, totalPrice, locale, couponCode, couponDiscount, userEmail, pointsToUse, checkoutRequestKey } = body
 
     const plan = PRICE_MAP[planCode]
     if (!plan) {
@@ -33,6 +49,21 @@ export async function POST(req: NextRequest) {
     // 只擋「新購」;既有客戶的報告/儀表板/PDF 不經過此路徑、完全不受影響
     if (!isVisiblePlan(planCode)) {
       return NextResponse.json({ error: '此方案目前未開放購買,歡迎選擇人生藍圖、家族藍圖或月度精選' }, { status: 400 })
+    }
+
+    // C/G15 的新報告合約必須由獸立 flag 明確開啟。缺值或 false
+    // 都在任何資料庫、點數或 Stripe 作業前停止，不回落舊流程。
+    if (
+      (planCode === 'C' || planCode === 'G15')
+      && !shouldUseConsultationReportV1(planCode)
+    ) {
+      return NextResponse.json(
+        {
+          error: '此報告方案目前尚未開放新訂單',
+          code: 'CONSULTATION_RELEASE_DISABLED',
+        },
+        { status: 503 },
+      )
     }
 
     // v5.3.70 解除 E1-E4 維護擋
@@ -96,6 +127,31 @@ export async function POST(req: NextRequest) {
           .in('id', [...reportIds])
         return { data, error }
       },
+      queryConsent: async ({ selectionId, purchaserUserId }) => {
+        const supabase = getSupabase()
+        const selectionResult = await supabase
+          .from('g15_consent_selections')
+          .select(G15_CONSENT_SELECTION_COLUMNS)
+          .eq('id', selectionId)
+          .eq('purchaser_user_id', purchaserUserId)
+          .maybeSingle()
+        if (selectionResult.error || !selectionResult.data) {
+          return {
+            selection: null,
+            receipts: [],
+            error: selectionResult.error,
+          }
+        }
+        const receiptsResult = await supabase
+          .from('g15_consent_receipts')
+          .select(G15_CONSENT_RECEIPT_COLUMNS)
+          .eq('selection_id', selectionId)
+        return {
+          selection: selectionResult.data,
+          receipts: receiptsResult.data,
+          error: receiptsResult.error,
+        }
+      },
     })
     if (!preparedBirthData.ok) {
       return NextResponse.json(
@@ -103,7 +159,13 @@ export async function POST(req: NextRequest) {
         { status: getG15ValidationHttpStatus(preparedBirthData.code) },
       )
     }
-    const trustedBirthData = preparedBirthData.birthData as typeof birthData
+    let trustedBirthData = preparedBirthData.birthData as typeof birthData
+    if (planCode === 'C' || planCode === 'G15') {
+      trustedBirthData = bindConsultationOrderReleaseContract(
+        planCode,
+        trustedBirthData,
+      ) as typeof birthData
+    }
 
     // v5.6.10 安全強化(對應 Codex audit P0):
     // - 已登入用戶:body 傳的 email 必須跟 verified email 一致、否則拒(防假冒他人下單)
@@ -139,6 +201,24 @@ export async function POST(req: NextRequest) {
     const placeholderStripeKey = ['sk', 'test', 'placeholder'].join('_')
     if (!stripeKey || stripeKey === placeholderStripeKey) {
       return NextResponse.json({ error: 'Stripe 尚未設定' }, { status: 500 })
+    }
+
+    // C／G15 付款前先以不含客戶資料的固定合成案例驗證 strict producer。
+    // 只有 exact-byte 驗章成功且完整通過 15 槽 ledger、coverage 與逐槽
+    // provenance 契約的 200 response 才能繼續；此閘必須在任何寫入、
+    // 點數扣除與 Stripe session 之前。
+    if (planCode === 'C' || planCode === 'G15') {
+      try {
+        await assertConsultationCalculatorReady()
+      } catch {
+        return NextResponse.json(
+          {
+            error: '排盤服務暫時未就緒，請稍後再試',
+            code: 'CONSULTATION_CALCULATOR_NOT_READY',
+          },
+          { status: 503 },
+        )
+      }
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
@@ -187,7 +267,7 @@ export async function POST(req: NextRequest) {
     {
       const supabase = getSupabase()
       const now = new Date().toISOString()
-      const { data: promo } = await supabase
+      const { data: promo, error: promoError } = await supabase
         .from('promotions')
         .select('name, discount_percent, applicable_plans')
         .eq('is_active', true)
@@ -196,6 +276,16 @@ export async function POST(req: NextRequest) {
         .order('discount_percent', { ascending: false })
         .limit(1)
         .maybeSingle()
+
+      if (promoError) {
+        return NextResponse.json(
+          {
+            error: '目前無法確認促銷狀態，請稍後再試',
+            code: 'PROMOTION_STATE_UNAVAILABLE',
+          },
+          { status: 503 },
+        )
+      }
 
       if (promo) {
         const planAllowed = !promo.applicable_plans || promo.applicable_plans.includes(planCode)
@@ -213,12 +303,22 @@ export async function POST(req: NextRequest) {
     let verifiedCouponCode = ''
     if (couponCode) {
       const supabase = getSupabase()
-      const { data: coupon } = await supabase
+      const { data: coupon, error: couponError } = await supabase
         .from('coupons')
         .select('*')
         .eq('code', couponCode.trim().toUpperCase())
         .eq('is_active', true)
         .single()
+
+      if (couponError) {
+        return NextResponse.json(
+          {
+            error: '目前無法確認優惠碼狀態，請稍後再試',
+            code: 'COUPON_STATE_UNAVAILABLE',
+          },
+          { status: 503 },
+        )
+      }
 
       if (coupon) {
         const now = new Date()
@@ -244,15 +344,14 @@ export async function POST(req: NextRequest) {
     const STRIPE_MIN_CHARGE_CENTS = 50
 
     // 3. 計算最終金額：促銷 vs 優惠碼，取較高折扣（不疊加）
+    const promotionAmount = promoDiscountPercent > 0
+      ? Math.round(baseAmount * (1 - promoDiscountPercent / 100))
+      : baseAmount
     let finalAmount = baseAmount
     if (couponIsFree) {
       // 免費碼優先
       finalAmount = 0
     } else {
-      // 計算促銷折扣後金額
-      const promoAmount = promoDiscountPercent > 0
-        ? Math.round(baseAmount * (1 - promoDiscountPercent / 100))
-        : baseAmount
       // 計算優惠碼折扣後金額
       let couponAmount = baseAmount
       if (couponDiscountPercent > 0) {
@@ -261,7 +360,7 @@ export async function POST(req: NextRequest) {
         couponAmount = Math.max(0, baseAmount - couponFixedAmount)
       }
       // 取較低金額（= 較高折扣）
-      finalAmount = Math.min(promoAmount, couponAmount)
+      finalAmount = Math.min(promotionAmount, couponAmount)
 
       // 防守：若優惠碼/促銷折抵後金額落在 (0, 50) cents 區間，Stripe 會拒絕
       // 視為折抵到免費處理（一般 $39 以上方案用常見折扣不會觸發，但 fixed 折扣或極端 percentage 可能）
@@ -275,6 +374,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 促銷與點數的資料來源不在同一個 DB transaction 內。在完成
+    // 單一原子定價邊界前明確禁止疊加，不得用促銷後金額推算點數。
+    if (
+      typeof pointsToUse === 'number'
+      && pointsToUse > 0
+      && promoDiscountPercent > 0
+    ) {
+      return NextResponse.json(
+        {
+          error: '促銷優惠與點數暫不可同時使用',
+          code: 'PROMOTION_POINTS_STACKING_UNAVAILABLE',
+        },
+        { status: 409 },
+      )
+    }
+
     // 4. 點數折抵（與優惠碼互斥，前端控制；後端再驗證）
     let verifiedPointsToUse = 0
     let pointsUserId = ''
@@ -284,7 +399,20 @@ export async function POST(req: NextRequest) {
       if (verifiedUserId) {
         pointsUserId = verifiedUserId
         // 驗證餘額
-        const { data: pts } = await supabase.from('user_points').select('balance').eq('user_id', verifiedUserId).single()
+        const { data: pts, error: pointsError } = await supabase
+          .from('user_points')
+          .select('balance')
+          .eq('user_id', verifiedUserId)
+          .single()
+        if (pointsError) {
+          return NextResponse.json(
+            {
+              error: '目前無法確認積分餘額，請稍後再試',
+              code: 'POINTS_STATE_UNAVAILABLE',
+            },
+            { status: 503 },
+          )
+        }
         const balance = pts?.balance || 0
         // 1 點 = $1 = 100 cents；最多折抵到 finalAmount 全額（整除上取，避免丟精度）
         // 原本 Math.floor(finalAmount/100) 在 finalAmount 不是 100 倍數時會少扣一點，
@@ -328,100 +456,150 @@ export async function POST(req: NextRequest) {
       verifiedPointsToUse,
     })
 
-    // 免費方案（優惠碼或積分全額折抵）：跳過 Stripe，直接建立訂單
+    // 免費結帳只支援 C/G15，且所有資料庫變更只能由單一 transaction RPC 完成。
+    // E3 的既有 paid path 保持不變；免費 E3 在完成同等原子化前 fail closed。
     if (paymentPath === 'free') {
+      if (planCode === 'G15') {
+        return NextResponse.json(
+          {
+            error: '家族藍圖免費結帳尚未與逐位成員同意原子綁定，目前不會建立訂單',
+            code: 'G15_FREE_CONSENT_ATOMIC_UNAVAILABLE',
+          },
+          { status: 503 },
+        )
+      }
+      if (planCode !== 'C' && planCode !== 'G15') {
+        return NextResponse.json(
+          { error: '此方案暫時無法使用免費結帳，請稍後再試', code: 'FREE_CHECKOUT_UNAVAILABLE' },
+          { status: 503 },
+        )
+      }
+
+      if (!verifiedUserId) {
+        return NextResponse.json(
+          { error: '免費結帳需要先登入，以確保折抵與訂單歸屬正確', code: 'FREE_CHECKOUT_LOGIN_REQUIRED' },
+          { status: 401 },
+        )
+      }
+
+      if (
+        typeof checkoutRequestKey !== 'string'
+        || !/^jyco_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(checkoutRequestKey)
+      ) {
+        return NextResponse.json(
+          { error: '結帳識別碼無效，請重新整理後再試', code: 'INVALID_CHECKOUT_REQUEST_KEY' },
+          { status: 400 },
+        )
+      }
+
       const supabase = getSupabase()
-      const draftRes = await supabase.from('checkout_drafts').insert({
-        plan_code: planCode, birth_data: trustedBirthData, locale: locale || 'zh-TW',
-      }).select('id').single()
+      const clientName = trustedBirthData?.plan_type === 'family_reports'
+        ? (trustedBirthData?.member_names?.filter(Boolean).join('、') || 'Unknown')
+        : (trustedBirthData?.name || 'Unknown')
+      const normalizedLocale = typeof locale === 'string' && locale.trim() ? locale.trim() : 'zh-TW'
+      const payloadHash = crypto.createHash('sha256').update(JSON.stringify({
+        planCode,
+        birthData: trustedBirthData,
+        locale: normalizedLocale,
+        customerEmail,
+        userId: verifiedUserId || null,
+        couponCode: verifiedCouponCode || null,
+        pointsToUse: verifiedPointsToUse,
+        baseAmount,
+        clientName,
+      })).digest('hex')
+      const rpcArgs = {
+        p_request_key: checkoutRequestKey,
+        p_payload_hash: payloadHash,
+        p_plan_code: planCode,
+        p_birth_data: trustedBirthData,
+        p_locale: normalizedLocale,
+        p_customer_email: customerEmail,
+        p_user_id: verifiedUserId || null,
+        p_coupon_code: verifiedCouponCode || null,
+        p_points_to_use: verifiedPointsToUse,
+        p_base_amount_cents: baseAmount,
+        p_client_name: clientName,
+        p_mark_workflow_failed: false,
+      }
 
-      if (!draftRes.data) return NextResponse.json({ error: '暫存資料失敗' }, { status: 500 })
+      let rpcData: unknown
+      let rpcError: unknown
+      try {
+        const result = await supabase.rpc('create_free_checkout_once', rpcArgs)
+        rpcData = result.data
+        rpcError = result.error
+      } catch (rpcTransportError) {
+        console.error('[checkout][free] RPC transport failure', {
+          errorType: operationalErrorClass(rpcTransportError),
+        })
+        return NextResponse.json(
+          { error: '免費結帳暫時無法完成，請使用相同頁面重試', code: 'FREE_CHECKOUT_RETRY' },
+          { status: 503 },
+        )
+      }
 
-      // 標記 draft 已使用
-      await supabase.from('checkout_drafts').update({ used_at: new Date().toISOString() }).eq('id', draftRes.data.id)
+      const rpcRow = Array.isArray(rpcData) ? rpcData[0] : rpcData
+      const outcome = typeof rpcRow === 'object' && rpcRow !== null && 'outcome' in rpcRow
+        ? String(rpcRow.outcome)
+        : ''
+      const reportId = typeof rpcRow === 'object' && rpcRow !== null && 'report_id' in rpcRow
+        ? String(rpcRow.report_id)
+        : ''
+      const fakeSessionId = typeof rpcRow === 'object' && rpcRow !== null && 'session_id' in rpcRow
+        ? String(rpcRow.session_id)
+        : ''
+      if (
+        rpcError
+        || !['applied', 'already'].includes(outcome)
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(reportId)
+        || !/^free_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(fakeSessionId)
+      ) {
+        console.error('[checkout][free] RPC rejected or returned an ambiguous result')
+        return NextResponse.json(
+          { error: '免費結帳暫時無法完成，請使用相同頁面重試', code: 'FREE_CHECKOUT_RETRY' },
+          { status: 503 },
+        )
+      }
 
-      // 直接插入訂單並觸發報告生成
-      const fakeSessionId = `free_${crypto.randomUUID()}`
-      await supabase.from('orders').insert({
-        stripe_session_id: fakeSessionId,
-        plan_code: planCode,
-        amount_usd: 0,
-        status: 'pending',
-        customer_email: customerEmail,
-        birth_data: trustedBirthData,
-        coupon_code: verifiedCouponCode,
-      })
-
-      // 建立 paid_reports 記錄（跟 webhook 一樣的流程）
-      const accessToken = crypto.randomUUID()
-      const { data: reportData } = await supabase.from('paid_reports').insert({
-        client_name: trustedBirthData?.plan_type === 'family_email' || trustedBirthData?.plan_type === 'family_reports'
-          ? (trustedBirthData?.member_names?.filter(Boolean).join('、') || 'Unknown')
-          : trustedBirthData?.plan === 'R'
-          ? (trustedBirthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join(' × ') || 'Unknown')
-          : trustedBirthData?.plan_type === 'family'
-          ? (trustedBirthData?.members?.map((m: { name?: string }) => m.name).filter(Boolean).join('、') || 'Unknown')
-          : (trustedBirthData?.name || 'Unknown'),
-        plan_code: planCode,
-        amount_usd: 0,
-        stripe_session_id: fakeSessionId,
-        birth_data: trustedBirthData,
-        status: 'pending',
-        access_token: accessToken,
-        customer_email: customerEmail,
-        user_id: verifiedUserId || null, // v5.3.22：明確記錄下單用戶身份
-      }).select('id').single()
-
-      const reportId = reportData?.id || ''
-
-      // 記錄優惠碼使用
-      if (verifiedCouponCode) {
-        const { data: couponRow } = await supabase.from('coupons').select('id, used_count').eq('code', verifiedCouponCode).single()
-        if (couponRow) {
-          await supabase.from('coupons').update({ used_count: (couponRow.used_count || 0) + 1 }).eq('id', couponRow.id)
-          await supabase.from('coupon_uses').insert({
-            coupon_id: couponRow.id, coupon_code: verifiedCouponCode,
-            order_id: fakeSessionId, customer_email: customerEmail,
-            plan_code: planCode, original_amount: baseAmount / 100, discount_applied: baseAmount / 100,
+      let workflowStarted = false
+      const cronSecret = process.env.CRON_SECRET
+      if (typeof cronSecret === 'string' && cronSecret.trim()) {
+        try {
+          const wfController = new AbortController()
+          const wfTimeout = setTimeout(() => wfController.abort(), 5000)
+          const wfRes = await fetch(`${siteUrl}/api/workflows/generate-report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-internal-secret': cronSecret },
+            body: JSON.stringify({ reportId }),
+            signal: wfController.signal,
+          })
+          clearTimeout(wfTimeout)
+          const wfBody = await wfRes.json().catch(() => null) as { success?: unknown; runId?: unknown; skipped?: unknown } | null
+          workflowStarted = wfRes.ok
+            && wfBody?.success === true
+            && ((typeof wfBody.runId === 'string' && wfBody.runId.length > 0) || wfBody.skipped === true)
+        } catch (wfErr) {
+          console.error('[checkout][free-workflow] trigger exception', {
+            errorType: operationalErrorClass(wfErr),
           })
         }
       }
 
-      // 積分全額折抵：直接扣除積分（不經過 Stripe webhook）
-      if (verifiedPointsToUse > 0 && pointsUserId) {
-        const { data: pts } = await supabase
-          .from('user_points')
-          .select('balance, total_used')
-          .eq('user_id', pointsUserId)
-          .gte('balance', verifiedPointsToUse)
-          .single()
-
-        if (pts) {
-          const newBalance = pts.balance - verifiedPointsToUse
-          const { error: updateErr } = await supabase
-            .from('user_points')
-            .update({
-              balance: newBalance,
-              total_used: (pts.total_used || 0) + verifiedPointsToUse,
-            })
-            .eq('user_id', pointsUserId)
-            .gte('balance', verifiedPointsToUse)
-
-          if (!updateErr) {
-            await supabase.from('point_transactions').insert({
-              user_id: pointsUserId,
-              type: 'use_checkout',
-              amount: -verifiedPointsToUse,
-              balance_after: newBalance,
-              description: `${PLAN_NAMES[planCode] || planCode} 訂單折抵`,
-              reference_id: fakeSessionId,
-            })
-            console.info(`✅ 積分全額折抵扣除：${pointsUserId} -${verifiedPointsToUse}點，餘額 ${newBalance}`)
-          }
-        }
+      if (!workflowStarted) {
+        try {
+          await supabase.rpc('create_free_checkout_once', {
+            ...rpcArgs,
+            p_mark_workflow_failed: true,
+          })
+        } catch { /* retry remains safe through the same idempotency key */ }
+        return NextResponse.json(
+          { error: '訂單已安全保留，但報告尚未啟動；請按原頁面重試', code: 'FREE_WORKFLOW_RETRY' },
+          { status: 503 },
+        )
       }
 
-      // 免費方案也發訂單確認信
+      // 只有 durable workflow 明確接受後才寄出已接單通知。
       if (customerEmail) {
         const planName = PLAN_NAMES[planCode] || planCode
         const freeSubject = verifiedCouponCode
@@ -460,60 +638,316 @@ export async function POST(req: NextRequest) {
           // T12b v5.10.370 — sendEmailWithRetry 已自動 record + dead-letter
           // freeSendResult.success / .resendId / .attempts / .error 已寫進 email_send_log
           if (!freeSendResult.success) {
-            console.warn(`[checkout][free-send] dead-letter:${customerEmail} attempts=${freeSendResult.attempts}`)
+            console.warn('[checkout][free-send] dead-letter', {
+              reportFingerprint: operationalFingerprint(reportId),
+              attempts: freeSendResult.attempts,
+            })
           }
         } catch (freeErr) {
           // sendEmailWithRetry 內部已 catch + dead-letter、外層 try-catch 只接 import 失敗等 fatal
-          console.error('[checkout][free-send] fatal:', freeErr)
-          /* 確認信失敗不影響報告生成 */
-        }
-      }
-
-      // 觸發 Workflow 生成報告（await + fallback，與 webhook 一致）
-      if (reportId) {
-        let workflowTriggered = false
-        try {
-          const wfController = new AbortController()
-          const wfTimeout = setTimeout(() => wfController.abort(), 5000)
-          const wfRes = await fetch(`${siteUrl}/api/workflows/generate-report`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
-            body: JSON.stringify({ reportId }),
-            signal: wfController.signal,
+          console.error('[checkout][free-send] fatal', {
+            errorType: operationalErrorClass(freeErr),
           })
-          clearTimeout(wfTimeout)
-          if (wfRes.ok) workflowTriggered = true
-          else console.error('免費方案 Workflow 觸發失敗:', await wfRes.text())
-        } catch (wfErr) {
-          console.error('免費方案 Workflow 觸發異常:', wfErr)
-        }
-
-        // Fallback: 直接呼叫 generate-report
-        if (!workflowTriggered) {
-          try {
-            const fbController = new AbortController()
-            const fbTimeout = setTimeout(() => fbController.abort(), 8000)
-            await fetch(`${siteUrl}/api/generate-report`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
-              body: JSON.stringify({ reportId }),
-              signal: fbController.signal,
-            })
-            clearTimeout(fbTimeout)
-          } catch (fbErr) {
-            console.error('免費方案 Fallback 也失敗:', fbErr)
-            await supabase.from('paid_reports').update({
-              error_message: `免費方案：Workflow 和 Fallback 都失敗`,
-            }).eq('id', reportId)
-          }
+          /* 確認信失敗不影響報告生成 */
         }
       }
 
       return NextResponse.json({ url: `${siteUrl}/dashboard?payment=success&free=1&session_id=${encodeURIComponent(fakeSessionId)}` })
     }
 
-    // Stripe session 參數由純函式建立：固定 USD、收據 email 與 metadata 可離線重算。
-    // birthData 仍只進 checkout_drafts，不得塞入 Stripe metadata。
+    // Stripe sessions without a money-equivalent reservation retain their
+    // existing producer contract. C/G15 always use the durable path below;
+    // other plans join it only when a paid coupon is actually reserved.
+    // Stripe session legacy producer boundary (no coupon/points reservation).
+    const requiresPaidReservation = (
+      planCode === 'C'
+      || planCode === 'G15'
+      || Boolean(verifiedCouponCode)
+      || verifiedPointsToUse > 0
+    )
+    if (!requiresPaidReservation) {
+      const params = buildStripeCheckoutSessionParams({
+        siteUrl,
+        planCode,
+        planName: plan.name,
+        finalAmount,
+        customerEmail,
+        verifiedUserId,
+        verifiedCouponCode,
+        promotionName: promoName,
+        verifiedPointsToUse,
+        pointsUserId,
+        locale,
+      })
+      if (trustedBirthData) {
+        const { data: draft, error: draftErr } = await getSupabase()
+          .from('checkout_drafts')
+          .insert({
+            plan_code: planCode,
+            birth_data: trustedBirthData,
+            locale: locale || 'zh-TW',
+          })
+          .select('id')
+          .single()
+        if (draftErr || !draft?.id) {
+          return NextResponse.json(
+            { error: CHECKOUT_INTERNAL_ERROR, code: 'CHECKOUT_DRAFT_UNAVAILABLE' },
+            { status: 500 },
+          )
+        }
+        params.set('metadata[draft_id]', draft.id)
+      }
+
+      const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${stripeKey}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.url) {
+        const providerErrorType = typeof data?.error?.type === 'string'
+          ? operationalErrorClass(data.error.type)
+          : 'StripeProviderError'
+        const providerRequestFingerprint = operationalFingerprint(
+          res.headers.get('request-id') || data?.request_log_url || `${res.status}:${planCode}`,
+        )
+        console.error('[checkout][stripe] provider request failed', {
+          status: res.status,
+          errorType: providerErrorType,
+          requestFingerprint: providerRequestFingerprint,
+        })
+        try {
+          const { notifyStripeFailed } = await import('@/lib/ai/observability/telegram')
+          void notifyStripeFailed(providerRequestFingerprint, providerErrorType)
+        } catch { /* ignore */ }
+        return NextResponse.json(
+          { error: CHECKOUT_PROVIDER_ERROR, code: 'CHECKOUT_PROVIDER_UNAVAILABLE' },
+          { status: 500 },
+        )
+      }
+      if (!/^cs_(test|live)_[A-Za-z0-9_]{10,220}$/.test(String(data.id || ''))) {
+        return NextResponse.json(
+          { error: CHECKOUT_PROVIDER_ERROR, code: 'CHECKOUT_PROVIDER_UNAVAILABLE' },
+          { status: 500 },
+        )
+      }
+      try {
+        await trackFunnelServer({
+          sessionId: data.id,
+          step: 'begin_payment',
+          planCode,
+          userId: pointsUserId || null,
+          amountUsd: isVariablePrice ? Number(totalPrice || 0) : ((plan as { amount?: number; price?: number } | undefined)?.amount || (plan as { amount?: number; price?: number } | undefined)?.price || 0),
+          metadata: { stripe_session: data.id, coupon: null },
+        })
+      } catch { /* tracking is non-blocking */ }
+      return NextResponse.json({ url: data.url })
+    }
+
+    // Value-bearing paid Sessions receive a durable request identity. This
+    // preserves the exact provider body and removes email/user/points PII from
+    // Stripe metadata: webhook authority comes from the protected DB ledger.
+    if (
+      typeof checkoutRequestKey !== 'string'
+      || !/^jyco_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(checkoutRequestKey)
+    ) {
+      return NextResponse.json(
+        { error: '結帳識別碼無效，請重新整理後再試', code: 'INVALID_CHECKOUT_REQUEST_KEY' },
+        { status: 400 },
+      )
+    }
+    if (verifiedPointsToUse > 0 && (planCode !== 'C' && planCode !== 'G15')) {
+      return NextResponse.json(
+        { error: '此方案暫時無法使用積分折抵', code: 'PAID_POINTS_UNAVAILABLE' },
+        { status: 409 },
+      )
+    }
+    if (planCode === 'G15' && !verifiedUserId) {
+      return NextResponse.json(
+        { error: '家族藍圖結帳需要登入', code: 'G15_CHECKOUT_RESERVATION_CONFLICT' },
+        { status: 409 },
+      )
+    }
+
+    const checkoutNowEpochSeconds = Math.floor(Date.now() / 1000)
+    const normalizedLocale = typeof locale === 'string' && locale.trim() ? locale.trim() : 'zh-TW'
+    const normalizedG15Locale = normalizedLocale
+    const createPaidCheckoutDraft = planCode !== 'G15'
+    const paidReservationTtlSeconds = 35 * 60
+    const paidPayloadHash = `sha256:${crypto.createHash('sha256').update(JSON.stringify({
+      planCode,
+      siteUrl,
+      planName: plan.name,
+      promotionName: promoName || null,
+      promotionAmount,
+      birthData: trustedBirthData,
+      locale: normalizedLocale,
+      customerEmail,
+      checkoutUserId: verifiedUserId || null,
+      couponCode: verifiedCouponCode || null,
+      pointsUserId: verifiedPointsToUse > 0 ? pointsUserId : null,
+      pointsAmount: verifiedPointsToUse,
+      baseAmount,
+      finalAmount,
+      createPaidCheckoutDraft,
+      paidReservationTtlSeconds,
+    })).digest('hex')}`
+    const requestedReservationExpiresAt = new Date(
+      (checkoutNowEpochSeconds + paidReservationTtlSeconds) * 1000,
+    ).toISOString()
+    const supabase = getSupabase()
+    const { data: paidReservationData, error: paidReservationError } = await supabase.rpc(
+      'reserve_paid_checkout_value',
+      {
+        p_request_key: checkoutRequestKey,
+        p_payload_hash: paidPayloadHash,
+        p_plan_code: planCode,
+        p_checkout_user_id: verifiedUserId || null,
+        p_coupon_code: verifiedCouponCode || null,
+        p_points_user_id: verifiedPointsToUse > 0 ? pointsUserId : null,
+        p_points_amount: verifiedPointsToUse,
+        p_birth_data: trustedBirthData,
+        p_locale: normalizedLocale,
+        p_base_amount_cents: baseAmount,
+        p_promotion_amount_cents: promotionAmount,
+        p_final_amount_cents: finalAmount,
+        p_create_checkout_draft: createPaidCheckoutDraft,
+        p_expires_at: requestedReservationExpiresAt,
+      },
+    )
+    const paidReservation = Array.isArray(paidReservationData)
+      ? paidReservationData[0]
+      : paidReservationData
+    const expectedResourceKind = verifiedCouponCode
+      ? 'coupon'
+      : verifiedPointsToUse > 0 ? 'points' : 'none'
+    const abandonPaidReservationBeforeProvider = async () => {
+      try {
+        const { data, error } = await supabase.rpc('abandon_paid_checkout_before_provider', {
+          p_request_key: checkoutRequestKey,
+          p_payload_hash: paidPayloadHash,
+        })
+        const receipt = Array.isArray(data) ? data[0] : data
+        return !error
+          && ['abandoned', 'already_released'].includes(String(receipt?.outcome))
+          && receipt?.request_key === checkoutRequestKey
+          && receipt?.resource_kind === expectedResourceKind
+      } catch {
+        return false
+      }
+    }
+    const reservedCouponValue = Number(paidReservation?.coupon_discount_value)
+    const reservationResourceShapeValid = (
+      expectedResourceKind === 'none'
+      && paidReservation?.coupon_code === null
+      && paidReservation?.coupon_discount_type === null
+      && paidReservation?.coupon_discount_value === null
+      && paidReservation?.points_user_id === null
+      && paidReservation?.points_amount === null
+    ) || (
+      expectedResourceKind === 'coupon'
+      && paidReservation?.coupon_code === verifiedCouponCode
+      && ['percentage', 'fixed'].includes(String(paidReservation?.coupon_discount_type))
+      && Number.isFinite(reservedCouponValue)
+      && reservedCouponValue > 0
+      && (paidReservation?.coupon_discount_type !== 'percentage' || reservedCouponValue <= 100)
+      && paidReservation?.points_user_id === null
+      && paidReservation?.points_amount === null
+    ) || (
+      expectedResourceKind === 'points'
+      && paidReservation?.coupon_code === null
+      && paidReservation?.coupon_discount_type === null
+      && paidReservation?.coupon_discount_value === null
+      && paidReservation?.points_user_id === pointsUserId
+      && paidReservation?.points_amount === verifiedPointsToUse
+    )
+    let checkoutDraftId = typeof paidReservation?.checkout_draft_id === 'string'
+      ? paidReservation.checkout_draft_id.toLowerCase()
+      : ''
+    const paidReservationExpiresAt = typeof paidReservation?.reservation_expires_at === 'string'
+      ? paidReservation.reservation_expires_at
+      : ''
+    const paidReservationExpiresEpochSeconds = Date.parse(paidReservationExpiresAt) / 1000
+    const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    if (
+      paidReservationError
+      || !['reserved', 'already_reserved', 'already_bound'].includes(String(paidReservation?.outcome))
+      || paidReservation?.request_key !== checkoutRequestKey
+      || paidReservation?.resource_kind !== expectedResourceKind
+      || paidReservation?.checkout_user_id !== (verifiedUserId || null)
+      || !reservationResourceShapeValid
+      || (planCode !== 'G15' && !validUuid.test(checkoutDraftId))
+      || !Number.isInteger(paidReservationExpiresEpochSeconds)
+      || paidReservationExpiresEpochSeconds <= checkoutNowEpochSeconds
+    ) {
+      await abandonPaidReservationBeforeProvider()
+      return NextResponse.json(
+        { error: '付款額度目前無法安全保留，請使用相同頁面重試', code: 'PAID_CHECKOUT_RESERVATION_CONFLICT' },
+        { status: 503 },
+      )
+    }
+
+    let g15ReservationId = ''
+    let g15ReservationReportId = ''
+    let g15ReservationExpiresEpochSeconds = paidReservationExpiresEpochSeconds
+    if (planCode === 'G15') {
+      g15ReservationId = checkoutRequestKey.slice('jyco_'.length)
+      const g15PayloadHash = `sha256:${crypto.createHash('sha256').update(JSON.stringify({
+        planCode,
+        siteUrl,
+        planName: plan.name,
+        promotionName: promoName,
+        birthData: trustedBirthData,
+        locale: normalizedLocale,
+        customerEmail,
+        verifiedUserId,
+        verifiedCouponCode: verifiedCouponCode || null,
+        verifiedPointsToUse,
+        finalAmount,
+      })).digest('hex')}`
+      const { data: reservationData, error: reservationError } = await supabase.rpc(
+        'reserve_g15_consent_for_checkout',
+        {
+          p_selection_id: trustedBirthData.consent_selection_id,
+          p_purchaser_user_id: verifiedUserId,
+          p_reservation_id: g15ReservationId,
+          p_request_payload_hash: g15PayloadHash,
+          p_birth_data: trustedBirthData,
+          p_locale: normalizedLocale,
+          p_expires_at: paidReservationExpiresAt,
+        },
+      )
+      const reservation = Array.isArray(reservationData) ? reservationData[0] : reservationData
+      checkoutDraftId = typeof reservation?.checkout_draft_id === 'string'
+        ? reservation.checkout_draft_id.toLowerCase()
+        : ''
+      g15ReservationReportId = typeof reservation?.report_id === 'string'
+        ? reservation.report_id.toLowerCase()
+        : ''
+      const g15ExpiresAt = typeof reservation?.reservation_expires_at === 'string'
+        ? reservation.reservation_expires_at
+        : ''
+      g15ReservationExpiresEpochSeconds = Date.parse(g15ExpiresAt) / 1000
+      if (
+        reservationError
+        || !['reserved', 'already_reserved', 'already_bound'].includes(String(reservation?.outcome))
+        || reservation?.reservation_id !== g15ReservationId
+        || !validUuid.test(checkoutDraftId)
+        || !validUuid.test(g15ReservationReportId)
+        || !Number.isInteger(g15ReservationExpiresEpochSeconds)
+        || Date.parse(g15ExpiresAt) !== Date.parse(paidReservationExpiresAt)
+      ) {
+        await abandonPaidReservationBeforeProvider()
+        return NextResponse.json(
+          { error: '這份家族同意已被另一個結帳流程保留，請回原頁面繼續', code: 'G15_CHECKOUT_RESERVATION_CONFLICT' },
+          { status: 409 },
+        )
+      }
+    }
+
     const params = buildStripeCheckoutSessionParams({
       siteUrl,
       planCode,
@@ -525,28 +959,52 @@ export async function POST(req: NextRequest) {
       promotionName: promoName,
       verifiedPointsToUse,
       pointsUserId,
-      locale,
+      locale: planCode === 'G15' ? normalizedG15Locale : locale,
+      nowEpochSeconds: checkoutNowEpochSeconds,
     })
-    // 將完整 birthData 存入 Supabase checkout_drafts，避免 Stripe metadata 500 字元限制
-    if (trustedBirthData) {
-      const supabase = getSupabase()
-      const { data: draft, error: draftErr } = await supabase
-        .from('checkout_drafts')
-        .insert({
-          plan_code: planCode,
-          birth_data: trustedBirthData,
-          locale: locale || 'zh-TW',
-        })
-        .select('id')
-        .single()
+    params.set('expires_at', String(g15ReservationExpiresEpochSeconds))
+    params.set('metadata[draft_id]', checkoutDraftId)
+    params.delete('metadata[login_email]')
+    params.delete('metadata[login_user_id]')
+    params.delete('metadata[points_used]')
+    params.delete('metadata[points_user_id]')
+    params.set('metadata[paid_checkout_contract]', 'v1')
+    params.set('metadata[paid_checkout_request_key]', checkoutRequestKey)
+    if (planCode === 'G15') {
+      params.set('metadata[g15_consent_reservation_id]', g15ReservationId)
+      params.set('metadata[g15_report_id]', g15ReservationReportId)
+    }
 
-      if (draftErr || !draft) {
-        console.error('checkout_drafts insert 失敗:', draftErr)
-        return NextResponse.json({ error: '暫存資料失敗' }, { status: 500 })
-      }
-
-      // Stripe metadata 只存 draft_id（36 字元 UUID，遠低於 500 字元限制）
-      params.set('metadata[draft_id]', draft.id)
+    const { data: frozenData, error: frozenError } = await supabase.rpc(
+      'freeze_paid_checkout_session',
+      {
+        p_request_key: checkoutRequestKey,
+        p_payload_hash: paidPayloadHash,
+        p_checkout_draft_id: checkoutDraftId,
+        p_stripe_request_body: params.toString(),
+      },
+    )
+    const frozen = Array.isArray(frozenData) ? frozenData[0] : frozenData
+    const frozenBody = typeof frozen?.stripe_request_body === 'string'
+      ? frozen.stripe_request_body
+      : ''
+    const frozenParams = new URLSearchParams(frozenBody)
+    if (
+      frozenError
+      || !['prepared', 'already_prepared'].includes(String(frozen?.outcome))
+      || frozen?.request_key !== checkoutRequestKey
+      || frozen?.checkout_draft_id !== checkoutDraftId
+      || Date.parse(String(frozen?.reservation_expires_at || '')) !== Date.parse(paidReservationExpiresAt)
+      || frozenParams.get('metadata[paid_checkout_contract]') !== 'v1'
+      || frozenParams.get('metadata[paid_checkout_request_key]') !== checkoutRequestKey
+      || frozenParams.get('metadata[draft_id]') !== checkoutDraftId
+      || frozenParams.get('expires_at') !== String(paidReservationExpiresEpochSeconds)
+    ) {
+      await abandonPaidReservationBeforeProvider()
+      return NextResponse.json(
+        { error: '付款請求目前無法安全重播，請稍後再試', code: 'PAID_CHECKOUT_BODY_CONFLICT' },
+        { status: 503 },
+      )
     }
 
     const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
@@ -554,28 +1012,102 @@ export async function POST(req: NextRequest) {
       headers: {
         'Authorization': `Bearer ${stripeKey}`,
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Idempotency-Key': planCode === 'G15'
+          ? `jianyuan-g15-${g15ReservationId}`
+          : `jianyuan-paid-${checkoutRequestKey.slice('jyco_'.length)}`,
       },
-      body: params.toString(),
+      body: frozenBody,
     })
 
     const data = await res.json()
 
-    if (!res.ok || !data.url) {
-      console.error('Stripe error:', JSON.stringify(data))
-      const errMsg = data.error?.message || '建立付款失敗'
-      const errParam = data.error?.param || ''
+    if (
+      !res.ok
+      || !data.url
+      || !/^cs_(test|live)_[A-Za-z0-9_]{10,220}$/.test(String(data.id || ''))
+    ) {
+      const providerErrorType = typeof data?.error?.type === 'string'
+        ? operationalErrorClass(data.error.type)
+        : 'StripeProviderError'
+      const providerRequestFingerprint = operationalFingerprint(
+        res.headers.get('request-id') || data?.request_log_url || `${res.status}:${planCode}`,
+      )
+      console.error('[checkout][stripe] provider request failed', {
+        status: res.status,
+        errorType: providerErrorType,
+        requestFingerprint: providerRequestFingerprint,
+      })
       // Stripe failed → Telegram 告警（非同步，不阻塞 response）
       try {
         const { notifyStripeFailed } = await import('@/lib/ai/observability/telegram')
         void notifyStripeFailed(
-          data.id || 'session-creation-failed',
-          `${errMsg}${errParam ? ` (param: ${errParam})` : ''}`,
+          providerRequestFingerprint,
+          providerErrorType,
         )
       } catch { /* ignore */ }
       return NextResponse.json(
-        { error: `${errMsg}${errParam ? ` (param: ${errParam})` : ''}`, debug: { status: res.status, stripe_error: data.error } },
+        { error: CHECKOUT_PROVIDER_ERROR, code: 'CHECKOUT_PROVIDER_UNAVAILABLE' },
         { status: 500 },
       )
+    }
+
+    const expireUnusableStripeSession = async () => {
+      try {
+        await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(String(data.id))}/expire`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${stripeKey}` },
+        })
+      } catch { /* fail closed: URL is never returned */ }
+    }
+
+    const { data: paidBindingData, error: paidBindingError } = await supabase.rpc(
+      'bind_paid_checkout_session',
+      {
+        p_request_key: checkoutRequestKey,
+        p_payload_hash: paidPayloadHash,
+        p_stripe_session_id: data.id,
+      },
+    )
+    const paidBinding = Array.isArray(paidBindingData) ? paidBindingData[0] : paidBindingData
+    if (
+      paidBindingError
+      || !['bound', 'already_bound'].includes(String(paidBinding?.outcome))
+      || paidBinding?.request_key !== checkoutRequestKey
+      || paidBinding?.checkout_draft_id !== checkoutDraftId
+      || paidBinding?.stripe_session_id !== data.id
+    ) {
+      await expireUnusableStripeSession()
+      return NextResponse.json(
+        { error: '目前無法安全綁定付款頁，請稍後再試', code: 'PAID_CHECKOUT_BINDING_CONFLICT' },
+        { status: 503 },
+      )
+    }
+
+    if (planCode === 'G15') {
+      const { data: bindingData, error: bindingError } = await supabase.rpc(
+        'bind_g15_checkout_consent_session',
+        {
+          p_reservation_id: g15ReservationId,
+          p_purchaser_user_id: verifiedUserId,
+          p_stripe_session_id: data.id,
+        },
+      )
+      const binding = Array.isArray(bindingData) ? bindingData[0] : bindingData
+      if (
+        bindingError
+        || !['bound', 'already_bound'].includes(String(binding?.outcome))
+        || binding?.reservation_id !== g15ReservationId
+        || binding?.checkout_draft_id !== checkoutDraftId
+        || binding?.report_id !== g15ReservationReportId
+      ) {
+        // 不把未綁定的付款 URL 交給客戶。終止失敗時仍保留
+        // reservation，provider webhook 也無法繞過綁定閨門生成報告。
+        await expireUnusableStripeSession()
+        return NextResponse.json(
+          { error: '目前無法安全綁定付款頁，請稍後再試', code: 'G15_CHECKOUT_RESERVATION_CONFLICT' },
+          { status: 503 },
+        )
+      }
     }
 
     // 成功建立 Stripe session → 追 begin_payment 事件
@@ -593,9 +1125,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: data.url })
   } catch (err) {
-    console.error('Checkout error:', err)
+    console.error('[checkout] internal failure', {
+      errorType: operationalErrorClass(err),
+      errorFingerprint: operationalFingerprint(
+        err instanceof Error ? `${err.name}:${err.message}` : typeof err,
+      ),
+    })
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : '系統錯誤' },
+      { error: CHECKOUT_INTERNAL_ERROR, code: 'CHECKOUT_INTERNAL_FAILURE' },
       { status: 500 },
     )
   }

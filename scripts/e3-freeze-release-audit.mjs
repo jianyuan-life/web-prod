@@ -27,6 +27,7 @@ const TRUSTED_VERIFIER_FILES = Object.freeze([
   'scripts/lib/e3-freeze-core.mjs',
   'scripts/lib/e3-fixture-server.mjs',
   'scripts/lib/e3-production-csp-core.mjs',
+  'scripts/lib/e3-navigation-probe.mjs',
   'scripts/lib/e3-production-fetch-preload.cjs',
   '__tests__/harness.mjs',
   '__tests__/35-e3-freeze-contract.test.mjs',
@@ -41,6 +42,7 @@ const TRUSTED_VERIFIER_FILES = Object.freeze([
   '__tests__/66-e3-server-checkout-contract.test.mjs',
   '__tests__/67-e3-checkout-route-integration.test.mjs',
   '__tests__/68-e3-generation-golden-contract.test.mjs',
+  '__tests__/69-e3-navigation-probe.test.mjs',
   '__tests__/support/e3-generation-module-hooks.mjs',
   '__tests__/fixtures/e3-generation/golden-v1.json',
   '__tests__/fixtures/e3-generation/base-record-receipt-v1.json',
@@ -60,6 +62,7 @@ const PINNED_E3_CHECKS = Object.freeze([
   { id: 'server-checkout', path: '__tests__/66-e3-server-checkout-contract.test.mjs', gates: ['checkout-contract'] },
   { id: 'checkout-integration', path: '__tests__/67-e3-checkout-route-integration.test.mjs', gates: ['checkout-contract'] },
   { id: 'generation-golden', path: '__tests__/68-e3-generation-golden-contract.test.mjs', gates: ['generation-golden'] },
+  { id: 'navigation-probe', path: '__tests__/69-e3-navigation-probe.test.mjs', gates: [] },
 ])
 
 function argument(name) {

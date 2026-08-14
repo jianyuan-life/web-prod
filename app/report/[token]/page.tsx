@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import pkg from '../../../package.json'
 // v5.3.43 移除 isomorphic-dompurify static import：
@@ -7,7 +7,8 @@ import pkg from '../../../package.json'
 //   無法載入 → /report/[token] 每次 request 回 HTTP 500。v5.3.41 引入後全面爆炸。
 //   sanitize 改 passthrough 等本次穩定後改用 sanitize-html（純 JS 無 jsdom）補回。
 import ReportClientButtons from './ReportClientButtons'
-import { buildPdfDownloadUrl, buildPdfDownloadFilename } from '@/lib/pdf-download'
+import { buildPdfDownloadFilename, buildPdfDownloadUrl } from '@/lib/pdf-download'
+import PrivatePdfDownloadButton from '@/components/PrivatePdfDownloadButton'
 import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
 // v5.10.430 ShareCard 已砍(反人性分享命盤)
@@ -52,6 +53,7 @@ import { ChartSummaryCard } from '@/components/report/ChartSummaryCard'
 // 報告重構 2026-06-23:命格綜合卡(命格原型+天賦/課題、narrative_summary、黃金驗證過)
 import { ReportNarrativeCard } from '@/components/report/ReportNarrativeCard'
 import { validateAccessToken } from '@/lib/security/token-validator'
+import { buildConsultationAccessRoute, isConsultationPlan } from '@/lib/consultation/routes'
 // T13 v5.10.362(Master Plan Sprint 7、lesson #144 雙渲染器分裂修):
 // 把 Sprint 1 editorial 4 component wire 進 production legacy renderer
 // 原問題:editorial sweep 22 commit 全進 demo /r/[type]/[id]、production /report/[token] 0 受益
@@ -114,6 +116,7 @@ interface Top5Timing {
 
 interface ReportData {
   id: string
+  access_token: string
   client_name: string
   customer_email: string
   plan_code: string
@@ -1470,6 +1473,12 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
   const report = data as ReportData
 
+  // C / G15 的舊連結只作相容入口，統一轉進隱藏 token 的新閱讀流程。
+  // E3 與其他既有方案維持原路由與 renderer，不受這次改造影響。
+  if (isConsultationPlan(report.plan_code)) {
+    redirect(buildConsultationAccessRoute(token))
+  }
+
   // v5.10.292 audit log:訪問追蹤 — token-based access 屬「anonymous」(非 auth.uid 也非 email_fallback)
   // 不阻塞 read path、失敗 silent
   try {
@@ -2231,23 +2240,42 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
           )}
           <div className="flex items-center gap-2">
           {/* 工具列不重複分享或諮詢操作；只保留主要交付入口。 */}
-          {report.pdf_url && !isChumenji ? (
-            <a
-              href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
-              download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
-              style={{
-                background: 'rgba(197,150,58,0.16)',
-                border: '1px solid rgba(197,150,58,0.40)',
-                color: '#c9a84c',
-              }}
-              aria-label="下載 PDF"
-            >
-              <span>📄</span>
-              <span className="hidden sm:inline">下載 PDF</span>
-            </a>
+          {(report.pdf_url || isConsultationPlan(report.plan_code)) && !isChumenji ? (
+            isConsultationPlan(report.plan_code) ? (
+              <PrivatePdfDownloadButton
+                accessToken={report.access_token}
+                reportId={report.id}
+                pdfAvailable={Boolean(report.pdf_url)}
+                filename={buildPdfDownloadFilename(report.plan_code, report.client_name)}
+                className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+                style={{
+                  background: 'rgba(197,150,58,0.16)',
+                  border: '1px solid rgba(197,150,58,0.40)',
+                  color: '#c9a84c',
+                }}
+                aria-label="下載 PDF"
+              >
+                <span>📄</span>
+                <span className="hidden sm:inline">下載 PDF</span>
+              </PrivatePdfDownloadButton>
+            ) : (
+              <a
+                href={buildPdfDownloadUrl(report.pdf_url!, report.plan_code, report.client_name)}
+                download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"
+                style={{
+                  background: 'rgba(197,150,58,0.16)',
+                  border: '1px solid rgba(197,150,58,0.40)',
+                  color: '#c9a84c',
+                }}
+                aria-label="下載 PDF"
+              >
+                <span>📄</span>
+                <span className="hidden sm:inline">下載 PDF</span>
+              </a>
+            )
           ) : (
             <a
               href="#pdf-or-calendar"
@@ -3995,7 +4023,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
 
         {/* ──── 摘要提示 + PDF 下載(v5.3.83:出門訣 E1-E4 不顯示 PDF、深度綁定 web)────
              v5.10.9 R+6 加 id="pdf-or-calendar"、給 sticky CTA 跳轉錨點 */}
-        {isShowingSummary && report.pdf_url && !isChumenji && (
+        {isShowingSummary && (report.pdf_url || isConsultationPlan(report.plan_code)) && !isChumenji && (
           <div id="pdf-or-calendar" className="rounded-xl p-6 mb-8 no-print scroll-mt-24" style={{ background: 'linear-gradient(135deg, rgba(197,150,58,0.12), rgba(26,42,74,0.3))', border: '1px solid rgba(197,150,58,0.25)' }}>
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="flex-1">
@@ -4004,27 +4032,51 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
               </div>
               {/* v5.10.10 R+8 #5 主 CTA 強化(Haiku P0「CTA 不夠 prominent」修):
                    高度 → 48px、漸層改紫色 + 金色雙層次、shadow + glow 強調 */}
-              <a
-                href={buildPdfDownloadUrl(report.pdf_url, report.plan_code, report.client_name)}
-                download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="下載完整 PDF 報告"
-                className="shrink-0 inline-flex items-center gap-2 px-7 rounded-xl text-base font-bold transition-all hover:scale-[1.02] hover:-translate-y-0.5"
-                style={{
-                  height: '48px',
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #c9a84c 100%)',
-                  color: '#fff',
-                  boxShadow: '0 6px 24px rgba(139,92,246,0.40), 0 2px 8px rgba(201,168,76,0.25)',
-                  letterSpacing: '0.5px',
-                }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                下載完整 PDF 報告
-              </a>
+              {isConsultationPlan(report.plan_code) ? (
+                <PrivatePdfDownloadButton
+                  accessToken={report.access_token}
+                  reportId={report.id}
+                  pdfAvailable={Boolean(report.pdf_url)}
+                  filename={buildPdfDownloadFilename(report.plan_code, report.client_name)}
+                  aria-label="下載完整 PDF 報告"
+                  className="shrink-0 inline-flex items-center gap-2 px-7 rounded-xl text-base font-bold transition-all hover:scale-[1.02] hover:-translate-y-0.5"
+                  style={{
+                    height: '48px',
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #c9a84c 100%)',
+                    color: '#fff',
+                    boxShadow: '0 6px 24px rgba(139,92,246,0.40), 0 2px 8px rgba(201,168,76,0.25)',
+                    letterSpacing: '0.5px',
+                  }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  下載完整 PDF 報告
+                </PrivatePdfDownloadButton>
+              ) : (
+                <a
+                    href={buildPdfDownloadUrl(report.pdf_url!, report.plan_code, report.client_name)}
+                  download={buildPdfDownloadFilename(report.plan_code, report.client_name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="下載完整 PDF 報告"
+                  className="shrink-0 inline-flex items-center gap-2 px-7 rounded-xl text-base font-bold transition-all hover:scale-[1.02] hover:-translate-y-0.5"
+                  style={{
+                    height: '48px',
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #c9a84c 100%)',
+                    color: '#fff',
+                    boxShadow: '0 6px 24px rgba(139,92,246,0.40), 0 2px 8px rgba(201,168,76,0.25)',
+                    letterSpacing: '0.5px',
+                  }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  下載完整 PDF 報告
+                </a>
+              )}
             </div>
           </div>
         )}

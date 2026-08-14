@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 import { buildCheckoutRoute } from '@/lib/consultation/routes'
+import ConsultationCheckoutTrigger from '../ConsultationCheckoutTrigger'
 import type { ConsultationProduct } from './product-data'
 import styles from './ConsultationProductPage.module.css'
 
@@ -9,10 +10,10 @@ type ConsultationProductPageProps = {
 }
 
 const readingLayers = [
-  { time: '00:30', label: '先看結論', detail: '現在最值得處理的事' },
-  { time: '03:00', label: '掌握脈絡', detail: '優先順序與生活連結' },
-  { time: '深入', label: '逐章理解', detail: '情境、例外與可練習處' },
-  { time: '附錄', label: '回看依據', detail: '來源、共識、分歧與限制' },
+  { time: '重點', label: '先抓主線', detail: '現在較值得處理的事' },
+  { time: '主題', label: '依需要閱讀', detail: '工作、關係、資源與生活節奏' },
+  { time: '完整', label: '逐章理解', detail: '情境、例外與可練習處' },
+  { time: '速覽', label: '回看排盤', detail: '各系統主要結果與資料限制' },
 ] as const
 
 function buildStructuredData(product: ConsultationProduct, checkoutUrl: string) {
@@ -100,10 +101,10 @@ export default function ConsultationProductPage({ product }: ConsultationProduct
             </ul>
 
             <div className={styles.heroActions}>
-              <Link className={styles.primaryButton} href={checkoutUrl}>
+              <ConsultationCheckoutTrigger planCode={product.code} className={styles.primaryButton}>
                 <span>{product.ctaLabel}</span>
                 <ArrowIcon />
-              </Link>
+              </ConsultationCheckoutTrigger>
               <a className={styles.textLink} href="#how-it-works">
                 先看怎麼進行
               </a>
@@ -112,11 +113,11 @@ export default function ConsultationProductPage({ product }: ConsultationProduct
 
           <aside className={styles.dossier} aria-label="報告閱讀方式與價格">
             <div className={styles.dossierHeader}>
-              <span>CONSULTATION DOSSIER</span>
-              <span>{product.code}</span>
+              <span>報告閱讀導覽</span>
+              <span>方案 {product.code}</span>
             </div>
             <div className={styles.dossierTitle}>
-              <span className={styles.folio}>卷宗 / {product.code}</span>
+              <span className={styles.folio}>{product.code === 'C' ? '個人報告' : '家庭報告'} / {product.code}</span>
               <h2>先得到方向，再決定要讀多深。</h2>
             </div>
             <ol className={styles.readingList}>
@@ -160,7 +161,7 @@ export default function ConsultationProductPage({ product }: ConsultationProduct
         <section className={styles.section} aria-labelledby={`${product.slug}-fit`}>
           <div className={styles.sectionHeading}>
             <p className={styles.sectionIndex}>01 / 適合誰</p>
-            <h2 id={`${product.slug}-fit`}>當你不缺答案，缺的是一張能整理問題的桌面。</h2>
+            <h2 id={`${product.slug}-fit`}>你缺的不是更多說法，而是一個能把問題攤開、排出優先順序的方法。</h2>
             <p>不需要先相信任何結論。你只需要願意對照自己的經驗，留下符合與不符合之處。</p>
           </div>
           <div className={styles.fitGrid}>
@@ -247,7 +248,7 @@ export default function ConsultationProductPage({ product }: ConsultationProduct
 
         <section className={styles.finalCta} aria-labelledby={`${product.slug}-cta`}>
           <div>
-            <p className={styles.sectionIndex}>READY WHEN YOU ARE</p>
+            <p className={styles.sectionIndex}>準備好，再開始</p>
             <h2 id={`${product.slug}-cta`}>{product.lead}</h2>
             <p>{product.priceNote}</p>
             {product.prerequisite ? <p className={styles.finalPrerequisite}>{product.prerequisite}</p> : null}
@@ -257,10 +258,10 @@ export default function ConsultationProductPage({ product }: ConsultationProduct
               <small>US$</small>
               {product.price}
             </p>
-            <Link className={styles.primaryButton} href={checkoutUrl} aria-label={`${product.checkoutLabel}，價格 US$${product.price}`}>
+            <ConsultationCheckoutTrigger planCode={product.code} className={styles.primaryButton} ariaLabel={`${product.checkoutLabel}，價格 US$${product.price}；先查看購買須知`}>
               <span>{product.checkoutLabel}</span>
               <ArrowIcon />
-            </Link>
+            </ConsultationCheckoutTrigger>
           </div>
         </section>
       </article>

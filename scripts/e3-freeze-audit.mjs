@@ -37,6 +37,11 @@ import {
   validateE3VerifyRoots,
 } from './lib/e3-freeze-core.mjs'
 import { createE3FixtureServer } from './lib/e3-fixture-server.mjs'
+import {
+  armE3NavigationGuard,
+  normalizeE3NavigationDestination,
+  observeE3NavigationOutcome,
+} from './lib/e3-navigation-probe.mjs'
 import { partitionFirstPartyRequestFailures } from './lib/e3-production-csp-core.mjs'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -81,6 +86,7 @@ const AUDIT_SUPPORT_PATHS = Object.freeze({
   core: join(scriptDir, 'lib', 'e3-freeze-core.mjs'),
   fixtureServer: join(scriptDir, 'lib', 'e3-fixture-server.mjs'),
   cspCore: join(scriptDir, 'lib', 'e3-production-csp-core.mjs'),
+  navigationProbe: join(scriptDir, 'lib', 'e3-navigation-probe.mjs'),
   preload: join(scriptDir, 'lib', 'e3-production-fetch-preload.cjs'),
   fixture: fixturePath,
 })
@@ -1174,14 +1180,17 @@ async function toggleHydrationSentinel(menuButton, expected, caseId) {
   throw new Error(`hydration sentinel 未切換：${caseId}；expected=${expected}；actual=${lastValue}`)
 }
 
+const dashboardFixtureRoutePages = new WeakSet()
+
 async function prepareState(page, auditCase, fixture, baseUrl) {
-  if (auditCase.surface === 'dashboard') {
+  if (auditCase.surface === 'dashboard' && !dashboardFixtureRoutePages.has(page)) {
     const dashboardState = auditCase.state.replace('dashboard-', '')
     await page.route('**/api/reports?session_id=e3-freeze-*', (route) => route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ reports: [fixture.dashboard[dashboardState]] }),
     }))
+    dashboardFixtureRoutePages.add(page)
   }
 
   await page.goto(`${baseUrl}${auditCase.path}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
@@ -1236,6 +1245,185 @@ async function prepareState(page, auditCase, fixture, baseUrl) {
   await waitForStylesheetsAndScopedFonts(page, scope)
 
   return { scope }
+}
+
+async function readSafeNavigationIntent(target) {
+  const intent = await target.evaluate((element) => {
+    const anchor = element instanceof HTMLAnchorElement ? element : element.closest('a[href]')
+    const rawHref = anchor?.href || ''
+    let protocol = ''
+    try { protocol = rawHref ? new URL(rawHref, document.baseURI).protocol : '' } catch {}
+    return {
+      rawHref,
+      protocol,
+      target: (anchor?.getAttribute('target') || '').toLowerCase(),
+      rel: anchor?.getAttribute('rel') || '',
+      download: anchor?.hasAttribute('download') || false,
+    }
+  })
+  const destination = intent.rawHref && (intent.protocol === 'http:' || intent.protocol === 'https:')
+    ? normalizeE3NavigationDestination(intent.rawHref)
+    : null
+  return {
+    destination,
+    protocol: destination
+      ? (destination.origin.startsWith('https:') ? 'https:' : 'http:')
+      : intent.protocol,
+    target: intent.target,
+    rel: intent.rel,
+    download: intent.download,
+  }
+}
+
+async function discoverE3NavigationTargets(page, auditCase) {
+  const rawTargets = await page.evaluate((scopeSelector) => {
+    const allAnchors = [...document.querySelectorAll('a[href]')]
+    const roots = [
+      ['scope', document.querySelector(scopeSelector)],
+      ['navbar', document.querySelector('.jy-navbar')],
+      ['footer', document.querySelector('.jy-footer')],
+      ['main', document.querySelector('main')],
+    ]
+    const seen = new Set()
+    const targets = []
+    for (const [region, root] of roots) {
+      if (!root) continue
+      const regionAnchors = [
+        ...(root.matches?.('a[href]') ? [root] : []),
+        ...root.querySelectorAll('a[href]'),
+      ]
+      for (const anchor of regionAnchors) {
+        const documentIndex = allAnchors.indexOf(anchor)
+        if (documentIndex < 0 || seen.has(documentIndex)) continue
+        seen.add(documentIndex)
+        const style = getComputedStyle(anchor)
+        const rect = anchor.getBoundingClientRect()
+        const visible = style.display !== 'none'
+          && style.visibility !== 'hidden'
+          && Number(style.opacity || '1') > 0
+          && rect.width > 0
+          && rect.height > 0
+        targets.push({
+          region,
+          documentIndex,
+          visible,
+          pointerEvents: style.pointerEvents,
+        })
+      }
+    }
+    return targets
+  }, auditCase.selector)
+
+  const targets = []
+  for (const target of rawTargets) {
+    const locator = page.locator('a[href]').nth(target.documentIndex)
+    targets.push({
+      ...target,
+      intent: await readSafeNavigationIntent(locator),
+    })
+  }
+  return targets
+}
+
+async function captureE3NavigationContract({ context, auditCase, fixture, baseUrl }) {
+  const page = await context.newPage()
+  const pageErrors = []
+  const consoleErrors = []
+  const serverErrors = []
+  page.on('pageerror', (error) => pageErrors.push(error instanceof Error ? error.message : String(error)))
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('response', (response) => {
+    if (response.status() >= 500 && response.url().startsWith(baseUrl)) {
+      serverErrors.push(`${response.status()} ${response.url()}`)
+    }
+  })
+  await page.clock.setFixedTime(new Date(fixture.fixed_time))
+  await page.emulateMedia({ colorScheme: auditCase.theme, reducedMotion: 'no-preference' })
+
+  let guard
+  try {
+    await prepareState(page, auditCase, fixture, baseUrl)
+    const targets = await discoverE3NavigationTargets(page, auditCase)
+    guard = await armE3NavigationGuard({ context, page, allowedOrigins: [baseUrl] })
+    const observations = []
+    for (const target of targets) {
+      if (!target.visible || target.pointerEvents === 'none') {
+        observations.push({
+          region: target.region,
+          documentIndex: target.documentIndex,
+          intent: target.intent,
+          observation: {
+            schema: 'e3-navigation-probe/v2',
+            activation: 'not-run',
+            outcome: { kind: target.visible ? 'pointer-events-none' : 'not-visible' },
+          },
+        })
+        continue
+      }
+      await prepareState(page, auditCase, fixture, baseUrl)
+      const locator = page.locator('a[href]').nth(target.documentIndex)
+      if (await locator.count() !== 1 || !await locator.isVisible().catch(() => false)) {
+        throw new Error(`E3 navigation target drift：${auditCase.id}:${target.documentIndex}`)
+      }
+      const currentIntent = await readSafeNavigationIntent(locator)
+      if (stableJson(currentIntent) !== stableJson(target.intent)) {
+        throw new Error(`E3 navigation intent drift：${auditCase.id}:${target.documentIndex}`)
+      }
+      const blockedByModal = await locator.evaluate((element) => {
+        const dialogs = [...document.querySelectorAll('[role="dialog"][aria-modal="true"],dialog[open]')]
+        const activeDialog = dialogs.find((dialog) => {
+          const style = getComputedStyle(dialog)
+          const rect = dialog.getBoundingClientRect()
+          return style.display !== 'none'
+            && style.visibility !== 'hidden'
+            && Number(style.opacity || '1') > 0
+            && rect.width > 0
+            && rect.height > 0
+        })
+        return Boolean(activeDialog && !activeDialog.contains(element))
+      })
+      if (blockedByModal) {
+        observations.push({
+          region: target.region,
+          documentIndex: target.documentIndex,
+          intent: target.intent,
+          observation: {
+            schema: 'e3-navigation-probe/v2',
+            activation: 'not-run',
+            outcome: { kind: 'blocked-by-active-modal' },
+          },
+        })
+        continue
+      }
+      const observation = await observeE3NavigationOutcome({
+        page,
+        guard,
+        locator,
+        timeoutMs: 2_000,
+      })
+      observations.push({
+        region: target.region,
+        documentIndex: target.documentIndex,
+        intent: target.intent,
+        observation,
+      })
+    }
+    if (pageErrors.length > 0 || consoleErrors.length > 0 || serverErrors.length > 0) {
+      throw new Error(`E3 navigation runtime error：${auditCase.id}；page=${pageErrors.join(' | ') || 'none'}；console=${consoleErrors.join(' | ') || 'none'}；server=${serverErrors.join(' | ') || 'none'}`)
+    }
+    return {
+      schema: 'e3-navigation-surface/v1',
+      activation: 'real-click-per-actionable-anchor',
+      discovered: targets.length,
+      observed: observations.filter((item) => item.observation.activation === 'real-click').length,
+      observations,
+    }
+  } finally {
+    await guard?.dispose().catch(() => {})
+    await page.close().catch(() => {})
+  }
 }
 
 async function captureSemanticSurface(scope) {
@@ -1494,6 +1682,158 @@ async function captureBehavioralSurface(page, scope, auditCase) {
   const keyframesSha256 = sha256(stableJson(cssKeyframesContract))
   const modes = []
 
+  const captureInteractionState = async (rootLocator, target) => {
+    const [control, rootOuterHtml, shell] = await Promise.all([
+      target.evaluate((element) => ({
+        tag: element.tagName.toLowerCase(),
+        type: element instanceof HTMLButtonElement || element instanceof HTMLInputElement
+          ? element.type
+          : '',
+        href: element instanceof HTMLAnchorElement ? element.href : '',
+        target: element.getAttribute('target') || '',
+        rel: element.getAttribute('rel') || '',
+        disabled: 'disabled' in element ? Boolean(element.disabled) : false,
+        checked: 'checked' in element ? Boolean(element.checked) : null,
+        value: 'value' in element ? String(element.value) : '',
+        selectedIndex: element instanceof HTMLSelectElement ? element.selectedIndex : null,
+        open: element instanceof HTMLElement && element.tagName === 'SUMMARY'
+          ? Boolean(element.parentElement?.open)
+          : null,
+        ariaExpanded: element.getAttribute('aria-expanded'),
+        ariaPressed: element.getAttribute('aria-pressed'),
+        ariaControls: element.getAttribute('aria-controls') || '',
+        formId: 'form' in element && element.form ? element.form.id || '(anonymous)' : '',
+        controlled: (element.getAttribute('aria-controls') || '')
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((id) => {
+            const controlled = document.getElementById(id)
+            if (!controlled) return { id, present: false }
+            const style = getComputedStyle(controlled)
+            const rect = controlled.getBoundingClientRect()
+            return {
+              id,
+              present: true,
+              hidden: controlled.hidden,
+              ariaHidden: controlled.getAttribute('aria-hidden'),
+              open: 'open' in controlled ? Boolean(controlled.open) : null,
+              visible: style.display !== 'none'
+                && style.visibility !== 'hidden'
+                && Number(style.opacity || '1') > 0
+                && rect.width > 0
+                && rect.height > 0,
+            }
+          }),
+      })),
+      rootLocator.evaluate((root) => root.outerHTML),
+      page.evaluate(() => {
+        const compactElement = (selector) => {
+          const element = document.querySelector(selector)
+          return element ? element.outerHTML : null
+        }
+        const locationUrl = new URL(window.location.href)
+        return {
+          location: `${locationUrl.pathname}${locationUrl.search}${locationUrl.hash}`,
+          htmlClasses: document.documentElement.className,
+          bodyClasses: document.body.className,
+          navbar: compactElement('.jy-navbar'),
+          footer: compactElement('.jy-footer'),
+          main: compactElement('main'),
+          dialogs: [...document.querySelectorAll('[role="dialog"],dialog')]
+            .map((element) => element.outerHTML),
+        }
+      }),
+    ])
+    const rootSha256 = sha256(rootOuterHtml)
+    const shellSha256 = sha256(stableJson(shell))
+    return {
+      control,
+      rootSha256,
+      shellSha256,
+      stateSha256: sha256(stableJson({ control, rootSha256, shellSha256 })),
+    }
+  }
+
+  const captureControlActivationContract = async (rootLocator, target) => {
+    const intent = await target.evaluate((element) => ({
+      tag: element.tagName.toLowerCase(),
+      role: element.getAttribute('role') || '',
+      type: element instanceof HTMLButtonElement || element instanceof HTMLInputElement
+        ? element.type
+        : '',
+      href: element instanceof HTMLAnchorElement ? element.href : '',
+      target: element.getAttribute('target') || '',
+      rel: element.getAttribute('rel') || '',
+      ariaExpanded: element.getAttribute('aria-expanded'),
+      ariaPressed: element.getAttribute('aria-pressed'),
+      ariaControls: element.getAttribute('aria-controls') || '',
+      hasForm: 'form' in element && Boolean(element.form),
+    }))
+    const reversibleToggle = intent.tag === 'summary' || (
+      (intent.tag === 'button' || intent.role === 'button')
+      && (!intent.hasForm || intent.type === 'button')
+      && (intent.ariaExpanded !== null || intent.ariaPressed !== null)
+    )
+    if (intent.tag === 'a') {
+      return {
+        kind: 'navigation-delegated',
+        activated: false,
+        reason: 'real-click-observed-on-disposable-page',
+      }
+    }
+    if (!reversibleToggle) {
+      return {
+        kind: 'state-intent',
+        intent,
+        activated: false,
+        reason: 'no-side-effect-safe-reversible-contract',
+      }
+    }
+
+    const before = await captureInteractionState(rootLocator, target)
+    await target.click({ timeout: 2_000 })
+    await waitForTwoFrames(page)
+    const after = await captureInteractionState(rootLocator, target)
+    const clickChanged = after.stateSha256 !== before.stateSha256
+    let restored = after
+    if (clickChanged) {
+      await target.click({ timeout: 2_000 })
+      await waitForTwoFrames(page)
+      restored = await captureInteractionState(rootLocator, target)
+      if (restored.stateSha256 !== before.stateSha256) {
+        throw new Error(`E3 互動探針無法還原原始狀態：click:${intent.tag}:${intent.ariaControls || 'uncontrolled'}`)
+      }
+    }
+
+    await target.focus()
+    await target.press('Enter', { timeout: 2_000 })
+    await waitForTwoFrames(page)
+    const keyboardAfter = await captureInteractionState(rootLocator, target)
+    const keyboardChanged = keyboardAfter.stateSha256 !== before.stateSha256
+    let keyboardRestored = keyboardAfter
+    if (keyboardChanged) {
+      await target.click({ timeout: 2_000 })
+      await waitForTwoFrames(page)
+      keyboardRestored = await captureInteractionState(rootLocator, target)
+      if (keyboardRestored.stateSha256 !== before.stateSha256) {
+        throw new Error(`E3 互動探針無法還原原始狀態：keyboard:${intent.tag}:${intent.ariaControls || 'uncontrolled'}`)
+      }
+    }
+
+    return {
+      kind: 'reversible-toggle',
+      intent,
+      activated: true,
+      clickChanged,
+      keyboardChanged,
+      beforeSha256: before.stateSha256,
+      afterSha256: after.stateSha256,
+      restoredSha256: restored.stateSha256,
+      keyboardAfterSha256: keyboardAfter.stateSha256,
+      keyboardRestoredSha256: keyboardRestored.stateSha256,
+    }
+  }
+
   for (const reducedMotion of ['no-preference', 'reduce']) {
     await page.emulateMedia({ colorScheme: auditCase.theme, reducedMotion })
     await waitForTwoFrames(page)
@@ -1562,7 +1902,9 @@ async function captureBehavioralSurface(page, scope, auditCase) {
         await target.evaluate((element) => {
           if (element instanceof HTMLElement) element.blur()
         }).catch(() => {})
-        regionContract.controls.push({ index, base, hover, focus })
+        await waitForTwoFrames(page)
+        const activationContract = await captureControlActivationContract(rootLocator, target)
+        regionContract.controls.push({ index, base, hover, focus, activationContract })
       }
       interactionContract.push(regionContract)
     }
@@ -1606,8 +1948,9 @@ async function captureWithDeterministicLocalFont(page, scope, auditCase) {
   return captureStableScreenshot(page, scope, auditCase)
 }
 
-async function captureSnapshot({ page, scope, auditCase, fixtureHash, browserVersion, screenshotDir, actualPayload, fontRecord, runtimeNotices, telemetryRequests }) {
+async function captureSnapshot({ page, scope, auditCase, fixtureHash, browserVersion, screenshotDir, actualPayload, fontRecord, runtimeNotices, telemetryRequests, navigationContract }) {
   const behavior = await captureBehavioralSurface(page, scope, auditCase)
+  behavior.navigation = navigationContract
   await prepareStablePaint(page, scope)
   let semanticBefore
   let screenshotCapture
@@ -1953,6 +2296,17 @@ async function main() {
       await page.clock.setFixedTime(new Date(fixture.fixed_time))
 
       try {
+        const navigationContract = await captureE3NavigationContract({
+          context,
+          auditCase,
+          fixture,
+          baseUrl,
+        })
+        if (telemetryCapture.errors.length > 0) {
+          throw new Error(`E3 navigation telemetry fixture error：${auditCase.id}；${telemetryCapture.errors.join(' | ')}`)
+        }
+        telemetryCapture.requests.length = 0
+        telemetryCapture.errors.length = 0
         const { scope } = await prepareState(page, auditCase, fixture, baseUrl)
         await new Promise((resolveTelemetry) => setTimeout(resolveTelemetry, 250))
         const initialTelemetryRequests = stableTelemetryRequests(telemetryCapture.requests)
@@ -1977,6 +2331,7 @@ async function main() {
           fontRecord,
           runtimeNotices: initialConsole.known,
           telemetryRequests: initialTelemetryRequests,
+          navigationContract,
         })
         if (auditCase.state === 'checkout-confirmation') {
           const actualPayload = await capturePayload(page)

@@ -12,6 +12,9 @@ import FamilyMembersManager from '@/components/FamilyMembersManager'
 import ReferralCard from '@/components/ReferralCard'
 import { PLAN_NAMES, CHUMENJI_CODES } from '@/lib/plan-names'
 import { buildPdfRoute, buildReportRoute, isConsultationPlan } from '@/lib/consultation/routes'
+import { buildPdfDownloadFilename, buildPdfDownloadUrl } from '@/lib/pdf-download'
+import PrivatePdfDownloadButton from '@/components/PrivatePdfDownloadButton'
+import { ApiError, RateLimitError, internalDelete } from '@/lib/api'
 import UpsellModal from '@/components/UpsellModal'  // P11
 import { isFlagEnabled } from '@/lib/feature-flags'  // P11 FF_UPSELL_MODAL
 import {
@@ -43,6 +46,9 @@ type Report = {
   access_token: string | null
   report_result: {
     schemaVersion?: string
+    consultation_report?: {
+      schemaVersion?: string
+    } | null
     systems_count?: number
     analyses_summary?: { system: string; score: number }[]
   } | null
@@ -67,6 +73,51 @@ type Report = {
 // v5.3.95 對外 14 套(原 15 套清零、E2 v2.0 月家奇門古法為主、其他輔助)
 const PLAN_SYSTEMS: Record<string, number> = {
   C: 14, D: 0, G15: 14, R: 0, E1: 1, E2: 1, E3: 1, E4: 1,
+}
+
+type DashboardPdfReport = Pick<
+  Report,
+  'access_token' | 'pdf_url' | 'plan_code' | 'report_result'
+>
+
+function isStructuredDashboardConsultationReport(report: DashboardPdfReport): boolean {
+  const contract = report.report_result?.consultation_report
+  return typeof contract === 'object'
+    && contract !== null
+    && contract.schemaVersion === 'consultation-report/v1'
+}
+
+function shouldShowPrivateDashboardPdfAction(report: DashboardPdfReport): boolean {
+  if (!isConsultationPlan(report.plan_code)) return false
+  return Boolean(report.pdf_url) || isStructuredDashboardConsultationReport(report)
+}
+
+function resolveDashboardPdfHref(report: DashboardPdfReport): string | undefined {
+  // 出門訣系列維持既有行事曆交付，不在此新增 PDF 行為。
+  if (CHUMENJI_CODES.has(report.plan_code)) return undefined
+  if (!report.pdf_url || !isConsultationPlan(report.plan_code)) return undefined
+
+  if (!isStructuredDashboardConsultationReport(report) || !report.access_token) return undefined
+
+  try {
+    return buildPdfRoute(report.plan_code, report.access_token)
+  } catch {
+    // A malformed historic token must not crash the whole report library.
+    return undefined
+  }
+}
+
+function safeStoredPdfHref(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4096) return undefined
+  if (/[\s\p{Cc}]/u.test(value)) return undefined
+  if (value.startsWith('/') && !value.startsWith('//')) return value
+  try {
+    const parsed = new URL(value)
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return undefined
+    return value
+  } catch {
+    return undefined
+  }
 }
 
 const getReportStatus = (status: string) => {
@@ -96,6 +147,7 @@ function DashboardContent() {
   const [authFailed, setAuthFailed] = useState(false)
   // v5.3.1：API 失敗時顯示錯誤訊息，避免客戶以為「沒有報告」
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({})
   // 追蹤剛完成的報告 ID（用於顯示完成提示動畫）
   const [justCompletedIds, setJustCompletedIds] = useState<Set<string>>(new Set())
   // 付款成功事件只觸發一次
@@ -103,6 +155,7 @@ function DashboardContent() {
   // 已送過推播的報告 ID（避免重複通知）
   const [notifiedIds] = useState<Set<string>>(() => new Set())
   const [copiedReportId, setCopiedReportId] = useState<string | null>(null)
+  const [copiedG15InviteId, setCopiedG15InviteId] = useState<string | null>(null)
 
   // 推播通知：報告完成時通知用戶
   const sendNotification = (report: Report) => {
@@ -294,22 +347,58 @@ function DashboardContent() {
   const [finalConfirmId, setFinalConfirmId] = useState<string | null>(null)
 
   const handleDelete = async (id: string) => {
-    setDeletingId(id)
-    setDeletedIds(prev => new Set(prev).add(id))
-    setReports(prev => prev.filter(r => r.id !== id))
-    try {
-      await fetch('/api/reports', {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-        credentials: 'include',
-        body: JSON.stringify({ id, email: userEmail }),
+    const reportToDelete = reports.find(report => report.id === id)
+    const consultationDeletion = !!reportToDelete && isConsultationPlan(reportToDelete.plan_code)
+
+    // E3 與其他既有方案保留原本的 optimistic 流程，避免改動其行為。
+    if (!consultationDeletion) {
+      setDeletingId(id)
+      setDeletedIds(prev => new Set(prev).add(id))
+      setReports(prev => prev.filter(r => r.id !== id))
+      try {
+        await fetch('/api/reports', {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+          credentials: 'include',
+          body: JSON.stringify({ id, email: userEmail }),
+        })
+      } catch {
+        setDeletedIds(prev => { const s = new Set(prev); s.delete(id); return s })
+      } finally {
+        setDeletingId(null)
+        setConfirmId(null)
+        setFinalConfirmId(null)
+      }
+      return
+    }
+
+    if (consultationDeletion) {
+      setDeletingId(id)
+      setDeleteErrors(prev => {
+        const next = { ...prev }
+        delete next[id]
+        return next
       })
-    } catch {
-      setDeletedIds(prev => { const s = new Set(prev); s.delete(id); return s })
-    } finally {
-      setDeletingId(null)
-      setConfirmId(null)
-      setFinalConfirmId(null)
+      try {
+        await internalDelete('/api/reports', {
+          authToken,
+          body: { id, email: userEmail },
+        })
+        setDeletedIds(prev => new Set(prev).add(id))
+        setReports(prev => prev.filter(r => r.id !== id))
+      } catch (error) {
+        const requestReachedServer = error instanceof ApiError || error instanceof RateLimitError
+        setDeleteErrors(prev => ({
+          ...prev,
+          [id]: requestReachedServer
+            ? '目前無法從清單移除這份報告。報告仍保留在帳號中，請稍後再試；若問題持續，請聯絡客服。'
+            : '連線中斷，未能從清單移除這份報告。報告仍保留在帳號中，請檢查網路後再試。',
+        }))
+      } finally {
+        setDeletingId(null)
+        setConfirmId(null)
+        setFinalConfirmId(null)
+      }
     }
   }
 
@@ -345,6 +434,17 @@ function DashboardContent() {
       setTimeout(() => setCopiedReportId(current => current === report.id ? null : current), 1800)
     } catch {
       window.prompt('複製這份報告的私密連結：', url)
+    }
+  }
+
+  const handleCopyG15InviteCode = async (report: Report) => {
+    if (report.plan_code !== 'C' || report.status !== 'completed') return
+    try {
+      await navigator.clipboard.writeText(report.id)
+      setCopiedG15InviteId(report.id)
+      setTimeout(() => setCopiedG15InviteId(current => current === report.id ? null : current), 1800)
+    } catch {
+      window.prompt('複製這份人生藍圖的家族邀請碼：', report.id)
     }
   }
 
@@ -714,19 +814,54 @@ function DashboardContent() {
                         ) : (
                           <p className="dashboard-status-context">報告連結正在準備，請稍後重新整理。</p>
                         )}
+                        {r.plan_code === 'C' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyG15InviteCode(r)}
+                            className="dashboard-report-action"
+                            aria-describedby={`g15-invite-note-${r.id}`}
+                          >
+                            {copiedG15InviteId === r.id ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
+                            <span>{copiedG15InviteId === r.id ? '已複製家族邀請碼' : '複製家族邀請碼'}</span>
+                          </button>
+                        )}
                         {(() => {
-                          const structuredConsultation = isConsultationPlan(r.plan_code) &&
-                            r.report_result?.schemaVersion === 'consultation-report/v1'
-                          const pdfHref = structuredConsultation && r.access_token
-                            ? buildPdfRoute(r.plan_code, r.access_token)
-                            : (r.pdf_url || undefined)
-                          if (!pdfHref || CHUMENJI_CODES.has(r.plan_code)) return null
-                          return (
-                            <a href={pdfHref} target="_blank" rel="noopener noreferrer" className="dashboard-report-action">
+                          if (CHUMENJI_CODES.has(r.plan_code)) return null
+                          const consultationHref = resolveDashboardPdfHref(r)
+                          if (consultationHref) {
+                            return (
+                              <a href={consultationHref} className="dashboard-report-action">
+                                <Download size={17} aria-hidden="true" />
+                                <span>下載 PDF</span>
+                              </a>
+                            )
+                          }
+                          if (isConsultationPlan(r.plan_code) && shouldShowPrivateDashboardPdfAction(r)) return (
+                            <PrivatePdfDownloadButton
+                              reportId={r.id}
+                              authToken={authToken}
+                              accessToken={r.access_token}
+                              pdfAvailable={Boolean(r.pdf_url)}
+                              filename={buildPdfDownloadFilename(r.plan_code, r.client_name)}
+                              className="dashboard-report-action"
+                            >
+                              <Download size={17} aria-hidden="true" />
+                              <span>下載 PDF</span>
+                            </PrivatePdfDownloadButton>
+                          )
+                          if (!r.pdf_url) return null
+                          const legacyHref = safeStoredPdfHref(r.pdf_url)
+                          return legacyHref ? (
+                            <a
+                              href={buildPdfDownloadUrl(legacyHref, r.plan_code, r.client_name)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="dashboard-report-action"
+                            >
                               <Download size={17} aria-hidden="true" />
                               <span>下載 PDF</span>
                             </a>
-                          )
+                          ) : null
                         })()}
                       </>
                     ) : (r.status === 'pending' || r.status === 'generating') ? (
@@ -789,11 +924,26 @@ function DashboardContent() {
                     此連結即為報告存取憑證；持有連結者可閱讀內容，請只傳給您信任的人。
                   </p>
                 )}
+                {r.status === 'completed' && r.plan_code === 'C' && (
+                  <p id={`g15-invite-note-${r.id}`} className="dashboard-private-link-note">
+                    <LockKeyhole size={14} aria-hidden="true" />
+                    家族邀請碼只供家族藍圖邀請；它本身不能開啟或閱讀這份報告。接受邀請時仍須登入此報告的擁有者帳號。
+                  </p>
+                )}
                 {/* 剛完成的報告提示 */}
                 {justCompletedIds.has(r.id) && (
                   <div className="dashboard-completed-note" role="status" aria-live="polite">
                     <CheckCircle2 size={17} aria-hidden="true" />
                     <span>這份報告已完成，現在可以開啟閱讀。</span>
+                  </div>
+                )}
+                {deleteErrors[r.id] && (
+                  <div
+                    className="dashboard-status-context dashboard-status-context--error"
+                    role="alert"
+                  >
+                    <TriangleAlert size={16} aria-hidden="true" />
+                    <span>{deleteErrors[r.id]}</span>
                   </div>
                 )}
                 {/* pending 時顯示進度條 */}

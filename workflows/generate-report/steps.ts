@@ -6,19 +6,41 @@
 import { getWritable } from 'workflow'
 import { FatalError, RetryableError } from 'workflow'
 import { sendEmailWithRetry } from '@/lib/resend-helper'  // T12b v5.10.370(retry + dead-letter + headers + timeout)
-import { getUnsubscribeHtml, getUnsubscribeUrl } from '@/lib/unsubscribe'
+import { getUnsubscribeUrl } from '@/lib/unsubscribe'
 import { estimateCostUsd, recordAIUsage } from '@/lib/ai-cost-tracker'
 import { isFlagEnabled } from '@/lib/feature-flags'  // Prompt 1: FF_AI_PROMPT_CACHE
 import { recordEmailSend } from '@/lib/email-send-log'
 import { notifyEmailFailed, notifyNeedsHumanReview } from '@/lib/ai/observability/telegram'
 import { PLAN_NAMES, isChumenjiPlan, ALL_PLAN_CODES } from '@/lib/plan-names'
 import { extractNarrativeFromContent } from '@/lib/report/extract-narrative'  // v5.10.461 P0-4:敘事萃取 SSOT 抽 lib
+import {
+  getGeneratedReportPdfStorageTarget,
+  type GeneratedReportPdf,
+} from '@/lib/report/pdf-storage'
+import { readBoundedPdfResponse } from '@/lib/report/pdf-bytes'
+import { deliverClaimedCompletionEmail } from '@/lib/report/completion-email-delivery'
+import {
+  escapeHtmlText,
+  operationalErrorClass,
+  operationalFailureCode,
+  operationalFingerprint,
+  sanitizeEmailSubject,
+} from '@/lib/security/operational-telemetry'
 import { buildApologyEmail, hasApologyBeenSent } from '@/lib/report/apology-email'  // v5.10.461 P0-3:致歉信模板 SSOT 抽 lib + email_send_log 防重寄
-import { buildCalculatorRequestPayload, serializeCalculatorRequest } from '@/lib/consultation/calculator-request'
+import {
+  CHUMENJI_TOP_PATH,
+  buildCalculatorRequestPayload,
+  GENERATE_PDF_PATH,
+  LEGACY_CALCULATE_PATH,
+  serializeCalculatorRequest,
+  CONSULTATION_CALCULATE_PATH,
+} from '@/lib/consultation/calculator-request'
+import { createSignedCalculatorPost } from '@/lib/consultation/calculator-request-auth.server'
 import {
   CALCULATOR_ATTESTATION_NONCE_HEADER,
   CalculatorAttestationError,
   createCalculatorAttestationNonce,
+  createCalculatorRequestAuthenticationHeaders,
   verifyCalculatorResponseAttestation,
   type VerifiedCalculatorResponse,
 } from '@/lib/consultation/calculator-attestation'
@@ -32,7 +54,18 @@ import {
 import type { NormalizedConsultationChapter } from '@/lib/consultation/chapter-assembly'
 import type { FactLedger, PersonContext, ReportAgeContext } from '@/lib/consultation/report-contract'
 import { validateG15Selection, type G15SelectionReportRow } from '@/lib/checkout/validate-g15-selection'
+import { validateG15ConsultationContext } from '@/lib/checkout/g15-context'
+import { validateG15PersistedConsentAuthority } from '@/lib/checkout/g15-independent-consent'
+import { verifyG15ConsumedOrderBinding } from '@/lib/checkout/g15-consent-order.server'
+import { buildAgeContext } from '@/lib/consultation/age-context'
+import { BIRTH_TIME_DEPENDENT_SYSTEMS } from '@/lib/consultation/calculator-facts'
 import { readConsultationRuntimeReceipts } from '@/lib/consultation/runtime-config'
+import { buildConsultationRelationshipPrompt } from '@/lib/consultation/relationship-context'
+import { buildUntrustedClientQuestionBlock } from '@/lib/consultation/client-question'
+import {
+  assertCompleteConsultationCalculatorResult,
+} from '@/lib/consultation/legacy-calculator-safety'
+import { calculateAgeAsOf, cLifeStageForAge, type CPromptPeriodContext } from '@/prompts/c_plan_contract'
 // v5.10.88 Stage 1 USE_PLAN_V3 feature flag(SOP `tasks/prompt_v3_switch_sop_2026-05-08.md`):
 //   c_plan v2 vs v3 export 同 11 個 symbol 同 signature(已 grep 驗證)、namespace import 後 flag 切
 //   預設 false → production 仍走 v2、零風險;Vercel env `USE_PLAN_V3=true` → trigger redeploy 即生效 v3
@@ -63,10 +96,10 @@ type CPromptAdapter = Pick<typeof _cV2,
   'buildUserPrompt' | 'extractCall1Summary' | 'extractCall1And2Summary' |
   'SYSTEM_GROUPS' | 'FORBIDDEN_WORDS_BY_STAGE'>  // 後兩者被 _cPick() 直接取用(L2111/2131/2152/2934),漏了會 runtime undefined
 const _cV6Adapter: CPromptAdapter = _cV6  // 簽名不相容時這行編譯即錯
-function _cPick(): typeof _cV2 {
-  if (isV6('C')) return _cV6Adapter as typeof _cV2  // v6 人生手冊體(default OFF、USE_PLAN_V6_C='true' 才啟用;僅七出口保證存在)
-  if (isV4('C')) return _cV4 as unknown as typeof _cV2
-  if (process.env.USE_PLAN_V3 === 'true') return _cV3
+function _cPick(): CPromptAdapter {
+  if (isV6('C')) return _cV6Adapter  // v6 人生手冊體(default OFF、USE_PLAN_V6_C='true' 才啟用;僅七出口保證存在)
+  if (isV4('C')) return _cV4 as unknown as CPromptAdapter
+  if (process.env.USE_PLAN_V3 === 'true') return _cV3 as CPromptAdapter
   return _cV2
 }
 // 以下 wrapper 保留原 bare-identifier 呼叫點、但選版本延後到「呼叫時」(access-time、解 P1 #1 時序炸彈)
@@ -89,6 +122,52 @@ const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-a
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 const CLAUDE_API = 'https://api.anthropic.com/v1/messages'
+
+function reportLogContext(reportId: string): { reportFingerprint?: string } {
+  const reportFingerprint = operationalFingerprint(reportId)
+  return reportFingerprint === 'unavailable' ? {} : { reportFingerprint }
+}
+
+function safePlanCode(value: unknown): string {
+  return typeof value === 'string' && ALL_PLAN_CODES.includes(value) ? value : 'unknown'
+}
+
+const SAFE_AI_CALL_STAGES = new Set([
+  'Call 1',
+  'Call 2',
+  'Call 3',
+  'G15_v4_call1',
+  'G15_v4_call2',
+  'G15_v4_call3',
+  'G15_v2_call1',
+  'G15_v2_call2',
+  'G15_v2_call3',
+  'G15_main',
+  'R_main',
+  'review_legacy',
+])
+
+function safeAiCallStage(value: unknown): string {
+  if (typeof value !== 'string') return 'unknown'
+  if (SAFE_AI_CALL_STAGES.has(value)) return value
+  const genericPlanMatch = value.match(/^([A-Z][A-Z0-9]*)_main$/u)
+  if (genericPlanMatch && safePlanCode(genericPlanMatch[1]) !== 'unknown') {
+    return `${genericPlanMatch[1]}_main`
+  }
+  if (/^consultation_v1_(C|G15)_/u.test(value)) return 'consultation_v1_chapter'
+  return 'unknown'
+}
+
+function aiUsageIdentity(reportId?: string): {
+  reportId: null
+  metadata: { reportFingerprint?: string }
+} {
+  const reportFingerprint = reportId ? availableOperationalFingerprint(reportId) : null
+  return {
+    reportId: null,
+    metadata: reportFingerprint ? { reportFingerprint } : {},
+  }
+}
 
 // ── 多 API Key 輪詢（防 429 限流 + 提高併發吞吐量）──
 // 支援 1~N 個 key：CLAUDE_API_KEY, CLAUDE_API_KEY_2, CLAUDE_API_KEY_3, ...
@@ -223,7 +302,9 @@ async function emitProgress(update: ProgressUpdate) {
         .eq('id', _currentReportId)
     } catch (e) {
       // 進度更新失敗不阻塞報告生成
-      console.warn(`[emitProgress] Supabase 進度寫入失敗:`, e)
+      console.warn('[emitProgress] Supabase 進度寫入失敗', {
+        errorType: operationalErrorClass(e),
+      })
     }
   }
 }
@@ -434,7 +515,7 @@ function checkAndReplace(
         // 確認這是真正的錯誤（不只是截斷或部分匹配）
         if (normalize(correctValue).includes(normalize(foundValue)) || normalize(foundValue).includes(normalize(correctValue))) {
           // 部分匹配（例如「甲木」vs「甲木日主」），不算錯誤，只記錄
-          console.log(`[QA] ${label}: 部分匹配 — 排盤「${correctValue}」↔ 報告「${foundValue}」，跳過`)
+          console.log('[QA] 部分匹配，跳過自動修正')
           continue
         }
 
@@ -444,7 +525,7 @@ function checkAndReplace(
           found: foundValue,
           corrected: true,
         })
-        console.warn(`[QA] 🔧 修正 ${label}: 「${foundValue}」→「${correctValue}」`)
+        console.warn('[QA] 已自動修正一項數據不一致')
         // 精確替換：只替換被匹配到的那段文字中的錯誤值
         result = result.replace(match[0], match[0].replace(foundValue, correctValue))
       }
@@ -730,9 +811,10 @@ export function validateReportAgainstData(
   // ────────────────────────────────────────────
   if (corrections.length > 0) {
     console.warn(`[QA] ⚠️ Post-generation QA 發現 ${corrections.length} 項數據不一致：`)
-    for (const c of corrections) {
-      console.warn(`  - ${c.field}: 期望「${c.expected}」，AI 寫「${c.found}」${c.corrected ? '（已自動修正）' : '（未修正，僅記錄）'}`)
-    }
+    console.warn('[QA] 修正結果統計', {
+      correctedCount: corrections.filter((item) => item.corrected).length,
+      reviewOnlyCount: corrections.filter((item) => !item.corrected).length,
+    })
   } else {
     console.log('[QA] ✅ Post-generation QA 通過：AI 報告與排盤數據一致')
   }
@@ -871,7 +953,7 @@ export function cleanFinalReport(text: string, clientName?: string): string {
       const prevIdx = sectionMap.get(exactTitle)!
       duplicateIndices.add(prevIdx)
       sectionMap.set(exactTitle, idx)
-      console.log(`[cleanFinalReport] v5.7.20 嚴格合併重複章節(完全相同字串): "${exactTitle}"`)
+      console.log('[cleanFinalReport] v5.7.20 嚴格合併 1 個重複章節')
     } else {
       sectionMap.set(exactTitle, idx)
     }
@@ -986,29 +1068,70 @@ function localizePrompt(prompt: string, locale?: string): string {
 }
 
 // ── Step 0: 載入報告記錄 ──
+export type ReportWorkflowSkipResult = {
+  skipped: true
+  reason: 'already_completed' | 'already_generating' | 'terminal_status' | 'cas_lost'
+}
+
+export function isReportWorkflowSkipResult(value: unknown): value is ReportWorkflowSkipResult {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && 'skipped' in value
+    && (value as { skipped?: unknown }).skipped === true
+    && 'reason' in value
+    && typeof (value as { reason?: unknown }).reason === 'string',
+  )
+}
+
 export async function loadReportRecord(reportId: string) {
   "use step";
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('paid_reports')
-    .select('retry_count, status, birth_data, plan_code, access_token, customer_email, user_id, created_at')
+    .select('retry_count, status, birth_data, plan_code, access_token, customer_email, user_id, created_at, stripe_session_id')
     .eq('id', reportId)
     .single()
 
   if (error || !data) {
-    throw new FatalError(`找不到報告記錄: ${reportId}`)
+    throw new FatalError('找不到報告記錄')
   }
 
-  // 防重複生成：如果報告已完成或正在生成中，直接跳過
+  const isStructuredConsultation = data.plan_code === 'C' || data.plan_code === 'G15'
+
+  // C/G15 的 durable trigger 允許 false-negative 重送；已被另一個 workflow
+  // 搶佔或已進終態時是 benign skip，不能被外層誤標 failed 或寄失敗通知。
   if (data.status === 'completed') {
-    throw new FatalError(`報告 ${reportId} 已完成，跳過重複生成`)
+    if (isStructuredConsultation) {
+      return { skipped: true, reason: 'already_completed' } as const
+    }
+    throw new FatalError('報告已完成，跳過重複生成')
   }
   if (data.status === 'generating') {
-    throw new FatalError(`報告 ${reportId} 正在生成中，跳過重複觸發`)
+    if (isStructuredConsultation) {
+      return { skipped: true, reason: 'already_generating' } as const
+    }
+    throw new FatalError('報告正在生成中，跳過重複觸發')
+  }
+  if (isStructuredConsultation && data.status !== 'pending' && data.status !== 'failed') {
+    return { skipped: true, reason: 'terminal_status' } as const
   }
 
   if (!data.birth_data) {
-    throw new FatalError(`報告 ${reportId} 缺少出生資料`)
+    throw new FatalError('報告缺少出生資料')
+  }
+
+  if (data.plan_code === 'G15') {
+    const consentBindingValid = await verifyG15ConsumedOrderBinding({
+      supabase,
+      reportId,
+      stripeSessionId: data.stripe_session_id,
+      purchaserUserId: data.user_id,
+      birthData: data.birth_data,
+    })
+    if (!consentBindingValid) {
+      throw new FatalError('G15 已消耗同意與付款訂單綁定無法重新驗證')
+    }
   }
 
   // ── 併發控制閘門：限制同時生成的報告數量 ──
@@ -1028,7 +1151,12 @@ export async function loadReportRecord(reportId: string) {
     // 排隊等候：利用 Workflow 的 RetryableError 機制自動延遲重試
     // 每次延遲 30-90 秒（加隨機抖動避免驚群效應）
     const jitter = Math.floor(Math.random() * 60) + 30
-    console.log(`⏳ 報告 ${reportId} 排隊中（目前 ${generatingCount} 份生成中，上限 ${MAX_CONCURRENT_REPORTS}），${jitter} 秒後重試`)
+    console.log('報告排隊中', {
+      ...reportLogContext(reportId),
+      generatingCount: generatingCount || 0,
+      limit: MAX_CONCURRENT_REPORTS,
+      retryAfterSeconds: jitter,
+    })
     throw new RetryableError(
       `併發上限：目前 ${generatingCount} 份報告正在生成，等待空位`,
       { retryAfter: `${jitter}s` },
@@ -1050,8 +1178,14 @@ export async function loadReportRecord(reportId: string) {
     .in('status', ['pending', 'failed'])
     .select('id')
 
-  if (updateErr || !updated?.length) {
-    throw new FatalError(`報告 ${reportId} 狀態搶佔失敗（可能已被其他程序處理）`)
+  if (updateErr) {
+    throw new FatalError('報告狀態搶佔資料庫錯誤')
+  }
+  if (!updated?.length) {
+    if (isStructuredConsultation) {
+      return { skipped: true, reason: 'cas_lost' } as const
+    }
+    throw new FatalError('報告狀態搶佔失敗（可能已被其他程序處理）')
   }
 
   return {
@@ -1066,7 +1200,10 @@ export async function loadReportRecord(reportId: string) {
 }
 
 // ── Step 1: 呼叫 Python API 排盤 ──
-export async function callPythonCalculate(birthData: BirthData) {
+export async function callPythonCalculate(
+  birthData: BirthData,
+  options: { consultationMode?: boolean } = {},
+) {
   "use step";
   await emitProgress({ step: '排盤運算', progress: 10, message: '正在計算十五大命理系統排盤...' })
 
@@ -1076,11 +1213,17 @@ export async function callPythonCalculate(birthData: BirthData) {
 
   let res: Response
   try {
-    const requestPayload = buildCalculatorRequestPayload(birthData)
-    res = await fetch(`${PYTHON_API}/api/calculate`, {
+    const requestPayload = buildCalculatorRequestPayload(birthData, {
+      consultationMode: options.consultationMode === true,
+    })
+    const signedRequest = createSignedCalculatorPost({
+      path: LEGACY_CALCULATE_PATH,
+      payload: requestPayload,
+    })
+    res = await fetch(`${PYTHON_API}${LEGACY_CALCULATE_PATH}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestPayload),
+      headers: signedRequest.headers,
+      body: signedRequest.body,
       signal: controller.signal,
     })
   } catch (e) {
@@ -1088,21 +1231,28 @@ export async function callPythonCalculate(birthData: BirthData) {
     if (e instanceof Error && e.name === 'AbortError') {
       throw new RetryableError('排盤 API 超時（60秒）', { retryAfter: '10s' })
     }
-    throw e
+    throw new RetryableError('排盤 API 連線失敗', { retryAfter: '10s' })
   }
   clearTimeout(timeout)
 
   if (!res.ok) {
-    const errText = await res.text()
     // Python API 可能暫時不可用，允許重試
-    throw new RetryableError(`排盤 API 回傳 ${res.status}: ${errText}`, { retryAfter: '10s' })
+    throw new RetryableError(`排盤 API 回傳 ${res.status}`, { retryAfter: '10s' })
   }
 
-  const result: CalcResult = await res.json()
+  let result: CalcResult
+  try {
+    result = await res.json() as CalcResult
+  } catch {
+    throw new RetryableError('排盤 API 回應格式無效', { retryAfter: '10s' })
+  }
   console.log(`排盤完成: ${result.analyses?.length || 0} 套系統`)
 
-  // 排盤結果完整性驗證：空結果或缺關鍵數據時重試
-  if (!result.analyses?.length) {
+  // C 諮詢報告要求完整 15 槽、無重複、無 partial failure；其他方案
+  // 保留原有路徑，避免改動 E3 等已凍結生成邏輯。
+  if (options.consultationMode === true) {
+    assertCompleteConsultationCalculatorResult(result)
+  } else if (!result.analyses?.length) {
     throw new RetryableError('排盤 API 回傳空結果（analyses 為空陣列）', { retryAfter: '15s' })
   }
   if (!result.client_data) {
@@ -1112,6 +1262,29 @@ export async function callPythonCalculate(birthData: BirthData) {
   return result
 }
 callPythonCalculate.maxRetries = 3
+
+function cPromptPeriodContext(birthData: BirthData): CPromptPeriodContext {
+  return {
+    asOf: typeof birthData.as_of === 'string' ? birthData.as_of : undefined,
+    targetYear: typeof birthData.target_year === 'number' ? birthData.target_year : undefined,
+    timeUnknown: birthData.time_unknown === true || birthData.time_mode === 'unknown',
+    birthYear: Number(birthData.year),
+    birthMonth: Number(birthData.month),
+    birthDay: Number(birthData.day),
+    relationshipStatus: typeof birthData.marital_status === 'string' ? birthData.marital_status : undefined,
+  }
+}
+
+function cAgeGroupAsOf(birthData: BirthData): string {
+  const context = cPromptPeriodContext(birthData)
+  const age = calculateAgeAsOf(
+    Number(birthData.year),
+    Number(birthData.month),
+    Number(birthData.day),
+    context.asOf,
+  )
+  return cLifeStageForAge(age)
+}
 
 // C／G15 consultation v1 only. Legacy plans (including E3) keep using the
 // byte-for-byte compatible unsigned client above.
@@ -1131,15 +1304,24 @@ export async function callPythonCalculateAttested(
   // request/response hash and HMAC verification.
   const requestBody = serializeCalculatorRequest(payload)
   const nonce = createCalculatorAttestationNonce()
+  const requestAuthHeaders = createCalculatorRequestAuthenticationHeaders({
+    requestBody,
+    method: 'POST',
+    path: CONSULTATION_CALCULATE_PATH,
+    nonce,
+    secret,
+    keyId: receipts.calculatorAttestationKeyId,
+  })
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 60000)
   let response: Response
   try {
-    response = await fetch(`${PYTHON_API}/api/calculate`, {
+    response = await fetch(`${PYTHON_API}${CONSULTATION_CALCULATE_PATH}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         [CALCULATOR_ATTESTATION_NONCE_HEADER]: nonce,
+        ...requestAuthHeaders,
       },
       body: requestBody,
       signal: controller.signal,
@@ -1149,7 +1331,7 @@ export async function callPythonCalculateAttested(
     if (error instanceof Error && error.name === 'AbortError') {
       throw new RetryableError('排盤 API 超時（60秒）', { retryAfter: '10s' })
     }
-    throw error
+    throw new RetryableError('排盤 API 連線失敗', { retryAfter: '10s' })
   }
   clearTimeout(timeout)
 
@@ -1162,7 +1344,7 @@ export async function callPythonCalculateAttested(
       responseStatusCode: response.status,
       requestBody,
       method: 'POST',
-      path: '/api/calculate',
+      path: CONSULTATION_CALCULATE_PATH,
       expectedNonce: nonce,
       secret,
       expectedReleaseId: receipts.calculatorBundleVersion,
@@ -1278,12 +1460,14 @@ async function aiClassifyEventType(customerText: string): Promise<Record<string,
     }
 
     if (Object.keys(filtered).length > 0) {
-      console.log(`AI 事件分類結果: ${JSON.stringify(filtered)}`)
+      console.log('AI 事件分類完成', { categoryCount: Object.keys(filtered).length })
       return filtered
     }
     return null
   } catch (e) {
-    console.error('AI 事件分類異常（不阻塞）:', e)
+    console.error('AI 事件分類異常（不阻塞）', {
+      errorType: operationalErrorClass(e),
+    })
     return null
   }
 }
@@ -1309,7 +1493,7 @@ export async function callChumenjiTop(
     bd.event_description || '',
     bd.note || '',
   ].filter(Boolean).map(String).join(' ')
-  console.log(`[chumenji] customerText (${customerText.length} chars): ${customerText.substring(0, 100)}`)
+  console.log('[chumenji] customer text received', { characterCount: customerText.length })
 
   // AI 事件分類（DeepSeek，主方案；失敗時由後端關鍵字 fallback）
   let eventTypesWeighted: Record<string, number> | null = null
@@ -1381,17 +1565,20 @@ export async function callChumenjiTop(
   const timeout = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const res = await fetch(`${PYTHON_API}/api/chumenji-top`, {
+    const signedRequest = createSignedCalculatorPost({
+      path: CHUMENJI_TOP_PATH,
+      payload: body,
+    })
+    const res = await fetch(`${PYTHON_API}${CHUMENJI_TOP_PATH}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: signedRequest.headers,
+      body: signedRequest.body,
       signal: controller.signal,
     })
     clearTimeout(timeout)
 
     if (!res.ok) {
-      const errText = await res.text()
-      console.error(`出門訣 Top 計算失敗: ${res.status} ${errText}`)
+      console.error('出門訣 Top 計算失敗', { status: res.status })
       return null  // 不阻塞主流程，AI 仍可生成報告
     }
 
@@ -1400,7 +1587,9 @@ export async function callChumenjiTop(
     return result
   } catch (e) {
     clearTimeout(timeout)
-    console.error('出門訣 Top 計算異常（不阻塞）:', e)
+    console.error('出門訣 Top 計算異常（不阻塞）', {
+      errorType: operationalErrorClass(e),
+    })
     return null
   }
 }
@@ -1477,7 +1666,7 @@ async function savePartialContent(reportId: string, callLabel: string, content: 
       .eq('id', reportId)
   } catch (e) {
     // 存檔失敗不阻塞串流
-    console.warn(`串流存檔失敗（${callLabel}）:`, e)
+    console.warn('串流存檔失敗', { errorType: operationalErrorClass(e) })
   }
 }
 
@@ -1495,7 +1684,7 @@ async function claudeStreamingCall(
   if (reportId && callLabel) {
     const partial = await loadPartialContent(reportId, checkpointKey)
     if (partial && partial.length > 1000) {
-      console.log(`發現 ${checkpointKey} 的部分內容（${partial.length} 字），從斷點續寫`)
+      console.log('發現部分內容，從斷點續寫', { characterCount: partial.length })
       prefixContent = partial
       // 取最後 2000 字作為上下文，讓 AI 從斷點接續
       const tail = partial.slice(-2000)
@@ -1558,12 +1747,11 @@ async function claudeStreamingCall(
     if (e instanceof Error && e.name === 'AbortError') {
       throw new RetryableError('Claude API 連線超時（900秒）', { retryAfter: '15s' })
     }
-    throw e
+    throw new RetryableError('Claude API 連線失敗', { retryAfter: '15s' })
   }
 
   if (!res.ok) {
     clearTimeout(timeout)
-    const errText = await res.text()
     if (res.status === 429) {
       // 指數退避 + 隨機抖動：防止 1000 人同時重試造成 429 瀑布
       // 解析 Anthropic 的 retry-after header（如果有的話）
@@ -1578,13 +1766,13 @@ async function claudeStreamingCall(
       throw new RetryableError(`Claude API 529 過載，${jitter529}s 後重試`, { retryAfter: `${jitter529}s` })
     }
     if (res.status === 402) {
-      throw new FatalError(`Claude API 402 額度不足：請到 console.anthropic.com 充值。${errText.slice(0, 200)}`)
+      throw new FatalError('Claude API 402 額度不足')
     }
     if (res.status >= 500) {
       const jitter5xx = Math.floor(Math.random() * 15) + 15 // 15-30 秒隨機
-      throw new RetryableError(`Claude API ${res.status}: ${errText.slice(0, 300)}`, { retryAfter: `${jitter5xx}s` })
+      throw new RetryableError(`Claude API ${res.status}`, { retryAfter: `${jitter5xx}s` })
     }
-    throw new FatalError(`Claude API ${res.status}: ${errText.slice(0, 300)}`)
+    throw new FatalError(`Claude API ${res.status}`)
   }
 
   const reader = res.body?.getReader()
@@ -1651,7 +1839,7 @@ async function claudeStreamingCall(
       const fullContent = prefixContent ? prefixContent + result : result
       try {
         await savePartialContent(reportId, checkpointKey, fullContent)
-        console.log(`串流中斷，已存檔 ${fullContent.length} 字到 ${checkpointKey}`)
+        console.log('串流中斷，已存檔', { characterCount: fullContent.length })
       } catch { /* 存檔失敗不阻塞 */ }
     }
 
@@ -1660,7 +1848,7 @@ async function claudeStreamingCall(
       throw new RetryableError(`Claude API 串流超時（900秒，已收到 ${result.length} 字，已存檔）`, { retryAfter: '30s' })
     }
     clearTimeout(timeout)
-    throw e
+    throw new RetryableError('Claude API 串流中斷', { retryAfter: '30s' })
   }
 
   clearTimeout(timeout)
@@ -1674,7 +1862,7 @@ async function claudeStreamingCall(
     try {
       await savePartialContent(reportId, checkpointKey, '')
     } catch {
-      console.warn(`清除串流存檔失敗（${checkpointKey}），不影響本次結果`)
+      console.warn('清除串流存檔失敗，不影響本次結果')
     }
   }
 
@@ -1708,18 +1896,22 @@ async function deepseekCall(systemPrompt: string, userPrompt: string, maxTokens:
     if (e instanceof Error && e.name === 'AbortError') {
       throw new RetryableError('DeepSeek API 超時（180秒）', { retryAfter: '15s' })
     }
-    throw e
+    throw new RetryableError('DeepSeek API 連線失敗', { retryAfter: '15s' })
   }
   clearTimeout(timeout)
 
   if (!res.ok) {
-    const errText = await res.text()
     if (res.status === 429) {
       throw new RetryableError(`DeepSeek API 429 限流`, { retryAfter: '15s' })
     }
-    throw new Error(`DeepSeek API ${res.status}: ${errText.slice(0, 300)}`)
+    throw new Error(`DeepSeek API ${res.status}`)
   }
-  const data = await res.json()
+  let data: { choices?: Array<{ message?: { content?: string } }> }
+  try {
+    data = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
+  } catch {
+    throw new RetryableError('DeepSeek API 回應格式無效', { retryAfter: '15s' })
+  }
   return data.choices?.[0]?.message?.content || ''
 }
 
@@ -2086,14 +2278,14 @@ async function callClaudeOnly(
         model,
         promptTokens: 0,
         completionTokens: 0,
-        reportId,
-        callStage: label,
+        ...aiUsageIdentity(reportId),
+        callStage: safeAiCallStage(label),
         latencyMs: Date.now() - start,
         status: 'error',
         errorMessage: 'missing CLAUDE_API_KEY',
       })
     } catch { /* ai_cost_log 壞了不能擋主流程 */ }
-    throw new FatalError(`${label}: 缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus。請到 console.anthropic.com 充值。`)
+    throw new FatalError('缺少 CLAUDE_API_KEY，付費報告必須使用 Claude Opus')
   }
 
   try {
@@ -2118,9 +2310,9 @@ async function callClaudeOnly(
     //   → hardFail → retry 又空 → needs_human_review（3 份 C 方案 0 bytes 根因）
     //   修：content 太短直接拋 RetryableError 觸發 workflow step 的 3 次 retry
     if (!content || content.trim().length < 100) {
-      console.error(`${label}: Claude 返回空內容或過短（${content?.length ?? 0} 字），拋 RetryableError 觸發 step retry`)
+      console.error('Claude 返回空內容或過短', { characterCount: content?.length ?? 0 })
       throw new RetryableError(
-        `${label}: Claude 返回內容過短（${content?.length ?? 0} 字），視為失敗要求重試`,
+        `Claude 返回內容過短（${content?.length ?? 0} 字），視為失敗要求重試`,
       )
     }
 
@@ -2131,11 +2323,12 @@ async function callClaudeOnly(
         model,
         promptTokens: effectiveInputTokens,
         completionTokens: outputTokens,
-        reportId,
-        callStage: label,
+        ...aiUsageIdentity(reportId),
+        callStage: safeAiCallStage(label),
         latencyMs: Date.now() - start,
         status: 'success',
         metadata: {
+          ...aiUsageIdentity(reportId).metadata,
           raw_input_tokens: inputTokens,
           cache_creation_tokens: cacheCreationTokens,
           cache_read_tokens: cacheReadTokens,
@@ -2147,12 +2340,17 @@ async function callClaudeOnly(
 
     if (cacheCreationTokens + cacheReadTokens > 0) {
       console.log(
-        `[PROMPT-CACHE] ${label}: hit=${(cacheHitRate * 100).toFixed(1)}% ` +
+        `[PROMPT-CACHE] ${safeAiCallStage(label)}: hit=${(cacheHitRate * 100).toFixed(1)}% ` +
           `read=${cacheReadTokens} write=${cacheCreationTokens} uncached=${inputTokens} ` +
           `→ 等值計費 input=${effectiveInputTokens}(原始 ${totalInputSeen}、省 ${totalInputSeen - effectiveInputTokens})`,
       )
     }
-    console.log(`${label} 完成 (${model}): ${content.length} 字, tokens=${inputTokens}/${outputTokens}`)
+    console.log('AI 呼叫完成', {
+      callStage: safeAiCallStage(label),
+      characterCount: content.length,
+      inputTokens,
+      outputTokens,
+    })
     return {
       content,
       model,
@@ -2176,14 +2374,15 @@ async function callClaudeOnly(
         model,
         promptTokens: 0,
         completionTokens: 0,
-        reportId,
-        callStage: label,
+        ...aiUsageIdentity(reportId),
+        callStage: safeAiCallStage(label),
         latencyMs: Date.now() - start,
         status,
-        errorMessage: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+        errorMessage: operationalErrorClass(err),
       })
     } catch { /* 記錄失敗不影響主流程 */ }
-    throw err
+    if (err instanceof RetryableError || err instanceof FatalError) throw err
+    throw new FatalError('AI 報告生成失敗')
   }
 }
 
@@ -2195,10 +2394,11 @@ export async function aiGenerateCall1(
   console.log('Call 1 開始：命格名片+人格畫像+事業+財運')
   await emitProgress({ step: 'AI分析', progress: 20, message: '正在分析命格名片、人格畫像、事業與財運...' })
 
-  const ageGroup = getAgeGroup(birthData.year)
-  const clientNeed = question || undefined
+  const ageGroup = cAgeGroupAsOf(birthData)
+  const context = cPromptPeriodContext(birthData)
+  const clientNeed = question ? buildUntrustedClientQuestionBlock(question) : undefined
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call1, birthData)
-  const systemPrompt = buildCall1Prompt(ageGroup, clientNeed, birthData.locale, birthData.year)
+  const systemPrompt = `${buildCall1Prompt(ageGroup, clientNeed, birthData.locale, birthData.year, context)}\n\n${buildConsultationRelationshipPrompt(birthData.marital_status)}`
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 1', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -2209,16 +2409,18 @@ aiGenerateCall1.maxRetries = 3
 
 // ── Step 2b: C 方案 AI 生成 — Call 2（感情+健康+大運+流年） ──
 export async function aiGenerateCall2(
-  calcResult: CalcResult, birthData: BirthData, call1Content: string, reportId?: string,
+  calcResult: CalcResult, birthData: BirthData, call1Content: string, reportId?: string, question?: string,
 ) {
   "use step";
   console.log('Call 2 開始：感情+健康+大運+流年')
   await emitProgress({ step: 'AI分析', progress: 40, message: '正在分析感情、健康、大運走勢與流年重點...' })
 
-  const ageGroup = getAgeGroup(birthData.year)
+  const ageGroup = cAgeGroupAsOf(birthData)
+  const context = cPromptPeriodContext(birthData)
   const call1Summary = extractCall1Summary(call1Content)
   const userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call2, birthData)
-  const systemPrompt = buildCall2Prompt(ageGroup, call1Summary, birthData.locale, birthData.year)
+  const clientQuestion = question ? `\n\n${buildUntrustedClientQuestionBlock(question)}` : ''
+  const systemPrompt = `${buildCall2Prompt(ageGroup, call1Summary, birthData.locale, birthData.year, context)}\n\n${buildConsultationRelationshipPrompt(birthData.marital_status)}${clientQuestion}`
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, 128000, 'Call 2', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -2230,13 +2432,14 @@ aiGenerateCall2.maxRetries = 3
 // ── Step 2c: C 方案 AI 生成 — Call 3（一句話+刻意練習+寫給你的話） ──
 export async function aiGenerateCall3(
   calcResult: CalcResult, birthData: BirthData, call1Content: string, call2Content: string,
-  isRetry?: boolean, missingParts?: string[], reportId?: string,
+  isRetry?: boolean, missingParts?: string[], reportId?: string, question?: string,
 ) {
   "use step";
   console.log('Call 3 開始：一句話+刻意練習+寫給你的話')
   await emitProgress({ step: 'AI分析', progress: 60, message: '正在生成刻意練習與寫給你的話...' })
 
-  const ageGroup = getAgeGroup(birthData.year)
+  const ageGroup = cAgeGroupAsOf(birthData)
+  const context = cPromptPeriodContext(birthData)
   const call1and2Summary = extractCall1And2Summary(call1Content, call2Content)
   let userPrompt = buildUserPrompt(calcResult.client_data, calcResult.analyses, _cPick().SYSTEM_GROUPS.call3, birthData)
 
@@ -2245,7 +2448,8 @@ export async function aiGenerateCall3(
   }
 
   const maxTokens = 128000
-  const systemPrompt = buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale, birthData.year)
+  const clientQuestion = question ? `\n\n${buildUntrustedClientQuestionBlock(question)}` : ''
+  const systemPrompt = `${buildCall3Prompt(ageGroup, birthData.name, call1and2Summary, birthData.locale, birthData.year, context)}\n\n${buildConsultationRelationshipPrompt(birthData.marital_status)}${clientQuestion}`
 
   const result = await callClaudeOnly(systemPrompt, userPrompt, maxTokens, 'Call 3', reportId)
   result.content = trimToLastCompleteSentence(cleanAIResponse(result.content))
@@ -2267,7 +2471,10 @@ export async function aiGenerateGeneric(
   // 付費報告只用 Claude Opus，不降級（透過 callClaudeOnly 同步記錄成本）
   const { content } = await callClaudeOnly(localizedPrompt, userPrompt, 128000, `${planCode}_main`, reportId)
   const cleaned = trimToLastCompleteSentence(cleanAIResponse(content))
-  console.log(`方案 ${planCode} AI 完成 (claude-opus-4-6): ${cleaned.length} 字`)
+  console.log('方案 AI 完成', {
+    planCode: safePlanCode(planCode),
+    characterCount: cleaned.length,
+  })
   return { content: cleaned, model: 'claude-opus-4-6' }
 }
 aiGenerateGeneric.maxRetries = 2
@@ -2308,7 +2515,7 @@ export async function aiGenerateConsultationChapter(
     rawDraft = JSON.parse(content)
   } catch (error) {
     return {
-      rawDraft: { parseError: error instanceof Error ? error.message : String(error), raw: content },
+      rawDraft: { parseError: operationalErrorClass(error), raw: content },
       model: result.model,
       usage: result.usage,
     }
@@ -2346,23 +2553,33 @@ export async function aiReviewConsultationDrafts(
   if (model !== CONSULTATION_REVIEW_DEFAULT_MODEL) {
     throw new FatalError(`C/G15 獨立審查只允許 ${CONSULTATION_REVIEW_DEFAULT_MODEL}`)
   }
-  const response = await geminiProvider.generate({
-    model,
-    system: request.system,
-    user: request.user,
-    maxTokens: maxOutputTokens,
-    temperature: 0,
-    jsonMode: true,
-  })
-  if (response.error || !response.content.trim()) {
-    throw new FatalError(`fresh-context Gemini 審查失敗: ${response.error || 'empty response'}`)
+  let response: Awaited<ReturnType<typeof geminiProvider.generate>>
+  try {
+    response = await geminiProvider.generate({
+      model,
+      system: request.system,
+      user: request.user,
+      maxTokens: maxOutputTokens,
+      temperature: 0,
+      jsonMode: true,
+    })
+  } catch {
+    throw new FatalError('fresh-context Gemini 審查失敗')
   }
-  const parsed = parseConsultationFreshReviewResponse({
-    rawResponse: response.content,
-    reviewerModel: response.model,
-    requestHash: request.requestHash,
-    releasePolicyReceipt,
-  })
+  if (response.error || !response.content.trim()) {
+    throw new FatalError('fresh-context Gemini 審查失敗')
+  }
+  let parsed: ReturnType<typeof parseConsultationFreshReviewResponse>
+  try {
+    parsed = parseConsultationFreshReviewResponse({
+      rawResponse: response.content,
+      reviewerModel: response.model,
+      requestHash: request.requestHash,
+      releasePolicyReceipt,
+    })
+  } catch {
+    throw new FatalError('fresh-context Gemini 審查回應格式無效')
+  }
   return {
     ...parsed,
     usage: {
@@ -2405,7 +2622,7 @@ export async function loadFamilyReports(
       .single()
 
     if (error || !data) {
-      throw new FatalError(`找不到 ${email} 的已完成人生藍圖報告`)
+      throw new FatalError('找不到已完成的人生藍圖報告')
     }
 
     results.push({
@@ -2426,7 +2643,11 @@ loadFamilyReports.maxRetries = 2
 // ── G15 家族藍圖（新版）：用 report ID 直接載入成員報告 ──
 export async function loadFamilyReportsByIds(
   reportIds: string[], memberNames: string[],
-  owner: { userId?: string | null; email?: string | null },
+  owner: {
+    userId?: string | null
+    email?: string | null
+    subjectUserIdsByReport?: Record<string, string>
+  },
 ): Promise<FamilyMemberReport[]> {
   "use step";
   await emitProgress({ step: '載入資料', progress: 10, message: '正在載入家庭成員的人生藍圖報告...' })
@@ -2439,6 +2660,7 @@ export async function loadFamilyReportsByIds(
   const validation = await validateG15Selection({
     selectedReportIds: reportIds,
     auth: { userId: owner.userId, email: owner.email },
+    ownershipMode: 'independent-subjects',
     queryReports: async () => ({
       data: (data ?? []) as unknown as G15SelectionReportRow[],
       error,
@@ -2447,11 +2669,19 @@ export async function loadFamilyReportsByIds(
   if (!validation.ok || !Array.isArray(data)) {
     throw new FatalError(`G15 成員報告重新授權失敗: ${validation.ok ? 'QUERY_FAILED' : validation.code}`)
   }
+  if (
+    !owner.subjectUserIdsByReport
+    || validation.reportIds.some((reportId, index) => (
+      owner.subjectUserIdsByReport?.[reportId] !== validation.subjectUserIds[index]
+    ))
+  ) {
+    throw new FatalError('G15 成員報告擁有者與已消耗同意不一致')
+  }
   type FamilyReportRow = G15SelectionReportRow & { report_result: unknown; birth_data: unknown }
   const rowsById = new Map((data as unknown as FamilyReportRow[]).map((row) => [row.id.toLowerCase(), row]))
   const results = validation.reportIds.map((reportId, index) => {
     const row = rowsById.get(reportId)
-    if (!row?.birth_data) throw new FatalError(`G15 成員報告 ${reportId} 缺少出生資料`)
+    if (!row?.birth_data) throw new FatalError('G15 成員報告缺少出生資料')
     return {
       email: row.customer_email || '',
       name: validation.memberNames[index],
@@ -2468,34 +2698,52 @@ export async function loadFamilyReportsByIds(
 loadFamilyReportsByIds.maxRetries = 2
 
 // ── G15 家族藍圖：從報告中提取互動關鍵數據（不餵原文，避免 AI 重複個人分析）──
+function isUnknownG15BirthTime(bd: BirthData): boolean {
+  return bd.time_unknown === true || bd.time_mode === 'unknown'
+}
+
+function formatG15BirthProfile(bd: BirthData): string {
+  const date = `${bd.year}年${bd.month}月${bd.day}日`
+  if (isUnknownG15BirthTime(bd)) {
+    return `出生：${date}；出生時間未提供。不得把 12:00 舊資料內部占位當成真實出生時間或推論依據`
+  }
+  const hour = String(bd.hour).padStart(2, '0')
+  const minute = String(bd.minute ?? 0).padStart(2, '0')
+  return `出生：${date}${hour}:${minute}`
+}
+
 function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
   const lines: string[] = []
+  const timeUnknown = isUnknownG15BirthTime(bd)
 
   // 基本出生資料（從 birthData 直接取，最可靠）
   if (bd.year && bd.month && bd.day) {
-    lines.push(`出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour || '未知'}時`)
+    lines.push(formatG15BirthProfile(bd))
   }
 
   // 從報告中用 regex 提取各系統關鍵數據（每個系統取第一段摘要）
-  const systemPatterns: Array<{ name: string; pattern: RegExp }> = [
-    { name: '八字', pattern: /(?:八字|四柱)[：:]\s*(.+?)(?:\n|$)/i },
-    { name: '用神', pattern: /用神[：:]\s*(.+?)(?:\n|$)/i },
-    { name: '五行', pattern: /五行[：:]\s*(.+?)(?:\n|$)/i },
-    { name: '日主', pattern: /日主[為是]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '日柱', pattern: /日柱[：:為是]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '紫微命宮', pattern: /命宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '夫妻宮', pattern: /夫妻宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '子女宮', pattern: /子女宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '生肖', pattern: /生肖[：:為是]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '人類圖類型', pattern: /(?:人類圖|類型)[：:]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '人類圖權威', pattern: /(?:內在權威|權威)[：:]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '西洋太陽', pattern: /太陽[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '西洋月亮', pattern: /月亮[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
-    { name: '生命靈數', pattern: /(?:生命靈數|靈數)[：:為是]\s*(.+?)(?:\n|[，,。])/i },
-    { name: '納音', pattern: /納音[：:]\s*(.+?)(?:\n|[，,。])/i },
+  const systemPatterns: Array<{ name: string; system: string; pattern: RegExp }> = [
+    { name: '八字', system: '八字四柱', pattern: /(?:八字|四柱)[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '用神', system: '八字四柱', pattern: /用神[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '五行', system: '八字四柱', pattern: /五行[：:]\s*(.+?)(?:\n|$)/i },
+    { name: '日主', system: '八字四柱', pattern: /日主[為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '日柱', system: '八字四柱', pattern: /日柱[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '紫微命宮', system: '紫微斗數', pattern: /命宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '夫妻宮', system: '紫微斗數', pattern: /夫妻宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '子女宮', system: '紫微斗數', pattern: /子女宮[：:主星]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '生肖', system: '生肖運勢', pattern: /生肖[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '人類圖類型', system: '人類圖', pattern: /(?:人類圖|類型)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '人類圖權威', system: '人類圖', pattern: /(?:內在權威|權威)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '西洋太陽', system: '西洋占星', pattern: /太陽[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '西洋月亮', system: '西洋占星', pattern: /月亮[星座：:]*\s*(.+?)(?:\n|[，,。])/i },
+    { name: '生命靈數', system: '數字能量學', pattern: /(?:生命靈數|靈數)[：:為是]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '姓名學', system: '姓名學', pattern: /(?:姓名學|人格|總格)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '塔羅', system: '塔羅牌', pattern: /(?:塔羅|牌義)[：:]\s*(.+?)(?:\n|[，,。])/i },
+    { name: '納音', system: '八字四柱', pattern: /納音[：:]\s*(.+?)(?:\n|[，,。])/i },
   ]
 
   for (const sp of systemPatterns) {
+    if (timeUnknown && BIRTH_TIME_DEPENDENT_SYSTEMS.has(sp.system)) continue
     const match = reportContent.match(sp.pattern)
     if (match?.[1]) {
       // 只取前 80 字，避免過長
@@ -2504,14 +2752,14 @@ function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
   }
 
   // 如果 regex 提取結果太少（< 5 項），補充從報告各系統章節取前 2 行
-  if (lines.length < 5) {
+  if (!timeUnknown && lines.length < 5) {
     const sectionPattern = /【(.+?)】[^\n]*\n([^\n]*\n?[^\n]*)/g
     let sectionMatch
     let extraCount = 0
     while ((sectionMatch = sectionPattern.exec(reportContent)) !== null && extraCount < 8) {
       const sectionName = sectionMatch[1].trim()
       const sectionContent = sectionMatch[2].trim().slice(0, 150)
-      if (sectionContent && !lines.some(l => l.includes(sectionName))) {
+      if (sectionContent && !/九星(?:氣學)?/u.test(sectionName) && !lines.some(l => l.includes(sectionName))) {
         lines.push(`${sectionName}：${sectionContent}`)
         extraCount++
       }
@@ -2528,23 +2776,78 @@ function extractKeyDataForFamily(reportContent: string, bd: BirthData): string {
 // - 啟用方式:G15_PROMPT_V2_ENABLED=true 全開、或 G15_V2_TEST_REPORTS=<reportId,...> 白名單
 // - 對應 R5 strict eval 從 79.3 → 90+ 的真因修復(原本 v6.0 prompt 寫好但沒接線、LLM 看的仍是 v1)
 export async function aiGenerateG15(
-  familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string, reportId?: string,
+  familyReports: FamilyMemberReport[], planCode: string, systemPrompt: string,
+  familyContext: BirthData, createdAt: string, reportId?: string,
 ) {
   "use step";
   await emitProgress({ step: 'AI分析', progress: 30, message: '正在分析家族成員互動關係...' })
 
+  const reportIds = Array.isArray(familyContext.report_ids)
+    ? familyContext.report_ids.filter((value): value is string => typeof value === 'string')
+    : []
+  const declaredContext = validateG15ConsultationContext(familyContext)
+  if (!declaredContext.ok) {
+    throw new FatalError('G15 家庭關係與諮詢目標重新驗證失敗')
+  }
+  const consent = validateG15PersistedConsentAuthority({
+    authority: familyContext.consent_authority,
+    selectionId: familyContext.consent_selection_id,
+    reportIds,
+  })
+  if (!consent.ok) throw new FatalError('G15 資料使用同意重新驗證失敗')
+  if (reportIds.length !== familyReports.length || familyReports.length < 2 || familyReports.length > 6) {
+    throw new FatalError('G15 成員報告、授權清單與家庭人數不一致')
+  }
+
+  const createdInstant = new Date(createdAt)
+  if (!Number.isFinite(createdInstant.getTime())) throw new FatalError('G15 報告建立時間無法固定分析基準日')
+  const dateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Hong_Kong',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(createdInstant)
+  const dateValues = Object.fromEntries(dateParts.map((part) => [part.type, part.value]))
+  const asOfDate = `${dateValues.year}-${dateValues.month}-${dateValues.day}`
+  const targetYear = Number(dateValues.year)
+  const memberAges = familyReports.map((member) => {
+    const bd = member.birthData
+    const birthDate = `${String(bd.year).padStart(4, '0')}-${String(bd.month).padStart(2, '0')}-${String(bd.day).padStart(2, '0')}`
+    let ageYears: number
+    try {
+      ageYears = buildAgeContext({ birthDate, asOfDate }).ageYears
+    } catch {
+      throw new FatalError('G15 成員的出生日期無法計算實足年齡')
+    }
+    if (ageYears < 18) throw new FatalError('G15 成員未滿 18 歲，現行成人家庭諮詢不得自動生成')
+    return { name: member.name, ageYears }
+  })
+
+  const clientFamilyContext = `【客戶明示的家庭資料（最高優先；每一 Call 都必須遵守）】
+報告基準日 as_of：${asOfDate}
+年度分析起點 target_year：${targetYear}（只分析 ${targetYear}-${targetYear + 4}）
+成員實足年齡：${memberAges.map((member) => `${member.name} ${member.ageYears} 歲`).join('；')}
+客戶明示關係：
+${declaredContext.context.statedRelationships.map((relationship) => `- ${relationship}`).join('\n')}
+本次諮詢目標：
+${declaredContext.context.consultationGoals.map((goal) => `- ${goal}`).join('\n')}
+上述關係與目標是客戶原文，不是模型推論。不得推定父母、夫妻、親子、手足或任何未明示角色；資料沒寫時只用姓名描述，也不得補寫客戶未提出的家庭問題。`
+
   // ── Feature Flag:判斷走 v1 (認可版) 還是 v2 (LLM 共識版) ──
   const { getG15PromptVersion, buildG15Call1Prompt, buildG15Call2Prompt, buildG15Call3Prompt, extractG15Call1Summary, extractG15Call1And2Summary } = await import('@/prompts/g15_plan_v2')
   const promptVersion = getG15PromptVersion(reportId)
-  console.log(`G15 prompt version: ${promptVersion} (reportId=${reportId})`)
+  console.log('G15 prompt version', {
+    promptVersion: ['v1', 'v2', 'v4', 'v6'].includes(promptVersion) ? promptVersion : 'unknown',
+    ...(reportId ? reportLogContext(reportId) : {}),
+  })
 
   // ── 共用:組 user prompt(成員命理關鍵數據摘要)──
-  let baseUserPrompt = `家族藍圖分析 — 共 ${familyReports.length} 位成員\n\n`
+  let baseUserPrompt = `${clientFamilyContext}\n\n家族藍圖分析 — 共 ${familyReports.length} 位成員\n\n`
   for (let i = 0; i < familyReports.length; i++) {
     const member = familyReports[i]
     const bd = member.birthData
     baseUserPrompt += `=== 成員${i + 1}：${member.name} ===\n`
-    baseUserPrompt += `性別：${bd.gender === 'M' ? '男' : '女'}，出生：${bd.year}年${bd.month}月${bd.day}日${bd.hour}時\n`
+    baseUserPrompt += `性別：${bd.gender === 'M' ? '男' : bd.gender === 'F' ? '女' : '未指定'}，${formatG15BirthProfile(bd)}\n`
     const keyData = extractKeyDataForFamily(member.reportContent, bd)
     baseUserPrompt += `命理關鍵數據：\n${keyData}\n\n`
   }
@@ -2958,48 +3261,65 @@ export async function generatePDF(
   // PDF 生成超時控制：90 秒
   const pdfController = new AbortController()
   const pdfTimeout = setTimeout(() => pdfController.abort(), 90000)
-  const pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal: pdfController.signal,
-    body: JSON.stringify({
-      report_id: reportId,
-      plan_code: planCode,
-      client_name: birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports'
-        ? ((birthData.member_names as string[] | undefined)?.filter(Boolean).join('、') || 'Unknown')
-        : birthData.plan_type === 'family'
-        ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || 'Unknown')
-        : (birthData.name || 'Unknown'),
-      plan_name: planName,
-      ai_content: pdfContent,
-      locale: birthData.locale || 'zh-TW',
-      analyses_summary: analyses,
-      // PDF 版面增強：品牌頁首頁尾 + 目錄頁 + 緊湊封面
-      show_header_footer: true,  // 每頁顯示品牌 logo + 頁碼 + 客戶名
-      show_toc_page: true,       // 第 2 頁加目錄
-      cover_style: 'compact',    // 封面不要太多空白
-    }),
+  const pdfPayload = {
+    report_id: reportId,
+    plan_code: planCode,
+    client_name: birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports'
+      ? ((birthData.member_names as string[] | undefined)?.filter(Boolean).join('、') || 'Unknown')
+      : birthData.plan_type === 'family'
+      ? ((birthData.members as Array<{ name?: string }> | undefined)?.map(m => m.name).filter(Boolean).join('、') || 'Unknown')
+      : (birthData.name || 'Unknown'),
+    plan_name: planName,
+    ai_content: pdfContent,
+    locale: birthData.locale || 'zh-TW',
+    analyses_summary: analyses,
+    // PDF 版面增強：品牌頁首頁尾 + 目錄頁 + 緊湊封面
+    show_header_footer: true,
+    show_toc_page: true,
+    cover_style: 'compact',
+  }
+  const signedPdfRequest = createSignedCalculatorPost({
+    path: GENERATE_PDF_PATH,
+    payload: pdfPayload,
   })
+  let pdfRes: Response
+  try {
+    pdfRes = await fetch(`${PYTHON_API}${GENERATE_PDF_PATH}`, {
+      method: 'POST',
+      headers: signedPdfRequest.headers,
+      signal: pdfController.signal,
+      body: signedPdfRequest.body,
+    })
+  } catch (error) {
+    clearTimeout(pdfTimeout)
+    console.error('PDF 生成連線失敗', { errorType: operationalErrorClass(error) })
+    return null
+  }
 
   clearTimeout(pdfTimeout)
 
   if (!pdfRes.ok) {
-    console.error('PDF 生成失敗:', await pdfRes.text())
+    console.error('PDF 生成失敗', { status: pdfRes.status })
     return null // PDF 失敗不阻塞整體流程
   }
 
-  const pdfData = await pdfRes.json()
-  if (!pdfData.pdf_base64) return null
-
+  let pdfBytes: Buffer
+  try {
+    pdfBytes = await readBoundedPdfResponse(pdfRes)
+  } catch {
+    console.error('PDF 生成回應未通過 bytes 完整性檢查')
+    return null
+  }
   // 上傳到 Supabase Storage
   // v5.3.32：加 60 秒 timeout 保護，避免 storage 卡住讓整個 workflow 停滯
   const supabase = getSupabase()
-  const pdfBytes = Buffer.from(pdfData.pdf_base64, 'base64')
-  const storagePath = `${reportId}/report.pdf`
+  const generationId = crypto.randomUUID()
+  const storageTarget = getGeneratedReportPdfStorageTarget(planCode, reportId, generationId)
+  const storagePath = storageTarget.path
 
   const uploadPromise = supabase.storage
-    .from('reports')
-    .upload(storagePath, pdfBytes, { contentType: 'application/pdf', upsert: true })
+    .from(storageTarget.bucket)
+    .upload(storagePath, pdfBytes, { contentType: 'application/pdf', upsert: false })
   const uploadTimeout = new Promise<{ error: Error }>((resolve) =>
     setTimeout(() => resolve({ error: new Error('Supabase Storage 上傳超時（60秒）') }), 60000),
   )
@@ -3013,13 +3333,29 @@ export async function generatePDF(
   }
 
   if (uploadErr) {
-    console.error('Supabase Storage 上傳失敗:', uploadErr)
+    console.error('Supabase Storage 上傳失敗', {
+      errorType: operationalErrorClass(uploadErr),
+    })
     return null  // PDF 失敗不阻塞整體流程（呼叫端有 try-catch）
   }
 
-  const { data: urlData } = supabase.storage.from('reports').getPublicUrl(storagePath)
-  console.log(`✅ PDF 上傳完成: ${urlData.publicUrl} (${pdfData.file_size_kb}KB)`)
-  return urlData.publicUrl
+  if (storageTarget.privateReference) {
+    console.log('PDF 上傳完成', { fileSizeKb: Math.ceil(pdfBytes.byteLength / 1024) })
+    return {
+      reference: storageTarget.privateReference,
+      bucket: storageTarget.bucket,
+      path: storageTarget.path,
+      generationId,
+    } satisfies GeneratedReportPdf
+  }
+  const { data: urlData } = supabase.storage.from(storageTarget.bucket).getPublicUrl(storagePath)
+  console.log('PDF 上傳完成', { fileSizeKb: Math.ceil(pdfBytes.byteLength / 1024) })
+  return {
+    reference: urlData.publicUrl,
+    bucket: storageTarget.bucket,
+    path: storageTarget.path,
+    generationId,
+  } satisfies GeneratedReportPdf
 }
 generatePDF.maxRetries = 2
 
@@ -3493,7 +3829,9 @@ export async function qualityGate(
         warnings.push(`[硬門檻] 出門訣缺少 AI JSON 輸出區塊，無法驗證是否遵守引擎結果`)
       }
     } catch (e) {
-      console.error('chumenjiTop 硬比對異常（降級為警告）:', e)
+      console.error('chumenjiTop 硬比對異常（降級為警告）', {
+        errorType: operationalErrorClass(e),
+      })
       warnings.push('[軟性] 出門訣引擎硬比對異常，已降級')
     }
   }
@@ -4020,18 +4358,24 @@ export async function aiReviewReport(
       options.reportId,
     )
 
-    console.log(
-      `5 LLM QA: avg=${result.avg}, min=${result.min}, max=${result.max}, ` +
-      `passed=${result.passed}, severity=${result.severity}, ` +
-      `$${result.totalCostUsd.toFixed(4)}, ${result.totalLatencyMs}ms`
-    )
+    console.log('5 LLM QA 完成', {
+      averageScore: Number(result.avg) || 0,
+      minimumScore: Number(result.min) || 0,
+      maximumScore: Number(result.max) || 0,
+      passed: result.passed === true,
+      severity: ['ok', 'yellow', 'red'].includes(result.severity) ? result.severity : 'unknown',
+      totalCostUsd: Number(result.totalCostUsd) || 0,
+      totalLatencyMs: Number(result.totalLatencyMs) || 0,
+    })
 
     // 寫入 report_qa_log（失敗不阻塞）
     if (options.reportId) {
       try {
         await writeReportQaLog(options.reportId, planCode, options.round ?? 1, result.reviewer_notes)
       } catch (e) {
-        console.error('[five-llm-qa] 寫入 report_qa_log 失敗（不阻塞）:', e)
+        console.error('[five-llm-qa] 寫入 report_qa_log 失敗（不阻塞）', {
+          errorType: operationalErrorClass(e),
+        })
       }
     }
 
@@ -4051,10 +4395,12 @@ export async function aiReviewReport(
       },
     }
   } catch (e) {
-    console.error('5 LLM QA 執行失敗（降級為 score 80，不阻塞交付）:', e)
+    console.error('5 LLM QA 執行失敗（降級為 score 80，不阻塞交付）', {
+      errorType: operationalErrorClass(e),
+    })
     return {
       score: 80,
-      issues: [`5 LLM QA 執行例外: ${e instanceof Error ? e.message : String(e)}`],
+      issues: [`5 LLM QA 執行例外: ${operationalErrorClass(e)}`],
     }
   }
 }
@@ -4099,7 +4445,7 @@ async function writeReportQaLog(
   const { error } = await supabase.from('report_qa_log').insert(rows)
   if (error) {
     // Migration 沒跑 / 表不存在：只 log，不拋
-    console.warn('[report_qa_log] insert 失敗:', error.message)
+    console.warn('[report_qa_log] insert 失敗', { errorType: operationalErrorClass(error) })
   }
 }
 
@@ -4158,8 +4504,8 @@ ${reportContent}`
           model: 'claude-opus-4-6',
           promptTokens: 0,
           completionTokens: 0,
-          reportId,
-          planCode,
+          ...aiUsageIdentity(reportId),
+          planCode: safePlanCode(planCode),
           callStage: 'review_legacy',
           latencyMs: Date.now() - tStart,
           status: 'error',
@@ -4180,8 +4526,8 @@ ${reportContent}`
         model: 'claude-opus-4-6',
         promptTokens,
         completionTokens,
-        reportId,
-        planCode,
+        ...aiUsageIdentity(reportId),
+        planCode: safePlanCode(planCode),
         callStage: 'review_legacy',
         latencyMs: Date.now() - tStart,
         status: 'success',
@@ -4192,24 +4538,28 @@ ${reportContent}`
     if (match) {
       const result = JSON.parse(match[0])
       const highlights = result.highlights || []
-      console.log(`AI 審核分數: ${result.score}, 問題: ${result.issues?.length || 0}, 亮點: ${highlights.length}`)
+      console.log('AI 審核完成', {
+        score: Number(result.score) || 0,
+        issueCount: Array.isArray(result.issues) ? result.issues.length : 0,
+        highlightCount: Array.isArray(highlights) ? highlights.length : 0,
+      })
       return { score: result.score || 80, issues: result.issues || [] }
     }
     return { score: 80, issues: [] }
   } catch (e) {
-    console.error('AI 審核失敗:', e)
+    console.error('AI 審核失敗', { errorType: operationalErrorClass(e) })
     try {
       await recordAIUsage({
         provider: 'anthropic',
         model: 'claude-opus-4-6',
         promptTokens: 0,
         completionTokens: 0,
-        reportId,
-        planCode,
+        ...aiUsageIdentity(reportId),
+        planCode: safePlanCode(planCode),
         callStage: 'review_legacy',
         latencyMs: Date.now() - tStart,
         status: 'error',
-        errorMessage: e instanceof Error ? e.message.slice(0, 500) : String(e).slice(0, 500),
+        errorMessage: operationalErrorClass(e),
       })
     } catch { /* log 失敗不影響主流程 */ }
     return { score: 80, issues: [] }
@@ -4278,10 +4628,13 @@ export async function contentModerationStep(
     console.warn('[content-moderation] 稽核紀錄寫入失敗，保留原審查判定')
   }
 
-  console.log(
-    `[content-moderation] ${reportId} ${planCode}: action=${report.action}, ` +
-    `黑名單命中 ${report.blacklistHits.length} 項, 警告 ${report.warnings.length} 項`,
-  )
+  console.log('[content-moderation] 審查完成', {
+    ...reportLogContext(reportId),
+    planCode: safePlanCode(planCode),
+    action: report.action,
+    blacklistHitCount: report.blacklistHits.length,
+    warningCount: report.warnings.length,
+  })
 
   return {
     action: report.action,
@@ -4302,17 +4655,26 @@ export async function aiExtractNarrative(reportContent: string): Promise<unknown
   "use step";
   // v5.10.461(P0-4 修):邏輯抽到 lib/report/extract-narrative.ts 共用
   // (fallback generate-report route + admin backfill 也要用、"use step" 函式無法直接進 route)
-  return extractNarrativeFromContent(reportContent)
+  try {
+    return await extractNarrativeFromContent(reportContent)
+  } catch {
+    throw new RetryableError('敘事摘要擷取失敗')
+  }
 }
+
+export type SaveReportOutcome =
+  | { outcome: 'completed_by_this_worker' }
+  | { outcome: 'lost_to_completed' }
+  | { outcome: 'terminal_blocked'; actualStatus: string | null }
 
 export async function saveReportToSupabase(
   reportId: string, reportContent: string, aiModel: string,
-  analyses: Array<{ system: string; score: number }>, pdfUrl: string | null,
+  analyses: Array<{ system: string; score: number }>, pdf: GeneratedReportPdf | string | null,
   top5Timings?: unknown,
   fullCharts?: unknown, // 報告重構 2026-06-23:deterministic 排盤結構化(五行/四柱/大運)、供綜合量化視覺;undefined 則不存(向後相容)
   narrative?: unknown, // 報告重構 2026-06-23:敘事綜合萃取(命格原型/天賦/課題、Gemini 忠於原文、黃金驗證過);undefined 則不存
   consultationReport?: unknown, // C/G15 consultation-report/v1；feature flag 路徑才寫入
-) {
+): Promise<SaveReportOutcome> {
   "use step";
   await emitProgress({ step: '儲存報告', progress: 90, message: '正在儲存報告...' })
 
@@ -4346,9 +4708,11 @@ export async function saveReportToSupabase(
 
   const supabase = getSupabase()
 
-  // 原子操作：只有 generating 狀態才能寫入 completed
-  // 防止 cron 已標記 failed 後被覆蓋，或已完成的報告被重複寫入
+  // completion 是 generating -> completed 的單一 CAS。
+  // pending 尚未被 worker claim；failed / needs_human_review / refunded
+  // 與其他狀態都不可被晚到的 worker 復活或覆寫。
   // v5.3.32：加 45 秒 timeout 保護，避免 Supabase 回應卡住讓 workflow 停滯
+  const pdfUrl = typeof pdf === 'string' ? pdf : pdf?.reference ?? null
   const savePromise = supabase.from('paid_reports').update({
     report_result: reportResult,
     pdf_url: pdfUrl,
@@ -4356,12 +4720,14 @@ export async function saveReportToSupabase(
     error_message: null,
   })
     .eq('id', reportId)
-    .in('status', ['generating', 'pending', 'failed']) // 允許所有非 completed 狀態
+    .eq('status', 'generating')
+    .is('deleted_at', null)
     .select('id')
 
-  const saveTimeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Supabase 更新超時（45秒）')), 45000),
-  )
+  let saveTimer: ReturnType<typeof setTimeout> | undefined
+  const saveTimeout = new Promise<never>((_, reject) => {
+    saveTimer = setTimeout(() => reject(new Error('Supabase 更新超時（45秒）')), 45000)
+  })
 
   let saved: Array<{ id: string }> | null = null
   let error: { message: string } | null = null
@@ -4371,17 +4737,79 @@ export async function saveReportToSupabase(
     error = (result as { error: { message: string } | null }).error
   } catch (e) {
     // timeout → 作為 retryable 錯誤拋出，Workflow 會自動重試
-    throw new RetryableError(`Supabase 更新超時或異常: ${e instanceof Error ? e.message : String(e)}`)
+    throw new RetryableError('Supabase 更新超時或異常')
+  } finally {
+    if (saveTimer) clearTimeout(saveTimer)
   }
 
   if (error) {
-    throw new RetryableError(`Supabase 更新失敗: ${error.message}`)
+    throw new RetryableError('Supabase 更新失敗')
   }
 
-  if (!saved?.length) {
-    // 報告已經是 completed（被另一個 workflow 實例先完成了）
-    console.log(`⏭️ 報告 ${reportId} 已被其他實例完成，跳過重複寫入`)
-    return true
+  if (!Array.isArray(saved)) {
+    // A missing/malformed write receipt does not prove that the CAS lost.
+    // The database may have committed while the response was truncated, so
+    // deleting this worker's immutable PDF would risk breaking a valid row.
+    throw new RetryableError('Supabase 完成狀態收據無效')
+  }
+
+  if (saved.length === 0) {
+    const { data: actualRow, error: readError } = await supabase
+      .from('paid_reports')
+      .select('status, pdf_url')
+      .eq('id', reportId)
+      .maybeSingle()
+
+    if (readError) {
+      throw new RetryableError('Supabase 完成狀態重讀失敗')
+    }
+
+    const actualStatus = typeof actualRow?.status === 'string' ? actualRow.status : null
+    if (
+      actualStatus === 'completed'
+      && pdf
+      && typeof pdf !== 'string'
+      && actualRow?.pdf_url === pdf.reference
+    ) {
+      // A previous attempt may have committed and then received an invalid or
+      // lost response. The immutable pointer proves this generation owns the
+      // committed row, so retain it and resume post-commit side effects.
+      return { outcome: 'completed_by_this_worker' }
+    }
+
+    if (pdf && typeof pdf !== 'string') {
+      try {
+        const cleanup = await supabase.storage.from(pdf.bucket).remove([pdf.path])
+        if (cleanup.error) {
+          console.error('PDF 輸家物件清理失敗', {
+            ...reportLogContext(reportId),
+            errorType: operationalErrorClass(cleanup.error),
+          })
+        }
+      } catch (cleanupError) {
+        console.error('PDF 輸家物件清理異常', {
+          ...reportLogContext(reportId),
+          errorType: operationalErrorClass(cleanupError),
+        })
+      }
+    }
+    if (actualStatus === 'completed') {
+      console.log('報告已被其他實例完成，放棄本 worker 內容', reportLogContext(reportId))
+      return { outcome: 'lost_to_completed' }
+    }
+
+    console.warn('報告完成 CAS 被終態阻擋', {
+      ...reportLogContext(reportId),
+      actualStatus: actualStatus ?? 'missing',
+    })
+    return { outcome: 'terminal_blocked', actualStatus }
+  }
+
+  if (saved.length !== 1 || saved[0]?.id !== reportId) {
+    // Only an exact empty result proves this worker lost the CAS. Any other
+    // receipt shape is unknown and must retain the generation-owned object for
+    // operator reconciliation rather than deleting potentially committed data.
+    throw new RetryableError('Supabase 完成狀態收據不一致')
   }
 
   // v5.3.2：報告完成 → 寫 funnel report_generated（僅首次完成時）
@@ -4403,11 +4831,39 @@ export async function saveReportToSupabase(
     }
   } catch { /* funnel 寫入失敗不影響主流程 */ }
 
-  console.log(`✅ 報告 ${reportId} 已標記完成`)
-  return true
+  console.log('報告已標記完成', reportLogContext(reportId))
+  return { outcome: 'completed_by_this_worker' }
 }
 
 // ── Email 亮點提取 ──
+const CANONICAL_EMAIL_ORIGIN = 'https://jianyuan.life'
+const TRUSTED_EMAIL_ORIGINS = new Set([
+  CANONICAL_EMAIL_ORIGIN,
+  'https://www.jianyuan.life',
+])
+
+function trustedHttpsEmailUrl(candidate: string): string | null {
+  try {
+    const parsed = new URL(candidate)
+    if (
+      parsed.protocol !== 'https:'
+      || parsed.username
+      || parsed.password
+      || !TRUSTED_EMAIL_ORIGINS.has(parsed.origin)
+    ) {
+      return null
+    }
+    return parsed.href
+  } catch {
+    return null
+  }
+}
+
+function availableOperationalFingerprint(value: unknown): string | null {
+  const fingerprint = operationalFingerprint(value)
+  return fingerprint === 'unavailable' ? null : fingerprint
+}
+
 function getEmailHighlights(planCode: string, reportContent: string, isCN: boolean): string[] {
   const highlights: string[] = []
   const text = reportContent.replace(/[#*`]/g, '')
@@ -4483,8 +4939,10 @@ export async function sendReportEmail(
 
   // v5.7.13:改 PLAN_NAMES from lib/plan-names
   const planName = PLAN_NAMES[planCode] || '命理分析報告'
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
-  const reportUrl = buildAbsoluteReportUrl(siteUrl, planCode, accessToken)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || CANONICAL_EMAIL_ORIGIN
+  const reportUrl = trustedHttpsEmailUrl(buildAbsoluteReportUrl(siteUrl, planCode, accessToken))
+    ?? trustedHttpsEmailUrl(buildAbsoluteReportUrl(CANONICAL_EMAIL_ORIGIN, planCode, accessToken))
+    ?? CANONICAL_EMAIL_ORIGIN
   const isCN = birthData.locale === 'zh-CN'
   const emailFont = isCN
     ? "'PingFang SC','Microsoft YaHei','Noto Sans SC',sans-serif"
@@ -4534,22 +4992,29 @@ export async function sendReportEmail(
 
   const emailHighlights = getEmailHighlights(planCode, reportContent, isCN)
   const highlightsHtml = emailHighlights.map(h =>
-    `<div style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0 0 8px 0;"><span style="color:#c9a84c;margin-right:6px;">✦</span>${h}</div>`
+    `<div style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0 0 8px 0;"><span style="color:#c9a84c;margin-right:6px;">✦</span>${escapeHtmlText(h)}</div>`
   ).join('')
 
   // T12b v5.10.370 — sendEmailWithRetry 取代 raw new Resend + send + 手動 timeout
   // helper 自帶:retry 3 次(2/5/12s)+ dead-letter + 30s timeout(可覆蓋)+ headers 透傳
   // List-Unsubscribe header(Gmail/Yahoo 2024 大宗寄件人硬要求、https://support.google.com/mail/answer/81126)
-  const unsubscribeUrl = getUnsubscribeUrl(customerEmail)
-  const listUnsubscribeHeaders = {
+  let unsubscribeUrl: string | null = null
+  try {
+    unsubscribeUrl = trustedHttpsEmailUrl(getUnsubscribeUrl(customerEmail))
+  } catch { /* missing unsubscribe signing secret must not create an untrusted link */ }
+  const listUnsubscribeHeaders = unsubscribeUrl ? {
     'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:unsubscribe@jianyuan.life?subject=unsubscribe>`,
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-  }
+  } : undefined
+  const unsubscribeHtml = unsubscribeUrl
+    ? `<p style="font-size:11px;color:#bbb;text-align:center;margin-top:20px;">如不想收到此類郵件，<a href="${escapeHtmlText(unsubscribeUrl)}" style="color:#999;">點此退訂</a></p>`
+    : ''
 
-  let sendResult: { id?: string } | null = null
-  let sendErr: unknown = null
-  try {
-    const reportSendOutcome = await sendEmailWithRetry({
+  const supabase = getSupabase()
+  const delivery = await deliverClaimedCompletionEmail(
+    supabase,
+    reportId,
+    {
     from: emailText.from,
     to: customerEmail,
     emailType: 'report_ready',
@@ -4557,166 +5022,195 @@ export async function sendReportEmail(
     metadata: { plan: planCode, analyses: analysesCount, source: 'workflow-step' },
     headers: listUnsubscribeHeaders,
     timeoutMs: 30000,  // 保留原 30s timeout、helper 內部會 race
-    subject: emailText.subject,
+    subject: sanitizeEmailSubject(emailText.subject),
     html: `<!DOCTYPE html>
 <html lang="${emailLang}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#0d1117;font-family:${emailFont};">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
-      <div style="color:#c9a84c;font-size:24px;font-weight:700;letter-spacing:4px;">${emailText.brand}</div>
-      <div style="color:#6b7280;font-size:12px;margin-top:4px;">${emailText.subtitle}</div>
+      <div style="color:#c9a84c;font-size:24px;font-weight:700;letter-spacing:4px;">${escapeHtmlText(emailText.brand)}</div>
+      <div style="color:#6b7280;font-size:12px;margin-top:4px;">${escapeHtmlText(emailText.subtitle)}</div>
     </div>
     <div style="background:linear-gradient(135deg,#1a2a4a,#0d1a2e);border:1px solid #2a3a5a;border-radius:16px;padding:32px;margin-bottom:24px;">
-      <div style="color:#c9a84c;font-size:13px;letter-spacing:2px;margin-bottom:8px;">${emailText.notice}</div>
-      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">${emailText.title}</h1>
-      <p style="color:#9ca3af;font-size:14px;margin:0 0 24px 0;">${emailText.systemCount}</p>
+      <div style="color:#c9a84c;font-size:13px;letter-spacing:2px;margin-bottom:8px;">${escapeHtmlText(emailText.notice)}</div>
+      <h1 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">${escapeHtmlText(emailText.title)}</h1>
+      <p style="color:#9ca3af;font-size:14px;margin:0 0 24px 0;">${escapeHtmlText(emailText.systemCount)}</p>
       <div style="background:rgba(255,255,255,0.05);border-left:3px solid #c9a84c;border-radius:4px;padding:16px;margin-bottom:24px;">
         ${highlightsHtml}
       </div>
       <div style="text-align:center;">
-        <a href="${reportUrl}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;letter-spacing:1px;">${emailText.cta}</a>
-        <p style="color:#6b7280;font-size:12px;margin:12px 0 0 0;">${emailText.linkNote}</p>
+        <a href="${escapeHtmlText(reportUrl)}" style="display:inline-block;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#0d1117;font-weight:700;font-size:16px;padding:14px 40px;border-radius:8px;text-decoration:none;letter-spacing:1px;">${escapeHtmlText(emailText.cta)}</a>
+        <p style="color:#6b7280;font-size:12px;margin:12px 0 0 0;">${escapeHtmlText(emailText.linkNote)}</p>
       </div>
     </div>
     ${!isChumenjiPlan(planCode) ? `
     <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;margin-bottom:24px;">
-      <div style="color:#c9a84c;font-size:13px;font-weight:600;margin-bottom:8px;">${emailText.promoTitle}</div>
+      <div style="color:#c9a84c;font-size:13px;font-weight:600;margin-bottom:8px;">${escapeHtmlText(emailText.promoTitle)}</div>
       <p style="color:#9ca3af;font-size:13px;line-height:1.7;margin:0 0 16px 0;">${emailText.promoBody}</p>
-      <a href="https://jianyuan.life/pricing" style="color:#c9a84c;font-size:13px;text-decoration:none;">${emailText.promoLink}</a>
+      <a href="https://jianyuan.life/pricing" style="color:#c9a84c;font-size:13px;text-decoration:none;">${escapeHtmlText(emailText.promoLink)}</a>
     </div>` : ''}
     <div style="text-align:center;color:#4b5563;font-size:12px;line-height:1.8;">
-      <p>${emailText.footer} <a href="mailto:support@jianyuan.life" style="color:#c9a84c;">support@jianyuan.life</a></p>
-      <p style="margin-top:8px;">${emailText.copyright}</p>
-      ${getUnsubscribeHtml(customerEmail)}
+      <p>${escapeHtmlText(emailText.footer)} <a href="mailto:support@jianyuan.life" style="color:#c9a84c;">support@jianyuan.life</a></p>
+      <p style="margin-top:8px;">${escapeHtmlText(emailText.copyright)}</p>
+      ${unsubscribeHtml}
     </div>
   </div>
 </body>
 </html>`,
-    })
-    // T12b v5.10.370 — sendEmailWithRetry 已自帶 record + dead-letter
-    if (reportSendOutcome.success) {
-      sendResult = { id: reportSendOutcome.resendId }
-    } else {
-      sendErr = new Error(reportSendOutcome.error || 'sendEmailWithRetry failed')
-    }
-  } catch (err) {
-    sendErr = err
-  }
+    },
+    sendEmailWithRetry,
+  )
 
-  if (sendErr) {
-    // Telegram 告警 + 拋錯讓 workflow 重試
-    // (helper 已 dead-letter 進 email_send_log + audit-event critical、此處仍保留 workflow throw 以觸發 maxRetries=2)
+  if (!delivery.sent) {
+    // The durable claim is intentionally never released on an uncertain
+    // provider/finalize outcome. Workflow retries will observe the same claim
+    // and stop, while operators reconcile `needs_manual`.
     try {
-      await notifyEmailFailed(reportId, customerEmail,
-        sendErr instanceof Error ? sendErr.message : String(sendErr))
+      await notifyEmailFailed(reportId, customerEmail, delivery.reason)
     } catch { /* 告警失敗不阻塞 */ }
-    console.error('Resend 寄信失敗(已 dead-letter、workflow retry):', sendErr)
-    throw sendErr
+    console.error('Resend 寄信未完成(已進耐久 claim 保守狀態)', {
+      ...reportLogContext(reportId),
+      errorType: delivery.reason,
+    })
+    return false
   }
-  void sendResult  // 保留 sendResult 變數參考(未來可用 resendId 做 follow-up tracking)
 
-  // 更新 email_sent_at
-  const supabase = getSupabase()
-  await supabase.from('paid_reports')
-    .update({ email_sent_at: new Date().toISOString() })
-    .eq('id', reportId)
-
-  console.log(`✅ Email 已寄送至 ${customerEmail}`)
+  console.log('Email 已寄送', reportLogContext(reportId))
   return true
 }
 sendReportEmail.maxRetries = 2
 
 // ── Step 6: 標記失敗 + 發送告警 Email + 客戶致歉信 ──
 // L4 P0 升級：達最終失敗（retry_count >= 3）時自動寄客戶致歉信，承諾 24 小時人工接手協助補開新單（依電子商品慣例不支援退款，v5.7.8 升級）
+function warnReportTerminalTransitionNoop(
+  reportId: string,
+  targetStatus: 'failed' | 'needs_human_review',
+): void {
+  console.warn({
+    event: 'report_terminal_transition_noop',
+    ...reportLogContext(reportId),
+    targetStatus,
+  })
+}
+
 export async function markReportFailed(reportId: string, errorMessage: string) {
   "use step";
   const supabase = getSupabase()
+  const failureCode = operationalFailureCode(errorMessage)
 
-  // 先查報告資料（供致歉信使用 + 判斷是否達最終失敗）
+  // 以條件 UPDATE 同時完成狀態轉移與讀取通知資料。
+  // failed / needs_human_review / completed / refunded 等終態一律不重寫，
+  // 0 row 必須在任何告警、Email 或其他副作用前直接結束。
   // v5.10.461 🔴 P0 真因修(2026-07-03 production 實測):paid_reports 根本沒有 apology_sent_at 欄位
   //   (42703 column does not exist)→ 原 select 含它 = 整句 400 → reportData 一直是 null →
   //   告警 Email 全「未知」+ 客戶致歉信從未寄出過(guard 讀不到 customer_email)。
   //   修:select 去掉該欄位;防重寄改查 email_send_log(hasApologyBeenSent、表確定存在)。
   //   migration(supabase/migrations/add_apology_sent_at.sql)待老闆 apply 後、欄位作第二防線。
-  const { data: reportData } = await supabase
-    .from('paid_reports')
-    .select('customer_email, plan_code, retry_count, birth_data')
-    .eq('id', reportId)
-    .maybeSingle()
-
-  await supabase.from('paid_reports').update({
+  const { data: transitionedRows, error: transitionError } = await supabase.from('paid_reports').update({
     status: 'failed',
-    error_message: errorMessage,
-  }).eq('id', reportId)
-  console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
+    error_message: failureCode,
+  })
+    .eq('id', reportId)
+    .in('status', ['pending', 'generating'])
+    .select('id, customer_email, plan_code, retry_count, birth_data')
+
+  if (transitionError) {
+    throw new Error('標記報告失敗狀態時出錯')
+  }
+
+  const reportData = transitionedRows?.[0]
+  if (!reportData) {
+    warnReportTerminalTransitionNoop(reportId, 'failed')
+    return
+  }
+
+  console.error('報告標記為失敗', {
+    ...reportLogContext(reportId),
+    errorType: failureCode,
+  })
 
   // Phase 5 v5.10.382 — Sentry critical event(老闆灌 SENTRY_DSN 後即生效、未設則 fallback console)
   try {
     const { captureMessage } = await import('@/lib/ai/observability/sentry-prod')
     const isFinalFail = (reportData?.retry_count ?? 0) >= 3
-    await captureMessage(`報告生成失敗:${errorMessage}`, isFinalFail ? 'fatal' : 'error', {
+    const reportFingerprint = availableOperationalFingerprint(reportId)
+    const planCode = safePlanCode(reportData?.plan_code)
+    await captureMessage('report_generation_failed', isFinalFail ? 'fatal' : 'error', {
       tags: {
-        reportId,
-        planCode: reportData?.plan_code || 'unknown',
+        ...(reportFingerprint ? { reportFingerprint } : {}),
+        planCode,
         retryCount: reportData?.retry_count ?? 0,
         isFinalFail,
       },
       extra: {
-        customerEmail: reportData?.customer_email || 'unknown',
-        errorMessage,
+        errorType: failureCode,
       },
-      fingerprint: ['report-generation-failed', reportData?.plan_code || 'unknown'],
+      fingerprint: ['report-generation-failed', planCode],
     })
   } catch (e) {
-    console.warn('Sentry capture 失敗(不阻塞):', e)
+    console.warn('Sentry capture 失敗(不阻塞)', { errorType: operationalErrorClass(e) })
   }
 
   // Telegram 即時告警給老闆
   try {
     const { notifyFailed, notifyWorkflowFailed } = await import('@/lib/ai/observability/telegram')
-    await notifyFailed(reportId, errorMessage)
+    const errorType = failureCode
+    await notifyFailed(reportId, errorType)
     // 如果已達 3 次重試仍失敗、再發一次 workflow 崩潰告警(需立刻人工介入)
     if ((reportData?.retry_count ?? 0) >= 3) {
-      await notifyWorkflowFailed(reportId, errorMessage, 'final_failure_after_3_retries')
+      await notifyWorkflowFailed(reportId, errorType, 'final_failure_after_3_retries')
     }
   } catch (e) {
-    console.warn('Telegram 告警失敗（不阻塞）:', e)
+    console.warn('Telegram 告警失敗（不阻塞）', { errorType: operationalErrorClass(e) })
   }
 
   // T12b v5.10.370 — 不再 new Resend、改用 sendEmailWithRetry helper(retry + dead-letter)
 
   // 發送告警 Email 通知管理員
   try {
-    const alertSubj = `⚠️ 報告生成失敗：${reportId.slice(0, 8)}`
+    const reportFingerprint = availableOperationalFingerprint(reportId)
+    const errorType = failureCode
+    const alertSubj = sanitizeEmailSubject(
+      reportFingerprint
+        ? `報告生成失敗 [${reportFingerprint}]`
+        : '報告生成失敗',
+    )
     const alertSendResult = await sendEmailWithRetry({
       from: '鑒源系統告警 <reports@jianyuan.life>',
       to: 'support@jianyuan.life',
       emailType: 'admin_alert',
-      reportId,
-      metadata: { errorMessage, source: 'workflow-step6-alert' },
+      reportId: null,
+      metadata: {
+        errorType,
+        ...(reportFingerprint ? { reportFingerprint } : {}),
+      },
       subject: alertSubj,
       html: `
         <h2>報告生成失敗告警</h2>
-        <p><strong>報告 ID：</strong>${reportId}</p>
-        <p><strong>錯誤訊息：</strong>${errorMessage}</p>
-        <p><strong>客戶 Email：</strong>${reportData?.customer_email || '（未知）'}</p>
-        <p><strong>方案：</strong>${reportData?.plan_code || '（未知）'}</p>
-        <p><strong>重試次數：</strong>${reportData?.retry_count ?? 0}</p>
-        <p><strong>時間：</strong>${new Date().toISOString()}</p>
+        <p><strong>錯誤類別：</strong>${escapeHtmlText(errorType)}</p>
+        ${reportFingerprint
+          ? `<p><strong>報告指紋：</strong>${escapeHtmlText(reportFingerprint)}</p>`
+          : ''}
         <hr />
         <p>請前往 <a href="https://jianyuan.life/jamie/orders">管理後台</a> 查看並處理。</p>
       `,
     })
     if (alertSendResult.success) {
-      console.log(`📧 告警 Email 已發送（報告 ${reportId}）attempts=${alertSendResult.attempts}`)
+      console.log('告警 Email 已發送', {
+        ...(reportFingerprint ? { reportFingerprint } : {}),
+        attempts: alertSendResult.attempts,
+      })
     } else {
       // helper 已 dead-letter + audit-event critical
-      console.warn(`[step6-alert] dead-letter:報告 ${reportId} attempts=${alertSendResult.attempts}`)
+      console.warn('[step6-alert] dead-letter', {
+        ...(reportFingerprint ? { reportFingerprint } : {}),
+        attempts: alertSendResult.attempts,
+      })
     }
   } catch (emailErr) {
     // sendEmailWithRetry 已內部 catch、外層只接 fatal
-    console.error('告警 Email fatal:', emailErr)
+    console.error('告警 Email fatal', { errorType: operationalErrorClass(emailErr) })
   }
 
   // 客戶致歉信：僅在達最終失敗（retry_count >= 3）且尚未寄過時發送
@@ -4738,7 +5232,10 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       const { subject, from, html } = buildApologyEmail({
         reportId, planCode, customerEmail: customerEmailFailed, locale: rawLocale,
       })
-      const unsubscribeUrlApology = getUnsubscribeUrl(customerEmailFailed)
+      let unsubscribeUrlApology: string | null = null
+      try {
+        unsubscribeUrlApology = trustedHttpsEmailUrl(getUnsubscribeUrl(customerEmailFailed))
+      } catch { /* omit the header when a signed trusted URL cannot be produced */ }
 
       let apologyResId: string | null = null
       let apologyErr: unknown = null
@@ -4750,11 +5247,11 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
         emailType: 'report_failed_apology',
         reportId,
         metadata: { plan: planCode, retryCount, source: 'workflow-step6-apology' },
-        headers: {
+        headers: unsubscribeUrlApology ? {
           'List-Unsubscribe': `<${unsubscribeUrlApology}>, <mailto:unsubscribe@jianyuan.life?subject=unsubscribe>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        },
-        subject,
+        } : undefined,
+        subject: sanitizeEmailSubject(subject),
         html,
       })
         // T12b v5.10.370 — sendEmailWithRetry 已自動 record + dead-letter
@@ -4769,10 +5266,12 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
       void apologyResId  // 保留變數參考(未來追蹤用)
 
       if (apologyErr) {
-        try { await notifyEmailFailed(reportId, customerEmailFailed,
-          apologyErr instanceof Error ? apologyErr.message : String(apologyErr))
+        try { await notifyEmailFailed(reportId, customerEmailFailed, operationalErrorClass(apologyErr))
         } catch { /* ignore */ }
-        console.error('客戶致歉信發送失敗:', apologyErr)
+        console.error('客戶致歉信發送失敗', {
+          ...reportLogContext(reportId),
+          errorType: operationalErrorClass(apologyErr),
+        })
       } else {
         // 紀錄已寄（防重複）；若欄位尚未建立僅 warn，不中斷流程
         try {
@@ -4780,13 +5279,18 @@ export async function markReportFailed(reportId: string, errorMessage: string) {
             .update({ apology_sent_at: new Date().toISOString() })
             .eq('id', reportId)
         } catch (updErr) {
-          console.warn('apology_sent_at 更新失敗（可能欄位尚未建立）:', updErr)
+          console.warn('apology_sent_at 更新失敗（可能欄位尚未建立）', {
+            errorType: operationalErrorClass(updErr),
+          })
         }
-        console.log(`📧 客戶致歉信已寄至 ${customerEmailFailed}（報告 ${reportId.slice(0, 8)}）`)
+        console.log('客戶致歉信已寄出', reportLogContext(reportId))
       }
     } catch (apologyErr) {
       // 致歉信失敗不影響 failed 標記
-      console.error('客戶致歉信發送失敗:', apologyErr)
+      console.error('客戶致歉信發送失敗', {
+        ...reportLogContext(reportId),
+        errorType: operationalErrorClass(apologyErr),
+      })
     }
   }
 }
@@ -4802,6 +5306,18 @@ export async function closeProgressStream() {
 // Post-Gen 5 LLM QA Pipeline (2026-04-18)：
 //   5 LLM 評分連續 3 次 < 門檻 → 不交付、不 failed，改為 needs_human_review
 //   老闆到 /jamie/quality-reports 手動審理（放行 / 重生成 / 退款）
+function isMissingQaSnapshotColumnError(error: {
+  code?: string | null
+  message?: string | null
+} | null): error is { code: string; message: string } {
+  return Boolean(
+    error
+    && (error.code === '42703' || error.code === 'PGRST204')
+    && typeof error.message === 'string'
+    && error.message.includes('qa_snapshot'),
+  )
+}
+
 export async function markReportNeedsHumanReview(
   reportId: string,
   reason: string,
@@ -4818,10 +5334,11 @@ export async function markReportNeedsHumanReview(
 ): Promise<void> {
   "use step";
   const supabase = getSupabase()
+  const reasonType = operationalFailureCode(reason)
 
   const updatePayload: Record<string, unknown> = {
     status: 'needs_human_review',
-    error_message: `[需人工審核] ${reason}`.slice(0, 500),
+    error_message: `[需人工審核] ${reasonType}`,
   }
 
   // v5.3.18：把 Claude 寫的內容也存起來，避免 /jamie/quality-reports 查不到原文
@@ -4848,44 +5365,71 @@ export async function markReportNeedsHumanReview(
       min: fiveLLMSnapshot.min,
       max: fiveLLMSnapshot.max,
       severity: fiveLLMSnapshot.severity,
-      critical_errors: fiveLLMSnapshot.criticalErrors,
+      critical_errors: fiveLLMSnapshot.criticalErrors.map(() => 'quality_gate_failure'),
+      critical_error_count: fiveLLMSnapshot.criticalErrors.length,
     }
   }
 
-  const { error } = await supabase.from('paid_reports')
+  let { data: transitionedRows, error: transitionError } = await supabase.from('paid_reports')
     .update(updatePayload)
     .eq('id', reportId)
+    .in('status', ['pending', 'generating'])
+    .select('id, plan_code')
 
-  if (error) {
-    // qa_snapshot 欄位不存在 → fallback 不帶該欄位再試一次
-    console.warn('markReportNeedsHumanReview 含 qa_snapshot 失敗，fallback:', error.message)
+  if (isMissingQaSnapshotColumnError(transitionError)) {
+    // 僅在資料庫明確指出 qa_snapshot 欄位不存在時，才不帶該欄位再試一次。
+    // 權限、網路、constraint 或其他錯誤必須原樣失敗，避免第二次更新掩蓋根因。
+    console.warn('markReportNeedsHumanReview 含 qa_snapshot 失敗，fallback', {
+      errorType: operationalErrorClass(transitionError),
+    })
     const fallbackPayload: Record<string, unknown> = {
       status: 'needs_human_review',
-      error_message: `[需人工審核] ${reason}`.slice(0, 500),
+      error_message: `[需人工審核] ${reasonType}`,
     }
     if (reportContent && reportContent.length > 0) {
       fallbackPayload.report_result = { ai_content: reportContent }
     }
-    await supabase.from('paid_reports').update(fallbackPayload).eq('id', reportId)
+    const fallbackResult = await supabase.from('paid_reports')
+      .update(fallbackPayload)
+      .eq('id', reportId)
+      .in('status', ['pending', 'generating'])
+      .select('id, plan_code')
+    transitionedRows = fallbackResult.data
+    transitionError = fallbackResult.error
+  }
+
+  if (transitionError) {
+    throw new Error('標記報告人工審核狀態時出錯')
+  }
+
+  const transitionedRow = transitionedRows?.[0]
+  if (!transitionedRow) {
+    warnReportTerminalTransitionNoop(reportId, 'needs_human_review')
+    return
   }
 
   // v5.10.461 P0-2 修(bizaudit「needs_human_review 卡死零通知」):
   //   notifyNeedsHumanReview 自定義以來從未被接線 → 客戶付了錢報告卡死、ops 不知道。
   //   補接 Telegram 告警(失敗不阻塞)。
   try {
-    const { data: row } = await supabase.from('paid_reports').select('plan_code').eq('id', reportId).single()
     await notifyNeedsHumanReview(
       reportId,
-      row?.plan_code || 'unknown',
+      safePlanCode(transitionedRow.plan_code),
       fiveLLMSnapshot ? 3 : 0,
       fiveLLMSnapshot?.avg ?? 0,
-      fiveLLMSnapshot?.criticalErrors || [],
+      fiveLLMSnapshot?.criticalErrors.map(() => 'quality_gate_failure') || [],
     )
   } catch (tgErr) {
-    console.warn('needs_human_review Telegram 告警失敗(不阻塞):', tgErr)
+    console.warn('needs_human_review Telegram 告警失敗(不阻塞)', {
+      errorType: operationalErrorClass(tgErr),
+    })
   }
 
-  console.error(`報告 ${reportId} 標記為 needs_human_review: ${reason}（含 ${reportContent?.length ?? 0} 字 AI 內容）`)
+  console.error('報告標記為 needs_human_review', {
+    ...reportLogContext(reportId),
+    reasonType,
+    contentCharacterCount: reportContent?.length ?? 0,
+  })
 }
 
 // ── 匯出輔助常數（供 workflow 使用） ──

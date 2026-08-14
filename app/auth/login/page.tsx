@@ -11,6 +11,10 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect')
   const safeRedirect = getSafeRedirect(redirectTo, '/dashboard')
+  const isCheckoutReturn = Boolean(redirectTo) && safeRedirect.startsWith('/checkout')
+  const signupHref = isCheckoutReturn
+    ? `/auth/signup?redirect=${encodeURIComponent(safeRedirect)}`
+    : '/auth/signup'
 
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
@@ -55,7 +59,7 @@ function LoginForm() {
       title="歡迎回來"
       description="登入鑑源帳號，繼續查看報告與生成進度。"
     >
-      {redirectTo && redirectTo.startsWith('/checkout') && (
+      {isCheckoutReturn && (
         <p className="jy-alert" role="status">
           購買報告前需先登入或註冊；完成後會自動回到結帳頁，已填資料不會在這一步送出。
         </p>
@@ -113,7 +117,7 @@ function LoginForm() {
         </div>
 
         <button type="submit" disabled={loading} className="jy-button jy-button--primary">
-          {loading ? '登入中...' : '登入並查看報告'}
+          {loading ? '登入中...' : isCheckoutReturn ? '登入並繼續結帳' : '登入並查看報告'}
         </button>
       </form>
 
@@ -123,7 +127,7 @@ function LoginForm() {
       </button>
 
       <p className="jy-auth-switch">
-        還沒有帳號？ <Link href="/auth/signup">免費建立帳號</Link>
+        還沒有帳號？ <Link href={signupHref}>免費建立帳號</Link>
       </p>
     </AuthShell>
   )

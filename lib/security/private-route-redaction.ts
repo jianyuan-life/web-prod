@@ -1,17 +1,42 @@
 const PRIVATE_CONSULTATION_PATH = '/consultation/[private]'
 
-function pathnameOf(value: string): string {
+function canonicalizePrivateReferenceCandidate(value: string): string {
+  let canonical = value
+  for (let round = 0; round < 3; round += 1) {
+    let next = canonical
+      .replace(/\\\//gu, '/')
+      .replace(/&#(?:x0*2f|0*47);/giu, '/')
+    try {
+      next = decodeURIComponent(next)
+    } catch {
+      // Decode only the separators needed to expose a hidden route when an
+      // unrelated malformed percent sequence makes decodeURIComponent fail.
+      next = next
+        .replace(/%25/giu, '%')
+        .replace(/%2f/giu, '/')
+        .replace(/%3a/giu, ':')
+        .replace(/%3f/giu, '?')
+        .replace(/%23/giu, '#')
+    }
+    if (next === canonical) break
+    canonical = next
+  }
+  return canonical
+}
+
+function pathnameOfCanonical(value: string): string {
+  const canonical = canonicalizePrivateReferenceCandidate(value)
   try {
-    return new URL(value, 'https://private-route.invalid').pathname
+    return new URL(canonical, 'https://private-route.invalid').pathname
   } catch {
-    return value.split(/[?#]/u, 1)[0] || ''
+    return canonical.split(/[?#]/u, 1)[0] || ''
   }
 }
 
 export function isPrivateConsultationUrl(value: string): boolean {
   if (typeof value !== 'string' || value.length === 0) return false
-  const pathname = pathnameOf(value)
-  return pathname === '/consultation' || pathname.startsWith('/consultation/')
+  const pathname = pathnameOfCanonical(value)
+  return /^\/+consultation(?:\/+|$)/iu.test(pathname)
 }
 
 /**
@@ -22,15 +47,36 @@ export function isPrivateConsultationUrl(value: string): boolean {
 export function redactConsultationUrl(value: string): string {
   if (!isPrivateConsultationUrl(value)) return value
 
-  if (/^[a-z][a-z\d+.-]*:\/\//iu.test(value)) {
+  const canonical = canonicalizePrivateReferenceCandidate(value)
+  if (/^[a-z][a-z\d+.-]*:\/\//iu.test(canonical)) {
     try {
-      return `${new URL(value).origin}${PRIVATE_CONSULTATION_PATH}`
+      return `${new URL(canonical).origin}${PRIVATE_CONSULTATION_PATH}`
     } catch {
       return PRIVATE_CONSULTATION_PATH
     }
   }
 
   return PRIVATE_CONSULTATION_PATH
+}
+
+/**
+ * Reduce an analytics page value to one canonical pathname. Private bearer
+ * routes are replaced before URL parsing; query strings and fragments never
+ * cross the server ingress boundary.
+ */
+export function canonicalizeTelemetryPath(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 2048) return null
+  if (isPrivateConsultationUrl(value)) return PRIVATE_CONSULTATION_PATH
+  if (/%(?![\da-f]{2})/iu.test(value)) return null
+  try {
+    const isAbsolute = /^[a-z][a-z\d+.-]*:/iu.test(value)
+    if (!isAbsolute && (!value.startsWith('/') || value.startsWith('//'))) return null
+    const url = new URL(value, 'https://analytics.invalid')
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+    return url.pathname.length <= 1024 ? url.pathname : null
+  } catch {
+    return null
+  }
 }
 
 const ABSOLUTE_CONSULTATION_REFERENCE =
@@ -40,24 +86,6 @@ const RELATIVE_CONSULTATION_REFERENCE =
 const ENCODED_CONSULTATION_REFERENCE =
   /(?:https?%3a%2f%2f[^\s"'<>]+)?%2fconsultation%2f[a-z\d._~-]+(?:%3f[^\s"'<>]*)?/giu
 const PRIVATE_REFERENCE_DETECTOR = /\/consultation\/[^\s"'<>]+/iu
-
-function canonicalizePrivateReferenceCandidate(value: string): string {
-  let canonical = value
-  for (let round = 0; round < 3; round += 1) {
-    let next = canonical
-      .replace(/\\\//gu, '/')
-      .replace(/&#(?:x0*2f|0*47);/giu, '/')
-    try {
-      next = decodeURIComponent(next)
-    } catch {
-      // Keep the slash/entity normalization even when unrelated percent text
-      // is malformed. The original is returned unless a private path appears.
-    }
-    if (next === canonical) break
-    canonical = next
-  }
-  return canonical
-}
 
 function redactCanonicalConsultationReferences(value: string): string {
   return value

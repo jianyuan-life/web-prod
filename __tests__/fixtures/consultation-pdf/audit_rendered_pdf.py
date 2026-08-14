@@ -142,6 +142,32 @@ def _validate_text_rect_bounds(
     )
 
 
+def _strip_recurring_page_chrome(page_text: str, spec: dict) -> str:
+    """Remove only the exact, report-bound header/footer text artifacts."""
+    header_suffix = f"{spec['planTitle']} · {spec['asOfDate']}"
+    report_prefix = f"報告編號 {spec['reportNumber']}"
+    cover_prefix = f"JianYuan · {spec['plan']}"
+    body_lines: list[str] = []
+    for line in page_text.splitlines():
+        normalized = line.strip()
+        if "LIVING DOSSIER" in normalized or "PRIVATE COPY" in normalized:
+            continue
+        if (
+            normalized.startswith("鑑源 JIANYUAN · 諮詢報告")
+            and header_suffix in normalized
+        ):
+            continue
+        if (
+            normalized.startswith(report_prefix)
+            and re.search(r"\d+\s*/\s*\d+\s*$", normalized)
+        ):
+            continue
+        if normalized.startswith(cover_prefix) and "個人專屬報告" in normalized:
+            continue
+        body_lines.append(line)
+    return "\n".join(body_lines)
+
+
 def _run_policy_self_test() -> dict:
     import tempfile
 
@@ -216,6 +242,27 @@ def _run_policy_self_test() -> dict:
             ),
         )
 
+    chrome_spec = {
+        "plan": "G15",
+        "planTitle": "家族藍圖",
+        "reportNumber": "G15-CALIBRATION",
+        "asOfDate": "2026-08-09",
+    }
+    marker = "請在兩週後回看第8章第11段，再保留真正有幫助的部分"
+    split_pages = [
+        "請在兩\n鑑源 JIANYUAN · 諮詢報告 家族藍圖 · 2026-08-09\n"
+        "報告編號 G15-CALIBRATION 61 / 83",
+        "週後回看第8章第11段，再保留真正有幫助的部分",
+    ]
+    normalized_body = re.sub(
+        r"\s+",
+        "",
+        "\n".join(_strip_recurring_page_chrome(page, chrome_spec) for page in split_pages),
+    )
+    assert marker in normalized_body, (
+        "page-break marker must survive exact recurring-chrome removal"
+    )
+
     assert rejected == [
         "marked-false",
         "visual-order-bottom-top-middle",
@@ -225,7 +272,11 @@ def _run_policy_self_test() -> dict:
         "text-below-page-bounds",
         "receipt-same-bytes-toctou",
     ]
-    return {"status": "passed", "rejectedCounterexamples": rejected}
+    return {
+        "status": "passed",
+        "rejectedCounterexamples": rejected,
+        "verifiedInvariants": ["page-break-chrome-normalization"],
+    }
 
 
 def validate_manifest(manifest: dict) -> None:
@@ -780,13 +831,7 @@ def audit_one(spec: dict, output_directory: Path) -> dict:
     )
     extracted = "\n".join(page_texts)
     body_page_texts = [
-        "\n".join(
-            line
-            for line in text.splitlines()
-            if "LIVING DOSSIER" not in line
-            and not line.startswith("報告編號 ")
-            and "PRIVATE COPY" not in line
-        )
+        _strip_recurring_page_chrome(text, spec)
         for text in page_texts
     ]
     body_extracted = "\n".join(body_page_texts)

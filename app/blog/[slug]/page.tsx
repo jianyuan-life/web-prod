@@ -3,6 +3,7 @@ import { BLOG_POSTS, getPostBySlug } from '@/lib/blog'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { safeHtmlForBlog } from '@/lib/sanitize'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 // v5.10.197 hot-fix:從 isomorphic-dompurify 改用 lib/sanitize.ts safeHtmlForBlog(sanitize-html、純 JS)
 // 原因:isomorphic-dompurify 在 Vercel Fluid Compute cold start `new JSDOM(...)` 失敗、
@@ -192,7 +193,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
             想更深入了解自己的命格？
           </h2>
           <p className="text-sm text-text-muted mb-6 max-w-md mx-auto">
-            免費速算工具，30 秒看到你的基本命格。想要完整分析，人生藍圖用 14 套系統交叉驗證。
+            {PUBLIC_CLAIMS.blog.cta}
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link href="/tools/bazi" className="px-6 py-3 bg-gold text-dark font-bold rounded-lg text-sm btn-glow">

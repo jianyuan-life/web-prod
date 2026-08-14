@@ -22,11 +22,16 @@ export function buildStripeCheckoutSessionParams(input: {
   pointsUserId?: string
   locale?: string
   draftId?: string
+  nowEpochSeconds?: number
 }): URLSearchParams {
   const params = new URLSearchParams()
   params.set('mode', 'payment')
   params.set('success_url', `${input.siteUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`)
   params.set('cancel_url', `${input.siteUrl}/pricing`)
+  if (input.planCode === 'C' || input.planCode === 'G15') {
+    const nowEpochSeconds = Math.floor(input.nowEpochSeconds ?? Date.now() / 1000)
+    params.set('expires_at', String(nowEpochSeconds + 35 * 60))
+  }
   params.set('line_items[0][price_data][currency]', 'usd')
   params.set('line_items[0][price_data][product_data][name]', `鑒源命理 - ${input.planName}`)
   params.set('line_items[0][price_data][unit_amount]', input.finalAmount.toString())

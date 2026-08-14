@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import PriceTag from './PriceTag'
+import ConsultationCheckoutTrigger from './consultation/ConsultationCheckoutTrigger'
 
 // v5.10.467:方案陣容收斂(2026-08-01 拍板:只售 C / G15 / E3,SSOT = lib/plan-names.ts VISIBLE_PLAN_CODES)
 const PLANS = [
@@ -11,11 +12,11 @@ const PLANS = [
     price: 89,
     recommended: true,
     eyebrow: '完整人生分析',
-    forWhom: '適合想一次理解性格、事業、關係與人生階段',
-    desc: '十四套東西方系統交叉驗證，完整檢視性格天賦、事業財運、感情健康與大運走勢；正文白話直說結論，每個判斷都可核對命理依據。',
-    features: ['14 套系統交叉驗證', '性格、事業、財運、感情與健康', '未來五年戰略推演與關鍵節點', '刻意練習——具體可執行的改善計劃'],
+    forWhom: '適合想整理性格、壓力反應、關係、工作與人生階段',
+    desc: '把十四套命理系統放在同一份分析中對照；共識、分歧、限制與下一步分開呈現，讓你能用自己的經驗逐項核對。',
+    features: ['14 套系統交叉參照', '重要模式與人生階段整理', '依目前年齡調整閱讀重點', '分階段行動與自我觀察建議'],
     delivery: '網頁重點版 + PDF 完整版',
-    eta: '預計約 30–60 分鐘',
+    eta: '通常需 30 分鐘以上，完成後寄信通知',
   },
   {
     code: 'G15',
@@ -23,10 +24,10 @@ const PLANS = [
     price: 59,
     eyebrow: '家庭互動分析',
     forWhom: '適合想看懂家人之間互動模式的家庭',
-    desc: '在每位家人完成「人生藍圖」後，深度分析家庭互動關係、溝通模式與共同運勢。',
-    features: ['前提：每位成員先完成人生藍圖', '家族能量圖譜（五行互補/衝突）', '親子教養／夫妻相處具體建議', '家運走勢與共同行動指南'],
-    delivery: '家族互動與整體能量解讀 · 網頁 + PDF',
-    eta: '依家庭成員數量而定',
+    desc: '以同一帳戶內 2–8 份已完成的人生藍圖為基礎，整理每位成員的需要、互動循環、界線與可執行的溝通建議。',
+    features: ['前提：每位成員先完成人生藍圖', '成員視角與兩兩互動分析', '家庭溝通模式、常見誤解與界線', '分階段的家庭行動建議'],
+    delivery: '家族互動報告 · 網頁 + PDF',
+    eta: '依成員數與資料狀況而定，完成後寄信通知',
   },
   {
     code: 'E3',
@@ -87,12 +88,23 @@ export default function PricingCards() {
             <div className="flex justify-between gap-4"><dt>完成時間</dt><dd className="text-right">{plan.eta}</dd></div>
           </dl>
 
-          <Link href={`/checkout?plan=${plan.code}`}
-            className={`jy-button ${plan.recommended ? 'jy-button--primary' : 'jy-button--secondary'}`}
-            aria-label={`選擇${plan.name}，${plan.price} 美元一次性付款`}>
-            選擇「{plan.name}」
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-          </Link>
+          {plan.code === 'C' || plan.code === 'G15' ? (
+            <ConsultationCheckoutTrigger
+              planCode={plan.code}
+              className={`jy-button ${plan.recommended ? 'jy-button--primary' : 'jy-button--secondary'}`}
+              ariaLabel={`選擇${plan.name}，${plan.price} 美元一次性付款；先查看購買須知`}
+            >
+              選擇「{plan.name}」
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            </ConsultationCheckoutTrigger>
+          ) : (
+            <Link href={`/checkout?plan=${plan.code}`}
+              className={`jy-button ${plan.recommended ? 'jy-button--primary' : 'jy-button--secondary'}`}
+              aria-label={`選擇${plan.name}，${plan.price} 美元一次性付款`}>
+              選擇「{plan.name}」
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            </Link>
+          )}
         </article>
       ))}
     </div>

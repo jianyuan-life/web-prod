@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server'
 import { getClientIp } from '@/lib/security/get-client-ip'
-import { redactConsultationUrl } from '@/lib/security/private-route-redaction'
+import { canonicalizeTelemetryPath } from '@/lib/security/private-route-redaction'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -13,15 +13,51 @@ const limit = new Map<string, { count: number; resetTime: number }>()
 const PER_MIN = 60 // 一個 user 一次 page load 最多 ~6 個 vital、60/min 含 10 個 page 已充裕
 const MAX_BODY = 4096
 
-interface VitalPayload {
-  id?: unknown
-  name?: unknown
-  value?: unknown
-  rating?: unknown
-  delta?: unknown
-  navigationType?: unknown
-  page?: unknown
-  ts?: unknown
+type VitalName = 'LCP' | 'INP' | 'FCP' | 'CLS' | 'TTFB' | 'FID'
+type VitalRating = 'good' | 'needs-improvement' | 'poor'
+
+interface ParsedVital {
+  name: VitalName
+  value: number
+  rating: VitalRating
+  page: string
+}
+
+const VITAL_NAMES = new Set<VitalName>(['LCP', 'INP', 'FCP', 'CLS', 'TTFB', 'FID'])
+const VITAL_RATINGS = new Set<VitalRating>(['good', 'needs-improvement', 'poor'])
+const VITAL_KEYS = new Set([
+  'id',
+  'name',
+  'value',
+  'rating',
+  'delta',
+  'navigationType',
+  'page',
+  'ts',
+])
+
+function parseVitalPayload(value: unknown): ParsedVital | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
+  const payload = value as Record<string, unknown>
+  if (Object.keys(payload).some((key) => !VITAL_KEYS.has(key))) return null
+  if (typeof payload.name !== 'string' || !VITAL_NAMES.has(payload.name as VitalName)) return null
+  if (typeof payload.rating !== 'string' || !VITAL_RATINGS.has(payload.rating as VitalRating)) return null
+  if (
+    typeof payload.value !== 'number'
+    || !Number.isFinite(payload.value)
+    || payload.value < 0
+    || payload.value > 600_000
+  ) {
+    return null
+  }
+  const page = canonicalizeTelemetryPath(payload.page)
+  if (!page) return null
+  return {
+    name: payload.name as VitalName,
+    value: payload.value,
+    rating: payload.rating as VitalRating,
+    page,
+  }
 }
 
 export async function POST(request: Request) {
@@ -40,45 +76,42 @@ export async function POST(request: Request) {
   }
 
   try {
-    const contentLength = parseInt(request.headers.get('content-length') || '0', 10)
-    if (contentLength > MAX_BODY) {
-      return new NextResponse(null, { status: 413 })
+    const contentLength = request.headers.get('content-length')
+    if (contentLength !== null) {
+      if (!/^\d+$/u.test(contentLength)) {
+        return new NextResponse(null, { status: 400 })
+      }
+      if (Number(contentLength) > MAX_BODY) {
+        return new NextResponse(null, { status: 413 })
+      }
     }
 
     const body = await request.text()
-    if (body.length > MAX_BODY) {
+    if (new TextEncoder().encode(body).byteLength > MAX_BODY) {
       return new NextResponse(null, { status: 413 })
     }
 
-    let payload: VitalPayload
+    let rawPayload: unknown
     try {
-      payload = JSON.parse(body)
+      rawPayload = JSON.parse(body)
     } catch {
       return new NextResponse(null, { status: 400 })
     }
 
-    // Schema 驗證(寬鬆、有問題就丟)
-    const allowed = ['LCP', 'INP', 'FCP', 'CLS', 'TTFB', 'FID']
-    if (!allowed.includes(String(payload.name))) {
-      return new NextResponse(null, { status: 204 })
-    }
-    const value = Number(payload.value)
-    if (!Number.isFinite(value)) {
-      return new NextResponse(null, { status: 204 })
-    }
+    const payload = parseVitalPayload(rawPayload)
+    if (!payload) return new NextResponse(null, { status: 204 })
 
     // 寫進 Vercel logs(後續可接 Supabase / Datadog)
     console.info('[WEB-VITAL]', JSON.stringify({
       ts: new Date().toISOString(),
-      ip: ip.slice(0, 16), // 截短匿名化
-      name: String(payload.name),
-      value,
-      rating: String(payload.rating || 'unknown'),
-      page: redactConsultationUrl(String(payload.page || '/')),
+      name: payload.name,
+      value: payload.value,
+      rating: payload.rating,
+      page: payload.page,
     }))
 
     return new NextResponse(null, { status: 204 })
-  } catch (err) {
+  } catch {
     return new NextResponse(null, { status: 204 })
   }
 }

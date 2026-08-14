@@ -15,10 +15,17 @@ import CheckoutProgress from '@/components/checkout/CheckoutProgress'
 import CheckoutSecurityNote from '@/components/checkout/CheckoutSecurityNote'
 import TurnstileWidget from '@/components/security/TurnstileWidget'
 import ConsultIntro from '@/components/checkout/ConsultIntro'  // v5.10.420 Phase 2(flag off 不渲染)  // Phase 5 v5.10.382 老闆按鈕 #5(Turnstile bot 防護、checkout 高價值 funnel)
+import G15FinalReviewModal from '@/components/consultation/G15FinalReviewModal'
+import { isConsultationCheckoutPlan } from '@/lib/checkout/consultation-presentation'
 import './checkout-presentation.css'
+import './consultation-checkout-presentation.css'
 
 function CheckoutForm() {
   const ctx = useCheckoutForm()
+  const consultationCheckout = isConsultationCheckoutPlan(ctx.planCode)
+  const checkoutShellClassName = consultationCheckout
+    ? 'checkout-shell checkout-shell--consultation'
+    : 'checkout-shell'
   // v5.10.420 Phase 2 問診式 onboarding(flag NEXT_PUBLIC_FF_CONSULT_ONBOARDING、純呈現層):
   // intro 未完成前只顯示對話卡、完成/跳過後顯示既有完整表單(底層 state 同一份、零資料流改動)
   // Codex L3 P2 修:customer_note 只在單人路徑(useCheckoutForm L565)進 birthData、
@@ -37,11 +44,26 @@ function CheckoutForm() {
   }, [ctx.plan?.name])
 
   if (!ctx.authChecked) {
-    return <div className="checkout-shell py-20 text-center text-text-muted" role="status">驗證登入狀態...</div>
+    if (consultationCheckout && ctx.authError) {
+      return (
+        <div className={checkoutShellClassName}>
+          <section className="checkout-auth-state" role="alert" aria-labelledby="checkout-auth-error-title">
+            <p className="checkout-kicker">登入連線中斷</p>
+            <h1 id="checkout-auth-error-title">目前無法確認登入狀態</h1>
+            <p>{ctx.authError} 您已填寫的頁面資料不會因此送出，也不會因此扣款。</p>
+            <div className="checkout-auth-actions">
+              <button type="button" onClick={ctx.retryAuthCheck}>重新檢查</button>
+              <Link href="/pricing">返回方案</Link>
+            </div>
+          </section>
+        </div>
+      )
+    }
+    return <div className={`${checkoutShellClassName} py-20 text-center text-text-muted`} role="status">正在確認登入狀態…</div>
   }
 
   return (
-    <div className="checkout-shell">
+    <div className={checkoutShellClassName}>
       <FunnelPageHit step="start_checkout" planCode={ctx.planCode} />
       <div className="checkout-frame">
         {/* v5.6.10 (Round C):checkout 加「← 返回方案」鍵(對應 QA P0、防 escape 困住客戶) */}
@@ -56,8 +78,8 @@ function CheckoutForm() {
         </Link>
 
         <header className="checkout-page-heading">
-          <p className="checkout-kicker">Secure commission · 01 / 03</p>
-          <h1>確認委託資料</h1>
+          <p className="checkout-kicker">結帳步驟 · 01 / 03</p>
+          <h1>核對報告資料</h1>
           <p>
             先核對分析所需資料與一次性金額；送出後若需付款，您會前往 Stripe 完成付款。
           </p>
@@ -65,7 +87,7 @@ function CheckoutForm() {
 
         {/* v5.6.10 R3:checkout 進度條(填表 → 付款 → 報告) */}
         <div className="checkout-progress-frame">
-          <CheckoutProgress current={1} />
+          <CheckoutProgress current={1} planCode={consultationCheckout ? ctx.planCode as 'C' | 'G15' : undefined} />
         </div>
 
         {/* v5.10.420 Phase 2:問診式對話卡(flag off=null;完成/跳過前先不攤 12 欄表單、
@@ -111,12 +133,15 @@ function CheckoutForm() {
                 couponError={ctx.couponError}
                 setCouponError={ctx.setCouponError}
                 applyCoupon={ctx.applyCoupon}
+                consultationMode={consultationCheckout}
               />
               <PointsRedeem
                 planCode={ctx.planCode}
                 orderAmount={ctx.totalPrice}
                 couponApplied={ctx.couponApplied}
                 onPointsChange={ctx.handlePointsChange}
+                enforceMutualExclusion={consultationCheckout}
+                couponLoading={consultationCheckout ? ctx.couponLoading : false}
               />
             </div>
           </aside>
@@ -145,152 +170,77 @@ function CheckoutForm() {
           />
         ) : ctx.isG15Plan ? (
           /* G15 家族藍圖：導入已完成的人生藍圖報告 */
+          <>
           <form onSubmit={ctx.handleCheckout} className="checkout-form-card space-y-4" aria-labelledby="g15-form-heading">
             <div>
-              <p className="checkout-order-kicker">Member records</p>
-              <h2 id="g15-form-heading" className="text-xl font-semibold text-cream">選擇家族成員報告</h2>
+              <p className="checkout-order-kicker">家庭成員</p>
+              <h2 id="g15-form-heading" className="text-xl font-semibold text-cream">邀請家族成員授權報告</h2>
             </div>
             <div className="glass rounded-xl p-4 mb-2">
               <p className="text-sm text-text-muted leading-relaxed">
-                從已完成的「人生藍圖」報告中選擇家庭成員，系統會讀取各成員的命理資料進行家族互動分析。
+                每位成年成員須以自己帳號所擁有、已完成的「人生藍圖」加入，並親自登入同意本次使用。
                 <br />
-                <span className="text-gold">至少選擇 2 位，最多 8 位。</span>
+                <span className="text-gold">請輸入 2–8 組不同擁有者的「家族邀請碼」。</span>
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-text-muted/70">
+                成員可在「我的報告」複製家族邀請碼。邀請碼不會開啟報告內容；所有人同意前，購買者也看不到成員姓名或報告資料。
               </p>
             </div>
 
-            {/* 已選取的成員 */}
+            <div className="space-y-3" aria-label="家族邀請碼">
+              {ctx.g15ConsentAccessInputs.map((value, index) => (
+                <div key={`g15-invite-${index}`} className="glass rounded-xl p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <label htmlFor={`g15-invite-${index}`} className="text-sm font-medium text-cream">
+                      成員 {index + 1} 的家族邀請碼
+                    </label>
+                    {ctx.g15ConsentAccessInputs.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => ctx.removeG15ConsentAccessInput(index)}
+                        className="text-xs text-red-300 hover:text-red-200"
+                        aria-label={`移除成員 ${index + 1}`}
+                      >
+                        移除
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    id={`g15-invite-${index}`}
+                    type="text"
+                    autoComplete="off"
+                    value={value}
+                    onChange={(event) => ctx.updateG15ConsentAccessInput(index, event.target.value)}
+                    placeholder="由該成員在「我的報告」複製"
+                    className="mt-2 w-full rounded-lg border border-gold/20 bg-dark-lighter px-3 py-2.5 font-mono text-sm text-white placeholder:font-sans placeholder:text-text-muted/40 focus:border-gold/60 focus:outline-none"
+                  />
+                </div>
+              ))}
+              {ctx.g15ConsentAccessInputs.length < 8 && (
+                <button
+                  type="button"
+                  onClick={ctx.addG15ConsentAccessInput}
+                  className="w-full rounded-xl border border-gold/30 py-3 text-sm text-gold transition-colors hover:bg-gold/10"
+                >
+                  + 加入第 {ctx.g15ConsentAccessInputs.length + 1} 位成員
+                </button>
+              )}
+            </div>
+
             {ctx.g15Selected.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gold">已選成員（{ctx.g15Selected.length}）</p>
+                <p className="text-sm font-medium text-gold">全員同意後確認的成員（{ctx.g15Selected.length}）</p>
                 {ctx.g15Selected.map((member) => (
-                  <div key={member.reportId} className="glass rounded-xl p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-400 text-sm">&#10003;</span>
-                      <span className="text-white text-sm font-medium">{member.name}</span>
-                      {member.createdAt && (
-                        <span className="text-text-muted/50 text-xs">
-                          {new Date(member.createdAt).toLocaleDateString('zh-TW')}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => ctx.removeG15Report(member.reportId)}
-                      className="text-red-400 text-xs hover:text-red-300 transition-colors"
-                    >
-                      移除
-                    </button>
+                  <div key={member.reportId} className="glass rounded-xl p-3 flex items-center gap-2">
+                    <span className="text-green-400 text-sm" aria-hidden="true">&#10003;</span>
+                    <span className="text-white text-sm font-medium">{member.name}</span>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {/* 我的報告列表 */}
-            {ctx.g15MyLoading ? (
-              <div className="text-center text-text-muted text-sm py-4">載入您的報告中...</div>
-            ) : ctx.g15LoadError ? (
-              <div className="checkout-form-error rounded-xl p-4 text-sm" role="alert">
-                <p>{ctx.g15LoadError}</p>
-                <button type="button" onClick={ctx.loadMyReports} className="mt-2 text-gold underline underline-offset-2">
-                  重新載入
-                </button>
-              </div>
-            ) : ctx.g15MyReports.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-text-muted">您帳號下的人生藍圖</p>
-                {ctx.g15MyReports
-                  .filter(r => !ctx.g15Selected.some(s => s.reportId === r.id))
-                  .map((report) => (
-                  <div key={report.id} className="glass rounded-xl p-3 flex items-center justify-between hover:border-gold/40 border border-transparent transition-colors">
-                    <div>
-                      <span className="text-white text-sm">{report.name}</span>
-                      {report.createdAt && (
-                        <span className="text-text-muted/50 text-xs ml-2">
-                          {new Date(report.createdAt).toLocaleDateString('zh-TW')}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => ctx.addG15Report(report)}
-                      disabled={ctx.g15Selected.length >= 8}
-                      className="text-gold text-xs hover:text-gold/80 transition-colors disabled:opacity-30"
-                    >
-                      + 加入
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : !ctx.g15MyLoading ? (
-              <div className="glass rounded-xl p-4 text-center">
-                <p className="text-text-muted text-sm">您的帳號下還沒有已完成的人生藍圖報告</p>
-                <Link href="/pricing" className="text-gold text-xs hover:underline mt-1 inline-block">
-                  前往購買人生藍圖
-                </Link>
-              </div>
-            ) : null}
-
-            {/* 搜尋其他家人的報告 */}
-            {ctx.g15Selected.length < 8 && (
-              <div className="space-y-2">
-                <label htmlFor="g15-report-search" className="text-sm font-medium text-text-muted">搜尋其他家人的報告</label>
-                <div className="flex gap-2">
-                  <input
-                    id="g15-report-search"
-                    type="text"
-                    placeholder="輸入姓名搜尋..."
-                    value={ctx.g15SearchQuery}
-                    onChange={(e) => ctx.setG15SearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        ctx.searchG15Reports(ctx.g15SearchQuery)
-                      }
-                    }}
-                    className="flex-1 bg-dark-lighter border border-gold/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-text-muted/40 focus:outline-none focus:border-gold/60 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => ctx.searchG15Reports(ctx.g15SearchQuery)}
-                    disabled={ctx.g15SearchLoading || !ctx.g15SearchQuery.trim()}
-                    className="px-4 py-2.5 bg-gold/20 text-gold rounded-lg text-sm hover:bg-gold/30 transition-colors disabled:opacity-40"
-                  >
-                    {ctx.g15SearchLoading ? '搜尋中...' : '搜尋'}
-                  </button>
-                </div>
-
-                {/* 搜尋結果 */}
-                {ctx.g15SearchResults.length > 0 && (
-                  <div className="space-y-1.5">
-                    {ctx.g15SearchResults.map((report) => (
-                      <div key={report.id} className="glass rounded-lg p-3 flex items-center justify-between hover:border-gold/40 border border-transparent transition-colors">
-                        <div>
-                          <span className="text-white text-sm">{report.name}</span>
-                          {report.emailHint && (
-                            <span className="text-text-muted/40 text-xs ml-2">{report.emailHint}</span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => ctx.addG15Report(report)}
-                          disabled={ctx.g15Selected.length >= 8}
-                          className="text-gold text-xs hover:text-gold/80 transition-colors disabled:opacity-30"
-                        >
-                          + 加入
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {ctx.g15SearchQuery && !ctx.g15SearchLoading && ctx.g15SearchResults.length === 0 && (
-                  <p className="text-text-muted/50 text-xs text-center py-2">找不到符合的報告，請確認姓名是否正確</p>
-                )}
-                {ctx.g15SearchError && <p className="checkout-form-error text-xs" role="alert">{ctx.g15SearchError}</p>}
               </div>
             )}
 
             <fieldset className="space-y-4 rounded-xl border border-gold/15 bg-white/[0.025] p-4">
-              <legend className="px-2 text-sm font-semibold text-gold">讓報告理解你們真正的家庭情境</legend>
+              <legend className="px-2 text-sm font-semibold text-gold">讓報告理解真實的家庭情境</legend>
               <div>
                 <label htmlFor="g15-relationship-context" className="block text-sm font-medium text-cream">
                   成員之間的關係 <span className="text-red-300">*</span>
@@ -331,38 +281,110 @@ function CheckoutForm() {
 
             {ctx.error && <p className="checkout-form-error text-sm" role="alert">{ctx.error}</p>}
 
-            <label className="flex items-start gap-3 rounded-xl border border-gold/20 bg-gold/[0.05] p-4 text-left">
-              <input
-                type="checkbox"
-                checked={ctx.g15ConsentAccepted}
-                onChange={(event) => ctx.setG15ConsentAccepted(event.target.checked)}
-                className="mt-1 h-4 w-4 shrink-0 accent-[#d5ae62]"
-                aria-describedby="g15-consent-description"
-              />
-              <span id="g15-consent-description" className="text-xs leading-relaxed text-text-muted/80">
-                我確認每位成年成員已明確同意本次分析；若所選成員包含未成年人，我是其法定監護人，
-                或已取得法定監護人的明確授權。授權範圍包含讀取其人生藍圖與出生資料。
-                我了解只要增減成員就必須重新確認；資料處理方式見{' '}
-                <Link href="/privacy" className="text-gold/90 underline hover:text-gold">隱私政策</Link>。
-              </span>
-            </label>
+            <section className="rounded-xl border border-gold/20 bg-gold/[0.05] p-4 text-left" aria-labelledby="g15-consent-heading">
+              <h3 id="g15-consent-heading" className="text-base font-semibold text-cream">每位成年成員獨立同意</h3>
+              <p className="mt-2 text-xs leading-relaxed text-text-muted/80">
+                系統只會寄到每份人生藍圖擁有者帳號的已確認 Email。成員必須登入同一個帳號，才可同意本次讀取其人生藍圖與出生資料。付款建立前可撤回；付款建立後本次授權已被訂單使用，請聯絡客服處理後續資料權利要求。
+              </p>
+              <div className="mt-4 space-y-3">
+                {ctx.g15ConsentMembers.map((member) => {
+                  const statusLabel = member.status === 'accepted'
+                    ? '已同意'
+                    : member.status === 'revoked'
+                      ? '已撤回'
+                      : member.status === 'expired'
+                        ? '已過期'
+                        : member.status === 'pending'
+                          ? '待同意'
+                          : '尚未寄送'
+                  const statusClass = member.status === 'accepted'
+                    ? 'border-green-400/30 bg-green-500/10 text-green-300'
+                    : member.status === 'revoked' || member.status === 'expired'
+                      ? 'border-red-400/30 bg-red-500/10 text-red-300'
+                      : 'border-amber-400/30 bg-amber-500/10 text-amber-300'
+                  return (
+                    <div key={member.reportId} className="rounded-lg border border-white/10 bg-black/10 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-white">{member.name}</span>
+                        <span className={`rounded-full border px-2 py-1 text-[11px] font-medium ${statusClass}`}>{statusLabel}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={ctx.sendG15ConsentInvitations}
+                  disabled={ctx.g15ConsentLoading || ctx.g15ConsentAccessInputs.length < 2 || ctx.g15ConsentAccessInputs.some((value) => value.trim().length < 24)}
+                  className="rounded-lg bg-gold px-4 py-2.5 text-sm font-semibold text-dark disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {ctx.g15ConsentLoading ? '處理中…' : ctx.g15ConsentSelectionId ? '重新寄送待同意邀請' : '寄出逐位同意邀請'}
+                </button>
+                {ctx.g15ConsentSelectionId && (
+                  <button
+                    type="button"
+                    onClick={() => ctx.refreshG15ConsentStatus()}
+                    disabled={ctx.g15ConsentLoading}
+                    className="rounded-lg border border-gold/30 px-4 py-2.5 text-sm font-medium text-gold disabled:opacity-50"
+                  >
+                    更新同意狀態
+                  </button>
+                )}
+              </div>
+              <p id="g15-consent-status" className="mt-3 text-xs leading-relaxed text-text-muted/80" role="status" aria-live="polite">
+                {ctx.g15ConsentStatusMessage || '填妥每位成年成員的家族邀請碼後寄出邀請；所有人顯示「已同意」前不會建立付款。'}
+              </p>
+              {ctx.g15ConsentExpiresAt && (
+                <p className="mt-1 text-[11px] text-text-muted/60">本輪邀請有效至 {new Date(ctx.g15ConsentExpiresAt).toLocaleString('zh-TW')}</p>
+              )}
+              {ctx.g15ConsentError && <p className="mt-2 text-xs text-red-300" role="alert">{ctx.g15ConsentError}</p>}
+              <p className="mt-3 text-[11px] leading-relaxed text-text-muted/60">
+                帳號與報告擁有權驗證不等於身分證明、實名驗證或 KYC。未滿 18 歲的報告目前不能加入，同一帳號也不能代表多位成員。{' '}
+                <Link href="/privacy" className="text-gold/90 underline underline-offset-2 hover:text-gold">查看隱私政策</Link>
+              </p>
+            </section>
 
             <CheckoutSecurityNote />
 
             <button
               type="submit"
-              disabled={ctx.loading || !ctx.isFormValid || !ctx.g15ConsentAccepted}
-              className="w-full py-3.5 bg-gold text-dark font-bold rounded-xl text-lg btn-glow disabled:opacity-50 mt-4"
+              disabled={ctx.loading || !ctx.isFormValid}
+              aria-describedby={ctx.g15CheckoutBlockers.length > 0 ? 'g15-checkout-blockers' : undefined}
+              className="mt-4 w-full cursor-pointer rounded-xl bg-gold py-3.5 text-lg font-bold text-dark btn-glow disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {ctx.loading ? '跳轉付款中...' : `檢查資料並付款 — USD ${ctx.finalPrice}`}
+              核對資料與金額
             </button>
-            {ctx.g15Selected.length < 2 && (
-              <p className="text-xs text-gold/60 text-center">請至少選擇 2 位家庭成員</p>
+            {ctx.g15CheckoutBlockers.length > 0 && (
+              <div id="g15-checkout-blockers" className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] p-3" aria-live="polite">
+                <p className="text-xs font-semibold text-amber-300">完成以下項目後即可繼續：</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-xs leading-relaxed text-text-muted">
+                  {ctx.g15CheckoutBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
+                </ul>
+              </div>
             )}
             <p className="text-xs text-text-muted/60 text-center">
-              報告平均需 30 分鐘以上、寫到信箱 + 線上看
+              完成後會寄電子郵件通知；您可在「我的報告」線上閱讀並下載 PDF。
             </p>
           </form>
+          <G15FinalReviewModal
+            show={ctx.showConfirmModal}
+            members={ctx.g15Selected}
+            consentMembers={ctx.g15ConsentMembers}
+            relationshipContext={ctx.g15RelationshipContext}
+            consultationGoals={ctx.g15ConsultationGoals}
+            totalPrice={ctx.totalPrice}
+            finalPrice={ctx.finalPrice}
+            couponCode={ctx.couponApplied?.code}
+            couponDiscount={ctx.couponApplied?.discountAmount}
+            pointsUsed={ctx.pointsUsed}
+            pointsDiscount={ctx.pointsDiscount}
+            submitError={ctx.error}
+            loading={ctx.loading}
+            onClose={() => ctx.setShowConfirmModal(false)}
+            onConfirm={ctx.confirmCheckout}
+          />
+          </>
         ) : ctx.isFamilyPlan ? (
           /* 家庭方案表單 */
           <form onSubmit={ctx.handleCheckout} className="checkout-form-card space-y-4" aria-labelledby="family-form-heading">
@@ -424,6 +446,7 @@ function CheckoutForm() {
             setTimeMode={ctx.setTimeMode}
             cityResults={ctx.cityResults}
             onCitySearch={ctx.handleCitySearch}
+            onCityResultsDismiss={ctx.dismissCityResults}
             onCitySelect={ctx.selectCity}
             onCountrySelect={ctx.selectCountry}
             onCancelCountry={ctx.cancelCountrySelection}

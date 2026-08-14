@@ -8,6 +8,7 @@ import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
 import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -259,9 +260,9 @@ export default function NameToolPage() {
           <details className="jy-tool-details">
             <summary>計算基礎與閱讀方法</summary>
             <div className="jy-tool-details__body">
-              <p><strong>姓名學的由來：</strong>五格剖象法由日本學者熊崎健翁於 1918 年創立，後傳入華人世界並與中國傳統數理、五行學說結合，成為目前最廣泛使用的姓名分析方法。透過姓名的筆畫數，計算出天格、人格、地格、外格、總格五格數理，搭配八十一靈動數與三才配置，推算姓名的吉凶能量。</p>
-              <p><strong>為什麼必須用繁體字（康熙字典）計算？</strong>姓名學的數理基礎建立在《康熙字典》的筆畫標準之上，而非現代簡化字。康熙字典成書於 1716 年，是中國歷史上最權威的字典，其筆畫系統基於 214 個部首的完整字形。簡化字改變了許多字的筆畫數（例如「張」簡體7畫、繁體11畫；「陳」簡體7畫、繁體16畫），若用簡體計算將導致五格數理完全錯誤。</p>
-              <p><strong>鑒源的做法：</strong>本系統採用 Unicode 官方 Unihan 數據庫（涵蓋 102,998 個漢字），以 214 個康熙部首的標準筆畫為基礎計算。無論您輸入繁體或簡體，系統都會自動轉換為繁體字後再進行筆畫查詢，確保結果準確無誤。</p>
+              <p><strong>姓名學的由來：</strong>五格剖象法由日本學者熊崎健翁於 1918 年創立，後傳入華人世界並與中國傳統數理、五行學說結合。這套方法依姓名筆畫計算天格、人格、地格、外格與總格，再以八十一數理及三才配置作傳統解讀。</p>
+              <p><strong>筆畫資料怎麼讀？</strong>姓名學流派對異體字、偏旁寫法與簡繁轉換的計算方式不盡相同，輸入字形也會影響查詢結果。</p>
+              <p><strong>鑒源的做法與限制：</strong>{PUBLIC_CLAIMS.tools.name}</p>
             </div>
           </details>
         </div>
@@ -382,7 +383,7 @@ export default function NameToolPage() {
                 {form.timeMode === 'unknown' && (
                   <p className="text-xs text-text-muted/70 leading-relaxed">
                     姓名學五格數理不受時辰影響，但命格補救建議需要完整八字。
-                    <span className="text-gold/70"> 建議提供出生時間以獲得更精準的用神分析。</span>
+                    <span className="text-gold/70"> 若能確認出生時間，可減少時柱不確定造成的差異。</span>
                   </p>
                 )}
                 {form.timeMode === 'shichen' && (
@@ -468,7 +469,7 @@ export default function NameToolPage() {
               </div>
 
               <p className="jy-tool-privacy-note">
-                送出後，姓名與出生資料會用於筆畫計算、排盤及 AI 輔助解讀。請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
+                {PUBLIC_CLAIMS.privacy.freeToolAnalytics} 請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
               </p>
 
               {/* v5.10.459 CTA 修(同 /tools/bazi):常駐行動文案 + light theme 可見 disabled 樣式 */}
@@ -724,23 +725,13 @@ export default function NameToolPage() {
 
             {/* 速算提示 */}
             <p className="text-center text-xs text-text-muted/50 leading-relaxed">
-              以上為姓名速算概覽，完整報告將根據您的完整命盤做 14 系統個人化深度分析
+              以上為姓名速算概覽。{PUBLIC_CLAIMS.methodology.summary} {PUBLIC_CLAIMS.methodology.limits}
             </p>
 
             {/* v5.4.17 P0 freemium paywall */}
             <FreemiumPaywall
               systemName="姓名"
               clientName={`${form.surname}${form.givenName}`}
-              checkoutQuery={new URLSearchParams({
-                name: form.surname + form.givenName,
-                year: form.year,
-                month: form.month,
-                day: form.day,
-                hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
-                minute: form.timeMode === 'exact' ? form.exactMinute : '0',
-                gender: form.gender,
-                timeMode: form.timeMode,
-              }).toString()}
             />
           </div>
         )}

@@ -98,3 +98,39 @@ export function sha256HexSync(input: string | Uint8Array): string {
 
   return Array.from(state, (word) => word.toString(16).padStart(8, '0')).join('')
 }
+
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2)
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16)
+  }
+  return bytes
+}
+
+/** Runtime-neutral RFC 2104 HMAC-SHA256 for Workflow-reachable code. */
+export function hmacSha256HexSync(key: string | Uint8Array, message: string | Uint8Array): string {
+  const encoder = new TextEncoder()
+  const originalKey = typeof key === 'string' ? encoder.encode(key) : key
+  const messageBytes = typeof message === 'string' ? encoder.encode(message) : message
+  const normalizedKey = originalKey.length > 64
+    ? hexToBytes(sha256HexSync(originalKey))
+    : originalKey
+  const keyBlock = new Uint8Array(64)
+  keyBlock.set(normalizedKey)
+
+  const innerPad = new Uint8Array(64)
+  const outerPad = new Uint8Array(64)
+  for (let index = 0; index < 64; index += 1) {
+    innerPad[index] = keyBlock[index] ^ 0x36
+    outerPad[index] = keyBlock[index] ^ 0x5c
+  }
+
+  const innerInput = new Uint8Array(innerPad.length + messageBytes.length)
+  innerInput.set(innerPad)
+  innerInput.set(messageBytes, innerPad.length)
+  const innerDigest = hexToBytes(sha256HexSync(innerInput))
+  const outerInput = new Uint8Array(outerPad.length + innerDigest.length)
+  outerInput.set(outerPad)
+  outerInput.set(innerDigest, outerPad.length)
+  return sha256HexSync(outerInput)
+}

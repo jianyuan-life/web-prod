@@ -17,9 +17,9 @@ export const contentType = 'image/png'
 
 
 const PLAN_DESCRIPTIONS: Record<string, string> = {
-  C: '十四大命理系統 · 完整命格分析',
+  C: '交叉整理人生模式 · 看見可行方向',
   D: '針對困惑 · 精準解答',
-  G15: '家族命格互動 · 深度剖析',
+  G15: '整理家族互動 · 建立可談的下一步',
   R: '雙人合盤 · 關係解讀',
   E1: '奇門遁甲 · 事件最佳時機',
   E2: '奇門遁甲 · 月度吉時吉方',
@@ -63,7 +63,7 @@ export default async function OgImage({ params }: { params: Promise<{ token: str
   }
 
   const planName = PLAN_NAMES[planCode] || '命理分析'
-  const planDesc = PLAN_DESCRIPTIONS[planCode] || '十四大命理系統精準分析'
+  const planDesc = PLAN_DESCRIPTIONS[planCode] || '個人化命理分析報告'
   const planSymbol = PLAN_SYMBOLS[planCode] || '鑒'
   const isChumenji = isChumenjiPlan(planCode)
 

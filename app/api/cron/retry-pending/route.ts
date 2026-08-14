@@ -105,17 +105,20 @@ export async function GET(req: NextRequest) {
     }
 
     // 觸發 workflow
+    let timeout: ReturnType<typeof setTimeout> | undefined
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 8000)
+      timeout = setTimeout(() => controller.abort(), 8000)
 
-      await fetch(`${siteUrl}/api/workflows/generate-report`, {
+      const workflowResponse = await fetch(`${siteUrl}/api/workflows/generate-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.CRON_SECRET || '' },
         body: JSON.stringify({ reportId: report.id }),
         signal: controller.signal,
       })
-      clearTimeout(timeout)
+      if (!workflowResponse.ok) {
+        throw new Error(`workflow trigger returned HTTP ${workflowResponse.status}`)
+      }
 
       retriedCount++
       console.info(`✅ 重試報告 ${report.id}（第${currentRetry + 1}次）`)
@@ -129,6 +132,8 @@ export async function GET(req: NextRequest) {
           fingerprint: ['cron-retry-pending-failed'],
         })
       } catch { /* noop */ }
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout)
     }
   }
 

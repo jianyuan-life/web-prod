@@ -15,7 +15,7 @@ export default function AuthShell({
   description,
   children,
   contextTitle = '你的資料，只用來完成服務',
-  contextBody = '登入後可保存報告、追蹤生成進度，並在需要時核對或修正出生資料。',
+  contextBody = '登入後可集中查看已購買與生成中的報告，並追蹤處理進度。',
 }: AuthShellProps) {
   return (
     <section className="jy-page jy-auth-page" aria-label="帳號服務">

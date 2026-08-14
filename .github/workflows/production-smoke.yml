@@ -2,8 +2,8 @@
 #
 # 觸發:
 #   - schedule:每天 02:00 UTC (10:00 台灣時間)、發現劣化即報
-#   - workflow_dispatch:手動跑(deploy 後)
-#   - push to main(自動跑、catch regression)
+#   - workflow_dispatch:手動跑
+#   - Auto Deploy workflow 成功後，針對同一個已部署 SHA 自動跑
 #
 # 任務:
 #   1. 跑 scripts/smoke-test-routes.mjs(21 routes、Beta gate 行為驗)
@@ -21,28 +21,32 @@ on:
     # 每天台灣時間 10:00(02:00 UTC)
     - cron: '0 2 * * *'
   workflow_dispatch: # 手動觸發
-  push:
+  workflow_run:
+    workflows: ['Auto Deploy to Vercel Production']
+    types: [completed]
     branches: [main]
-    paths:
-      - 'app/**'
-      - 'components/**'
-      - 'lib/**'
-      - 'scripts/smoke-test-routes.mjs'
-      - 'scripts/test-md-parser.mjs'
-      - '.github/workflows/production-smoke.yml'
+
+permissions:
+  contents: read
 
 concurrency:
-  group: production-smoke-${{ github.ref }}
+  group: production-smoke-${{ github.event.workflow_run.head_sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
   smoke-and-a11y:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main')
     name: Production smoke + parser unit test
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
 

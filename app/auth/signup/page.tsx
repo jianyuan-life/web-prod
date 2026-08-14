@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { internalGet, internalPost } from '@/lib/api'
+import { getSafeRedirect } from '@/lib/safe-redirect'
 import TurnstileWidget from '@/components/security/TurnstileWidget'
 import AuthShell from '@/components/auth/AuthShell'
 
@@ -18,6 +19,10 @@ function EyeIcon({ hidden }: { hidden: boolean }) {
 
 function SignupForm() {
   const params = useSearchParams()
+  const safeRedirect = getSafeRedirect(params.get('redirect'), '/dashboard')
+  const loginHref = safeRedirect.startsWith('/checkout')
+    ? `/auth/login?redirect=${encodeURIComponent(safeRedirect)}`
+    : '/auth/login'
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -45,7 +50,7 @@ function SignupForm() {
     }
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(safeRedirect)}` },
     })
   }
 
@@ -81,7 +86,7 @@ function SignupForm() {
       password: form.password,
       options: {
         data: { full_name: form.name },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(safeRedirect)}`,
       },
     })
 
@@ -123,7 +128,7 @@ function SignupForm() {
           </span>
           <h2>驗證信已寄出</h2>
           <p>我們已寄到 <strong>{form.email}</strong>。請點擊信中連結完成註冊；若未看見，也請檢查垃圾郵件夾。</p>
-          <Link href="/auth/login" className="jy-button jy-button--secondary">返回登入</Link>
+          <Link href={loginHref} className="jy-button jy-button--secondary">返回登入</Link>
         </div>
       </AuthShell>
     )
@@ -203,7 +208,7 @@ function SignupForm() {
       </button>
 
       <p className="jy-auth-switch">
-        已有帳號？ <Link href="/auth/login">登入</Link>
+        已有帳號？ <Link href={loginHref}>登入</Link>
       </p>
     </AuthShell>
   )

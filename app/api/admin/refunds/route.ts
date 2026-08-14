@@ -3,8 +3,8 @@
 // Headers: x-admin-key
 //
 // 用途：退款管理頁列表。
-//   - status=refunded：已退款訂單（paid_reports.refunded_at 非 NULL）
-//   - status=candidate：可退款訂單（status=completed 或 failed 且未退款）
+//   - status=refunded：累計退款已達訂單金額
+//   - status=candidate：仍有可退餘額，且 status=completed 或 failed
 //   - status=all：全部
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabase()
 
   // v5.10.287:soft delete filter — refunds 列表不顯示軟刪報告
-  let query = supabase
+  const query = supabase
     .from('paid_reports')
     .select('id, client_name, customer_email, plan_code, amount_usd, status, created_at, refunded_at, refunded_amount_usd, refund_reason, stripe_refund_id, stripe_session_id, error_message')
     .gt('amount_usd', 0)
@@ -34,24 +34,31 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(500)
 
-  if (status === 'refunded') {
-    query = query.not('refunded_at', 'is', null)
-  } else if (status === 'candidate') {
-    query = query.is('refunded_at', null)
-  }
-
   const { data, error } = await query
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const rows = (data || []).map(r => ({
+  const allRows = (data || []).map(r => ({
     ...r,
     plan_code: (r.plan_code || '').split(/\s/)[0],
   }))
+  const isFullyRefunded = (row: typeof allRows[number]) => (
+    row.status === 'refunded'
+    || Math.round(Number(row.refunded_amount_usd || 0) * 100)
+      >= Math.round(Number(row.amount_usd || 0) * 100)
+  )
+  const rows = status === 'refunded'
+    ? allRows.filter(isFullyRefunded)
+    : status === 'candidate'
+      ? allRows.filter(row => (
+        !isFullyRefunded(row)
+        && ['completed', 'failed'].includes(row.status || '')
+      ))
+      : allRows
 
   // 統計：退款理由分布
-  const refundedOnly = rows.filter(r => r.refunded_at)
+  const refundedOnly = rows.filter(r => Number(r.refunded_amount_usd || 0) > 0)
   const reasonBreakdown: Record<string, { count: number; total_usd: number }> = {}
   for (const r of refundedOnly) {
     const reason = r.refund_reason || 'unspecified'

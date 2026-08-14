@@ -3,70 +3,166 @@
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { reportClientFailure } from '@/lib/security/client-audit'
-import { internalPost } from '@/lib/api'  // T10b v5.10.374(timeout)
 import { isPrivateConsultationUrl, redactConsultationUrl } from '@/lib/security/private-route-redaction'
+import {
+  hasAnalyticsConsent,
+  isTelemetryEligiblePath,
+  subscribeToConsent,
+  useStoredConsent,
+} from '@/lib/privacy/consent'
 
-// 自動追蹤每次頁面訪問 + 停留時間
+const SESSION_KEY = 'jy_session'
+
+function trackingAllowed(pathname: string): boolean {
+  return !pathname.startsWith('/admin')
+    && !isPrivateConsultationUrl(pathname)
+    && isTelemetryEligiblePath(pathname)
+    && hasAnalyticsConsent(pathname)
+}
+
+function safeReferrer(value: string): string {
+  if (!value) return ''
+  try {
+    const url = new URL(value)
+    return `${url.origin}${url.pathname}`
+  } catch {
+    return ''
+  }
+}
+
+function createSessionId(): string {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36)
+  }
+}
+
 export default function Tracker() {
   const pathname = usePathname()
+  const consent = useStoredConsent()
   const startTime = useRef(Date.now())
   const sessionId = useRef('')
+  const pageviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingRequests = useRef(new Set<XMLHttpRequest>())
+
+  const stopTracking = () => {
+    if (pageviewTimer.current !== null) {
+      clearTimeout(pageviewTimer.current)
+      pageviewTimer.current = null
+    }
+    for (const request of pendingRequests.current) request.abort()
+    pendingRequests.current.clear()
+    sessionId.current = ''
+    try {
+      sessionStorage.removeItem('jy_session')
+    } catch {
+      // Terminal storage may be unavailable; the consent gate remains denied.
+    }
+  }
+
+  useEffect(() => subscribeToConsent((latest) => {
+    if (!latest.analytics) stopTracking()
+  }), [])
 
   useEffect(() => {
-    // 生成/讀取 session ID
-    if (typeof window !== 'undefined') {
-      let sid = sessionStorage.getItem('jy_session')
+    if (!consent.analytics || !trackingAllowed(pathname)) {
+      stopTracking()
+      return
+    }
+
+    try {
+      let sid = sessionStorage.getItem(SESSION_KEY)
       if (!sid) {
-        sid = Math.random().toString(36).slice(2) + Date.now().toString(36)
-        sessionStorage.setItem('jy_session', sid)
+        sid = createSessionId()
+        sessionStorage.setItem(SESSION_KEY, sid)
       }
       sessionId.current = sid
+    } catch {
+      sessionId.current = ''
     }
-  }, [])
+  }, [consent.analytics, pathname])
 
   useEffect(() => {
-    // 每次路由變化時追蹤
     startTime.current = Date.now()
+    if (!trackingAllowed(pathname) || !sessionId.current) return
 
-    const track = () => {
-      if (pathname.startsWith('/admin')) return // 不追蹤管理後台
-      if (isPrivateConsultationUrl(pathname)) return // bearer token 不得進任何分析服務
-      const safePath = redactConsultationUrl(pathname)
+    const safePath = redactConsultationUrl(pathname)
+    pageviewTimer.current = setTimeout(() => {
+      pageviewTimer.current = null
+      if (!trackingAllowed(pathname) || !sessionId.current) return
 
-      // GA4 路由變化追蹤（SPA 需手動觸發）
-      if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).gtag) {
-        ;(window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'page_view', { page_path: safePath })
+      const browser = window as Window & { gtag?: (...args: unknown[]) => void }
+      browser.gtag?.('event', 'page_view', { page_path: safePath })
+
+      const request = new XMLHttpRequest()
+      pendingRequests.current.add(request)
+      const finish = () => pendingRequests.current.delete(request)
+      const reportFailure = (error: unknown) => {
+        if (!hasAnalyticsConsent(pathname)) return
+        reportClientFailure('tracker_pageview', error, { severity: 'info' })
       }
 
-      // T10b v5.10.374 — internalPost 統一處理(timeout 30s、429 silent fail)
-      internalPost('/api/track', {
-        session_id: sessionId.current,
-        page_path: safePath,
-        event_type: 'pageview',
-        referrer: document.referrer || '',
-      }).catch((e) => {
-        // T11 v5.10.360:tracker 失敗仍 silent UX、加低 severity audit(含 RateLimitError)
-        reportClientFailure('tracker_pageview', e, { severity: 'info' })
-      })
-    }
-
-    // 延遲 100ms 確保 session ID 已生成
-    const timer = setTimeout(track, 100)
-
-    // 離開頁面時記錄停留時間
-    return () => {
-      clearTimeout(timer)
-      const duration = Math.round((Date.now() - startTime.current) / 1000)
-      if (!isPrivateConsultationUrl(pathname) && duration > 1 && duration < 1800) { // 1秒-30分鐘才記錄
-        navigator.sendBeacon('/api/track', JSON.stringify({
+      try {
+        request.open('POST', '/api/track')
+        request.timeout = 30_000
+        request.setRequestHeader('Content-Type', 'application/json')
+        request.onload = () => {
+          if (request.status < 200 || request.status >= 300) {
+            reportFailure(new Error(`tracking request failed (${request.status})`))
+          }
+          finish()
+        }
+        request.onerror = () => {
+          reportFailure(new Error('tracking request failed'))
+          finish()
+        }
+        request.ontimeout = () => {
+          reportFailure(new Error('tracking request timed out'))
+          finish()
+        }
+        request.onabort = finish
+        request.send(JSON.stringify({
           session_id: sessionId.current,
-          page_path: redactConsultationUrl(pathname),
-          event_type: 'duration',
-          duration_seconds: duration,
+          page_path: safePath,
+          event_type: 'pageview',
+          referrer: safeReferrer(document.referrer),
         }))
+      } catch (error: unknown) {
+        finish()
+        reportFailure(error)
+      }
+    }, 100)
+
+    return () => {
+      if (pageviewTimer.current !== null) {
+        clearTimeout(pageviewTimer.current)
+        pageviewTimer.current = null
+      }
+      for (const request of pendingRequests.current) request.abort()
+      pendingRequests.current.clear()
+
+      const duration = Math.round((Date.now() - startTime.current) / 1000)
+      if (
+        duration > 1
+        && duration < 1800
+        && sessionId.current
+        && hasAnalyticsConsent(pathname)
+        && trackingAllowed(pathname)
+      ) {
+        try {
+          navigator.sendBeacon('/api/track', JSON.stringify({
+            session_id: sessionId.current,
+            page_path: safePath,
+            event_type: 'duration',
+            duration_seconds: duration,
+          }))
+        } catch {
+          // A failed beacon must not affect navigation.
+        }
       }
     }
-  }, [pathname])
+  }, [consent.analytics, pathname])
 
-  return null // 不渲染任何 UI
+  return null
 }

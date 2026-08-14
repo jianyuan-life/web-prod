@@ -168,31 +168,10 @@ test('CheckoutFormState 型別含 countryCode: string', () => {
   assert(typesSrc.includes('countryCode: string'), 'CheckoutFormState 缺 countryCode 欄位')
 })
 
-suite('i18n Phase 2 — Sprint 4 後端 schema')
-
-const apiServerCandidates = [
-  process.env.JIANYUAN_FORTUNE_RESEARCH_ROOT,
-  join(process.cwd(), '..', 'Claude-鑑源命理研究部門'),
-  join(process.cwd(), '..', '..', 'Claude-鑑源', 'Claude-鑑源命理研究部門'),
-].filter(Boolean).map((candidate) => resolve(candidate))
-const apiServerPath = apiServerCandidates
-  .map((candidate) => join(candidate, 'api_server', 'api_server.py'))
-  .find((candidate) => existsSync(candidate))
-assert(apiServerPath, `找不到命理研究 repo；已檢查 ${apiServerCandidates.join('、')}，或請設定 JIANYUAN_FORTUNE_RESEARCH_ROOT`)
-const apiServerSrc = readFileSync(apiServerPath, 'utf-8')
-
-test('Python BirthRequest 有 timezone 欄位', () => {
-  assert(apiServerSrc.includes('timezone: Optional[str]'), 'BirthRequest 缺 timezone')
-})
-test('Python BirthRequest 有 birth_city 欄位', () => {
-  assert(apiServerSrc.includes('birth_city: Optional[str]'), 'BirthRequest 缺 birth_city')
-})
-test('Python BirthRequest 有 birth_country 欄位', () => {
-  assert(apiServerSrc.includes('birth_country: Optional[str]'), 'BirthRequest 缺 birth_country')
-})
-test('_to_birth_input 映射 timezone 到 BirthInput', () => {
-  assert(apiServerSrc.includes('timezone=req.timezone'), '_to_birth_input 未傳 timezone')
-})
+// 「Sprint 4 後端 schema」跨 repo 斷言已移至 __tests__/local/07b-fortune-schema-crossrepo.mjs：
+// 它讀的是命理研究 repo 的 api_server.py，CI runner 上不存在該私有 repo、
+// 在此檔 module scope assert 會讓整檔於 CI 直接紅。跨 repo 版由 pre-deploy 在本機跑；
+// 同一契約在 fortune 側另有 repo-local pytest（test_web_i18n_contract_20260814.py）於其 CI 強制。
 
 suite('i18n Phase 2 — Sprint 5 migration SQL')
 

@@ -16,12 +16,26 @@ const STEPS: Step[] = [
   { num: 3, label: '生成報告', desc: '14 系統交叉分析' },
 ]
 
-export default function CheckoutProgress({ current }: { current: 1 | 2 | 3 }) {
+const CONSULTATION_STEPS: Record<'C' | 'G15', Step[]> = {
+  C: [
+    { num: 1, label: '填寫資料', desc: '出生資料與關注主題' },
+    { num: 2, label: '安全付款', desc: 'Stripe 加密處理' },
+    { num: 3, label: '製作報告', desc: '建立人生藍圖' },
+  ],
+  G15: [
+    { num: 1, label: '核對家庭', desc: '成員、關係與授權' },
+    { num: 2, label: '安全付款', desc: 'Stripe 加密處理' },
+    { num: 3, label: '製作報告', desc: '建立家族藍圖' },
+  ],
+}
+
+export default function CheckoutProgress({ current, planCode }: { current: 1 | 2 | 3; planCode?: 'C' | 'G15' }) {
+  const steps = planCode ? CONSULTATION_STEPS[planCode] : STEPS
   return (
     <nav aria-label="結帳進度">
-      <p className="sr-only" aria-live="polite">目前步驟：{STEPS[current - 1].label}，共 3 步。</p>
+      <p className="sr-only" aria-live="polite">目前步驟：{steps[current - 1].label}，共 3 步。</p>
       <ol className="checkout-progress-list flex items-center justify-between mx-auto">
-        {STEPS.map((step, idx) => {
+        {steps.map((step, idx) => {
           const done = step.num < current
           const active = step.num === current
           const isLast = idx === STEPS.length - 1

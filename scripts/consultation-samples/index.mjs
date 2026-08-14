@@ -8,7 +8,9 @@ import { fileURLToPath } from 'node:url'
 import {
   buildCalculatorRequestPayload,
   hashCalculatorRequest,
+  LEGACY_CALCULATE_PATH,
 } from '../../lib/consultation/calculator-request.ts'
+import { createSignedCalculatorPost } from '../../lib/consultation/calculator-request-auth.server.ts'
 
 export const SAMPLE_AS_OF_DATE = '2026-08-08'
 export const SAMPLE_TARGET_YEAR = 2026
@@ -212,14 +214,19 @@ function validateCalculatorResponse(response) {
   }
 }
 
-async function fetchCalculator({ apiBaseUrl, fetchImpl, payload, timeoutMs }) {
+async function fetchCalculator({ apiBaseUrl, fetchImpl, payload, timeoutMs, environment }) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetchImpl(`${apiBaseUrl}/api/calculate`, {
+    const signed = createSignedCalculatorPost({
+      path: LEGACY_CALCULATE_PATH,
+      payload,
+      environment,
+    })
+    const response = await fetchImpl(`${apiBaseUrl}${LEGACY_CALCULATE_PATH}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers: signed.headers,
+      body: signed.body,
       signal: controller.signal,
     })
     if (!response?.ok) throw new Error(`Fly calculator HTTP ${response?.status ?? 'unknown'}`)
@@ -386,6 +393,7 @@ export async function runSampleHarness({
   timeoutMs = 60_000,
   repositoryRoot = DEFAULT_REPOSITORY_ROOT,
   resume = false,
+  environment = process.env,
 } = {}) {
   assertPlans(requestedPlans)
   if (typeof fetchImpl !== 'function') throw new Error('fetch implementation 不可用')
@@ -459,6 +467,7 @@ export async function runSampleHarness({
       fetchImpl,
       payload: calculatorPayload(person),
       timeoutMs,
+      environment,
     })
     calculators.push(await writeCalculatorBundle({
       outputRoot: resolvedOutputRoot,

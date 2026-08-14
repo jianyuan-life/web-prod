@@ -10,7 +10,7 @@ export default function ReportPreview() {
           一份報告，能幫你看到什麼？
         </h2>
         <p className="text-center text-text-muted text-sm mb-12 max-w-xl mx-auto leading-relaxed">
-          以「人生藍圖」方案為例，這是你將收到的完整命格分析報告
+          以「人生藍圖」方案為例，這是報告如何整理資訊與行動方向的畫面示意
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -41,7 +41,7 @@ export default function ReportPreview() {
                   </div>
                 </div>
 
-                {/* 多系統交叉驗證 */}
+                {/* 多系統交叉對照 */}
                 <div className="rounded-xl p-4 bg-gold/[0.03] border border-gold/[0.06]">
                   <div className="text-[10px] text-gold/60 tracking-wider">Chapter 05</div>
                   <h5 className="text-sm text-cream mt-1 mb-3" style={{ fontFamily: 'var(--font-sans)' }}>
@@ -81,8 +81,8 @@ export default function ReportPreview() {
                   </svg>
                 </div>
                 <div>
-                  <div className="text-[11px] text-text-muted">交叉驗證</div>
-                  <div className="text-lg font-bold text-gradient-gold">14 系統</div>
+                  <div className="text-[11px] text-text-muted">交叉對照</div>
+                  <div className="text-lg font-bold text-gradient-gold">14 套系統</div>
                 </div>
               </div>
             </div>
@@ -94,7 +94,7 @@ export default function ReportPreview() {
               深度、有溫度的命格報告
             </h3>
             <p className="text-text-muted leading-[2] mb-8">
-              不是千篇一律的模板，而是根據你的出生資料，由 14 套系統精密運算後整合而成的專屬報告。
+              系統會依你提交的出生資料分別計算，再交叉整理 14 套系統中的共同訊號、差異與可行動方向。
             </p>
 
             <div className="space-y-5 mb-8">
@@ -106,8 +106,8 @@ export default function ReportPreview() {
                       <polyline points="14 2 14 8 20 8" />
                     </svg>
                   ),
-                  title: '11 章主題式深度報告（約 14,000 字，以人生藍圖 C 方案為例）',
-                  desc: '從命格名片到刻意練習，涵蓋人生全面向；其他方案篇幅依方案類型而定',
+                  title: '11 章主題式報告（以人生藍圖 C 方案為例）',
+                  desc: '從命格名片到刻意練習，可依章節循序閱讀；篇幅會依資料與內容需要調整',
                 },
                 {
                   icon: (

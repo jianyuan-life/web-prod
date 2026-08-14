@@ -2,6 +2,10 @@ import { normalizeLegacyReport } from './normalize-legacy.ts'
 import { validateConsultationReportContract } from './report-contract.ts'
 import type { ConsultationReportContract } from './report-contract'
 import { validateAccessToken } from '../security/token-validator.ts'
+import {
+  normalizeReportPdfGenerationId,
+  normalizeReportPdfId,
+} from '../report/pdf-storage.ts'
 
 export const CONSULTATION_REPORT_PROJECTION =
   'plan_code,status,access_token,ai_content,full_charts,narrative_summary,report_result,pdf_url' as const
@@ -69,6 +73,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function safeStoredPdfUrl(value: unknown): string | null {
   if (typeof value !== 'string' || value.length === 0 || value.length > 4096) return null
   if (/[\s\p{Cc}]/u.test(value)) return null
+  const privateMarker = /^private-reports\/([^/]+)\/report\.pdf$/u.exec(value)
+  if (privateMarker) {
+    const reportId = normalizeReportPdfId(privateMarker[1])
+    return reportId ? `private-reports/${reportId}/report.pdf` : null
+  }
+  const generatedPrivateMarker = /^private-reports\/([^/]+)\/generations\/([^/]+)\.pdf$/u.exec(value)
+  if (generatedPrivateMarker) {
+    const reportId = normalizeReportPdfId(generatedPrivateMarker[1])
+    const generationId = normalizeReportPdfGenerationId(generatedPrivateMarker[2])
+    return reportId && generationId
+      ? `private-reports/${reportId}/generations/${generationId}.pdf`
+      : null
+  }
   if (value.startsWith('/') && !value.startsWith('//')) return value
   try {
     const parsed = new URL(value)

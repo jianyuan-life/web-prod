@@ -9,9 +9,17 @@ import TimeBlockPicker from './TimeBlockPicker'
 import ThemePicker from './ThemePicker'
 import CustomerNote from './CustomerNote'
 import ConfirmationModal from './ConfirmationModal'
+import CFinalReviewModal from '@/components/consultation/CFinalReviewModal'
 import CheckoutSecurityNote from './CheckoutSecurityNote'
 import { isChumenjiPlan } from '@/lib/plan-names'
-import { D_TOPICS, E1_EVENT_TYPES, type CheckoutFormState as FormState } from './types'
+import { validateGregorianDate } from '@/lib/consultation/gregorian-date'
+import {
+  currentLocalCalendarDate,
+  getConsultationAge,
+  isConsultationBirthDateInFuture,
+} from '@/lib/checkout/consultation-input-contract'
+import { D_TOPICS, E1_EVENT_TYPES } from './types'
+import type { ConsultationCheckoutFormState as FormState } from '@/components/consultation/checkout-types'
 
 interface SinglePersonFormProps {
   planCode: string
@@ -21,6 +29,7 @@ interface SinglePersonFormProps {
   setTimeMode: (m: 'unknown' | 'shichen' | 'exact') => void
   cityResults: LocationSearchResult[]
   onCitySearch: (val: string) => void
+  onCityResultsDismiss?: () => void
   onCitySelect: (c: City) => void
   onCountrySelect?: (country: Country, isMultiTz: boolean) => void
   onCancelCountry?: () => void
@@ -67,7 +76,7 @@ interface SinglePersonFormProps {
 
 export default function SinglePersonForm({
   planCode, form, setForm, timeMode, setTimeMode,
-  cityResults, onCitySearch, onCitySelect,
+  cityResults, onCitySearch, onCityResultsDismiss, onCitySelect,
   onCountrySelect, onCancelCountry, needCityForCountry,
   dTopic, setDTopic, dOtherDesc, setDOtherDesc,
   e1EndDate, setE1EndDate,
@@ -80,13 +89,27 @@ export default function SinglePersonForm({
   showConfirmModal, onCloseConfirmModal, onConfirmCheckout,
 }: SinglePersonFormProps) {
   const [validationAttempted, setValidationAttempted] = useState(false)
-  const currentYear = new Date().getFullYear()
+  const checkoutAsOfDate = currentLocalCalendarDate()
+  const currentYear = Number.parseInt(checkoutAsOfDate.slice(0, 4), 10)
   const birthYear = Number.parseInt(form.year, 10)
   const nameInvalid = form.name.trim() === ''
   const yearInvalid = !Number.isInteger(birthYear) || birthYear < 1900 || birthYear > currentYear
-  const cityInvalid = form.birthCity.trim() === '' || form.cityLat === 0
   const accessibleValidationEnabled = planCode === 'C'
-  const coreFormInvalid = accessibleValidationEnabled && (nameInvalid || yearInvalid || cityInvalid)
+  const cityInvalid = form.birthCity.trim() === '' || form.cityLat === 0
+    || (accessibleValidationEnabled && (!form.timezone || !form.countryCode))
+  const gregorianDateValidation = validateGregorianDate(form.year, form.month, form.day)
+  const futureBirthDate = accessibleValidationEnabled
+    && gregorianDateValidation.valid
+    && isConsultationBirthDateInFuture(form.year, form.month, form.day, checkoutAsOfDate)
+  const dateInvalid = !gregorianDateValidation.valid || futureBirthDate
+  const consultationAge = accessibleValidationEnabled
+    ? getConsultationAge(form.year, form.month, form.day, checkoutAsOfDate)
+    : null
+  const isMinor = consultationAge !== null && consultationAge < 18
+  const genderInvalid = form.gender === ''
+  const relationshipInvalid = !isMinor && form.marital_status === ''
+  const coreFormInvalid = accessibleValidationEnabled
+    && (nameInvalid || yearInvalid || dateInvalid || genderInvalid || relationshipInvalid || isMinor || cityInvalid)
 
   const handleAccessibleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     setValidationAttempted(true)
@@ -97,7 +120,17 @@ export default function SinglePersonForm({
         ? 'checkout-name'
         : yearInvalid
           ? 'checkout-birth-year'
-          : 'checkout-birth-city'
+          : dateInvalid
+            ? gregorianDateValidation.reason === 'month'
+              ? 'checkout-birth-month'
+              : 'checkout-birth-day'
+            : genderInvalid
+              ? 'checkout-gender-M'
+              : relationshipInvalid
+                ? 'checkout-relationship-single'
+                : isMinor
+                  ? 'minor-report-boundary-heading'
+                  : 'checkout-birth-city'
       window.requestAnimationFrame(() => document.getElementById(firstInvalidId)?.focus())
       return
     }
@@ -108,36 +141,47 @@ export default function SinglePersonForm({
   return (
     <form onSubmit={handleAccessibleSubmit} className="checkout-form-card space-y-4" aria-labelledby="single-person-form-heading">
       <div>
-        <p className="checkout-order-kicker">Birth record</p>
+        <p className="checkout-order-kicker">出生資料</p>
         <h2 id="single-person-form-heading" className="text-xl font-semibold text-cream">填寫分析資料</h2>
         <p className="mt-1 text-xs leading-relaxed text-text-muted">標示 * 的欄位為建立命盤所需資料。</p>
       </div>
-      {/* 從已儲存的家人選擇（登入時才顯示） */}
-      <FamilyMemberPicker onSelect={(m) => {
-        setForm(f => ({
-          ...f,
-          name: m.name,
-          year: String(m.year),
-          month: String(m.month),
-          day: String(m.day),
-          hour: String(m.hour),
-          minute: String(m.minute),
-          gender: m.gender as 'M' | 'F',
-          birthCity: m.birth_city,
-          cityLat: m.city_lat,
-          cityLng: m.city_lng,
-          cityTz: m.city_tz,
-          calendarType: (m.calendar_type as 'solar' | 'lunar') || 'solar',
-          lunarLeap: m.lunar_leap || false,
-        }))
-        setTimeMode(m.time_mode as 'unknown' | 'shichen' | 'exact')
-      }} />
+      {planCode === 'C' ? (
+        <section className="rounded-xl border border-gold/15 bg-gold/[0.045] px-4 py-3" aria-labelledby="consultation-birth-data-safety-heading">
+          <h3 id="consultation-birth-data-safety-heading" className="text-sm font-semibold text-gold">請重新核對這份報告的出生資料</h3>
+          <p className="mt-1.5 text-xs leading-6 text-text-muted">
+            為避免把舊資料中的曆法、時區或出生時間精確度帶錯，人生藍圖暫不提供一鍵匯入。請依出生證明或可靠的家庭紀錄，重新確認下方的國曆日期、時間與出生城市。
+          </p>
+        </section>
+      ) : (
+        <>
+          {/* 從已儲存的家人選擇（登入時才顯示） */}
+          <FamilyMemberPicker onSelect={(m) => {
+            setForm(f => ({
+              ...f,
+              name: m.name,
+              year: String(m.year),
+              month: String(m.month),
+              day: String(m.day),
+              hour: String(m.hour),
+              minute: String(m.minute),
+              gender: m.gender as 'M' | 'F',
+              birthCity: m.birth_city,
+              cityLat: m.city_lat,
+              cityLng: m.city_lng,
+              cityTz: m.city_tz,
+              calendarType: (m.calendar_type as 'solar' | 'lunar') || 'solar',
+              lunarLeap: m.lunar_leap || false,
+            }))
+            setTimeMode(m.time_mode as 'unknown' | 'shichen' | 'exact')
+          }} />
 
-      {/* 一鍵導入歷史人物 */}
-      <HistoricalFigures onSelect={(fig) => {
-        setForm(f => ({ ...f, name: fig.name, year: fig.year, month: fig.month, day: fig.day, hour: fig.hour, minute: fig.minute, gender: fig.gender as 'M' | 'F' }))
-        setTimeMode('shichen')
-      }} />
+          {/* 一鍵導入歷史人物 */}
+          <HistoricalFigures onSelect={(fig) => {
+            setForm(f => ({ ...f, name: fig.name, year: fig.year, month: fig.month, day: fig.day, hour: fig.hour, minute: fig.minute, gender: fig.gender as 'M' | 'F' }))
+            setTimeMode('shichen')
+          }} />
+        </>
+      )}
 
       {/* 出生資料欄位 */}
       <BirthDataFields
@@ -145,6 +189,7 @@ export default function SinglePersonForm({
         timeMode={timeMode} setTimeMode={setTimeMode}
         cityResults={cityResults}
         onCitySearch={onCitySearch}
+        onCityResultsDismiss={onCityResultsDismiss}
         onCitySelect={onCitySelect}
         onCountrySelect={onCountrySelect}
         onCancelCountry={onCancelCountry}
@@ -154,6 +199,7 @@ export default function SinglePersonForm({
         nameInvalid={nameInvalid}
         yearInvalid={yearInvalid}
         cityInvalid={cityInvalid}
+        consultationBirthSafetyEnabled={planCode === 'C'}
       />
 
       {/* 方案 D：分析主題 */}
@@ -327,6 +373,10 @@ export default function SinglePersonForm({
         </div>
       )}
 
+      {planCode === 'C' && (
+        <CustomerNote customerNote={customerNote} setCustomerNote={setCustomerNote} consultation />
+      )}
+
       {/* v5.3.61 備注欄：
           - C/D 方案在 TopicAndDescription 已有描述區
           - E1 在事件描述區已有
@@ -339,12 +389,21 @@ export default function SinglePersonForm({
       {/* 下一步說明 */}
       <section className="border-t border-gold/10 pt-4 mt-4" aria-labelledby="checkout-next-heading">
         <h3 id="checkout-next-heading" className="text-xs text-text-muted mb-2 font-semibold">付款後會發生什麼？</h3>
-        <ol className="space-y-1.5 pl-5 text-[11px] text-text-muted/70 list-decimal">
-          <li>跳轉至 Stripe 安全付款頁面完成付款</li>
-          <li>系統自動開始為您排盤運算與深度分析</li>
-          <li>完整報告平均需 30 分鐘以上{isChumenjiPlan(planCode) ? '，出門訣需 40 分鐘以上' : ''}</li>
-          <li>完成後寄送 Email 通知，也可在儀表板即時查看</li>
-        </ol>
+        {planCode === 'C' ? (
+          <ol className="space-y-1.5 pl-5 text-[11px] text-text-muted/70 list-decimal">
+            <li>先在確認視窗核對出生資料、委託內容與實付金額</li>
+            <li>{finalPrice === 0 ? '確認後直接建立報告，本次無須刷卡' : '確認後才前往 Stripe 完成一次性付款'}</li>
+            <li>付款成功後開始排盤與章節生成；時間會依資料與系統負載而異</li>
+            <li>完成後寄送 Email 通知，也可在「我的報告」閱讀與下載 PDF</li>
+          </ol>
+        ) : (
+          <ol className="space-y-1.5 pl-5 text-[11px] text-text-muted/70 list-decimal">
+            <li>跳轉至 Stripe 安全付款頁面完成付款</li>
+            <li>系統自動開始為您排盤運算與深度分析</li>
+            <li>完整報告平均需 30 分鐘以上{isChumenjiPlan(planCode) ? '，出門訣需 40 分鐘以上' : ''}</li>
+            <li>完成後寄送 Email 通知，也可在儀表板即時查看</li>
+          </ol>
+        )}
       </section>
 
       <CheckoutSecurityNote />
@@ -355,6 +414,11 @@ export default function SinglePersonForm({
           <ul className="mt-1 list-disc space-y-1 pl-5">
             {nameInvalid && <li>請填寫姓名。</li>}
             {yearInvalid && <li>出生年份須介於 1900 與 {currentYear} 年。</li>}
+            {!yearInvalid && futureBirthDate && <li>出生日期不能晚於今天（以香港日期 {checkoutAsOfDate} 為準）。</li>}
+            {!yearInvalid && dateInvalid && !futureBirthDate && <li>請選擇實際存在的國曆出生日期。</li>}
+            {genderInvalid && <li>請選擇性別，以核對排盤規則。</li>}
+            {relationshipInvalid && <li>請選擇目前關係狀態；也可以選擇不願回答。</li>}
+            {isMinor && <li>人生藍圖的未成年人專屬流程尚未完成驗收，目前不接受此筆付款。</li>}
             {cityInvalid && <li>請從搜尋結果中選定出生城市，讓系統取得正確時區與座標。</li>}
           </ul>
         </div>
@@ -364,40 +428,68 @@ export default function SinglePersonForm({
         type="submit" disabled={loading || (!accessibleValidationEnabled && !isFormValid)}
         onClick={() => setValidationAttempted(true)}
         aria-describedby={accessibleValidationEnabled && validationAttempted && coreFormInvalid ? 'checkout-validation-summary' : undefined}
-        className={`w-full py-3.5 font-bold rounded-xl text-lg mt-4 transition-all ${
-          isFormValid
-            ? 'bg-gold text-dark btn-glow disabled:opacity-50'
-            : 'bg-white/10 text-text-muted cursor-not-allowed'
-        }`}
+        className={planCode === 'C'
+          ? `mt-4 w-full cursor-pointer rounded-xl py-3.5 text-lg font-bold transition-all disabled:cursor-not-allowed ${
+              isFormValid
+                ? 'bg-gold text-dark btn-glow disabled:opacity-50'
+                : 'bg-white/10 text-text-muted'
+            }`
+          : `w-full py-3.5 font-bold rounded-xl text-lg mt-4 transition-all ${
+              isFormValid
+                ? 'bg-gold text-dark btn-glow disabled:opacity-50'
+                : 'bg-white/10 text-text-muted cursor-not-allowed'
+            }`}
       >
         {loading
-          ? '跳轉付款中...'
+          ? finalPrice === 0 ? '正在建立報告…' : '正在連接 Stripe…'
+          : isMinor
+            ? '未成年人委託暫未開放'
           : isFormValid
-            ? finalPrice === 0 ? '檢查資料並免費領取報告' : `檢查資料並付款 — USD ${finalPrice}`
+            ? planCode === 'C'
+              ? finalPrice === 0 ? '核對資料並繼續' : `核對資料與金額 — USD ${finalPrice}`
+              : finalPrice === 0 ? '檢查資料並免費領取報告' : `檢查資料並付款 — USD ${finalPrice}`
             : '請填寫完整資料'}
       </button>
 
       {/* 資料確認彈窗 */}
-      <ConfirmationModal
-        show={showConfirmModal}
-        onClose={onCloseConfirmModal}
-        onConfirm={onConfirmCheckout}
-        planCode={planCode}
-        form={form}
-        timeMode={timeMode}
-        loading={loading}
-        e1EndDate={e1EndDate}
-        e1EventType={e1EventType}
-        e1HasExactTime={e1HasExactTime}
-        eSelectedBlocks={eSelectedBlocks}
-        customerNote={customerNote}
-        finalPrice={finalPrice}
-        totalPrice={totalPrice}
-        pointsUsed={pointsUsed}
-        pointsDiscount={pointsDiscount}
-        onPointsChange={onPointsChange}
-        couponApplied={couponApplied}
-      />
+      {planCode === 'C' ? (
+        <CFinalReviewModal
+          show={showConfirmModal}
+          onClose={onCloseConfirmModal}
+          onConfirm={onConfirmCheckout}
+          form={form}
+          timeMode={timeMode}
+          loading={loading}
+          customerNote={customerNote}
+          finalPrice={finalPrice}
+          totalPrice={totalPrice}
+          pointsUsed={pointsUsed}
+          pointsDiscount={pointsDiscount}
+          onPointsChange={onPointsChange}
+          couponApplied={couponApplied}
+        />
+      ) : (
+        <ConfirmationModal
+          show={showConfirmModal}
+          onClose={onCloseConfirmModal}
+          onConfirm={onConfirmCheckout}
+          planCode={planCode}
+          form={form}
+          timeMode={timeMode}
+          loading={loading}
+          e1EndDate={e1EndDate}
+          e1EventType={e1EventType}
+          e1HasExactTime={e1HasExactTime}
+          eSelectedBlocks={eSelectedBlocks}
+          customerNote={customerNote}
+          finalPrice={finalPrice}
+          totalPrice={totalPrice}
+          pointsUsed={pointsUsed}
+          pointsDiscount={pointsDiscount}
+          onPointsChange={onPointsChange}
+          couponApplied={couponApplied}
+        />
+      )}
     </form>
   )
 }

@@ -14,6 +14,8 @@
 
 /* eslint-disable no-console */
 
+import { operationalErrorClass } from '../../security/operational-telemetry.ts'
+
 // ── 設定 ────────────────────────────────────────────────────
 
 function getConfig(): { url: string; token: string } | null {
@@ -60,13 +62,12 @@ async function callUpstash(
     ])
 
     if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      console.warn(`[upstash] ${pathSegments[0]} ${res.status}: ${text.slice(0, 200)}`)
+      console.warn(`[upstash] ${pathSegments[0]} ${res.status}`)
       return null
     }
     return (await res.json()) as UpstashResponse
   } catch (err) {
-    console.warn(`[upstash] ${pathSegments[0]} 失敗:`, err)
+    console.warn(`[upstash] ${pathSegments[0]} ${operationalErrorClass(err)}`)
     return null
   }
 }
@@ -134,13 +135,12 @@ export async function setCache(
     ])
 
     if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      console.warn(`[upstash] SET ${res.status}: ${text.slice(0, 200)}`)
+      console.warn(`[upstash] SET ${res.status}`)
       return false
     }
     return true
   } catch (err) {
-    console.warn('[upstash] SET 失敗:', err)
+    console.warn(`[upstash] SET ${operationalErrorClass(err)}`)
     return false
   }
 }

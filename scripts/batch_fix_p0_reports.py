@@ -23,6 +23,7 @@ P0 Bug 批次修復腳本（2026-04-17）
 依賴：
   - 環境變數 SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY
   - 環境變數 PYTHON_API（預設 https://fortune-reports-api.fly.dev）
+  - PDF 分支需 CALCULATOR_ATTESTATION_SECRET / CALCULATOR_ATTESTATION_KEY_ID
 """
 from __future__ import annotations
 
@@ -35,6 +36,8 @@ import time
 from typing import Any, Dict, List, Optional
 
 import requests
+
+from calculator_request_auth import create_signed_calculator_post
 
 # ============================================================
 # 設定
@@ -158,7 +161,13 @@ def fix_missing_pdfs(reports: List[Dict[str, Any]], apply: bool) -> Dict[str, in
             'cover_style': 'compact',
         }
         try:
-            resp = requests.post(f'{PYTHON_API}/api/generate-pdf', json=payload, timeout=120)
+            signed = create_signed_calculator_post('/api/generate-pdf', payload)
+            resp = requests.post(
+                f'{PYTHON_API}/api/generate-pdf',
+                headers=signed.headers,
+                data=signed.body.encode('utf-8'),
+                timeout=120,
+            )
             if not resp.ok:
                 print(f'  ✗ PDF API 失敗: {resp.status_code} {resp.text[:200]}')
                 stats['failed'] += 1
@@ -286,6 +295,11 @@ def main():
     args = parser.parse_args()
 
     apply = bool(args.apply and not args.dry_run)
+    if apply and args.only in ('pdf', 'all'):
+        try:
+            create_signed_calculator_post('/api/generate-pdf', {})
+        except ValueError as error:
+            parser.error(str(error))
     print(f'=== P0 批次修復腳本（{"APPLY" if apply else "DRY-RUN"}）===')
     print(f'SUPABASE_URL = {SUPABASE_URL}')
     print(f'PYTHON_API   = {PYTHON_API}')

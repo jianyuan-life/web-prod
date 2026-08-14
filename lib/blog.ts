@@ -1,4 +1,6 @@
 // 部落格文章資料（從 MDX frontmatter 提取）
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
+
 export interface BlogPost {
   title: string
   slug: string
@@ -65,11 +67,7 @@ export const BLOG_POSTS: BlogPost[] = [
 
 真正影響你個人運勢的，是你完整的八字命盤——年、月、日、時四柱八個字，加上大運流年的交互作用。
 
-| 分析方式 | 精確度 | 適用範圍 |
-|:---|:---:|:---|
-| 生肖運勢 | 低 | 大方向參考，同生肖數億人 |
-| 八字命盤 | 高 | 個人化分析，精確到出生時辰 |
-| **14 系統交叉驗證** | **最高** | **鑒源獨家：八字+紫微+奇門遁甲等 14 套系統交叉比對** |`,
+${PUBLIC_CLAIMS.blog.comparisonTable}`,
   },
   {
     title: '紫微斗數是什麼？完整入門教學：看懂你的命盤只需這一篇',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { internalGet, internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.372(429 友好顯示 + timeout)
@@ -10,15 +10,30 @@ import { searchCities, searchLocations, type City, type LocationSearchResult, ty
 import {
   PLANS, D_TOPICS, TIME_BLOCKS,
   newMember, type FamilyMember,
-  newFamilyEmail, type FamilyEmailEntry,
-  type G15SelectedReport, type G15SearchResult,
+  type G15SelectedReport,
 } from '@/components/checkout/types'
+import type {
+  ConsultationCheckoutFormState as CheckoutFormState,
+  ConsultationG15SearchResult as G15SearchResult,
+  G15ConsentDisplayStatus,
+  G15ConsentMemberState,
+} from '@/components/consultation/checkout-types'
 import { isVisiblePlan } from '@/lib/plan-names'
+import { getG15CheckoutBlockers } from '@/lib/checkout/g15-readiness'
+import { CONSULTATION_AUTH_TIMEOUT_MS, withClientTimeout } from '@/lib/checkout/client-timeout'
 import {
-  G15_AUTHORITY_BASIS,
-  G15_CONSENT_POLICY_VERSION,
-  hashG15SelectedReportIds,
-} from '@/lib/checkout/g15-consent'
+  currentLocalCalendarDate,
+  getConsultationAge,
+  getSinglePersonDefaults,
+  isConsultationBirthDateInFuture,
+} from '@/lib/checkout/consultation-input-contract'
+import { validateGregorianDate } from '@/lib/consultation/gregorian-date'
+import {
+  classifyConsultationLocalTime,
+  consultationLocalTimeIssueMessage,
+  consultationTimezoneOffsetHoursAtEpoch,
+  resolveConsultationUnknownTime,
+} from '@/lib/consultation/local-time-validity'
 
 export function useCheckoutForm() {
   const params = useSearchParams()
@@ -28,6 +43,7 @@ export function useCheckoutForm() {
   const planIsPurchasable = isVisiblePlan(rawPlanCode) && !!PLANS[rawPlanCode]
   const planCode = planIsPurchasable ? rawPlanCode : 'C'
   const plan = PLANS[planCode]
+  const consultationCheckout = planCode === 'C' || planCode === 'G15'
 
   useEffect(() => {
     if (!planIsPurchasable && typeof window !== 'undefined') {
@@ -43,25 +59,26 @@ export function useCheckoutForm() {
   // URL 帶 calendarType=lunar 時(免費工具 paywall 轉入),不沿用其農曆日期、退回預設,
   // 由客戶重填國曆;強制 calendarType='solar'。API 端補轉換後移除此防護並恢復切換 UI。
   const _urlIsLunar = params.get('calendarType') === 'lunar'
-  const [form, setForm] = useState({
+  const singlePersonDefaults = getSinglePersonDefaults(planCode, (name) => params.get(name), _urlIsLunar)
+  const [form, setForm] = useState<CheckoutFormState>({
     name: params.get('name') || '',
-    year: (_urlIsLunar ? null : params.get('year')) || '1990',
-    month: (_urlIsLunar ? null : params.get('month')) || '1',
-    day: (_urlIsLunar ? null : params.get('day')) || '1',
-    hour: params.get('hour') || '12',
-    minute: params.get('minute') || '30',
-    gender: params.get('gender') || 'M',
-    // v5.10.5 婚姻狀況(默認未婚、客戶可改;影響 C/D/G15/R 感情段個性化)
-    marital_status: ((params.get('marital_status') as 'married' | 'unmarried') || 'unmarried'),
+    year: singlePersonDefaults.year,
+    month: singlePersonDefaults.month,
+    day: singlePersonDefaults.day,
+    hour: singlePersonDefaults.hour,
+    minute: singlePersonDefaults.minute,
+    gender: singlePersonDefaults.gender,
+    marital_status: singlePersonDefaults.maritalStatus,
+    guardian_name: '', guardian_relationship: '', guardian_consent: false,
     address: '', addressLat: 0, addressLng: 0,
-    birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8,
+    birthCity: '', cityLat: 0, cityLng: 0, cityTz: 8, birthLocationPrecision: '',
     // Sprint 3 國際化：IANA 時區 + ISO 國家碼
     timezone: '', countryCode: '',
     calendarType: 'solar' as 'solar' | 'lunar',  // v5.10.471 強制 solar(農曆暫停支援、見上方註解)
     lunarLeap: false,
   })
   const [timeMode, setTimeMode] = useState<'unknown' | 'shichen' | 'exact'>(
-    (params.get('timeMode') as 'unknown' | 'shichen' | 'exact') || 'shichen'
+    singlePersonDefaults.timeMode
   )
   const [cityResults, setCityResults] = useState<LocationSearchResult[]>([])
   const [needCityForCountry, setNeedCityForCountry] = useState('')
@@ -69,13 +86,16 @@ export function useCheckoutForm() {
   const [error, setError] = useState('')
 
   // 優惠碼
-  const [couponInput, setCouponInput] = useState('')
+  const [couponInput, setCouponInputState] = useState('')
   const [couponApplied, setCouponApplied] = useState<{ code: string; discountAmount: number; message: string } | null>(null)
   // 積分折抵
   const [pointsDiscount, setPointsDiscount] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [couponLoading, setCouponLoading] = useState(false)
   const [couponError, setCouponError] = useState('')
+  const couponRequestId = useRef(0)
+  const couponRequestInFlight = useRef(false)
+  const checkoutRequestRef = useRef<{ payload: string; key: string } | null>(null)
 
   // 備注
   const [customerNote, setCustomerNote] = useState('')
@@ -91,19 +111,26 @@ export function useCheckoutForm() {
   // 方案 G15（導入已完成的人生藍圖報告）
   const [g15Selected, setG15Selected] = useState<G15SelectedReport[]>([])
   const [g15MyReports, setG15MyReports] = useState<G15SearchResult[]>([])
-  const [g15SearchQuery, setG15SearchQuery] = useState('')
+  const [g15SearchQuery, setG15SearchQueryState] = useState('')
   const [g15SearchResults, setG15SearchResults] = useState<G15SearchResult[]>([])
   const [g15SearchLoading, setG15SearchLoading] = useState(false)
-  const [g15ConsentAcceptedAt, setG15ConsentAcceptedAt] = useState('')
+  const [g15SearchAttempted, setG15SearchAttempted] = useState(false)
+  const g15SearchRequestId = useRef(0)
+  const [g15ConsentEmails, setG15ConsentEmails] = useState<Record<string, string>>({})
+  const [g15ConsentAccessInputs, setG15ConsentAccessInputs] = useState<string[]>(['', ''])
+  const [g15ConsentStatuses, setG15ConsentStatuses] = useState<Record<string, G15ConsentDisplayStatus>>({})
+  const [g15ConsentSelectionId, setG15ConsentSelectionId] = useState('')
+  const [g15ConsentExpiresAt, setG15ConsentExpiresAt] = useState('')
+  const [g15ConsentStatusMessage, setG15ConsentStatusMessage] = useState('')
+  const [g15ConsentLoading, setG15ConsentLoading] = useState(false)
+  const [g15ConsentError, setG15ConsentError] = useState('')
+  const g15ConsentRequestRef = useRef<{ payload: string; key: string } | null>(null)
+  const g15ConsentOperationId = useRef(0)
   const [g15MyLoading, setG15MyLoading] = useState(false)
   const [g15RelationshipContext, setG15RelationshipContext] = useState('')
   const [g15ConsultationGoals, setG15ConsultationGoals] = useState('')
   const [g15LoadError, setG15LoadError] = useState('')
   const [g15SearchError, setG15SearchError] = useState('')
-
-  // 舊版保留（相容）
-  const [g15Emails, setG15Emails] = useState<FamilyEmailEntry[]>([newFamilyEmail(), newFamilyEmail()])
-  const [g15VerifyLoading, setG15VerifyLoading] = useState(false)
 
   // 方案 G15（舊版保留兼容）
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([newMember(), newMember()])
@@ -127,6 +154,8 @@ export function useCheckoutForm() {
   // Auth
   const [authChecked, setAuthChecked] = useState(false)
   const [authEmail, setAuthEmail] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authRetryKey, setAuthRetryKey] = useState(0)
 
   // Phase 5 v5.10.382 — Turnstile bot 防護(老闆灌 NEXT_PUBLIC_TURNSTILE_SITE_KEY 後 widget 自動顯示、verify 後設 token)
   const [turnstileToken, setTurnstileToken] = useState('')
@@ -144,17 +173,82 @@ export function useCheckoutForm() {
   const isFamilyPlan = false  // G3 已移除
   const isG15Plan = planCode === 'G15'
   const isRelationPlan = planCode === 'R'
+  const consultationAsOfDate = currentLocalCalendarDate()
+  const cAge = planCode === 'C'
+    ? getConsultationAge(form.year, form.month, form.day, consultationAsOfDate)
+    : null
+  const cBirthDateInFuture = planCode === 'C'
+    && validateGregorianDate(form.year, form.month, form.day).valid
+    && isConsultationBirthDateInFuture(form.year, form.month, form.day, consultationAsOfDate)
+  const cIsMinor = cAge !== null && cAge < 18
+  const cLocalTimeValidity = useMemo(() => {
+    const date = validateGregorianDate(form.year, form.month, form.day)
+    if (planCode !== 'C' || !date.valid || !form.timezone) {
+      return { status: 'unique' as const, candidateEpochMs: [] }
+    }
+    if (timeMode === 'unknown') {
+      return resolveConsultationUnknownTime({
+        year: Number(form.year),
+        month: Number(form.month),
+        day: Number(form.day),
+        timezone: form.timezone,
+      })
+    }
+    return classifyConsultationLocalTime({
+      year: Number(form.year),
+      month: Number(form.month),
+      day: Number(form.day),
+      hour: Number(form.hour),
+      minute: timeMode === 'exact' ? Number(form.minute) : 0,
+      timezone: form.timezone,
+    })
+  }, [form.day, form.hour, form.minute, form.month, form.timezone, form.year, planCode, timeMode])
+  const cEffectiveTimezoneOffset = planCode === 'C' && cLocalTimeValidity.status === 'unique'
+    ? consultationTimezoneOffsetHoursAtEpoch(form.timezone, cLocalTimeValidity.candidateEpochMs[0])
+    : null
+  const g15ConsentMembers: G15ConsentMemberState[] = g15Selected.length > 0
+    ? g15Selected.map((member) => ({
+        reportId: member.reportId,
+        name: member.name,
+        email: '由系統使用擁有者帳號的 canonical Email',
+        status: g15ConsentStatuses[member.reportId] || 'not_invited',
+      }))
+    : g15ConsentAccessInputs.map((_, index) => ({
+        reportId: `slot:${index + 1}`,
+        name: `成員 ${index + 1}`,
+        email: '未回傳報告內容',
+        status: g15ConsentStatuses[`slot:${index + 1}`] || 'not_invited',
+      }))
+  const g15AllMembersAccepted = Boolean(g15ConsentSelectionId)
+    && g15Selected.length >= 2
+    && g15Selected.every((member) => g15ConsentStatuses[member.reportId] === 'accepted')
+  const g15CheckoutBlockers = getG15CheckoutBlockers({
+    selectedCount: g15Selected.length,
+    relationshipContext: g15RelationshipContext,
+    consultationGoals: g15ConsultationGoals,
+    allMembersAccepted: g15AllMembersAccepted,
+  })
 
   // 表單驗證：判斷所有必填欄位是否完成
   const isFormValid = (() => {
     if (planCode === 'G15') {
-      return g15Selected.length >= 2 &&
-        g15RelationshipContext.trim().length >= 8 &&
-        g15ConsultationGoals.trim().length >= 8
+      return g15CheckoutBlockers.length === 0
     }
     if (planCode === 'R') {
       const allMembersValid = rMembers.every(m => m.name.trim() !== '' && (m.birthCity || '').trim() !== '' && (m.cityLat || 0) !== 0)
       return allMembersValid && rRelationDesc.trim() !== ''
+    }
+    if (planCode === 'C') {
+      if (!form.name.trim()) return false
+      if (!validateGregorianDate(form.year, form.month, form.day).valid) return false
+      if (cBirthDateInFuture) return false
+      if (cIsMinor) return false
+      if (!form.gender || !form.marital_status) return false
+      if (!form.birthCity || !form.timezone || !form.countryCode) return false
+      if (form.birthLocationPrecision !== 'city') return false
+      if (cLocalTimeValidity.status !== 'unique') return false
+      if (cEffectiveTimezoneOffset === null) return false
+      return true
     }
     // 單人表單驗證
     if (!form.name.trim()) return false
@@ -182,36 +276,60 @@ export function useCheckoutForm() {
     return true
   })()
 
+  const setCouponInput = (value: string) => {
+    if (consultationCheckout) {
+      couponRequestId.current += 1
+      couponRequestInFlight.current = false
+      setCouponLoading(false)
+    }
+    setCouponInputState(value)
+  }
+
   // 優惠碼驗證
   const applyCoupon = async () => {
-    if (!couponInput.trim()) return
+    const normalizedCode = couponInput.trim().toUpperCase()
+    if (!normalizedCode) return
+    if (consultationCheckout && (couponRequestInFlight.current || couponLoading)) return
+    const requestId = consultationCheckout ? ++couponRequestId.current : 0
+    if (consultationCheckout) couponRequestInFlight.current = true
     setCouponLoading(true)
     setCouponError('')
     setCouponApplied(null)
     try {
       // T10b v5.10.372 — internalGet 統一處理 429 RateLimitError + timeout(原 raw fetch 無 timeout、429 無友好顯示)
       const data = await internalGet(
-        `/api/coupons/validate?code=${encodeURIComponent(couponInput)}&plan=${planCode}&amount=${totalPrice}`,
+        `/api/coupons/validate?code=${encodeURIComponent(consultationCheckout ? normalizedCode : couponInput)}&plan=${planCode}&amount=${totalPrice}`,
       ) as { valid: boolean; discountAmount?: number; message?: string }
+      if (consultationCheckout && requestId !== couponRequestId.current) return
       if (data.valid) {
-        setCouponApplied({ code: couponInput.trim().toUpperCase(), discountAmount: data.discountAmount ?? 0, message: data.message ?? '' })
+        setCouponApplied({ code: normalizedCode, discountAmount: data.discountAmount ?? 0, message: data.message ?? '' })
       } else {
         setCouponError(data.message || '優惠碼無效')
       }
     } catch (err) {
+      if (consultationCheckout && requestId !== couponRequestId.current) return
       if (err instanceof RateLimitError) {
         setCouponError(`驗證過於頻繁、請等 ${err.retryAfter} 秒後重試`)
       } else {
         setCouponError('驗證失敗，請稍後再試')
       }
     } finally {
-      setCouponLoading(false)
+      if (!consultationCheckout || requestId === couponRequestId.current) {
+        couponRequestInFlight.current = false
+        setCouponLoading(false)
+      }
     }
   }
 
   // 國家/城市搜尋
   const handleCitySearch = (val: string) => {
-    setForm(f => ({ ...f, birthCity: val, cityLat: 0, cityLng: 0 }))
+    setForm(f => ({
+      ...f,
+      birthCity: val,
+      cityLat: 0,
+      cityLng: 0,
+      birthLocationPrecision: '',
+    }))
     if (needCityForCountry) {
       // 多時區國家模式：搜尋城市
       const cities = searchCities(val).filter(c => c.country === needCityForCountry || c.name.includes(val) || c.name_en.toLowerCase().includes(val.toLowerCase()))
@@ -226,6 +344,7 @@ export function useCheckoutForm() {
       ...f,
       birthCity: `${c.name}（${c.country}）`,
       cityLat: c.lat, cityLng: c.lng, cityTz: c.tz,
+      birthLocationPrecision: 'city',
       // Sprint 3：帶 IANA 時區（tzName）與國家碼
       timezone: c.tzName || f.timezone,
       countryCode: c.countryCode || f.countryCode,
@@ -235,7 +354,21 @@ export function useCheckoutForm() {
   }
 
   const selectCountry = (country: Country, isMultiTz: boolean) => {
-    if (isMultiTz) {
+    if (planCode === 'C') {
+      // C 會做經度相關計算；國家代表點不是客戶的出生地。
+      // 選國家只能縮小搜尋範圍，必須再選實際城市。
+      setNeedCityForCountry(country.name)
+      setForm(f => ({
+        ...f,
+        birthCity: '',
+        cityLat: 0,
+        cityLng: 0,
+        timezone: '',
+        countryCode: '',
+        birthLocationPrecision: '',
+      }))
+      setCityResults([])
+    } else if (isMultiTz) {
       setNeedCityForCountry(country.name)
       setForm(f => ({ ...f, birthCity: '', timezone: '', countryCode: '' }))
       setCityResults([])
@@ -269,6 +402,7 @@ export function useCheckoutForm() {
       setForm(f => ({
         ...f,
         birthCity: country.name, cityLat: country.lat, cityLng: country.lng, cityTz: country.tz,
+        birthLocationPrecision: '',
         timezone: ianaByCountry[country.name] || f.timezone,
         countryCode: isoByCountry[country.name] || f.countryCode,
       }))
@@ -279,19 +413,43 @@ export function useCheckoutForm() {
 
   const cancelCountrySelection = () => {
     setNeedCityForCountry('')
-    setForm(f => ({ ...f, birthCity: '' }))
+    setForm(f => ({
+      ...f,
+      birthCity: '',
+      cityLat: 0,
+      cityLng: 0,
+      birthLocationPrecision: '',
+    }))
     setCityResults([])
   }
 
   // Auth guard
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        sessionStorage.setItem('pending_plan', planCode)
-        // 帶 redirect 參數，登入後回到同樣的 checkout 頁
-        const redirect = encodeURIComponent(`/checkout?plan=${planCode}`)
-        window.location.href = `/auth/login?redirect=${redirect}`
-      } else {
+    let active = true
+    setAuthChecked(false)
+    if (consultationCheckout) setAuthError('')
+
+    const checkAuth = async () => {
+      try {
+        const authResult = consultationCheckout
+          ? await withClientTimeout(
+              supabase.auth.getUser(),
+              CONSULTATION_AUTH_TIMEOUT_MS,
+              '登入狀態確認逾時',
+            )
+          : await supabase.auth.getUser()
+        const { data, error: authLookupError } = authResult
+        if (authLookupError) throw authLookupError
+        if (!active) return
+
+        if (!data.user) {
+          sessionStorage.setItem('pending_plan', planCode)
+          // 帶 redirect 參數，登入後回到同樣的 checkout 頁
+          const redirect = encodeURIComponent(`/checkout?plan=${planCode}`)
+          window.location.href = `/auth/login?redirect=${redirect}`
+          return
+        }
+
         const fullName = data.user.user_metadata?.full_name || ''
         if (fullName && !params.get('name')) setForm(f => ({ ...f, name: fullName }))
         // 快取 email，供 dashboard 在 Stripe 重導向後使用
@@ -301,15 +459,22 @@ export function useCheckoutForm() {
             sessionStorage.setItem('jianyuan_email', data.user.email)
             localStorage.setItem('jianyuan_email', data.user.email)
           } catch {}
-          // G15：自動載入該用戶的已完成人生藍圖報告
-          if (planCode === 'G15') {
-            loadMyReports()
-          }
+          // G15 使用成員自己的私人報告連結，不再把購買者帳號內報告當成多位獨立成員。
         }
         setAuthChecked(true)
+      } catch {
+        if (!active || !consultationCheckout) return
+        setAuthError('目前無法確認登入狀態，請檢查網路後重新嘗試。')
       }
-    })
-  }, [planCode])
+    }
+
+    void checkAuth()
+    return () => {
+      active = false
+    }
+  }, [authRetryKey, planCode])
+
+  const retryAuthCheck = () => setAuthRetryKey((value) => value + 1)
 
   // 家庭成員操作
   const updateFamilyMember = (index: number, updated: FamilyMember) => {
@@ -331,9 +496,13 @@ export function useCheckoutForm() {
       // T10b v5.10.372 — internalGet 統一處理 429 + timeout
       const data = await internalGet('/api/checkout/search-reports', {
         authToken: session?.access_token,
-      }) as { reports?: G15SearchResult[] }
+      }) as { reports?: G15SearchResult[]; unavailableReports?: G15SearchResult[] }
       if (!Array.isArray(data.reports)) throw new Error('報告清單格式不完整')
-      setG15MyReports(data.reports)
+      const unavailable = Array.isArray(data.unavailableReports) ? data.unavailableReports : []
+      setG15MyReports([
+        ...data.reports,
+        ...unavailable.map((report) => ({ ...report, eligibilityReason: report.reason || undefined })),
+      ])
     } catch (err) {
       setG15LoadError(err instanceof RateLimitError
         ? `載入過於頻繁，請等 ${err.retryAfter} 秒後重試。`
@@ -342,37 +511,71 @@ export function useCheckoutForm() {
     finally { setG15MyLoading(false) }
   }
 
-  // G15 搜尋其他人的報告(用姓名)
+  const dismissCityResults = () => setCityResults([])
+
+  const setG15SearchQuery = (query: string) => {
+    g15SearchRequestId.current += 1
+    setG15SearchQueryState(query)
+    setG15SearchResults([])
+    setG15SearchError('')
+    setG15SearchAttempted(false)
+    setG15SearchLoading(false)
+  }
+
+  // G15 僅搜尋目前登入帳戶內的人生藍圖(用姓名篩選)
   const searchG15Reports = async (query: string) => {
     if (!query.trim()) {
+      g15SearchRequestId.current += 1
       setG15SearchResults([])
       setG15SearchError('')
+      setG15SearchAttempted(false)
+      setG15SearchLoading(false)
       return
     }
+    const requestId = ++g15SearchRequestId.current
     setG15SearchLoading(true)
     setG15SearchError('')
+    setG15SearchAttempted(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       // T10b v5.10.372 — internalGet 統一處理
       const data = await internalGet(
         `/api/checkout/search-reports?q=${encodeURIComponent(query.trim())}`,
         { authToken: session?.access_token },
-      ) as { reports?: G15SearchResult[] }
+      ) as { reports?: G15SearchResult[]; unavailableReports?: G15SearchResult[] }
       if (!Array.isArray(data.reports)) throw new Error('搜尋結果格式不完整')
+      if (requestId !== g15SearchRequestId.current) return
       // 過濾掉已選取的報告
       const selectedIds = new Set(g15Selected.map(s => s.reportId))
-      setG15SearchResults(data.reports.filter((r: G15SearchResult) => !selectedIds.has(r.id)))
+      const unavailable = Array.isArray(data.unavailableReports) ? data.unavailableReports : []
+      setG15SearchResults([...data.reports, ...unavailable]
+        .filter((report) => !selectedIds.has(report.id))
+        .map((report) => ({ ...report, eligibilityReason: report.reason || undefined })))
     } catch (err) {
+      if (requestId !== g15SearchRequestId.current) return
       setG15SearchResults([])
       setG15SearchError(err instanceof RateLimitError
         ? `搜尋過於頻繁，請等 ${err.retryAfter} 秒後重試。`
         : '搜尋暫時失敗，請稍後重試。')
     }
-    finally { setG15SearchLoading(false) }
+    finally {
+      if (requestId === g15SearchRequestId.current) setG15SearchLoading(false)
+    }
+  }
+
+  const clearG15ConsentAuthority = (message: string) => {
+    g15ConsentOperationId.current += 1
+    g15ConsentRequestRef.current = null
+    setG15ConsentSelectionId('')
+    setG15ConsentExpiresAt('')
+    setG15ConsentStatuses({})
+    setG15ConsentError('')
+    setG15ConsentStatusMessage(message)
   }
 
   // G15 選取報告
   const addG15Report = (report: G15SearchResult) => {
+    if (report.eligible === false) return
     if (g15Selected.length >= 8) return
     if (g15Selected.some(s => s.reportId === report.id)) return
     setG15Selected(prev => [...prev, {
@@ -380,7 +583,7 @@ export function useCheckoutForm() {
       name: report.name,
       createdAt: report.createdAt,
     }])
-    setG15ConsentAcceptedAt('')
+    clearG15ConsentAuthority('成員已變更；請填寫每位成員的 Email 並重新寄出逐位同意邀請。')
     // 從搜尋結果移除已選的
     setG15SearchResults(prev => prev.filter(r => r.id !== report.id))
   }
@@ -388,24 +591,196 @@ export function useCheckoutForm() {
   // G15 移除已選報告
   const removeG15Report = (reportId: string) => {
     setG15Selected(prev => prev.filter(s => s.reportId !== reportId))
-    setG15ConsentAcceptedAt('')
+    setG15ConsentEmails((current) => {
+      const next = { ...current }
+      delete next[reportId]
+      return next
+    })
+    clearG15ConsentAuthority('成員已變更；請重新寄出逐位同意邀請。')
   }
 
-  const setG15ConsentAccepted = (accepted: boolean) => {
-    setG15ConsentAcceptedAt(accepted ? new Date().toISOString() : '')
+  const updateG15ConsentEmail = (reportId: string, email: string) => {
+    setG15ConsentEmails((current) => ({ ...current, [reportId]: email }))
+    if (g15ConsentSelectionId || Object.keys(g15ConsentStatuses).length > 0) {
+      clearG15ConsentAuthority('Email 已變更；請重新寄出逐位同意邀請。')
+    } else {
+      setG15ConsentError('')
+    }
   }
 
-  // G15 舊版 email 操作（保留相容）
-  const updateG15Email = (index: number, email: string) => {
-    setG15Emails(prev => prev.map((e, i) => i === index ? { ...e, email, verified: false, name: undefined, errorMsg: undefined } : e))
+  const updateG15ConsentAccessInput = (index: number, value: string) => {
+    setG15ConsentAccessInputs((current) => current.map((entry, entryIndex) => (
+      entryIndex === index ? value : entry
+    )))
+    setG15Selected([])
+    clearG15ConsentAuthority('家族邀請碼已變更；請重新寄出逐位同意邀請。')
   }
-  const addG15Email = () => {
-    if (g15Emails.length < 8) setG15Emails(prev => [...prev, newFamilyEmail()])
+
+  const addG15ConsentAccessInput = () => {
+    if (g15ConsentAccessInputs.length >= 8) return
+    setG15ConsentAccessInputs((current) => [...current, ''])
+    setG15Selected([])
+    clearG15ConsentAuthority('成員已變更；請重新寄出逐位同意邀請。')
   }
-  const removeG15Email = (index: number) => {
-    if (index >= 2) setG15Emails(prev => prev.filter((_, i) => i !== index))
+
+  const removeG15ConsentAccessInput = (index: number) => {
+    if (g15ConsentAccessInputs.length <= 2) return
+    setG15ConsentAccessInputs((current) => current.filter((_, entryIndex) => entryIndex !== index))
+    setG15Selected([])
+    clearG15ConsentAuthority('成員已變更；請重新寄出逐位同意邀請。')
   }
-  const verifyG15Emails = async (): Promise<boolean> => { return true }
+
+  const applyG15ConsentStatus = (data: {
+    selectionId?: unknown
+    expiresAt?: unknown
+    members?: unknown
+  }): boolean => {
+    const selectionId = typeof data.selectionId === 'string' ? data.selectionId.toLowerCase() : ''
+    const expiresAt = typeof data.expiresAt === 'string' ? data.expiresAt : ''
+    const members = Array.isArray(data.members) ? data.members : []
+    const expectedCount = g15ConsentAccessInputs.length
+    const allowedStatuses = new Set<G15ConsentDisplayStatus>(['pending', 'accepted', 'revoked', 'expired'])
+    const parsedMembers = members.map((member) => {
+      if (!member || typeof member !== 'object') return null
+      const record = member as Record<string, unknown>
+      const reportId = typeof record.reportId === 'string' ? record.reportId.toLowerCase() : ''
+      const name = typeof record.name === 'string' ? record.name.trim() : ''
+      const slot = Number(record.slot)
+      const status = typeof record.status === 'string' ? record.status as G15ConsentDisplayStatus : 'not_invited'
+      return allowedStatuses.has(status) && Number.isInteger(slot) && slot >= 1 && slot <= expectedCount
+        ? { reportId, name, slot, status }
+        : null
+    })
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(selectionId)
+      || !Number.isFinite(Date.parse(expiresAt))
+      || parsedMembers.some((member) => member === null)
+      || parsedMembers.length !== expectedCount
+      || new Set(parsedMembers.map((member) => member?.slot)).size !== expectedCount
+    ) {
+      throw new Error('逐位同意狀態格式不完整')
+    }
+    const acceptedWithTrustedIdentity = parsedMembers.every((member) => (
+      member?.status === 'accepted'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(member.reportId)
+      && member.name.length > 0
+    ))
+    const statuses = Object.fromEntries(parsedMembers.map((member) => [
+      acceptedWithTrustedIdentity ? member!.reportId : `slot:${member!.slot}`,
+      member!.status,
+    ]))
+    if (acceptedWithTrustedIdentity) {
+      setG15Selected(parsedMembers
+        .sort((left, right) => left!.slot - right!.slot)
+        .map((member) => ({ reportId: member!.reportId, name: member!.name, createdAt: '' })))
+    } else {
+      setG15Selected([])
+    }
+    setG15ConsentSelectionId(selectionId)
+    setG15ConsentExpiresAt(expiresAt)
+    setG15ConsentStatuses(statuses)
+
+    const acceptedCount = Object.values(statuses).filter((status) => status === 'accepted').length
+    const hasRevoked = Object.values(statuses).some((status) => status === 'revoked')
+    const hasExpired = Object.values(statuses).some((status) => status === 'expired')
+    const allAccepted = acceptedWithTrustedIdentity && acceptedCount === expectedCount && expectedCount >= 2
+    setG15ConsentStatusMessage(
+      allAccepted
+        ? `所有 ${expectedCount} 位成年成員均已完成帳號綁定的獨立同意。`
+        : hasRevoked
+          ? '有成員已撤回同意；請尊重其決定，本次名單目前不能付款。'
+          : hasExpired
+            ? '逐位同意邀請已過期；請重新寄出邀請。'
+            : `已有 ${acceptedCount} / ${expectedCount} 位同意；仍在等待其餘成員。`,
+    )
+    return allAccepted
+  }
+
+  const refreshG15ConsentStatus = useCallback(async (silent = false): Promise<boolean> => {
+    if (!g15ConsentSelectionId) return false
+    const operationId = ++g15ConsentOperationId.current
+    if (!silent) setG15ConsentLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const data = await internalGet(
+        `/api/g15-consents?selectionId=${encodeURIComponent(g15ConsentSelectionId)}`,
+        { authToken: session?.access_token },
+      ) as { selectionId?: unknown; expiresAt?: unknown; members?: unknown }
+      if (operationId !== g15ConsentOperationId.current) return false
+      const allAccepted = applyG15ConsentStatus(data)
+      setG15ConsentError('')
+      return allAccepted
+    } catch (refreshError) {
+      if (operationId === g15ConsentOperationId.current && !silent) {
+        setG15ConsentError(refreshError instanceof RateLimitError
+          ? `更新過於頻繁，請等 ${refreshError.retryAfter} 秒後再試。`
+          : '目前無法更新逐位同意狀態，付款仍會由伺服器重新查驗。')
+      }
+      return false
+    } finally {
+      if (!silent && operationId === g15ConsentOperationId.current) setG15ConsentLoading(false)
+    }
+  // applyG15ConsentStatus uses the current selected report set intentionally.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g15ConsentAccessInputs, g15ConsentSelectionId])
+
+  const sendG15ConsentInvitations = async () => {
+    if (g15ConsentAccessInputs.length < 2) {
+      setG15ConsentError('請先提供至少 2 位成年成員的家族邀請碼。')
+      return
+    }
+    const members = g15ConsentAccessInputs.map((reportLocator) => ({
+      reportLocator: reportLocator.normalize('NFKC').trim(),
+    }))
+    if (members.some((member) => member.reportLocator.length < 24)) {
+      setG15ConsentError('請為每位成年成員填寫完整的家族邀請碼。')
+      return
+    }
+    if (new Set(members.map((member) => member.reportLocator)).size !== members.length) {
+      setG15ConsentError('每位成年成員必須提供不同的家族邀請碼。')
+      return
+    }
+    const payload = JSON.stringify(members)
+    if (g15ConsentRequestRef.current?.payload !== payload) {
+      g15ConsentRequestRef.current = { payload, key: globalThis.crypto.randomUUID().toLowerCase() }
+    }
+    const operationId = ++g15ConsentOperationId.current
+    setG15ConsentLoading(true)
+    setG15ConsentError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const data = await internalPost('/api/g15-consents', {
+        requestKey: g15ConsentRequestRef.current.key,
+        members,
+      }, { authToken: session?.access_token }) as {
+        selectionId?: unknown
+        expiresAt?: unknown
+        members?: Array<{ delivery?: unknown }>
+      }
+      if (operationId !== g15ConsentOperationId.current) return
+      setG15Selected([])
+      applyG15ConsentStatus(data)
+      if (Array.isArray(data.members) && data.members.some((member) => member.delivery === 'failed')) {
+        setG15ConsentError('部分邀請信未能送達報告擁有者的 canonical Email；請稍後重試。')
+      }
+    } catch (inviteError) {
+      if (operationId === g15ConsentOperationId.current) {
+        setG15ConsentError(inviteError instanceof RateLimitError
+          ? `寄送過於頻繁，請等 ${inviteError.retryAfter} 秒後再試。`
+          : inviteError instanceof Error ? inviteError.message : '目前無法寄出逐位同意邀請。')
+      }
+    } finally {
+      if (operationId === g15ConsentOperationId.current) setG15ConsentLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (planCode !== 'G15' || !g15ConsentSelectionId) return
+    const intervalId = window.setInterval(() => {
+      void refreshG15ConsentStatus(true)
+    }, 12_000)
+    return () => window.clearInterval(intervalId)
+  }, [g15ConsentSelectionId, planCode, refreshG15ConsentStatus])
 
   // R 方案成員操作
   const updateRMember = (index: number, updated: FamilyMember) => {
@@ -423,31 +798,32 @@ export function useCheckoutForm() {
     e.preventDefault()
 
     if (planCode === 'G15') {
-      if (g15Selected.length < 2) {
-        alert('請至少選擇 2 位家庭成員的人生藍圖報告')
+      if (g15CheckoutBlockers.length > 0) {
+        setError(g15CheckoutBlockers[0])
         return
       }
-      if (!g15ConsentAcceptedAt) {
-        alert('請先勾選並確認已取得每位成員的資料使用同意')
-        return
-      }
-      if (g15RelationshipContext.trim().length < 8) {
-        alert('請具體說明所選成員之間的家庭關係')
-        return
-      }
-      if (g15ConsultationGoals.trim().length < 8) {
-        alert('請說明這次最希望理解或改善的家庭議題')
-        return
-      }
-      await confirmCheckout()
+      setError('')
+      setShowConfirmModal(true)
       return
     } else if (planCode !== 'R') {
       // R 方案用 rMembers，不用 form，所以跳過 form 驗證
       if (!form.name.trim()) { alert('請輸入姓名'); return }
       const yr = parseInt(form.year)
-      if (yr < 1900 || yr > new Date().getFullYear()) { alert('出生年份範圍需在 1900 至今年之間'); return }
+      const validationYear = planCode === 'C'
+        ? Number.parseInt(consultationAsOfDate.slice(0, 4), 10)
+        : new Date().getFullYear()
+      if (yr < 1900 || yr > validationYear) { alert('出生年份範圍需在 1900 至今年之間'); return }
       // 出生地區必填
       if (!form.birthCity || form.cityLat === 0) { alert('請選擇出生地區'); return }
+      if (planCode === 'C' && !isFormValid) {
+        setError(cIsMinor
+          ? '未成年人專屬報告流程尚未完成驗收，目前無法進入付款。'
+          : cBirthDateInFuture
+            ? `出生日期不能晚於今天（以香港日期 ${consultationAsOfDate} 為準）。`
+          : consultationLocalTimeIssueMessage(cLocalTimeValidity.status)
+            || '請完整核對出生資料、關係狀態與出生地計算設定。')
+        return
+      }
     }
 
     if (planCode === 'R') {
@@ -491,15 +867,23 @@ export function useCheckoutForm() {
 
   // 確認後真正提交
   const confirmCheckout = async () => {
-    setShowConfirmModal(false)
-    if (planCode === 'G15' && !g15ConsentAcceptedAt) {
-      setError('請先勾選並確認已取得每位成員的資料使用同意')
-      return
+    if (planCode !== 'G15') setShowConfirmModal(false)
+    if (planCode === 'G15') {
+      if (!g15AllMembersAccepted || !g15ConsentSelectionId) {
+        setError('請等待每位成年成員完成獨立同意後再付款')
+        return
+      }
+      const stillAccepted = await refreshG15ConsentStatus()
+      if (!stillAccepted) {
+        setError('逐位同意狀態已變更或暫時無法查驗，尚未建立付款')
+        return
+      }
     }
     if (planCode === 'G15' && (g15RelationshipContext.trim().length < 8 || g15ConsultationGoals.trim().length < 8)) {
       setError('請完整填寫家庭關係與本次諮詢目標')
       return
     }
+    setError('')
     setLoading(true)
 
     // Phase 5 v5.10.382 — Turnstile bot 防護:有 site key 時必驗(沒設則 stub mode 自動 pass)
@@ -525,22 +909,14 @@ export function useCheckoutForm() {
       let birthData: Record<string, any> = {}
 
       if (planCode === 'G15') {
-        const selectedReportIds = g15Selected.map(s => s.reportId)
         // G15：傳送已選取的報告 ID，後端直接讀取報告資料
         birthData = {
           plan_type: 'family_reports',
-          report_ids: selectedReportIds,
+          report_ids: g15Selected.map(s => s.reportId),
           member_names: g15Selected.map(s => s.name),
           stated_relationships: [g15RelationshipContext.trim()],
           consultation_goals: [g15ConsultationGoals.trim()],
-          consent_attestation: {
-            accepted: true,
-            policy_version: G15_CONSENT_POLICY_VERSION,
-            accepted_at: g15ConsentAcceptedAt,
-            selected_report_ids_hash: await hashG15SelectedReportIds(selectedReportIds),
-            authority_basis: G15_AUTHORITY_BASIS,
-            minor_guardian_authority_confirmed: true,
-          },
+          consent_selection_id: g15ConsentSelectionId,
         }
       } else {
         birthData = {
@@ -558,13 +934,14 @@ export function useCheckoutForm() {
           address_lng: form.addressLng || undefined,
           time_unknown: timeMode === 'unknown',
           time_mode: timeMode,
-          latitude: form.cityLat || undefined,
-          longitude: form.cityLng || undefined,
-          timezone_offset: form.cityTz,
+          latitude: planCode === 'C' ? form.cityLat : form.cityLat || undefined,
+          longitude: planCode === 'C' ? form.cityLng : form.cityLng || undefined,
+          timezone_offset: planCode === 'C' ? cEffectiveTimezoneOffset : form.cityTz,
           // Sprint 3 國際化：傳 IANA 時區 + 國家碼給後端（Python BirthInput 用來算 DST）
           timezone: form.timezone || undefined,
           birth_country: form.countryCode || undefined,
           birth_city: form.birthCity || undefined,
+          birth_location_precision: planCode === 'C' ? form.birthLocationPrecision : undefined,
           calendar_type: form.calendarType,
           lunar_leap: form.calendarType === 'lunar' ? form.lunarLeap : undefined,
         }
@@ -649,7 +1026,7 @@ export function useCheckoutForm() {
       } catch { /* 靜默失敗，後端會用 fallback */ }
 
       // T10b v5.10.372 — internalPost 統一處理 429 + timeout、結帳是 P0 funnel、429 給友好顯示
-      const data = await internalPost('/api/checkout', {
+      const checkoutPayload = {
         planCode,
         totalPrice: ['G15', 'R'].includes(planCode) ? totalPrice : undefined,
         birthData,
@@ -658,6 +1035,18 @@ export function useCheckoutForm() {
         couponDiscount: couponApplied?.discountAmount || undefined,
         pointsToUse: pointsUsed > 0 ? pointsUsed : undefined,
         userEmail: authEmail || sessionStorage.getItem('jianyuan_email') || undefined,
+      }
+      const checkoutPayloadIdentity = JSON.stringify(checkoutPayload)
+      if (checkoutRequestRef.current?.payload !== checkoutPayloadIdentity) {
+        checkoutRequestRef.current = {
+          payload: checkoutPayloadIdentity,
+          key: `jyco_${globalThis.crypto.randomUUID().toLowerCase()}`,
+        }
+      }
+
+      const data = await internalPost('/api/checkout', {
+        ...checkoutPayload,
+        checkoutRequestKey: checkoutRequestRef.current.key,
       }, { authToken }) as { url?: string; error?: string }
 
       if (data.url && data.url.startsWith('http')) {
@@ -694,7 +1083,7 @@ export function useCheckoutForm() {
     planCode, plan, isFamilyPlan, isRelationPlan, isG15Plan,
     // 表單
     form, setForm, timeMode, setTimeMode,
-    cityResults, handleCitySearch, selectCity, selectCountry, cancelCountrySelection, needCityForCountry,
+    cityResults, handleCitySearch, dismissCityResults, selectCity, selectCountry, cancelCountrySelection, needCityForCountry,
     loading, error,
     // 優惠碼
     couponInput, setCouponInput, couponApplied, setCouponApplied,
@@ -710,14 +1099,17 @@ export function useCheckoutForm() {
     rMembers, updateRMember, addRMember, removeRMember, rRelationDesc, setRRelationDesc,
     // G15 方案（導入模式）
     g15Selected, g15MyReports, g15MyLoading,
-    g15SearchQuery, setG15SearchQuery, g15SearchResults, g15SearchLoading,
+    g15SearchQuery, setG15SearchQuery, g15SearchResults, g15SearchLoading, g15SearchAttempted,
     searchG15Reports, addG15Report, removeG15Report, loadMyReports,
     g15RelationshipContext, setG15RelationshipContext,
     g15ConsultationGoals, setG15ConsultationGoals,
     g15LoadError, g15SearchError,
-    g15ConsentAccepted: Boolean(g15ConsentAcceptedAt), setG15ConsentAccepted,
-    // G15 舊版 email（保留相容）
-    g15Emails, updateG15Email, addG15Email, removeG15Email, g15VerifyLoading,
+    g15ConsentMembers, g15ConsentSelectionId, g15ConsentExpiresAt,
+    g15ConsentStatusMessage, g15ConsentError, g15ConsentLoading,
+    g15AllMembersAccepted, g15CheckoutBlockers,
+    g15ConsentAccessInputs, updateG15ConsentAccessInput,
+    addG15ConsentAccessInput, removeG15ConsentAccessInput,
+    updateG15ConsentEmail, sendG15ConsentInvitations, refreshG15ConsentStatus,
     // 家庭成員（保留供 UI 相容）
     familyMembers, updateFamilyMember, addFamilyMember, removeFamilyMember,
     // E1 方案
@@ -731,7 +1123,7 @@ export function useCheckoutForm() {
     // 金額
     extraMemberCount, extraPrice, rExtraCount, totalPrice, finalPrice,
     // Auth
-    authChecked,
+    authChecked, authError, retryAuthCheck,
     // Phase 5 v5.10.382 — Turnstile
     setTurnstileToken,
     // 驗證

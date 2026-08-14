@@ -9,6 +9,7 @@ import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
 import { buildFreeToolJsonLd } from '@/lib/seo/free-tool-schema'  // P5 SEO 三層 JSON-LD
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -523,9 +524,9 @@ export default function ZiweiToolPage() {
           <details className="jy-tool-details">
             <summary>排盤基礎與閱讀方法</summary>
             <div className="jy-tool-details__body">
-              <p><strong>紫微斗數的由來：</strong>紫微斗數相傳由宋代陳希夷（陳摶老祖）所創，是中國命理學中最精密的推命術之一，素有「帝王之學」的美譽。其名來自紫微星——北極星，古人認為它是天帝的居所，統領群星，因此紫微斗數以紫微星為核心，佈列十四主星於十二宮位，形成每個人獨一無二的命盤。</p>
+              <p><strong>紫微斗數的由來：</strong>紫微斗數相傳與宋代陳希夷（陳摶）有關，歷來也有「帝王之學」的稱呼。其名取自紫微星，盤面以十四主星與十二宮位整理不同人生面向，屬於傳統命理的詮釋架構。</p>
               <p><strong>核心原理：</strong>紫微斗數以農曆出生年月日時為基礎，將 108 顆星曜按照特定規則排入十二宮位（命宮、兄弟、夫妻、子女、財帛、疾厄、遷移、交友、事業、田宅、福德、父母），每顆星有廟旺利陷四種狀態，再搭配四化飛星（化祿、化權、化科、化忌）的流轉，推演一生各面向的吉凶起伏。</p>
-              <p><strong>鑒源的做法：</strong>本系統精確計算紫微星的安星起始位置，完整排列十四主星與輔星，並逐宮分析星曜組合的意涵。支援農曆／國曆輸入，閏月自動處理，確保命盤排列的準確性。</p>
+              <p><strong>鑒源的做法與限制：</strong>{PUBLIC_CLAIMS.tools.ziwei}</p>
             </div>
           </details>
         </div>
@@ -714,8 +715,8 @@ export default function ZiweiToolPage() {
                 </div>
                 {form.timeMode === 'unknown' && (
                   <p className="text-xs text-text-muted/70 leading-relaxed">
-                    紫微斗數高度依賴出生時辰，不確定時辰會影響命宮主星判定。
-                    <span className="text-gold/70"> 強烈建議確認出生時間以獲得準確的紫微命盤。</span>
+                    {PUBLIC_CLAIMS.tools.ziwei}
+                    <span className="text-gold/70"> 若能確認出生時間，結果會更具參考性。</span>
                   </p>
                 )}
                 {form.timeMode === 'shichen' && (
@@ -739,7 +740,7 @@ export default function ZiweiToolPage() {
               </fieldset>
 
               <p className="jy-tool-privacy-note">
-                送出後，姓名與出生資料會用於排盤及 AI 輔助解讀。請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
+                {PUBLIC_CLAIMS.privacy.freeToolAnalytics} 請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
               </p>
 
               <button type="submit" disabled={loading || !form.name.trim() || form.cityLat === 0}
@@ -1111,26 +1112,12 @@ export default function ZiweiToolPage() {
             )}
 
             {/* 速算概覽提示 */}
-            <p className="text-xs text-text-muted/50 text-center">以上為命宮主星速算概覽，完整報告將根據您的完整命盤做 14 系統個人化深度分析</p>
+            <p className="text-xs text-text-muted/50 text-center">以上為命宮主星速算概覽。{PUBLIC_CLAIMS.methodology.summary} {PUBLIC_CLAIMS.methodology.limits}</p>
 
             {/* v5.4.17 P0 freemium paywall */}
             <FreemiumPaywall
               systemName="紫微"
               clientName={form.name}
-              checkoutQuery={new URLSearchParams({
-                name: form.name,
-                year: form.year,
-                month: form.month,
-                day: form.day,
-                hour: form.timeMode === 'exact' ? form.exactHour : form.hour,
-                minute: form.timeMode === 'exact' ? form.exactMinute : '0',
-                gender: form.gender,
-                timeMode: form.timeMode,
-                city: form.city,
-                cityLat: String(form.cityLat),
-                cityLng: String(form.cityLng),
-                cityTz: String(form.cityTz),
-              }).toString()}
             />
           </div>
         )}

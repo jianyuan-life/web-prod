@@ -115,6 +115,7 @@ export function ConsultationReportReader({ model, pdfHref }: {
   pdfHref?: string
 }) {
   const isLegacy = model.mode === 'legacy_full_text'
+  const reportLabel = model.plan === 'C' ? '人生藍圖諮詢報告' : '家族藍圖諮詢報告'
   const planDescription = model.plan === 'C'
     ? '把個人的長期模式、當下處境與可核對依據放回同一份生活脈絡。'
     : '把每位成員的節奏並列來看，不用排行、性別或稱謂替任何人預設角色。'
@@ -127,7 +128,7 @@ export function ConsultationReportReader({ model, pdfHref }: {
           <div className={styles.folioLine} aria-hidden="true"><span /></div>
           <div className={styles.mastheadGrid}>
             <div>
-              <p className={styles.kicker}>鑑源 · 諮詢卷宗</p>
+              <p className={styles.kicker}>鑑源 · {reportLabel}</p>
               <h1>{model.title}</h1>
               <p className={styles.dek}>{planDescription}</p>
             </div>
@@ -138,7 +139,7 @@ export function ConsultationReportReader({ model, pdfHref }: {
               </div>
               <div>
                 <dt>資料基準</dt>
-                <dd>{model.asOfDate ? formatCalendarDate(model.asOfDate) : '舊版未另存基準日'}</dd>
+                <dd>{model.asOfDate ? formatCalendarDate(model.asOfDate) : '此版本未顯示基準日'}</dd>
               </div>
               <div>
                 <dt>閱讀方式</dt>
@@ -160,7 +161,7 @@ export function ConsultationReportReader({ model, pdfHref }: {
                   <li><a href="#evidence-appendix"><span>肆</span>依據與限制</a></li>
                   {pdfHref && (
                     <li className={styles.downloadTab}>
-                      <a href={pdfHref} aria-label="下載 PDF 完整版"><span>伍</span>下載 PDF</a>
+                      <a href={pdfHref} aria-label="下載 PDF"><span>伍</span>下載 PDF</a>
                     </li>
                   )}
                   <li className={styles.dashboardTab}>
@@ -170,7 +171,7 @@ export function ConsultationReportReader({ model, pdfHref }: {
               </nav>
               {pdfHref && (
                 <a className={styles.downloadLink} href={pdfHref}>
-                  下載 PDF 完整版
+                  下載 PDF
                 </a>
               )}
               <a className={styles.dashboardLink} href="/dashboard">回到我的報告</a>
@@ -197,11 +198,11 @@ export function ConsultationReportReader({ model, pdfHref }: {
                           {person.age.timeHorizonEndAge !== null && ` · 討論範圍至 ${person.age.timeHorizonEndAge} 歲`}
                         </p>
                       ) : (
-                        <p>未另存可核對的年齡資料</p>
+                        <p>這個版本未顯示可核對的年齡資料</p>
                       )}
                       <p className={styles.confidenceNote}>
                         {person.birthTime.status === 'unknown'
-                          ? `出生時間未知，置信度已下調；${person.birthTime.affectedSystems.join('、')}不用來支撐結論。`
+                          ? `出生時間未知，因此降低相關判讀的把握度；${person.birthTime.affectedSystems.join('、')}不會用來支撐結論。`
                           : '已提供出生時間；仍請以實際經驗反覆核對。'}
                       </p>
                     </div>
@@ -214,15 +215,15 @@ export function ConsultationReportReader({ model, pdfHref }: {
               <LayerHeading
                 index="壹"
                 eyebrow="30 秒先讀"
-                title={isLegacy ? '不替舊原文補寫摘要' : '三個先帶走的結論'}
+                title={isLegacy ? '先從完整內容開始閱讀' : '三個先帶走的結論'}
                 description={isLegacy
-                  ? '舊版報告沒有另存可追溯的摘要。這裡刻意留白，避免把新寫的句子誤認成原報告結論。'
+                  ? '這個版本沒有獨立摘要，因此不另外改寫結論，避免改變原報告的意思。'
                   : '每一項都來自報告已保存的主張，旁邊附上可以自行核對的問題。'}
               />
               {isLegacy ? (
                 <div className={styles.honestyNote}>
-                  <strong>這裡沒有濃縮版。</strong>
-                  <p>可先沿著下一節的原文標題閱讀；如果原文沒有標題，就直接進入完整報告。</p>
+                  <strong>這個版本沒有獨立摘要。</strong>
+                  <p>可先沿著下一節的章節標題閱讀；如果沒有章節標題，就直接進入完整內容。</p>
                 </div>
               ) : (
                 <ol className={styles.quickGrid}>
@@ -241,9 +242,9 @@ export function ConsultationReportReader({ model, pdfHref }: {
               <LayerHeading
                 index="貳"
                 eyebrow="3 分鐘導讀"
-                title={isLegacy ? '原文目錄' : '先讀每章的結論'}
+                title={isLegacy ? '內容目錄' : '先讀每章的結論'}
                 description={isLegacy
-                  ? '只列原文實際寫出的標題，不把散文改造成新的主張。'
+                  ? '依照這份報告原有的標題排列，不另外改寫內容。'
                   : '先確認哪一章最貼近現在的問題，再決定從哪裡深入。'}
               />
               {isLegacy ? (
@@ -259,7 +260,7 @@ export function ConsultationReportReader({ model, pdfHref }: {
                     ))}
                   </ol>
                 ) : (
-                  <p className={styles.emptyDirection}>原文沒有標題，因此不替它建立目錄。完整內容仍原樣保留在下一節。</p>
+                  <p className={styles.emptyDirection}>這份報告沒有章節標題，完整內容仍保留在下一節。</p>
                 )
               ) : (
                 model.routeItems.length > 0 ? (
@@ -287,9 +288,9 @@ export function ConsultationReportReader({ model, pdfHref }: {
               <LayerHeading
                 index="參"
                 eyebrow="完整報告"
-                title={isLegacy ? '資料庫保存的原文' : '把結論放回完整脈絡'}
+                title={isLegacy ? '完整報告內容' : '把結論放回完整脈絡'}
                 description={isLegacy
-                  ? '以下文字只做安全排版；標題、段落與措辭仍以保存內容為準。'
+                  ? '以下保留原報告的標題、段落與措辭，只調整成較容易閱讀的版面。'
                   : '每段保留它原本的資訊類型，讓觀察、情境、做法與依據不混在一起。'}
               />
               {isLegacy ? (
@@ -328,16 +329,16 @@ export function ConsultationReportReader({ model, pdfHref }: {
               <LayerHeading
                 index="肆"
                 eyebrow="依據與限制"
-                title={isLegacy ? '舊版內容能說明到哪裡' : '每個結論從哪裡來'}
+                title={isLegacy ? '這份報告能說明到哪裡' : '每個結論從哪裡來'}
                 description={isLegacy
-                  ? '目前只能確認正文來自已保存的報告；沒有另存可反查的 facts、年齡脈絡或逐項依據。'
+                  ? '這個版本保留了完整正文，但沒有逐段顯示可反查的計算資料、年齡設定與個別依據。'
                   : '同時看支持資料、適用條件與何時不該繼續套用。'}
               />
               {isLegacy ? (
                 <div className={styles.provenancePanel}>
                   <dl>
-                    <div><dt>可確認</dt><dd>這是資料庫保存的舊版報告原文</dd></div>
-                    <div><dt>不能確認</dt><dd>逐段資料來源、生成時的年齡層設定與另行濃縮的結論</dd></div>
+                    <div><dt>可確認</dt><dd>這是你收到的原始報告內容</dd></div>
+                    <div><dt>此版本未顯示</dt><dd>逐段資料來源、生成時的年齡設定與獨立摘要</dd></div>
                     <div><dt>閱讀原則</dt><dd>把內容當作討論起點；與實際經驗不符時，不必勉強套用</dd></div>
                   </dl>
                 </div>

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import PurchaseNoticeModal from '@/components/PurchaseNoticeModal'
+import ConsultationCheckoutTrigger from '@/components/consultation/ConsultationCheckoutTrigger'
+import { isConsultationCheckoutPlan } from '@/lib/checkout/consultation-presentation'
 
 interface PricingButtonProps {
   code: string
@@ -14,6 +16,7 @@ interface PricingButtonProps {
 export default function PricingButton({ code, popular, seasonal, locked }: PricingButtonProps) {
   const [loggedIn, setLoggedIn] = useState(false)
   const [showNotice, setShowNotice] = useState(false)
+  const consultationPlan = isConsultationCheckoutPlan(code)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setLoggedIn(!!data.user))
@@ -30,7 +33,7 @@ export default function PricingButton({ code, popular, seasonal, locked }: Prici
     setShowNotice(true)
   }
 
-  const goToCheckout = () => {
+  const goToLegacyCheckout = () => {
     setShowNotice(false)
     window.location.href = `/checkout?plan=${code}`
   }
@@ -38,7 +41,7 @@ export default function PricingButton({ code, popular, seasonal, locked }: Prici
   const CTA_LABELS: Record<string, string> = {
     C: '開始我的人生藍圖',
     D: '問出心裡的問題',
-    G15: '為家庭做一次命格體檢',
+    G15: '開始整理家人的互動模式',
     R: '看看我們合不合',
     E1: '為重要時刻做準備',
     E2: '掌握這個月的好時機',
@@ -53,24 +56,38 @@ export default function PricingButton({ code, popular, seasonal, locked }: Prici
       ? '需先有命格分析'
       : (CTA_LABELS[code] || '選擇此方案')
 
+  const buttonClassName = `w-full text-center min-h-[44px] py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer ${
+    popular ? 'bg-gold text-dark btn-glow' :
+    seasonal ? 'bg-white/5 text-text-muted/40 cursor-not-allowed' :
+    locked ? 'glass text-gold hover:bg-gold/10' :
+    'glass text-cream hover:bg-white/10'
+  }`
+
+  if (consultationPlan) {
+    return (
+      <ConsultationCheckoutTrigger
+        planCode={code}
+        className={buttonClassName}
+        ariaLabel={`${label}，先查看購買須知`}
+      >
+        {label}
+      </ConsultationCheckoutTrigger>
+    )
+  }
+
   return (
     <>
       <button
         onClick={handleClick}
         disabled={seasonal}
-        className={`w-full text-center min-h-[44px] py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer ${
-          popular ? 'bg-gold text-dark btn-glow' :
-          seasonal ? 'bg-white/5 text-text-muted/40 cursor-not-allowed' :
-          locked ? 'glass text-gold hover:bg-gold/10' :
-          'glass text-cream hover:bg-white/10'
-        }`}
+        className={buttonClassName}
       >
         {label}
       </button>
       {showNotice && (
         <PurchaseNoticeModal
-          planCode={code as 'E1' | 'E2' | 'E3' | 'E4' | 'C' | 'D' | 'G15' | 'R'}
-          onConfirm={goToCheckout}
+          planCode={code as 'E1' | 'E2' | 'E3' | 'E4' | 'D' | 'R'}
+          onConfirm={goToLegacyCheckout}
           onCancel={() => setShowNotice(false)}
         />
       )}

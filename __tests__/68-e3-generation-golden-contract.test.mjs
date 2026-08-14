@@ -5,6 +5,11 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import test, { after } from 'node:test'
 import {
+  CALCULATOR_ATTESTATION_NONCE_HEADER,
+  CALCULATOR_REQUEST_AUTH_HEADERS,
+  createCalculatorRequestAuthenticationHeaders,
+} from '../lib/consultation/calculator-attestation.ts'
+import {
   importE3FallbackRouteWithBoundaries,
   importE3GenerationSteps,
   importE3WorkflowIndexWithLedger,
@@ -21,6 +26,9 @@ const baseReceipt = JSON.parse(readFileSync(
   'utf8',
 ))
 
+const E3_TRANSPORT_SECRET = 'e3-generation-contract-attestation-secret-32-bytes'
+const E3_TRANSPORT_KEY_ID = 'e3-generation-contract-key'
+
 Object.assign(process.env, {
   CLAUDE_API_KEY: 'e3-generation-contract-dummy',
   DEEPSEEK_API_KEY: '',
@@ -31,6 +39,8 @@ Object.assign(process.env, {
   FF_AI_PROMPT_CACHE: 'false',
   PROMPT_CACHE_CANARY_REPORT_IDS: '',
   CRON_SECRET: 'e3-generation-contract-cron-secret',
+  CALCULATOR_ATTESTATION_SECRET: E3_TRANSPORT_SECRET,
+  CALCULATOR_ATTESTATION_KEY_ID: E3_TRANSPORT_KEY_ID,
 })
 
 const originalFetch = globalThis.fetch
@@ -95,6 +105,61 @@ function snapshotRequest(url, init = {}) {
       : { present: false, aborted: false },
     additional,
   }
+}
+
+const requestAuthHeaderNames = [
+  CALCULATOR_ATTESTATION_NONCE_HEADER,
+  ...Object.values(CALCULATOR_REQUEST_AUTH_HEADERS),
+].map((name) => name.toLowerCase())
+
+function withoutRequestAuthentication(value) {
+  const clone = structuredClone(value)
+  const visit = (node) => {
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item)
+      return
+    }
+    if (!node || typeof node !== 'object') return
+    if (node.headers && typeof node.headers === 'object') {
+      for (const name of requestAuthHeaderNames) delete node.headers[name]
+    }
+    for (const child of Object.values(node)) visit(child)
+  }
+  visit(clone)
+  return clone
+}
+
+// Security exception to the historical byte freeze: operational telemetry must
+// not retain a raw paid-report identifier. This upgrades only the usage receipt;
+// response bytes, prompts, requests and every other call remain byte-frozen.
+function withPrivacySafeUsageIdentity(value) {
+  const clone = structuredClone(value)
+  for (const entry of clone.calls ?? []) {
+    if (entry.name !== 'recordAIUsage') continue
+    for (const payload of entry.args ?? []) {
+      if (payload && typeof payload === 'object') payload.reportId = null
+    }
+  }
+  return clone
+}
+
+function assertValidRequestAuthentication(request) {
+  const headers = request.headers
+  const nonce = headers[CALCULATOR_ATTESTATION_NONCE_HEADER.toLowerCase()]
+  const issuedAt = Number(headers[CALCULATOR_REQUEST_AUTH_HEADERS.issuedAt.toLowerCase()])
+  const path = new URL(request.url).pathname
+  const expected = createCalculatorRequestAuthenticationHeaders({
+    requestBody: request.body,
+    method: 'POST',
+    path,
+    nonce,
+    secret: E3_TRANSPORT_SECRET,
+    keyId: E3_TRANSPORT_KEY_ID,
+    issuedAt,
+  })
+  assert.equal(headers[CALCULATOR_REQUEST_AUTH_HEADERS.version.toLowerCase()], expected[CALCULATOR_REQUEST_AUTH_HEADERS.version])
+  assert.equal(headers[CALCULATOR_REQUEST_AUTH_HEADERS.keyId.toLowerCase()], expected[CALCULATOR_REQUEST_AUTH_HEADERS.keyId])
+  assert.equal(headers[CALCULATOR_REQUEST_AUTH_HEADERS.signature.toLowerCase()], expected[CALCULATOR_REQUEST_AUTH_HEADERS.signature])
 }
 
 function calculatorInput(spec) {
@@ -380,7 +445,14 @@ test('每次測試都從 immutable d9bf source 真執行 steps，候選 E3 bytes
   const baseObservation = await observeGenerationSteps(baseSteps)
   const candidateObservation = await observeGenerationSteps(steps)
 
-  assert.deepEqual(candidateObservation, baseObservation)
+  assert.deepEqual(
+    withoutRequestAuthentication(candidateObservation),
+    baseObservation,
+  )
+  for (const item of Object.values(candidateObservation.calculator)) {
+    assertValidRequestAuthentication(item.request)
+  }
+  assertValidRequestAuthentication(candidateObservation.chumenji.request)
   assert.equal(baseObservation.chumenji.request.body, golden.chumenji.requestBody)
   const baseClaudeRequest = JSON.parse(baseObservation.claude.request.body)
   assert.equal(baseClaudeRequest.model, 'claude-opus-4-6')
@@ -469,7 +541,20 @@ test('E3 fallback POST 真執行 immutable base 與候選路由，鎖定 legacy 
   const baseObservation = await observeFallbackRoute(materializedBase.root)
   const candidateObservation = await observeFallbackRoute(projectRoot)
 
-  assert.deepEqual(candidateObservation, baseObservation)
+  assert.deepEqual(
+    withoutRequestAuthentication(candidateObservation),
+    withPrivacySafeUsageIdentity(baseObservation),
+  )
+  assertValidRequestAuthentication(candidateObservation.requests[0])
+  assert.equal(candidateObservation.rawBody, baseObservation.rawBody)
+  assert.deepEqual(candidateObservation.body, baseObservation.body)
+  assert.deepEqual(
+    withoutRequestAuthentication(candidateObservation.requests),
+    baseObservation.requests,
+  )
+  const candidateUsage = candidateObservation.calls.find((entry) => entry.name === 'recordAIUsage')
+  assert.equal(candidateUsage.args[0].reportId, null)
+  assert.equal(JSON.stringify(candidateUsage).includes('e3-fallback-golden-report'), false)
   assert.equal(baseObservation.status, 200)
   assert.equal(baseObservation.headers['content-type'], 'application/json')
   assert.equal(baseObservation.rawBody, JSON.stringify(baseObservation.body))

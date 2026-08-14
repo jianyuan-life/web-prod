@@ -8,6 +8,7 @@ import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(time
 import AIAnalysisCard from '@/components/AIAnalysisCard'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
 import { buildFreeToolJsonLd } from '@/lib/seo/free-tool-schema'  // P5 SEO 三層 JSON-LD
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 // ── 十二時辰 ──
 const SHICHEN = [
@@ -449,9 +450,9 @@ export default function QimenToolPage() {
           <details className="jy-tool-details">
             <summary>排盤基礎與閱讀方法</summary>
             <div className="jy-tool-details__body">
-              <p><strong>奇門遁甲的由來：</strong>奇門遁甲與太乙神數、六壬神課並稱中國古代三式，被譽為「帝王之術」。傳說黃帝於涿鹿之戰中得九天玄女傳授奇門遁甲以戰勝蚩尤。其體系融合易學、天文、曆法、陰陽五行，歷經數千年發展，至今仍是預測學中最為精密的術數體系之一。</p>
+              <p><strong>奇門遁甲的由來：</strong>奇門遁甲與太乙神數、六壬神課並稱中國古代三式，歷來有「帝王之術」的稱呼，也流傳黃帝與九天玄女的神話。它融合易學、曆法與陰陽五行，是一套具有多種流派的傳統術數。</p>
               <p><strong>核心原理：</strong>奇門遁甲以九宮格為基本框架，將天盤（天干）、地盤（地干）、九星、八門、八神五層資訊疊加在九宮之上，通過分析各層元素的生剋關係與格局組合，判斷特定時空的吉凶能量分佈。「奇」指乙丙丁三奇，「門」指八門，「遁」指六甲旬首所遁之干。</p>
-              <p><strong>鑒源的做法：</strong>本系統使用精確的天文曆法數據，嚴格按照古法排盤規則（含超神接氣、陰陽遁局判定、寄宮法則），確保每一宮的天地盤干、九星、八門、八神完全正確。格局判斷涵蓋九遁、28種經典格局。</p>
+              <p><strong>鑒源的做法與限制：</strong>{PUBLIC_CLAIMS.tools.qimen}</p>
             </div>
           </details>
         </div>
@@ -582,7 +583,7 @@ export default function QimenToolPage() {
               </fieldset>
 
               <p className="jy-tool-privacy-note">
-                送出後，所選排盤類型與時間會用於排盤及 AI 輔助解讀。請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
+                {PUBLIC_CLAIMS.privacy.freeToolAnalytics} 請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
               </p>
 
               {/* 提交按鈕 */}

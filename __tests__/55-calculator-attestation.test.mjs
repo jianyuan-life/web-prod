@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import {
   CalculatorAttestationError,
+  createCalculatorRequestAuthenticationHeaders,
   createCalculatorAttestationNonce,
   verifyCalculatorResponseAttestation,
 } from '../lib/consultation/calculator-attestation.ts'
@@ -82,4 +83,34 @@ test('每次 request 都產生至少 128-bit 的 base64url nonce', () => {
   const values = Array.from({ length: 32 }, () => createCalculatorAttestationNonce())
   assert.equal(new Set(values).size, values.length)
   assert.ok(values.every((value) => /^[A-Za-z0-9_-]{22,128}$/u.test(value)))
+})
+
+test('strict request HMAC binds exact body, nonce, route and timestamp', () => {
+  const auth = createCalculatorRequestAuthenticationHeaders({
+    requestBody,
+    method: 'POST',
+    path: '/api/consultation/v1/calculate',
+    nonce,
+    secret,
+    keyId: 'primary',
+    issuedAt: 1786200000,
+  })
+  assert.deepEqual(auth, {
+    'X-Jianyuan-Request-Version': 'jianyuan.fly.request.v1',
+    'X-Jianyuan-Request-Key-Id': 'primary',
+    'X-Jianyuan-Request-Issued-At': '1786200000',
+    'X-Jianyuan-Request-Signature': '69ecd4c54954846aa17371857cc4f3d9d4c777a37863817e621052c22d9f522a',
+  })
+  assert.notEqual(
+    auth['X-Jianyuan-Request-Signature'],
+    createCalculatorRequestAuthenticationHeaders({
+      requestBody: `${requestBody} `,
+      method: 'POST',
+      path: '/api/consultation/v1/calculate',
+      nonce,
+      secret,
+      keyId: 'primary',
+      issuedAt: 1786200000,
+    })['X-Jianyuan-Request-Signature'],
+  )
 })

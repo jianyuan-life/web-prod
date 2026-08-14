@@ -8,9 +8,11 @@
 
 import { useReportWebVitals } from 'next/web-vitals'
 import { reportWebVital, type WebVitalMetric } from '@/lib/monitoring/web-vitals'
+import { hasAnalyticsConsent } from '@/lib/privacy/consent'
 
 export default function WebVitalsReporter() {
   useReportWebVitals((metric) => {
+    if (!hasAnalyticsConsent()) return
     // metric 從 next/web-vitals 出來、形狀對得上 WebVitalMetric interface
     reportWebVital(metric as WebVitalMetric)
   })

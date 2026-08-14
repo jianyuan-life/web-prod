@@ -3,7 +3,7 @@
 // 客戶付了錢、報告好了、卻永遠不知道(email_sent_at=null 沒有任何 cron 撈)。
 // 本檔 = 輕量 fallback 通知信(短版、可靠優先;完整精美模板仍在 workflow
 // sendReportEmail、此處刻意不重複那 300 行 HTML — 這是備援路徑)。
-// 防重寄:email_send_log(template=report_completed_fallback)+ email_sent_at 雙防線。
+// 防重寄:DB durable claim + provider idempotency key + email_sent_at。
 // ============================================================
 
 import { sendEmailWithRetry } from '@/lib/resend-helper'
@@ -11,17 +11,20 @@ import { getUnsubscribeHtml } from '@/lib/unsubscribe'
 import { createServiceClient } from '@/lib/supabase'
 import { PLAN_NAMES } from '@/lib/plan-names'
 import { buildAbsoluteReportUrl } from '@/lib/consultation/routes'
+import { deliverClaimedCompletionEmail } from '@/lib/report/completion-email-delivery'
 
 export async function sendCompletionEmailIfMissing(reportId: string, source: string): Promise<{ sent: boolean; reason: string }> {
   try {
     const supabase = createServiceClient()
-    const { data: row } = await supabase
+    const { data: row, error: rowErr } = await supabase
       .from('paid_reports')
-      .select('status, customer_email, email_sent_at, plan_code, access_token, birth_data, created_at, generation_progress')
+      .select('status, deleted_at, customer_email, email_sent_at, plan_code, access_token, birth_data, created_at, generation_progress')
       .eq('id', reportId)
       .single()
+    if (rowErr) return { sent: false, reason: 'report-read-failed' }
     if (!row) return { sent: false, reason: 'not-found' }
     if (row.status !== 'completed') return { sent: false, reason: `status=${row.status}` }
+    if (row.deleted_at) return { sent: false, reason: 'deleted' }
     if (row.email_sent_at) return { sent: false, reason: 'already-sent' }
     if (!row.customer_email || !row.access_token) return { sent: false, reason: 'no-email-or-token' }
     // Codex L3 P2 修:緩衝基準改「最後活動時間」而非 created_at —
@@ -54,12 +57,9 @@ export async function sendCompletionEmailIfMissing(reportId: string, source: str
       ? `您好，您的<strong style="color:#c9a84c;">${planName}</strong>报告已生成完成，点击下方按钮即可查看。报告会长期保存在您的帐号中。`
       : `您好，您的<strong style="color:#c9a84c;">${planName}</strong>報告已生成完成，點擊下方按鈕即可查看。報告會長期保存在您的帳號中。`
 
-    const outcome = await sendEmailWithRetry({
+    const emailPayload = {
       from: isCN ? '鉴源命理 <reports@jianyuan.life>' : '鑒源命理 <reports@jianyuan.life>',
       to: row.customer_email,
-      emailType: 'report_completed_fallback',
-      reportId,
-      metadata: { plan: row.plan_code, source },
       subject,
       html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#0d1117;font-family:'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif;">
@@ -79,15 +79,21 @@ export async function sendCompletionEmailIfMissing(reportId: string, source: str
     </div>
   </div>
 </body></html>`,
-    })
+    }
+    const delivery = await deliverClaimedCompletionEmail(
+      supabase,
+      reportId,
+      {
+        ...emailPayload,
+        emailType: 'report_ready',
+        reportId,
+        metadata: { plan: row.plan_code, source },
+      },
+      sendEmailWithRetry,
+    )
+    if (!delivery.sent) return { sent: false, reason: delivery.reason }
 
-    if (!outcome.success) return { sent: false, reason: outcome.error || 'send-failed' }
-
-    const { error: updErr } = await supabase.from('paid_reports')
-      .update({ email_sent_at: new Date().toISOString() })
-      .eq('id', reportId)
-    if (updErr) console.warn('email_sent_at 更新失敗(fallback 完成信已寄):', updErr.message)
-    console.log(`📧 完成信 fallback 補寄(${source}):${reportId.slice(0, 8)} → ${row.customer_email}`)
+    console.log(`完成信 fallback 補寄已結案(${source}):${reportId.slice(0, 8)}`)
     return { sent: true, reason: 'ok' }
   } catch (e) {
     console.error('sendCompletionEmailIfMissing 失敗(不阻塞):', e)

@@ -1,46 +1,31 @@
 'use client'
 
 import Script from 'next/script'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { isPrivateConsultationUrl } from '@/lib/security/private-route-redaction'
-
-const STORAGE_KEY = 'jy_cookie_consent_v1'
-const CONSENT_EVENT = 'jy:consent-updated'
+import {
+  applyStoredConsentToVendors,
+  hasAnalyticsConsent,
+  isTelemetryEligiblePath,
+  useStoredConsent,
+} from '@/lib/privacy/consent'
 
 type TelemetryEvent = { url: string; route?: string }
-type ConsentState = { analytics: boolean; marketing: boolean }
 type TelemetryProps = {
   gaMeasurementId?: string
   metaPixelId?: string
 }
 
-const NO_CONSENT: ConsentState = { analytics: false, marketing: false }
-
 function suppressPrivateRoute<T extends TelemetryEvent>(event: T): T | null {
+  if (!hasAnalyticsConsent()) return null
   if (isPrivateConsultationUrl(event.url)) return null
   if (event.route && isPrivateConsultationUrl(event.route)) return null
+  if (!isTelemetryEligiblePath(event.url)) return null
+  if (event.route && !isTelemetryEligiblePath(event.route)) return null
   return event
-}
-
-function normalizeConsent(value: unknown): ConsentState {
-  if (!value || typeof value !== 'object') return NO_CONSENT
-  const candidate = value as Partial<ConsentState>
-  return {
-    analytics: candidate.analytics === true,
-    marketing: candidate.marketing === true,
-  }
-}
-
-function readStoredConsent(): ConsentState {
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored ? normalizeConsent(JSON.parse(stored)) : NO_CONSENT
-  } catch {
-    return NO_CONSENT
-  }
 }
 
 /**
@@ -53,38 +38,17 @@ export default function PrivacySafeVercelTelemetry({
   metaPixelId,
 }: TelemetryProps) {
   const pathname = usePathname()
-  const [consent, setConsent] = useState<ConsentState>(NO_CONSENT)
+  const consent = useStoredConsent()
 
   useEffect(() => {
-    const syncStoredConsent = () => setConsent(readStoredConsent())
-    const syncConsentEvent = (event: Event) => {
-      const detail = event instanceof CustomEvent ? event.detail : undefined
-      setConsent(detail ? normalizeConsent(detail) : readStoredConsent())
-    }
+    applyStoredConsentToVendors(pathname)
+  }, [pathname, consent.analytics, consent.marketing])
 
-    syncStoredConsent()
-    window.addEventListener(CONSENT_EVENT, syncConsentEvent)
-    window.addEventListener('storage', syncStoredConsent)
-    return () => {
-      window.removeEventListener(CONSENT_EVENT, syncConsentEvent)
-      window.removeEventListener('storage', syncStoredConsent)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!pathname || !isPrivateConsultationUrl(pathname)) return
-
-    window.gtag?.('consent', 'update', {
-      analytics_storage: 'denied',
-      ad_storage: 'denied',
-      ad_user_data: 'denied',
-      ad_personalization: 'denied',
-    })
-    const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq
-    fbq?.('consent', 'revoke')
-  }, [pathname])
-
-  if (!pathname || isPrivateConsultationUrl(pathname)) return null
+  if (
+    !pathname
+    || isPrivateConsultationUrl(pathname)
+    || !isTelemetryEligiblePath(pathname)
+  ) return null
 
   const gaId = gaMeasurementId ? JSON.stringify(gaMeasurementId) : null
   const metaId = metaPixelId ? JSON.stringify(metaPixelId) : null

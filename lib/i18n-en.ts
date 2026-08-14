@@ -1,4 +1,6 @@
 // ============================================================
+
+import { PUBLIC_CLAIMS, PUBLIC_CLAIMS_EN } from './public-claims.ts'
 // 英文翻譯字典（繁體中文 → English）
 // ============================================================
 // 使用方式：LocaleContent.tsx 在 en 模式下、以 text-node 原文（繁體）
@@ -67,6 +69,31 @@ export const EN_SYSTEM_NAMES: Record<string, string> = {
 }
 
 // 通用 UI / 導航 / CTA / 頁腳
+export const EN_PUBLIC_CLAIMS: Record<string, string> = {
+  '十四套系統交叉驗證': 'Traditional frameworks viewed side by side',
+  '44,421+ 條規則客觀運算': 'Rule coverage depends on the current version and available data',
+  '14 系統交叉驗證': 'Traditional frameworks viewed side by side',
+  '每套系統各司其職，交叉驗證給你最完整的答案':
+    'Each traditional framework offers a different interpretive lens; similarities and differences are shown with their limits.',
+  '14 系統交叉驗證方法論與工業級排盤引擎技術報告': 'Chart Methods and Data Limits',
+  '44,421+ 條': 'Rule coverage varies by version',
+  '44,421+ 條規則源自《滴天髓》《紫微斗數全書》《窮通寶鑑》等經典，由分析引擎整合成有深度的個人化報告。':
+    PUBLIC_CLAIMS_EN.methodology.summary,
+  '排盤計算使用確定性算法（如壽星天文曆、Swiss Ephemeris），結果可重複驗證，與專業命理軟體一致。分析解讀基於數十部經典古籍提煉的專業規則，經引擎精密計算整合成個人化報告。鑒源最多用十四套系統交叉分析——當多數系統得出相同結論時，可信度遠高於單一系統的判斷。':
+    `${PUBLIC_CLAIMS_EN.methodology.summary} ${PUBLIC_CLAIMS_EN.methodology.limits}`,
+  '不同系統觀察的角度不同，偶有差異屬正常。這正是鑒源的核心價值——我們用三層加權架構進行交叉驗證，取各系統共識作為最終結論。單一系統只有一個觀點，十四套系統交叉驗證才能得到更全面、更可靠的結論。':
+    PUBLIC_CLAIMS_EN.methodology.comparison,
+  [PUBLIC_CLAIMS.methodology.summary]: PUBLIC_CLAIMS_EN.methodology.summary,
+  [PUBLIC_CLAIMS.methodology.comparison]: PUBLIC_CLAIMS_EN.methodology.comparison,
+  [PUBLIC_CLAIMS.methodology.limits]: PUBLIC_CLAIMS_EN.methodology.limits,
+  [PUBLIC_CLAIMS.terms.service]: PUBLIC_CLAIMS_EN.terms.service,
+  [PUBLIC_CLAIMS.trust.comparisonTooltip]: PUBLIC_CLAIMS_EN.trust.comparisonTooltip,
+  [PUBLIC_CLAIMS.trust.fulfillmentNotice]: PUBLIC_CLAIMS_EN.trust.fulfillmentNotice,
+  [PUBLIC_CLAIMS.blog.cta]: PUBLIC_CLAIMS_EN.blog.cta,
+  [PUBLIC_CLAIMS.tools.baziDayBoundaryFaq]: PUBLIC_CLAIMS_EN.tools.baziDayBoundaryFaq,
+  [PUBLIC_CLAIMS.tools.birthLocationFaq]: PUBLIC_CLAIMS_EN.tools.birthLocationFaq,
+}
+
 export const EN_UI: Record<string, string> = {
   // Brand & nav
   '鑒源': 'JianYuan',
@@ -704,7 +731,7 @@ export const EN_FOUNDER: Record<string, string> = {
 // 單一合併的英文字典（text-node 級，key = 繁體原文去首尾空白）
 // 注意：順序遵循較長 phrase 優先，避免短字先命中
 const merged: Record<string, string> = {}
-for (const dict of [EN_PLAN_NAMES, EN_SYSTEM_NAMES, EN_UI, EN_FOUNDER]) {
+for (const dict of [EN_PUBLIC_CLAIMS, EN_PLAN_NAMES, EN_SYSTEM_NAMES, EN_UI, EN_FOUNDER]) {
   for (const [k, v] of Object.entries(dict)) {
     if (!(k in merged)) merged[k] = v
   }

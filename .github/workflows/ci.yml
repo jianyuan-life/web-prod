@@ -16,6 +16,9 @@ on:
       - '**.md'
       - 'docs/**'
 
+permissions:
+  contents: read
+
 # Cancel in-progress runs when a new push arrives on the same PR
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -27,10 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: 'npm'
@@ -43,17 +46,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # E3 golden tests execute immutable base commit d9bf... on every run.
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
+      - name: Provision release-test runtime (Playwright module + Python requests)
+        run: |
+          # 69-e3-navigation-probe 需要 playwright 模組；瀏覽器用 runner 內建
+          # Google Chrome（CHROME_PATH），不下載 playwright 瀏覽器。
+          npm install --no-save playwright
+          # 52-consultation-sample-harness 會以 python3 跑 scripts/ 下的營運腳本
+          python3 -m pip install --quiet requests
       - name: Run tests
-        run: npm test
+        env:
+          REFUND_MIGRATION_PG_RUNTIME: '1'
+          SECURITY_MIGRATION_PG_RUNTIME: '1'
+          G15_CONSENT_PG_RUNTIME: '1'
+          FREE_CHECKOUT_PG_RUNTIME: '1'
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node __tests__/run-tests.mjs --release
       - name: Build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
@@ -62,7 +78,9 @@ jobs:
           STRIPE_SECRET_KEY: ci-only-not-a-credential
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ci-only-public-placeholder
           NEXT_PUBLIC_SITE_URL: https://jianyuan.life
-          NEXT_PUBLIC_API_URL: https://placeholder.fly.dev
+          # Public hostname only; the CI job never calls the service.  It must
+          # still satisfy the production SSRF allowlist exercised by build.
+          NEXT_PUBLIC_API_URL: https://fortune-reports-api.fly.dev
         run: npm run build
 
   # ────────────────────────────────────────────────────────────
@@ -93,8 +111,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
       - name: Check GEMINI_API_KEY secret presence

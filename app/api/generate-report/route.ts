@@ -23,21 +23,55 @@ import { isV4, isV6 } from '@/lib/plan-flags'  // v5.10.458:USE_PLAN_V4_C/G15 !=
 import { notifyModelDowngrade } from '@/lib/ai/observability/telegram'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 import { consultationFallbackDecision } from '@/lib/consultation/fallback-policy'
+import { buildConsultationRelationshipPrompt } from '@/lib/consultation/relationship-context'
+import { assertNoLegacyCalculatorFailureMarkers } from '@/lib/consultation/legacy-calculator-safety'
+import { getGeneratedReportPdfStorageTarget } from '@/lib/report/pdf-storage'
+import { readBoundedPdfResponse } from '@/lib/report/pdf-bytes'
+import { deliverClaimedCompletionEmail } from '@/lib/report/completion-email-delivery'
+import {
+  GENERATE_PDF_PATH,
+  LEGACY_CALCULATE_PATH,
+} from '@/lib/consultation/calculator-request'
+import { createSignedCalculatorPost } from '@/lib/consultation/calculator-request-auth.server'
+import {
+  operationalErrorClass,
+  operationalFailureCode,
+  operationalFingerprint,
+} from '@/lib/security/operational-telemetry'
 
 // ============================================================
 // 付費報告生成 API — 排盤 + AI 深度分析 + 自動寄信
-// C 方案：Claude Opus 4.6 多步並行生成
-// 其他方案：DeepSeek
+// 所有方案只允許已核准的 Claude provider；provider 不可用時 fail closed。
 // ============================================================
 
 // Vercel Pro 方案最長 300 秒
 export const maxDuration = 300
 
 const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || 'https://fortune-reports-api.fly.dev'
-const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
-const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY || ''
 const CLAUDE_API = 'https://api.anthropic.com/v1/messages'
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
+
+function availableReportFingerprint(value: unknown): string | null {
+  const fingerprint = operationalFingerprint(value)
+  return fingerprint === 'unavailable' ? null : fingerprint
+}
+
+function reportLogContext(value: unknown): Record<string, string> {
+  const reportFingerprint = availableReportFingerprint(value)
+  return reportFingerprint ? { reportFingerprint } : {}
+}
+
+function aiUsageIdentity(value: unknown): { reportId: null; metadata: Record<string, string> } {
+  const reportFingerprint = availableReportFingerprint(value)
+  return {
+    reportId: null,
+    metadata: reportFingerprint ? { reportFingerprint } : {},
+  }
+}
+
+function safeOperationalError(event: string, error: unknown): void {
+  console.error(event, { errorType: operationalErrorClass(error) })
+}
 
 // ── Email 亮點提取 ──
 function getEmailHighlights(planCode: string, reportContent: string, isCN: boolean): string[] {
@@ -162,11 +196,11 @@ async function callClaudeStreaming(
       await recordAIUsage({
         provider: 'anthropic', model,
         promptTokens: 0, completionTokens: 0,
-        reportId: tracking?.reportId, planCode: tracking?.planCode,
+        ...aiUsageIdentity(tracking?.reportId), planCode: tracking?.planCode,
         callStage: tracking?.callStage || 'fallback_route',
         latencyMs: Date.now() - tStart,
         status: 'error',
-        errorMessage: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
+        errorMessage: operationalErrorClass(e),
       })
     } catch { /* noop */ }
     if (e instanceof Error && e.name === 'AbortError') {
@@ -177,16 +211,15 @@ async function callClaudeStreaming(
 
   if (!res.ok) {
     clearTimeout(timeout)
-    const errText = await res.text()
-    console.error(`Claude API 回傳 HTTP ${res.status}，回應內容: ${errText.slice(0, 500)}`)
+    console.error('Claude API 回傳非成功狀態', { status: res.status })
     try {
       await recordAIUsage({
         provider: 'anthropic', model,
         promptTokens: 0, completionTokens: 0,
-        reportId: tracking?.reportId, planCode: tracking?.planCode,
+        ...aiUsageIdentity(tracking?.reportId), planCode: tracking?.planCode,
         callStage: tracking?.callStage || 'fallback_route',
         latencyMs: Date.now() - tStart,
-        status: 'error', errorMessage: `HTTP ${res.status}: ${errText.slice(0, 200)}`,
+        status: 'error', errorMessage: `HTTP_${res.status}`,
       })
     } catch { /* noop */ }
     if (res.status === 529) {
@@ -195,7 +228,7 @@ async function callClaudeStreaming(
     if (res.status === 402) {
       throw new Error(`Claude API 402 額度不足：請到 console.anthropic.com 充值`)
     }
-    throw new Error(`Claude API 錯誤 ${res.status}: ${errText}`)
+    throw new Error(`Claude API HTTP ${res.status}`)
   }
 
   // 解析 SSE 串流
@@ -240,12 +273,16 @@ async function callClaudeStreaming(
         provider: 'anthropic', model,
         promptTokens: estPromptTokens,
         completionTokens: estimateTokens(result),
-        reportId: tracking?.reportId, planCode: tracking?.planCode,
+        ...aiUsageIdentity(tracking?.reportId), planCode: tracking?.planCode,
         callStage: tracking?.callStage || 'fallback_route',
         latencyMs: Date.now() - tStart,
         status: 'incomplete',
-        errorMessage: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
-        metadata: { note: 'SSE stream error, tokens estimated from chars', chars: result.length },
+        errorMessage: operationalErrorClass(e),
+        metadata: {
+          ...aiUsageIdentity(tracking?.reportId).metadata,
+          note: 'SSE stream error, tokens estimated from chars',
+          chars: result.length,
+        },
       })
     } catch { /* noop */ }
     if (e instanceof Error && e.name === 'AbortError') {
@@ -264,11 +301,15 @@ async function callClaudeStreaming(
       provider: 'anthropic', model,
       promptTokens: estPromptTokens,
       completionTokens: estimateTokens(result),
-      reportId: tracking?.reportId, planCode: tracking?.planCode,
+      ...aiUsageIdentity(tracking?.reportId), planCode: tracking?.planCode,
       callStage: tracking?.callStage || 'fallback_route',
       latencyMs: Date.now() - tStart,
       status: 'success',
-      metadata: { note: 'SSE stream, tokens estimated from chars (char/3)', chars: result.length },
+      metadata: {
+        ...aiUsageIdentity(tracking?.reportId).metadata,
+        note: 'SSE stream, tokens estimated from chars (char/3)',
+        chars: result.length,
+      },
     })
   } catch { /* noop */ }
 
@@ -289,46 +330,50 @@ function localizePrompt(prompt: string, locale?: string): string {
 
 // 輔助函式：將報告標記為失敗
 async function markReportFailed(reportId: string, errorMessage: string, isDryRun = false) {
+  const failureClass = operationalFailureCode(errorMessage)
   // dry-run(Phase 6 regression):絕不寫 DB / 不改 status / 不發 Sentry+Telegram alert
   // 中央防線 — 即使呼叫端漏傳 isDryRun、預設 false = production 行為不變;dryRun 時這裡硬擋
   if (isDryRun) {
-    console.info(`[dryRun] 跳過 markReportFailed(${reportId}):${errorMessage}`)
+    console.info('[generate-report] dry-run failure persistence skipped', {
+      ...reportLogContext(reportId),
+      errorType: failureClass,
+    })
     return
   }
   try {
-    // 取得當前重試次數 + 客戶資訊(for Telegram alert)
+    // 只讀取營運分類資料；客戶 PII 不得進 observability sink。
     const { data } = await getSupabase()
       .from('paid_reports')
-      .select('retry_count, plan_code, customer_email, client_name, amount_usd')
+      .select('retry_count, plan_code')
       .eq('id', reportId)
       .single()
     const currentRetry = data?.retry_count ?? 0
 
     await getSupabase().from('paid_reports').update({
       status: 'failed',
-      error_message: errorMessage,
+      error_message: failureClass,
       retry_count: currentRetry,
     }).eq('id', reportId)
 
-    console.error(`報告 ${reportId} 標記為失敗: ${errorMessage}`)
+    console.error('[generate-report] report marked failed', {
+      ...reportLogContext(reportId),
+      errorType: failureClass,
+    })
 
     // Phase 5 v5.10.382 — Sentry critical event(老闆灌 SENTRY_DSN 後即生效、未設則 fallback console)
     try {
       const { captureMessage } = await import('@/lib/ai/observability/sentry-prod')
       const isFinalFail = currentRetry >= 2
-      await captureMessage(`報告生成失敗(generate-report fallback):${errorMessage}`, isFinalFail ? 'fatal' : 'error', {
+      await captureMessage('report_generation_failed', isFinalFail ? 'fatal' : 'error', {
         tags: {
-          reportId,
+          reportFingerprint: availableReportFingerprint(reportId) ?? 'unavailable',
           planCode: data?.plan_code || 'unknown',
           retryCount: currentRetry,
           isFinalFail,
           source: 'api/generate-report',
         },
         extra: {
-          customerEmail: data?.customer_email || 'unknown',
-          clientName: data?.client_name || 'unknown',
-          amount: data?.amount_usd ?? 0,
-          errorMessage,
+          errorType: failureClass,
         },
         fingerprint: ['generate-report-failed', data?.plan_code || 'unknown'],
       })
@@ -339,22 +384,20 @@ async function markReportFailed(reportId: string, errorMessage: string, isDryRun
     if (currentRetry >= 2) {
       try {
         const { notify } = await import('@/lib/ai/observability/telegram')
-        const planName = data?.plan_code || 'unknown'
-        const body =
-          `Report ID: ${reportId}\n` +
-          `方案: ${planName}\n` +
-          `客戶: ${data?.client_name || '?'} / ${data?.customer_email || '?'}\n` +
-          `金額: $${data?.amount_usd || '?'}\n` +
-          `重試次數: ${currentRetry + 1}/3\n` +
-          `失敗原因: ${errorMessage.slice(0, 300)}\n\n` +
-          `客戶已付款、立即介入:檢查 Python API/Claude API、考慮 refund 或人工生成`
-        await notify('🔴 報告生成失敗(已達/接近重試上限)', body)
+        const body = JSON.stringify({
+          event: 'report_generation_final_failure',
+          reportFingerprint: availableReportFingerprint(reportId),
+          planCode: data?.plan_code || 'unknown',
+          retryCount: currentRetry + 1,
+          errorType: failureClass,
+        })
+        await notify('report_generation_final_failure', body)
       } catch (telegramErr) {
-        console.error('Telegram 通知失敗(不阻塞):', telegramErr)
+        safeOperationalError('[generate-report] Telegram notification failed', telegramErr)
       }
     }
   } catch (e) {
-    console.error('標記失敗狀態時出錯:', e)
+    safeOperationalError('[generate-report] mark failed persistence error', e)
   }
 }
 
@@ -385,11 +428,11 @@ export async function POST(req: NextRequest) {
     // 防重複生成：已完成或正在生成中的報告直接跳過
     // dryRun 例外:regression 本來就是「拿 completed 報告用新 prompt 重跑對照」、不可在此 bail
     if (!dryRun && existingReport?.status === 'completed') {
-      console.info(`報告 ${reportId} 已完成，跳過 Fallback 重複生成`)
+      console.info('[generate-report] completed duplicate skipped', reportLogContext(reportId))
       return NextResponse.json({ message: '報告已完成' })
     }
     if (!dryRun && existingReport?.status === 'generating') {
-      console.info(`報告 ${reportId} 正在生成中，跳過 Fallback 重複觸發`)
+      console.info('[generate-report] active duplicate skipped', reportLogContext(reportId))
       return NextResponse.json({ message: '報告正在生成中' })
     }
 
@@ -460,49 +503,70 @@ export async function POST(req: NextRequest) {
         .select('id')
 
       if (claimErr || !claimed?.length) {
-        console.info(`報告 ${reportId} 狀態搶佔失敗，可能已被其他程序處理`)
+        console.info('[generate-report] claim not acquired', reportLogContext(reportId))
         return NextResponse.json({ message: '報告已被其他程序處理' })
       }
     }
 
     // Step 1: 呼叫 Python API 排盤
-    console.info(`開始生成報告: ${reportId}, 方案${planCode}, 第 ${retryCount + 1} 次嘗試`)
+    console.info('[generate-report] generation started', {
+      ...reportLogContext(reportId),
+      planCode,
+      attempt: retryCount + 1,
+    })
 
     let calcResult = null
     try {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 60000) // 60 秒超時
-      const res = await fetch(`${PYTHON_API}/api/calculate`, {
+      const calculatorPayload = {
+        name: birthData.name,
+        year: birthData.year, month: birthData.month, day: birthData.day,
+        hour: birthData.hour, minute: birthData.minute || 0,
+        gender: birthData.gender,
+        // 農曆/國曆 + 真太陽時校正（與 Workflow 版本同步）
+        calendar_type: birthData.calendar_type || 'solar',
+        lunar_leap: birthData.lunar_leap || false,
+        time_unknown: birthData.time_unknown || false,
+        time_mode: birthData.time_mode || 'exact',
+        ...(birthData.cityLat && birthData.cityLng ? { latitude: birthData.cityLat, longitude: birthData.cityLng } : {}),
+        ...(birthData.latitude && birthData.longitude ? { latitude: birthData.latitude, longitude: birthData.longitude } : {}),
+        // Sprint 4 國際化：把 IANA 時區與地區資訊傳給 Python
+        ...(birthData.timezone_offset !== undefined ? { timezone_offset: birthData.timezone_offset } : {}),
+        ...(birthData.timezone ? { timezone: birthData.timezone } : {}),
+        ...(birthData.birth_city ? { birth_city: birthData.birth_city } : {}),
+        ...(birthData.birth_country ? { birth_country: birthData.birth_country } : {}),
+      }
+      const signedRequest = createSignedCalculatorPost({
+        path: LEGACY_CALCULATE_PATH,
+        payload: calculatorPayload,
+      })
+      const res = await fetch(`${PYTHON_API}${LEGACY_CALCULATE_PATH}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: birthData.name,
-          year: birthData.year, month: birthData.month, day: birthData.day,
-          hour: birthData.hour, minute: birthData.minute || 0,
-          gender: birthData.gender,
-          // 農曆/國曆 + 真太陽時校正（與 Workflow 版本同步）
-          calendar_type: birthData.calendar_type || 'solar',
-          lunar_leap: birthData.lunar_leap || false,
-          time_unknown: birthData.time_unknown || false,
-          time_mode: birthData.time_mode || 'exact',
-          ...(birthData.cityLat && birthData.cityLng ? { latitude: birthData.cityLat, longitude: birthData.cityLng } : {}),
-          ...(birthData.latitude && birthData.longitude ? { latitude: birthData.latitude, longitude: birthData.longitude } : {}),
-          // Sprint 4 國際化：把 IANA 時區與地區資訊傳給 Python
-          ...(birthData.timezone_offset !== undefined ? { timezone_offset: birthData.timezone_offset } : {}),
-          ...(birthData.timezone ? { timezone: birthData.timezone } : {}),
-          ...(birthData.birth_city ? { birth_city: birthData.birth_city } : {}),
-          ...(birthData.birth_country ? { birth_country: birthData.birth_country } : {}),
-        }),
+        headers: signedRequest.headers,
+        body: signedRequest.body,
         signal: controller.signal,
       })
       clearTimeout(timeout)
       if (res.ok) calcResult = await res.json()
-      else console.error('排盤 API 回傳錯誤:', res.status, await res.text())
-    } catch (e) { console.error('排盤失敗:', e) }
+      else console.error('[generate-report] calculator returned non-success', { status: res.status })
+    } catch (e) { safeOperationalError('[generate-report] calculator request failed', e) }
 
     if (!calcResult) {
       await markReportFailed(reportId, '排盤計算失敗：Python API 無回應或超時', dryRun)
       return NextResponse.json({ error: '排盤計算失敗', dryRun }, { status: 500 })
+    }
+
+    // D／R／legacy G15 的窄型失敗閘。這條 fallback 路徑特別需要它:下面
+    // buildGenericUserPrompt() 會把西洋占星的 sub_summary 當「關鍵數據」塞進
+    // prompt,而 live 形狀下那個值就是「計算異常」。沒有這個閘,失敗字串會
+    // 直接變成 AI 眼中的排盤事實。E1–E4 由 gate 內部的方案白名單排除。
+    try {
+      assertNoLegacyCalculatorFailureMarkers(calcResult, planCode)
+    } catch (gateError) {
+      const reason = gateError instanceof Error ? gateError.message : '排盤失敗'
+      await markReportFailed(reportId, `排盤未完整：${reason.slice(0, 200)}`, dryRun)
+      return NextResponse.json({ error: '排盤未完整', dryRun }, { status: 500 })
     }
 
     // Step 2: 構建 prompt 並呼叫 AI
@@ -529,7 +593,10 @@ ${numA?.sub_summary ? `數字能量學摘要：${numA.sub_summary}` : ''}
 ════════════════════════════════════════\n`
       }
 
-      let userPrompt = `${keyDataBlock}${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時
+      const cRelationshipContext = planCode === 'C'
+        ? `\n${buildConsultationRelationshipPrompt(birthData.marital_status)}\n`
+        : ''
+      let userPrompt = `${keyDataBlock}${birthData.name}，${birthData.gender==='M'?'男':'女'}，${birthData.year}年${birthData.month}月${birthData.day}日${birthData.hour}時${cRelationshipContext}
 八字：${cd.bazi || ''} | 用神：${cd.yongshen || ''} | 五行：${JSON.stringify(cd.five_elements || {})}
 農曆：${cd.lunar_date || ''} | 納音：${cd.nayin || ''} | 命宮：${cd.ming_gong || ''}
 ${analyses.length}套系統排盤完整數據：
@@ -542,10 +609,10 @@ ${analyses.length}套系統排盤完整數據：
         // 必欄位檢查:system 名 + score(必有 calculator 給才算有效)
         if (!a.system || typeof a.score !== 'number' || isNaN(a.score)) {
           console.warn(`[generate-report] schema-drift skip system:`, {
-            reportId, planCode,
-            system: a.system,
+            ...reportLogContext(reportId),
+            planCode,
+            systemFingerprint: operationalFingerprint(a.system),
             scoreType: typeof a.score,
-            scoreValue: a.score,
           })
           skippedSystems++
           continue
@@ -594,7 +661,11 @@ ${analyses.length}套系統排盤完整數據：
 
       // v5.10.267 schema-drift 警告:若 skip 太多系統、可能 calculator 半壞
       if (skippedSystems > 0) {
-        console.warn(`[generate-report] schema-drift summary: skipped ${skippedSystems}/${analyses.length} systems for report ${reportId}`)
+        console.warn('[generate-report] schema drift summary', {
+          ...reportLogContext(reportId),
+          skippedSystems,
+          systemsCount: analyses.length,
+        })
         // 若 skip > 30% 系統、表示 calculator 大半壞、應失敗(防客戶拿到只有 5/15 系統的劣化報告)
         if (skippedSystems > Math.floor(analyses.length * 0.3)) {
           console.error(`[generate-report] CRITICAL: too many systems skipped (${skippedSystems}/${analyses.length}), calculator likely broken`)
@@ -636,60 +707,6 @@ ${analyses.length}套系統排盤完整數據：
       return userPrompt
     }
 
-    // ── DeepSeek fallback 呼叫函式 ──
-    async function callDeepSeekFallback(systemPrompt: string, userPrompt: string): Promise<string> {
-      console.info('Fallback: 呼叫 DeepSeek 生成報告...')
-      const tStart = Date.now()
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 180000)
-      try {
-        const res = await fetch(DEEPSEEK_API, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            max_tokens: 16000,
-            temperature: 0.7,
-          }),
-          signal: controller.signal,
-        })
-        clearTimeout(timeout)
-        const data = await res.json()
-        const content = data.choices?.[0]?.message?.content || ''
-        console.info(`DeepSeek 回覆: ${content.length} 字`)
-        try {
-          await recordAIUsage({
-            provider: 'deepseek', model: 'deepseek-chat',
-            promptTokens: Number(data?.usage?.prompt_tokens || 0),
-            completionTokens: Number(data?.usage?.completion_tokens || 0),
-            reportId, planCode,
-            callStage: `${planCode}_fallback_deepseek`,
-            latencyMs: Date.now() - tStart,
-            status: content ? 'success' : 'incomplete',
-          })
-        } catch { /* noop */ }
-        return content
-      } catch (e) {
-        clearTimeout(timeout)
-        try {
-          await recordAIUsage({
-            provider: 'deepseek', model: 'deepseek-chat',
-            promptTokens: 0, completionTokens: 0,
-            reportId, planCode,
-            callStage: `${planCode}_fallback_deepseek`,
-            latencyMs: Date.now() - tStart,
-            status: 'error',
-            errorMessage: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
-          })
-        } catch { /* noop */ }
-        throw e
-      }
-    }
-
     console.info(`方案 ${planCode}：開始 AI 生成...`)
 
     if (planCode === 'C') {
@@ -703,6 +720,7 @@ ${analyses.length}套系統排盤完整數據：
       // v5.10.480:C 版本選擇單一出口(v6 > v4 > v2 legacy)、三個 fallback 段共用防漂移
       // v6 年齡取概略週歲(年差、與 c_plan_v6 getV6AgeGroup 分層粒度一致)
       const buildCFallbackSystemPrompt = (): string => {
+        let basePrompt: string
         if (isV6('C')) {
           // 實足年齡(過生日才加歲;年差會在生日前多一歲、AGE_ADAPTATION 分層邊界會套錯版本)
           const now = new Date()
@@ -710,11 +728,13 @@ ${analyses.length}套系統排盤完整數據：
           const bm = Number(birthData.month) || 1
           const bd = Number(birthData.day) || 1
           if (now.getMonth() + 1 < bm || (now.getMonth() + 1 === bm && now.getDate() < bd)) cAge--
-          return buildSingleCallV6C(birthData.name || '客戶', cAge, birthData.marital_status)
+          basePrompt = buildSingleCallV6C(birthData.name || '客戶', cAge, birthData.marital_status)
+        } else {
+          basePrompt = isV4('C')
+            ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
+            : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
         }
-        return isV4('C')
-          ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
-          : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
+        return `${basePrompt}\n\n${buildConsultationRelationshipPrompt(birthData.marital_status)}`
       }
 
       // v5.10.480 E2E 實測(2026-08-02):v6 全書 ~15.5k 字,Opus 串流 200s 只到 8k=必超時;
@@ -743,14 +763,13 @@ ${analyses.length}套系統排盤完整數據：
           aiModelUsed = 'claude-opus-4-6'
           console.info(`C 方案 Fallback Claude 單次呼叫完成：${reportContent.length} 字`)
         } catch (e) {
-          console.error('C 方案 Claude 多步生成失敗，嘗試 DeepSeek fallback:', e)
+          safeOperationalError('[generate-report] C Opus generation failed', e)
         }
       } else if (!CLAUDE_API_KEY) {
-        console.warn('CLAUDE_API_KEY 未設定，C 方案直接使用 DeepSeek fallback')
+        console.warn('[generate-report] approved AI provider credential unavailable')
       }
 
-      // v5.10.277 Opus 失敗 → 改 fallback Claude Sonnet 4.6(同家族、體驗一致、CLAUDE.md「DeepSeek 永久移除」)
-      // 順序:Opus 4.6 → Sonnet 4.6 → DeepSeek(legacy backup、未來 Sprint 2.x 移除)
+      // Opus 失敗 → 同一已核准 provider 家族內降級到 Sonnet 4.6。
       if (!reportContent && CLAUDE_API_KEY) {
         try {
           console.info('C 方案 Sonnet fallback:嘗試 Claude Sonnet 4.6...')
@@ -765,28 +784,18 @@ ${analyses.length}套系統排盤完整數據：
           // dryRun:不發 Telegram(regression 跑 100 份會洗版 ops 告警、且非真實客戶事件)
           if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', cIsV6 ? 'v6 fallback by design skips Opus (300s budget)' : 'Opus failed').catch(() => {})
         } catch (e) {
-          console.error('C 方案 Sonnet fallback 也失敗、最後嘗試 DeepSeek:', e)
+          safeOperationalError('[generate-report] C Sonnet generation failed', e)
         }
       }
 
-      // Claude 全失敗或 key 未設定 → fallback DeepSeek(legacy 最後 backup、Sprint 2.x 移除)
+      // 已核准 provider 全失敗時 fail closed；不得把客戶資料送往其他 provider。
       if (!reportContent) {
-        try {
-          const systemPrompt = buildCFallbackSystemPrompt()
-          reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, buildGenericUserPrompt()))
-          aiModelUsed = 'deepseek-chat'
-          console.info(`C 方案 DeepSeek fallback 完成：${reportContent.length} 字`)
-          // v5.10.268 Gemini P0「LLM Fallback 體驗斷崖」alert:客戶收到劣化模型、ops 即介入
-          if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude Opus + Sonnet both failed').catch(() => {})
-        } catch (e) {
-          console.error('C 方案 DeepSeek fallback 也失敗:', e)
-          await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`, dryRun)
-          return NextResponse.json({ error: 'AI 生成失敗', dryRun }, { status: 500 })
-        }
+        await markReportFailed(reportId, 'AI_PROVIDER_UNAVAILABLE', dryRun)
+        return NextResponse.json({ error: 'AI 生成失敗', dryRun }, { status: 503 })
       }
     } else {
       // ============================================================
-      // 其他方案（D/R/G15/E1/E2/E3/E4）：Claude 單次呼叫，失敗 fallback DeepSeek
+      // 其他方案（D/R/G15/E1/E2/E3/E4）：Claude 單次呼叫，失敗時同家族降級。
       // ============================================================
       // v5.10.458:G15 static v2 → v4 單-Call(解教科書、同 C);D/R 的 PLAN_SYSTEM_PROMPT 已是 v4 getter、走 else
       const systemPrompt = (planCode === 'G15' && isV4('G15'))
@@ -804,13 +813,13 @@ ${analyses.length}套系統排盤完整數據：
           aiModelUsed = 'claude-opus-4-6'
           console.info(`方案 ${planCode} Claude 回覆：${reportContent.length} 字`)
         } catch (e) {
-          console.error(`方案 ${planCode} Claude 呼叫失敗，嘗試 DeepSeek fallback:`, e)
+          safeOperationalError('[generate-report] primary model generation failed', e)
         }
       } else {
-        console.warn(`CLAUDE_API_KEY 未設定，方案 ${planCode} 直接使用 DeepSeek`)
+        console.warn('[generate-report] approved AI provider credential unavailable')
       }
 
-      // v5.10.277:Opus 失敗 → Sonnet 4.6 fallback(同家族)、最後才 DeepSeek
+      // Opus 失敗 → Sonnet 4.6 fallback（同一家族）。
       if (!reportContent && CLAUDE_API_KEY) {
         try {
           console.info(`方案 ${planCode}:Sonnet fallback 嘗試...`)
@@ -821,23 +830,14 @@ ${analyses.length}套系統排盤完整數據：
           console.info(`方案 ${planCode} Sonnet 完成：${reportContent.length} 字`)
           if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'claude-sonnet-4-6', 'Opus failed').catch(() => {})
         } catch (sonnetE) {
-          console.error(`方案 ${planCode} Sonnet 也失敗、最後嘗試 DeepSeek:`, sonnetE)
+          safeOperationalError('[generate-report] secondary model generation failed', sonnetE)
         }
       }
 
-      // Claude 全失敗或 key 未設定 → fallback DeepSeek(legacy)
+      // 已核准 provider 全失敗時 fail closed；不得把客戶資料送往其他 provider。
       if (!reportContent) {
-        try {
-          reportContent = cleanAIResponse(await callDeepSeekFallback(systemPrompt, userPrompt))
-          aiModelUsed = 'deepseek-chat'
-          console.info(`方案 ${planCode} DeepSeek fallback 完成：${reportContent.length} 字`)
-          // v5.10.268 Gemini P0「LLM Fallback 體驗斷崖」alert(同 C plan、D/R/G15/E* 都會落到這)
-          if (!dryRun) notifyModelDowngrade(reportId, planCode, 'claude-opus-4-6', 'deepseek-chat', 'Claude Opus + Sonnet both failed').catch(() => {})
-        } catch (e) {
-          console.error(`方案 ${planCode} DeepSeek fallback 也失敗:`, e)
-          await markReportFailed(reportId, `AI 生成失敗：Claude + DeepSeek 均失敗 — ${e instanceof Error ? e.message : '未知錯誤'}`, dryRun)
-          return NextResponse.json({ error: 'AI 生成失敗', dryRun }, { status: 500 })
-        }
+        await markReportFailed(reportId, 'AI_PROVIDER_UNAVAILABLE', dryRun)
+        return NextResponse.json({ error: 'AI 生成失敗', dryRun }, { status: 503 })
       }
     }
 
@@ -862,7 +862,7 @@ ${analyses.length}套系統排盤完整數據：
     try {
       reportContent = validateReportAgainstData(reportContent, calcResult, birthData)
     } catch (e) {
-      console.error('Post-generation QA 執行失敗（不阻塞）:', e)
+      safeOperationalError('[generate-report] post-generation QA failed', e)
     }
 
     // Step 3.5: 解析出門訣吉時 JSON（E1/E2/E3/E4 方案）
@@ -884,7 +884,7 @@ ${analyses.length}套系統排盤完整數據：
         top5Timings = merged
         console.info(`✅ 解析到 ${merged.length} 筆吉時資料(來自 ${top1Matches.length} 個 TOP1_JSON 區塊)`)
       } catch (e) {
-        console.error('TOP1 JSON 解析失敗:', e)
+        safeOperationalError('[generate-report] TOP1 JSON parse failed', e)
       }
     } else if (top3Match || top5Match) {
       const m = top3Match || top5Match!
@@ -892,7 +892,7 @@ ${analyses.length}套系統排盤完整數據：
         top5Timings = JSON.parse(m[1])
         console.info(`✅ 解析到 ${(top5Timings as unknown[]).length} 筆吉時資料`)
       } catch (e) {
-        console.error('TOP3/5 JSON 解析失敗:', e)
+        safeOperationalError('[generate-report] TOP3/5 JSON parse failed', e)
       }
     }
     // 不論解析成功與否、都要移除 TOP1/TOP3/TOP5 JSON 區塊純文字、避免 markers leak 到客戶可見正文
@@ -924,7 +924,11 @@ ${analyses.length}套系統排盤完整數據：
     //   → 真實客戶報告(report_result / pdf_url / status / email_sent_at)完全不受影響
     //   ⚠️ dryRun 仍會耗用真實 AI token(ai_cost_log 照常記錄、成本透明)
     if (dryRun) {
-      console.info(`[dryRun] ${reportId} 生成完成(${reportContent.length} 字、model=${aiModelUsed})、不持久化`)
+      console.info('[generate-report] dry-run generation completed', {
+        ...reportLogContext(reportId),
+        contentLength: reportContent.length,
+        model: aiModelUsed,
+      })
       return NextResponse.json({
         ok: true,
         dryRun: true,
@@ -958,10 +962,10 @@ ${analyses.length}套系統排盤完整數據：
           reportResult.full_charts = fullCharts
         }
       } catch (fcErr) {
-        console.error('fallback extractFullCharts 失敗(不阻塞、full_charts 略過):', fcErr)
+        safeOperationalError('[generate-report] full charts extraction failed', fcErr)
       }
       narrativePromise = extractNarrativeFromContent(reportContent, 25000).catch((nErr) => {
-        console.error('fallback narrative 萃取失敗(不阻塞、narrative 略過):', nErr)
+        safeOperationalError('[generate-report] narrative extraction failed', nErr)
         return null
       })
     }
@@ -970,6 +974,7 @@ ${analyses.length}套系統排盤完整數據：
 
     // Step 4.5: 生成 PDF（非出門訣方案、E1-E4 全跳過）
     let pdfUrl: string | null = null
+    let generatedPdfObject: { bucket: 'reports' | 'private-reports'; path: string } | null = null
     if (!isChumenjiPlan(planCode)) {
       try {
         console.info('呼叫 Python API 生成 PDF...')
@@ -1004,50 +1009,63 @@ ${analyses.length}套系統排盤完整數據：
           .replace(/[\u{2702}-\u{27B0}]/gu, '')
           .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
           .replace(/\n{3,}/g, '\n\n')
-        const pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
+        const pdfPayload = {
+          report_id: reportId,
+          plan_code: planCode,
+          client_name: birthData.name,
+          plan_name: planName,
+          ai_content: pdfContent,
+          locale: birthData.locale || 'zh-TW',
+          analyses_summary: analyses.map((a: { system: string; score: number }) => ({
+            system: a.system,
+            score: a.score,
+          })),
+        }
+        const signedPdfRequest = createSignedCalculatorPost({
+          path: GENERATE_PDF_PATH,
+          payload: pdfPayload,
+        })
+        const pdfRes = await fetch(`${PYTHON_API}${GENERATE_PDF_PATH}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            report_id: reportId,
-            plan_code: planCode,
-            client_name: birthData.name,
-            plan_name: planName,
-            ai_content: pdfContent,
-            locale: birthData.locale || 'zh-TW',
-            analyses_summary: analyses.map((a: { system: string; score: number }) => ({
-              system: a.system,
-              score: a.score,
-            })),
-          }),
+          headers: signedPdfRequest.headers,
+          body: signedPdfRequest.body,
         })
         if (pdfRes.ok) {
-          const pdfData = await pdfRes.json()
-          // Python API 回傳 base64，由 Next.js 上傳到 Supabase Storage
-          if (pdfData.pdf_base64) {
-            const pdfBytes = Buffer.from(pdfData.pdf_base64, 'base64')
-            const storagePath = `${reportId}/report.pdf`
-            const { error: uploadErr } = await getSupabase()
-      .storage
-              .from('reports')
-              .upload(storagePath, pdfBytes, {
-                contentType: 'application/pdf',
-                upsert: true,
-              })
-            if (uploadErr) {
-              console.error('Supabase Storage 上傳失敗:', uploadErr)
-            } else {
-              const { data: urlData } = getSupabase().storage
-                .from('reports')
-                .getPublicUrl(storagePath)
-              pdfUrl = urlData.publicUrl
-              console.info(`✅ PDF 上傳完成: ${pdfUrl} (${pdfData.file_size_kb}KB)`)
-            }
+          const pdfBytes = await readBoundedPdfResponse(pdfRes)
+          const storageTarget = getGeneratedReportPdfStorageTarget(
+            planCode,
+            reportId,
+            crypto.randomUUID(),
+          )
+          const storagePath = storageTarget.path
+          const { error: uploadErr } = await getSupabase()
+            .storage
+            .from(storageTarget.bucket)
+            .upload(storagePath, pdfBytes, {
+              contentType: 'application/pdf',
+              upsert: false,
+            })
+          if (uploadErr) {
+            safeOperationalError('[generate-report] PDF storage upload failed', uploadErr)
+          } else if (storageTarget.privateReference) {
+            pdfUrl = storageTarget.privateReference
+            generatedPdfObject = { bucket: storageTarget.bucket, path: storagePath }
+            console.info('PDF 上傳完成', { sizeKb: Math.ceil(pdfBytes.byteLength / 1024) })
+          } else {
+            const { data: urlData } = getSupabase().storage
+              .from(storageTarget.bucket)
+              .getPublicUrl(storagePath)
+            pdfUrl = urlData.publicUrl
+            generatedPdfObject = { bucket: storageTarget.bucket, path: storagePath }
+            console.info('[generate-report] PDF upload completed', {
+              sizeKb: Math.ceil(pdfBytes.byteLength / 1024),
+            })
           }
         } else {
-          console.error('PDF 生成失敗:', await pdfRes.text())
+          console.error('[generate-report] PDF provider returned non-success', { status: pdfRes.status })
         }
       } catch (pdfErr) {
-        console.error('PDF 生成錯誤:', pdfErr)
+        safeOperationalError('[generate-report] PDF generation failed', pdfErr)
       }
     }
 
@@ -1057,13 +1075,56 @@ ${analyses.length}套系統排盤完整數據：
       if (narrative) reportResult.narrative_summary = narrative
     }
 
-    const { error: dbError } = await getSupabase().from('paid_reports').update({
+    const { data: completedRows, error: dbError } = await getSupabase().from('paid_reports').update({
       report_result: reportResult,
       pdf_url: pdfUrl,
       status: 'completed',
-    }).eq('id', reportId)
+    })
+      .eq('id', reportId)
+      .eq('status', 'generating')
+      .is('deleted_at', null)
+      .select('id')
 
-    if (dbError) console.error('Supabase 更新失敗:', dbError)
+    if (dbError) {
+      safeOperationalError('[generate-report] report persistence failed', dbError)
+      return NextResponse.json(
+        { error: '報告完成狀態暫時無法保存', code: 'REPORT_COMPLETION_UNAVAILABLE' },
+        { status: 503 },
+      )
+    }
+    if (!Array.isArray(completedRows)) {
+      console.warn('[generate-report] completion CAS returned an invalid receipt', reportLogContext(reportId))
+      return NextResponse.json(
+        { error: '報告完成狀態收據無效', code: 'REPORT_COMPLETION_RECEIPT_INVALID' },
+        { status: 503 },
+      )
+    }
+    if (completedRows.length === 0) {
+      if (generatedPdfObject) {
+        try {
+          const cleanup = await getSupabase().storage
+            .from(generatedPdfObject.bucket)
+            .remove([generatedPdfObject.path])
+          if (cleanup.error) {
+            safeOperationalError('[generate-report] losing PDF cleanup failed', cleanup.error)
+          }
+        } catch (cleanupError) {
+          safeOperationalError('[generate-report] losing PDF cleanup failed', cleanupError)
+        }
+      }
+      console.warn('[generate-report] completion CAS lost', reportLogContext(reportId))
+      return NextResponse.json(
+        { error: '報告狀態已由其他流程更新', code: 'REPORT_COMPLETION_CONFLICT' },
+        { status: 409 },
+      )
+    }
+    if (completedRows.length !== 1 || completedRows[0]?.id !== reportId) {
+      console.warn('[generate-report] completion CAS returned an inconsistent receipt', reportLogContext(reportId))
+      return NextResponse.json(
+        { error: '報告完成狀態收據不一致', code: 'REPORT_COMPLETION_RECEIPT_INVALID' },
+        { status: 503 },
+      )
+    }
 
     // Step 5: 寄送報告 Email
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://jianyuan.life'
@@ -1112,14 +1173,17 @@ ${analyses.length}套系統排盤完整數據：
           `<div style="color:#d1d5db;font-size:14px;line-height:1.8;margin:0 0 8px 0;"><span style="color:#c9a84c;margin-right:6px;">✦</span>${h}</div>`
         ).join('')
 
-        const reportSendResult = await sendEmailWithRetry({
-          from: emailText.from,
-          to: customerEmail,
-          emailType: 'report_link',
+        const reportDelivery = await deliverClaimedCompletionEmail(
+          getSupabase(),
           reportId,
-          metadata: { plan: planCode, locale: emailLang },
-          subject: emailText.subject,
-          html: `
+          {
+            from: emailText.from,
+            to: customerEmail,
+            emailType: 'report_link',
+            reportId,
+            metadata: { plan: planCode, locale: emailLang, source: 'fallback-api' },
+            subject: emailText.subject,
+            html: `
 <!DOCTYPE html>
 <html lang="${emailLang}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -1171,20 +1235,23 @@ ${analyses.length}套系統排盤完整數據：
   </div>
 </body>
 </html>`,
-        })
+          },
+          sendEmailWithRetry,
+        )
 
-        // T12b v5.10.370 — 只在真送成功才標 email_sent_at(避免 dead-letter 後 ghost 標記)
-        if (reportSendResult.success) {
-          await getSupabase().from('paid_reports')
-            .update({ email_sent_at: new Date().toISOString() })
-            .eq('id', reportId)
-          console.info(`✅ Email 已寄送至 ${customerEmail}、attempts=${reportSendResult.attempts}`)
+        if (reportDelivery.sent) {
+          console.info('[generate-report] report email delivered', {
+            ...reportLogContext(reportId),
+            attempts: reportDelivery.outcome?.attempts,
+          })
         } else {
-          // helper 已 dead-letter + audit-event critical
-          console.warn(`[generate-report][report-send] dead-letter:${customerEmail} attempts=${reportSendResult.attempts}`)
+          console.warn('[generate-report] report email delivery held', {
+            ...reportLogContext(reportId),
+            reason: reportDelivery.reason,
+          })
         }
       } catch (emailErr) {
-        console.error('Email 寄送 fatal:', emailErr)
+        safeOperationalError('[generate-report] report email fatal error', emailErr)
         // 不讓 email 失敗影響整體回傳
       }
     }
@@ -1197,11 +1264,11 @@ ${analyses.length}套系統排盤完整數據：
       systems_count: analyses.length,
     })
   } catch (err) {
-    console.error('報告生成錯誤:', err)
-    const errorMsg = err instanceof Error ? err.message : '未知錯誤'
+    safeOperationalError('[generate-report] unhandled generation error', err)
+    const errorMsg = operationalErrorClass(err)
     if (reportId) {
       await markReportFailed(reportId, `報告生成未預期錯誤: ${errorMsg}`, dryRun)
     }
-    return NextResponse.json({ error: errorMsg, dryRun }, { status: 500 })
+    return NextResponse.json({ error: '報告生成失敗', dryRun }, { status: 500 })
   }
 }

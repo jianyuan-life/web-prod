@@ -3,6 +3,7 @@
 // ============================================================
 
 import * as OpenCC from 'opencc-js'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 // 簡→繁白名單：避免 OpenCC s2tw 把語境錯的「只」誤轉為「隻」
 // 「只」在簡體對應繁體「只/隻」二字，只有量詞（一隻貓、一隻手）應該用「隻」
@@ -54,7 +55,7 @@ export type Locale = 'zh-TW' | 'zh-CN' | 'en'
 export const UI_TEXT: Record<Locale, Record<string, string>> = {
   'zh-TW': {
     brand: '鑒源',
-    tagline: '十四套系統交叉驗證，一份報告看清自己',
+    tagline: PUBLIC_CLAIMS.home.zhTw.tagline,
     nav_systems: '系統介紹',
     nav_pricing: '方案定價',
     nav_free: '免費速算',
@@ -63,14 +64,14 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
     nav_my_reports: '我的報告',
     nav_logout: '登出',
     nav_blog: '知識',
-    hero_title_1: '十四套系統交叉驗證',
+    hero_title_1: PUBLIC_CLAIMS.home.zhTw.title,
     hero_title_2: '一份報告，看清自己',
-    hero_desc: '不再依賴單一命理師的主觀判斷。鑒源整合八字、紫微、奇門遁甲等最多14套系統，以 44,421+ 條專業規則交叉分析，給你經得起驗證的命格報告。',
+    hero_desc: PUBLIC_CLAIMS.home.zhTw.description,
     cta_free: '免費體驗命理速算',
     cta_pricing: '查看完整方案',
     cta_no_card: '不需註冊 · 30 秒出結果 · 完全免費',
     free_title: '命理速算',
-    free_subtitle: '精確排盤 + 深度分析 + 個人化命格解讀',
+    free_subtitle: PUBLIC_CLAIMS.home.zhTw.freeToolSubtitle,
     free_no_register: '不需註冊 · 30 秒出結果 · 完全免費',
     name_label: '姓名',
     name_required: '請輸入您的全名',
@@ -128,7 +129,7 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
   },
   'zh-CN': {
     brand: '鉴源',
-    tagline: '十四套系统交叉验证，一份报告看清自己',
+    tagline: PUBLIC_CLAIMS.home.zhCn.tagline,
     nav_systems: '系统介绍',
     nav_pricing: '方案定价',
     nav_free: '免费速算',
@@ -137,14 +138,14 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
     nav_my_reports: '我的报告',
     nav_logout: '退出',
     nav_blog: '知识',
-    hero_title_1: '十四套系统交叉验证',
+    hero_title_1: PUBLIC_CLAIMS.home.zhCn.title,
     hero_title_2: '一份报告，看清自己',
-    hero_desc: '不再依赖单一命理师的主观判断。鉴源整合八字、紫微、奇门遁甲等最多14套系统，以数万条专业规则交叉分析，给你经得起验证的命格报告。',
+    hero_desc: PUBLIC_CLAIMS.home.zhCn.description,
     cta_free: '免费体验命理速算',
     cta_pricing: '查看完整方案',
     cta_no_card: '不需注册 · 30 秒出结果 · 完全免费',
     free_title: '命理速算',
-    free_subtitle: '精确排盘 + 深度分析 + 个人化命格解读',
+    free_subtitle: PUBLIC_CLAIMS.home.zhCn.freeToolSubtitle,
     free_no_register: '不需注册 · 30 秒出结果 · 完全免费',
     name_label: '姓名',
     name_required: '请输入您的全名',
@@ -202,7 +203,7 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
   },
   en: {
     brand: 'JianYuan',
-    tagline: 'Fourteen systems cross-validated — one report to see yourself clearly',
+    tagline: PUBLIC_CLAIMS.home.en.tagline,
     nav_systems: 'Systems',
     nav_pricing: 'Pricing',
     nav_free: 'Free Tools',
@@ -211,15 +212,14 @@ export const UI_TEXT: Record<Locale, Record<string, string>> = {
     nav_my_reports: 'My Reports',
     nav_logout: 'Sign Out',
     nav_blog: 'Blog',
-    hero_title_1: 'Fourteen systems cross-validated',
+    hero_title_1: PUBLIC_CLAIMS.home.en.title,
     hero_title_2: 'One report to see yourself clearly',
-    hero_desc:
-      'No longer rely on a single master’s subjective judgement. JianYuan integrates up to fourteen systems — Bazi, Zi Wei Dou Shu, Qi Men Dun Jia and more — with tens of thousands of professional rules cross-analyzed to deliver a destiny report you can verify.',
+    hero_desc: PUBLIC_CLAIMS.home.en.description,
     cta_free: 'Try a Free Quick Reading',
     cta_pricing: 'See All Plans',
     cta_no_card: 'No signup · Results in 30 seconds · Completely free',
     free_title: 'Quick Reading',
-    free_subtitle: 'Precise chart + deep analysis + personalized destiny interpretation',
+    free_subtitle: PUBLIC_CLAIMS.home.en.freeToolSubtitle,
     free_no_register: 'No signup · Results in 30 seconds · Completely free',
     name_label: 'Name',
     name_required: 'Please enter your full name',

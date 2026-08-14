@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 export const metadata: Metadata = {
   title: { absolute: '姓名學速算 康熙筆畫｜鑒源 JianYuan' },  // absolute 防 root template 再補品牌名(title 已自帶)
-  description: '免費姓名學速算工具——五格剖象法、三才配置、數理吉凶分析。採用康熙字典筆畫共 102,998 字完整覆蓋，精準計算天地人外總五格。',
+  description: PUBLIC_CLAIMS.tools.nameMetadata,
   keywords: '姓名學, 姓名速算, 康熙筆畫, 五格剖象, 三才配置, 數理吉凶, 姓名分析, 免費姓名學',
   openGraph: {
     title: '姓名學速算｜鑒源 JianYuan',
-    description: '免費姓名學分析，康熙筆畫精準、五格三才完整呈現。',
+    description: PUBLIC_CLAIMS.tools.nameMetadata,
     url: 'https://jianyuan.life/tools/name',
     type: 'website',
   },

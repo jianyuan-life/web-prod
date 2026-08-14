@@ -2,6 +2,8 @@
 // 鑒源 JianYuan — 品牌資產
 // ============================================================
 
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
+
 export const BRAND = {
   name_zh: '鑒源',
   name_en: 'JianYuan',
@@ -9,28 +11,28 @@ export const BRAND = {
   full_en: 'JianYuan Destiny',
 
   // 品牌標語
-  tagline: '十四套系統交叉驗證，一份報告看清自己',
+  tagline: PUBLIC_CLAIMS.methodology.tagline,
   tagline_short: '回到源頭，看清本質',
-  tagline_en: 'Fourteen systems, one truth. See yourself clearly.',
+  tagline_en: PUBLIC_CLAIMS.methodology.taglineEn,
 
   // 品牌理念（用於 About 頁面、品牌介紹）
   philosophy: [
     '鑑，金之明鏡，照見萬象本來面目。',
     '源，水之根本，追溯一切因果脈絡。',
-    '鑒源，是以金之精準，借水之智慧，回到命格的源頭，看清人生的本質。',
+    '鑒源，是以金之澄明，借水之智慧，回到命格的源頭，看清人生的本質。',
   ],
 
   // 品牌差異化（用於行銷文案）
   differentiators: [
-    '最多十四大命理系統交叉分析，不依賴單一觀點',
-    '44,421+ 條規則源自數十部經典古籍',
+    PUBLIC_CLAIMS.methodology.summary,
+    PUBLIC_CLAIMS.methodology.comparison,
     '智能引擎整合，產出有深度、有溫度的個人化報告',
-    '出門訣服務，讓命理不只是了解，更能把握最佳時機',
+    PUBLIC_CLAIMS.methodology.limits,
   ],
 
   // 品牌價值觀
   values: [
-    { title: '以據為本', desc: '排盤計算建立在確定性算法與數十部經典古籍之上，規則源自權威典籍，排盤結果經得起反覆驗證。' },
+    { title: '以據為本', desc: PUBLIC_CLAIMS.methodology.summary },
     { title: '以人為鑒', desc: '命理不是預言術，而是自我認知的鏡子。更了解自己，才能做出更好的選擇，把人生的主導權握在自己手裡。' },
     { title: '以源為歸', desc: '穿越千年的智慧不會過時。我們回到東西方命理的源頭，取其精華，以現代技術重新詮釋古典智慧。' },
   ],

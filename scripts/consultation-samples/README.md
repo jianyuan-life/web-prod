@@ -1,6 +1,6 @@
 # C／G15 授權樣本重放工具
 
-這個工具只做兩件事：以固定日期向公開的 Fly calculator API 讀取三位已授權樣本的排盤結果，以及把輸入、回應與四個後續報告工作包綁上 SHA-256 後存到 Git repository 以外的私人目錄。
+這個工具只做兩件事：以固定日期向 Fly calculator API 讀取三位已授權樣本的排盤結果，以及把輸入、回應與四個後續報告工作包綁上 SHA-256 後存到 Git repository 以外的私人目錄。
 
 它不會執行 Claude、Gemini 或其他付費模型。`--run-llm`、`--paid` 與 `--generate-report` 都會直接拒絕。四個輸出是三份 C 與一份 G15 的重放工作包，不是已完成、可對外寄送的報告。
 
@@ -11,7 +11,8 @@
 - 方案：只允許 C、G15
 - 人物：何宣逸、何紀萳、何宥諄
 - G15：只記錄三位成員，不推定親屬稱謂、性別角色、排行或權力關係
-- 網路：只允許 `https://fortune-reports-api.fly.dev/api/calculate`，不附加 API key 或授權標頭
+- 網路：只允許 `https://fortune-reports-api.fly.dev/api/calculate`；每次 POST 都使用 `CALCULATOR_ATTESTATION_SECRET` 與 `CALCULATOR_ATTESTATION_KEY_ID` 對實際送出的 JSON bytes 做 HMAC 簽章
+- 認證：`--execute` 或部分 `--resume` 需上述兩個環境變數；缺任一值會在發出網路請求前停止，終端與 replay bundle 均不記錄 secret
 
 先預覽，不連網也不寫檔：
 

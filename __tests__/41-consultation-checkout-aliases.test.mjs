@@ -4,6 +4,19 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 const baseUrl = process.env.CHECKOUT_ALIAS_BASE_URL
+const nextResponseStub = `data:text/javascript,${encodeURIComponent(`
+  export const NextResponse = {
+    redirect(url, status) {
+      return new Response(null, { status, headers: { location: String(url) } })
+    }
+  }
+`)}`
+const routeSourceUrl = (routeFile) => {
+  const source = readFileSync(routeFile, 'utf8')
+    .replace(/from\s+['"]next\/server['"]/u, `from ${JSON.stringify(nextResponseStub)}`)
+    .replace(/request:\s*Request/u, 'request')
+  return `data:text/javascript,${encodeURIComponent(source)}`
+}
 const routes = [
   {
     plan: 'C',
@@ -37,16 +50,19 @@ for (const route of routes) {
 
   test(
     `${route.plan} production response is wire-level 307 with same-origin Location`,
-    { skip: !baseUrl },
     async () => {
-      const origin = new URL(baseUrl)
-      const response = await fetch(new URL(route.alias, origin), {
-        redirect: 'manual',
-        headers: {
-          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36',
-          'x-vercel-forwarded-for': route.testIp,
-        },
-      })
+      const origin = new URL(baseUrl || 'https://release-probe.example.invalid')
+      const response = baseUrl
+        ? await fetch(new URL(route.alias, origin), {
+          redirect: 'manual',
+          headers: {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36',
+            'x-vercel-forwarded-for': route.testIp,
+          },
+        })
+        : await (await import(routeSourceUrl(route.routeFile))).GET(
+          new Request(new URL(route.alias, origin)),
+        )
       const location = response.headers.get('location')
       assert.equal(response.status, 307)
       assert.ok(location)

@@ -1,4 +1,8 @@
 import { suite, test, assert, assertEqual, done } from './harness.mjs'
+import {
+  attachSyntheticConsultationProvenance,
+  refreshSyntheticCoverage,
+} from './fixtures/synthetic-consultation-provenance.mjs'
 
 let normalizer
 let requestContract
@@ -20,14 +24,20 @@ function makeEnvelope() {
     day: 1,
     hour: 12,
     minute: 0,
-    gender: 'female',
+    gender: 'F',
+    latitude: 25.033,
+    longitude: 121.5654,
+    timezone: 'Asia/Taipei',
+    timezone_offset: 8,
+    birth_city: 'Taipei',
+    birth_country: 'TW',
     target_year: 2026,
     as_of: '2026-08-09',
     bazi_school: 'china_mainland',
     ayanamsa_type: 'lahiri',
   }, { consultationMode: true })
   const requestHash = requestContract.hashCalculatorRequest(requestPayload)
-  return {
+  const envelope = {
     personId: 'person:synthetic',
     asOfDate: '2026-08-09',
     targetYear: 2026,
@@ -45,7 +55,16 @@ function makeEnvelope() {
     requestPayload,
     requestHash,
     response: {
+      normalized_input: structuredClone(requestPayload),
+      analysis_context: {
+        mode: 'consultation_v1',
+        as_of: '2026-08-09',
+        target_year: 2026,
+        birth_timezone: 'Asia/Taipei',
+        reference_timezone: 'Asia/Hong_Kong',
+      },
       systems_count: normalizer.EXPECTED_CALCULATOR_SYSTEMS.length,
+      expected_systems_count: normalizer.EXPECTED_CALCULATOR_SYSTEMS.length,
       client_data: {
         name: '合成測試者',
         birth_date: '1990-01-01 12:00',
@@ -56,9 +75,13 @@ function makeEnvelope() {
         five_elements: { wood: 2, fire: 2, earth: 2, metal: 1, water: 1 },
         five_elements_simple: { wood: 2, fire: 2, earth: 2, metal: 1, water: 1 },
       },
-      analyses: normalizer.EXPECTED_CALCULATOR_SYSTEMS.map((system, index) => ({
-        system,
-        detail: [
+      analyses: normalizer.EXPECTED_CALCULATOR_SYSTEMS.map((system, index) =>
+        normalizer.CALCULATOR_SYSTEM_EVIDENCE_CLASS[system] === 'held'
+          ? { system, status: 'held', reason: 'authority_unverified', detail: null, score: null }
+          : ({
+            system,
+            status: 'success',
+            detail: [
           `${normalizer.CALCULATOR_SYSTEM_MARKERS[system].flatMap((marker) => [`${marker}來源`, `${marker}盤面`, `${marker}位置`, `${marker}界線`, `${marker}變化`]).join('、')}。`,
           `合成 ${system} 結果 ${index}；這是一段只用於契約測試的實質排盤內容，包含盤面位置、計算步驟、固定年度、已知限制與可重新核對的欄位。`,
           '盤面依序保留天干地支、宮位星曜、五行強弱、生剋制化、年月日時、方向節奏、關係資源、壓力反應、學習工作、決策界線與行動觀察。',
@@ -73,10 +96,16 @@ function makeEnvelope() {
         score: 60 + index,
         tables: [],
         info_boxes: [],
-        sub_summary: `${system} 合成摘要`,
-      })),
+            sub_summary: `${system} 合成摘要`,
+          })),
+      successful_systems: normalizer.EXPECTED_CALCULATOR_SYSTEMS.filter((system) =>
+        normalizer.CALCULATOR_SYSTEM_EVIDENCE_CLASS[system] !== 'held'),
+      held_systems: normalizer.EXPECTED_CALCULATOR_SYSTEMS.filter((system) =>
+        normalizer.CALCULATOR_SYSTEM_EVIDENCE_CLASS[system] === 'held'),
+      failed_systems: [],
     },
   }
+  return attachSyntheticConsultationProvenance(envelope)
 }
 
 function normalizeOrThrow(envelope) {
@@ -134,8 +163,33 @@ test('完整回應產生 client_data、time-confidence 與 15 個逐系統 facts
 test('出生時間未知時，placeholder-hour client_data 整包隔離且時辰系統全部 held', () => {
   const envelope = makeEnvelope()
   envelope.requestPayload.time_unknown = true
+  envelope.requestPayload.time_mode = 'unknown'
   envelope.requestHash = requestContract.hashCalculatorRequest(envelope.requestPayload)
   envelope.responseAttestation.requestHash = envelope.requestHash
+  envelope.response.normalized_input = structuredClone(envelope.requestPayload)
+  for (const analysis of envelope.response.analyses) {
+    if (!normalizer.BIRTH_TIME_DEPENDENT_SYSTEMS.has(analysis.system)) continue
+    const system = analysis.system
+    const provenance = analysis.provenance
+    for (const key of Object.keys(analysis)) delete analysis[key]
+    Object.assign(analysis, {
+      system,
+      status: 'held',
+      reason: normalizer.CALCULATOR_SYSTEM_EVIDENCE_CLASS[system] === 'held'
+        ? 'authority_unverified'
+        : 'birth_time_unknown',
+      detail: null,
+      score: null,
+      provenance,
+    })
+  }
+  envelope.response.successful_systems = envelope.response.analyses
+    .filter((analysis) => analysis.status === 'success')
+    .map((analysis) => analysis.system)
+  envelope.response.held_systems = envelope.response.analyses
+    .filter((analysis) => analysis.status === 'held')
+    .map((analysis) => analysis.system)
+  refreshSyntheticCoverage(envelope)
   const sentinel = '時辰佔位敏感資料絕不可進入報告'
   envelope.response.client_data.bazi += sentinel
   envelope.response.client_data.yongshen += sentinel
@@ -208,6 +262,7 @@ test('未起運兒童可用明確空 dayun 狀態通過，成人空 dayun 必須
   Object.assign(child.requestPayload, { year: 2023, month: 5, day: 8 })
   child.requestHash = requestContract.hashCalculatorRequest(child.requestPayload)
   child.responseAttestation.requestHash = child.requestHash
+  child.response.normalized_input = structuredClone(child.requestPayload)
   child.response.client_data.birth_date = '2023-05-08 12:00'
   child.response.client_data.dayun = ''
   child.response.client_data.dayun_status = 'not_started'
@@ -283,6 +338,15 @@ test('dispatcher 的 score=0 計算異常 placeholder 與任何 error 欄位都�
   }
 })
 
+test('排盤正文中的否定診斷句不得被誤判為 failure placeholder', () => {
+  const healthy = makeEnvelope()
+  const western = healthy.response.analyses.find((analysis) => analysis.system === '西洋占星')
+  western.score = 0
+  western.detail += ' 本次必要欄位皆已產生，未見計算異常。'
+
+  assertEqual(normalizer.normalizeCalculatorFacts(healthy).factLedger.status, 'complete')
+})
+
 test('15 個只有 system/score 的空殼不得冒充完整排盤', () => {
   const emptyShell = makeEnvelope()
   emptyShell.response.analyses = normalizer.EXPECTED_CALCULATOR_SYSTEMS.map((system) => ({
@@ -325,9 +389,14 @@ test('同一回應改 targetYear 會改年度 facts 的來源與輸出 hash', ()
   const first = normalizer.normalizeCalculatorFacts(makeEnvelope())
   const changedEnvelope = makeEnvelope()
   changedEnvelope.targetYear = 2040
+  changedEnvelope.asOfDate = '2040-12-31'
   changedEnvelope.requestPayload.target_year = 2040
+  changedEnvelope.requestPayload.as_of = '2040-12-31'
   changedEnvelope.requestHash = requestContract.hashCalculatorRequest(changedEnvelope.requestPayload)
   changedEnvelope.responseAttestation.requestHash = changedEnvelope.requestHash
+  changedEnvelope.response.normalized_input = structuredClone(changedEnvelope.requestPayload)
+  changedEnvelope.response.analysis_context.as_of = '2040-12-31'
+  changedEnvelope.response.analysis_context.target_year = 2040
   const second = normalizer.normalizeCalculatorFacts(changedEnvelope)
   const firstAnnual = first.sourceManifest.find((source) => source.sourceId.endsWith(':奇門遁甲'))
   const secondAnnual = second.sourceManifest.find((source) => source.sourceId.endsWith(':奇門遁甲'))

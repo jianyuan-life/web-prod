@@ -42,9 +42,9 @@ export default async function ConsultationReportViewPage({
     return <ReportUnavailable />
   }
 
-  const pdfHref = loaded.mode === 'structured'
+  const pdfHref = loaded.mode === 'structured' || loaded.pdfUrl
     ? buildConsultationPdfSessionRoute(sessionHandle)
-    : (loaded.pdfUrl || undefined)
+    : undefined
 
   return <ConsultationReportReader model={buildConsultationReaderModel(loaded)} pdfHref={pdfHref} />
 }

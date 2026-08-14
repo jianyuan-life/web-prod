@@ -19,6 +19,7 @@ test('consultation route is server-only, dynamic, no-store, and noindex', () => 
 })
 
 test('reader ships four accessible layers without client-only reveal or unsafe HTML', () => {
+  const routeChrome = read('components/RouteChrome.tsx')
   const component = read('components/consultation/reader/ConsultationReportReader.tsx')
   const unavailable = read('components/consultation/reader/ReportUnavailable.tsx')
   const notFound = read('app/consultation/not-found.tsx')
@@ -29,11 +30,15 @@ test('reader ships four accessible layers without client-only reveal or unsafe H
   }
   assert(component.includes('<article'), '閱讀器需要獨立的報告 article')
   assert(component.includes('data-consultation-report'), '報告根節點需要穩定的版面識別屬性')
+  const composedMainCount = [routeChrome, component, unavailable, notFound, access]
+    .reduce((count, source) => count + (source.match(/<main\b/gu) || []).length, 0)
+  assert(composedMainCount === 1, `完整私人報告頁必須只有一個 main landmark，目前為 ${composedMainCount}`)
+  assert(routeChrome.includes('id="main-content"'), '唯一 main 必須保留全站 skip-link 的目標')
   assert(!component.includes('<main'), '全域 layout 已有 main，報告內不得再嵌套 main')
   assert(!unavailable.includes('<main'), '狀態頁不得在全域 main 內再嵌套 main')
   assert(!notFound.includes('<main'), '404 頁不得在全域 main 內再嵌套 main')
   assert(!access.includes('<main'), '安全交換頁不得在全域 main 內再嵌套 main')
-  assert(access.includes('重試安全確認'), '暫時性安全交換失敗需要明確的原地重試動作')
+  assert(access.includes('再試一次'), '暫時性安全交換失敗需要明確的原地重試動作')
   assert(component.includes('aria-label="報告閱讀與下載導覽"'), '目錄需要可辨識且涵蓋下載動作的名稱')
   for (const label of ['30 秒先讀', '3 分鐘導讀', '完整報告', '依據與限制']) {
     assert(component.includes(label), `閱讀導覽缺少 ${label}`)

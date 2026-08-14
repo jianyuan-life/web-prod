@@ -15,6 +15,8 @@
 
 /* eslint-disable no-console */
 
+import { operationalErrorClass, operationalFingerprint } from '../../security/operational-telemetry.ts'
+
 export type SentryLevel = 'fatal' | 'error' | 'warning' | 'info' | 'debug'
 
 export type CaptureContext = {
@@ -32,6 +34,78 @@ export type CaptureContext = {
   environment?: string
   /** Release 版本（預設 VERCEL_GIT_COMMIT_SHA || package version）*/
   release?: string
+}
+
+const SAFE_SCHEMA_KEYS = new Set([
+  'amount', 'attempts', 'auditType', 'callStage', 'code', 'count', 'country',
+  'critical', 'errorType', 'incidentFingerprint', 'isFinalFail', 'method',
+  'model', 'path', 'planCode', 'provider', 'reportFingerprint', 'requestFingerprint',
+  'retryCount', 'sessionFingerprint', 'severity', 'source', 'stage', 'status',
+])
+const KNOWN_ENVIRONMENTS = new Set(['development', 'local', 'preview', 'production', 'staging', 'test'])
+
+function safeTelemetryKey(value: string): string {
+  return SAFE_SCHEMA_KEYS.has(value) ? value : `field_${operationalFingerprint(value)}`
+}
+
+function sanitizeTelemetryValue(value: unknown, key = '', depth = 0, seen = new WeakSet<object>()): unknown {
+  if (depth >= 12) return '[redacted-depth]'
+  if (value === null || value === undefined || typeof value === 'boolean') return value
+  if (typeof value === 'number') return Number.isFinite(value) ? value : String(value)
+  if (typeof value === 'bigint') return Number(value)
+  if (typeof value === 'string') {
+    const bounded = value.slice(0, 2048)
+    return `fingerprint:${operationalFingerprint(bounded)}`
+  }
+  if (typeof value !== 'object') return `fingerprint:${operationalFingerprint(String(value))}`
+  if (seen.has(value)) return '[circular]'
+  seen.add(value)
+  if (Array.isArray(value)) {
+    return value.slice(0, 24).map((item) => sanitizeTelemetryValue(item, key, depth + 1, seen))
+  }
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).slice(0, 64).map(
+    ([childKey, childValue]) => [
+      safeTelemetryKey(childKey),
+      sanitizeTelemetryValue(childValue, childKey, depth + 1, seen),
+    ],
+  ))
+}
+
+function sanitizeContext(ctx?: CaptureContext): CaptureContext | undefined {
+  if (!ctx) return undefined
+  const tags = ctx.tags
+    ? Object.fromEntries(Object.entries(ctx.tags).slice(0, 64).map(([key, value]) => {
+      const safeKey = safeTelemetryKey(key)
+      return [safeKey, sanitizeTelemetryValue(value, key)]
+    })) as Record<string, string | number | boolean>
+    : undefined
+  const extra = ctx.extra
+    ? sanitizeTelemetryValue(ctx.extra, 'extra') as Record<string, unknown>
+    : undefined
+  const user = ctx.user
+    ? {
+      id: ctx.user.id ? `fingerprint:${operationalFingerprint(ctx.user.id)}` : undefined,
+      email: undefined,
+      username: undefined,
+    }
+    : undefined
+  const request = ctx.request
+    ? {
+      method: typeof ctx.request.method === 'string' && /^[A-Z]{3,10}$/u.test(ctx.request.method)
+        ? ctx.request.method
+        : undefined,
+      url: ctx.request.url ? `fingerprint:${operationalFingerprint(ctx.request.url)}` : undefined,
+    }
+    : undefined
+  return {
+    tags,
+    extra,
+    user,
+    request,
+    fingerprint: ctx.fingerprint?.slice(0, 16).map(value => `fingerprint:${operationalFingerprint(value)}`),
+    environment: ctx.environment,
+    release: ctx.release,
+  }
 }
 
 // ── DSN 解析 ────────────────────────────────────────────────
@@ -94,22 +168,26 @@ function makeEventId(): string {
 }
 
 function getEnvironment(ctx?: CaptureContext): string {
-  return (
+  const candidate = (
     ctx?.environment ||
     process.env.SENTRY_ENVIRONMENT ||
     process.env.VERCEL_ENV ||
     process.env.NODE_ENV ||
     'production'
   )
+  return KNOWN_ENVIRONMENTS.has(candidate)
+    ? candidate
+    : `fingerprint:${operationalFingerprint(candidate)}`
 }
 
 function getRelease(ctx?: CaptureContext): string | undefined {
-  return (
-    ctx?.release ||
-    process.env.SENTRY_RELEASE ||
-    process.env.VERCEL_GIT_COMMIT_SHA ||
-    undefined
-  )
+  if (ctx?.release) return `fingerprint:${operationalFingerprint(ctx.release)}`
+  const candidate = process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA || undefined
+  if (!candidate) return undefined
+  if (/^(?:[0-9a-f]{7,64}|v?\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?)$/u.test(candidate)) {
+    return candidate
+  }
+  return `fingerprint:${operationalFingerprint(candidate)}`
 }
 
 function errorToException(err: unknown): { type: string; value: string; stacktrace?: { frames: Array<{ filename: string; lineno?: number; function?: string }> } } {
@@ -122,20 +200,20 @@ function errorToException(err: unknown): { type: string; value: string; stacktra
         const m = line.match(/at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?/)
         if (m) {
           frames.push({
-            function: m[1] || '<anonymous>',
-            filename: m[2],
+            function: m[1] ? `fingerprint:${operationalFingerprint(m[1])}` : '<anonymous>',
+            filename: `fingerprint:${operationalFingerprint(m[2])}`,
             lineno: parseInt(m[3], 10),
           })
         }
       }
     }
     return {
-      type: err.name || 'Error',
-      value: err.message || String(err),
+      type: operationalErrorClass(err),
+      value: `fingerprint:${operationalFingerprint(err.message || String(err))}`,
       stacktrace: frames.length ? { frames: frames.reverse() } : undefined,
     }
   }
-  return { type: 'Error', value: String(err) }
+  return { type: operationalErrorClass(err), value: `fingerprint:${operationalFingerprint(err)}` }
 }
 
 async function sendEvent(payload: Record<string, unknown>): Promise<string | null> {
@@ -174,24 +252,27 @@ async function sendEvent(payload: Record<string, unknown>): Promise<string | nul
     }
     return eventId
   } catch (err) {
-    console.warn('[sentry] Store API 失敗:', err)
+    console.warn('[sentry] Store API 失敗', { errorType: operationalErrorClass(err) })
     return null
   }
 }
 
 function buildBasePayload(ctx?: CaptureContext): Record<string, unknown> {
+  const safeContext = sanitizeContext(ctx)
   return {
     timestamp: Date.now() / 1000,
     platform: 'node',
     sdk: { name: 'jianyuan-sentry-prod', version: '1.0.0' },
-    environment: getEnvironment(ctx),
-    release: getRelease(ctx),
-    server_name: process.env.VERCEL_REGION || 'unknown',
-    tags: ctx?.tags,
-    extra: ctx?.extra,
-    user: ctx?.user,
-    request: ctx?.request,
-    fingerprint: ctx?.fingerprint,
+    environment: getEnvironment(safeContext),
+    release: getRelease(safeContext),
+    server_name: process.env.VERCEL_REGION && /^[a-z]{2,4}\d{1,2}$/u.test(process.env.VERCEL_REGION)
+      ? process.env.VERCEL_REGION
+      : 'unknown',
+    tags: safeContext?.tags,
+    extra: safeContext?.extra,
+    user: safeContext?.user,
+    request: safeContext?.request,
+    fingerprint: safeContext?.fingerprint,
   }
 }
 
@@ -208,7 +289,11 @@ export async function captureException(
 ): Promise<string | null> {
   const dsn = getDsn()
   if (!dsn) {
-    console.error('[sentry:fallback]', err, ctx ? { ctx } : '')
+    console.error('[sentry:fallback]', {
+      errorType: operationalErrorClass(err),
+      errorFingerprint: operationalFingerprint(err instanceof Error ? err.message : err),
+      context: sanitizeContext(ctx),
+    })
     return null
   }
 
@@ -235,16 +320,17 @@ export async function captureMessage(
   const dsn = getDsn()
   if (!dsn) {
     const tag = `[sentry:fallback:${level}]`
-    if (level === 'fatal' || level === 'error') console.error(tag, msg, ctx)
-    else if (level === 'warning') console.warn(tag, msg, ctx)
-    else console.log(tag, msg, ctx)
+    const fallback = { messageFingerprint: operationalFingerprint(msg), context: sanitizeContext(ctx) }
+    if (level === 'fatal' || level === 'error') console.error(tag, fallback)
+    else if (level === 'warning') console.warn(tag, fallback)
+    else console.log(tag, fallback)
     return null
   }
 
   const payload = {
     ...buildBasePayload(ctx),
     level,
-    message: { formatted: msg },
+    message: { formatted: `fingerprint:${operationalFingerprint(msg)}` },
   }
 
   return sendEvent(payload)

@@ -232,7 +232,9 @@ export function createConsultationPdfModel(input: unknown): ConsultationPdfModel
     generalLimitations: [
       '報告內容是自我觀察與家庭對話的線索，請用真實經驗反覆核對。',
       '涉及醫療、心理、法律或重大財務決策時，請另向合資格專業人士求證。',
-      '家族報告只描述已授權成員與已知關係，不以性別或資料順序推定家庭角色。',
+      ...(report.plan === 'G15'
+        ? ['家族報告只描述已授權成員與已知關係，不以性別或資料順序推定家庭角色。']
+        : []),
     ],
   }
 }

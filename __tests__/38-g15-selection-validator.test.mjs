@@ -46,6 +46,9 @@ function birthData(name, day = 1) {
     longitude: 121.5654,
     timezone: 'Asia/Taipei',
     timezone_offset: 8,
+    birth_country: 'TW',
+    birth_city: '台北（台灣）',
+    birth_location_precision: 'city',
     bazi_school: 'china_mainland',
     ayanamsa_type: 'lahiri',
   }
@@ -308,7 +311,7 @@ await test('歷史 C 報告缺少可重播的地點、時區或排盤設定時�
   }
 })
 
-await test('人物指紋必須綁定完整排盤輸入，不能把同名同生日但不同出生地誤判為同一份盤', async () => {
+await test('人物指紋鎖定同一位成員，修正出生地不得讓同人重複加入', async () => {
   const base = {
     plan_code: 'C', status: 'completed', deleted_at: null,
     user_id: OWNER_ID, customer_email: 'owner@example.test',
@@ -321,8 +324,8 @@ await test('人物指紋必須綁定完整排盤輸入，不能把同名同生�
       { ...base, id: REPORT_B, client_name: '同名', birth_data: { ...birthData('同名', 1), latitude: 22.3193, longitude: 114.1694, timezone: 'Asia/Hong_Kong' } },
     ], error: null }),
   })
-  assert(result.ok, '不同出生地與時區是不同的排盤輸入，不得被截短指紋誤擋')
-  assertEqual(new Set(result.personFingerprints).size, 2)
+  assert(!result.ok, '同一位成員不得透過修正出生地重複加入')
+  assertEqual(result.code, 'DUPLICATE_PERSON')
 })
 
 await test('成員姓名缺失或只有空白時 fail closed，不產生空白家庭角色', async () => {
@@ -397,7 +400,7 @@ await test('只要一份報告既不屬於已驗證 user id，也不屬於已驗
   assert(!JSON.stringify(result).includes('other@example.test'), '拒絕結果不得洩漏他人 email')
 })
 
-await test('舊報告沒有同一 user_id 時，仍可用已驗證購買者 email 通過（不分大小寫）', async () => {
+await test('舊報告沒有 user_id 時，仍可用已驗證購買者 email 通過（不分大小寫）', async () => {
   const data = [
     {
       id: REPORT_A,
@@ -415,7 +418,7 @@ await test('舊報告沒有同一 user_id 時，仍可用已驗證購買者 emai
       plan_code: 'C',
       status: 'completed',
       deleted_at: null,
-      user_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      user_id: null,
       customer_email: 'OWNER@EXAMPLE.TEST',
       birth_data: birthData('成員 B', 2),
     },

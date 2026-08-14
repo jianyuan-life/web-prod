@@ -7,15 +7,75 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PLAN_NAMES } from '@/lib/plan-names'
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
+import {
+  getGeneratedReportPdfStorageTarget,
+} from '@/lib/report/pdf-storage'
+import { resolveStoredReportPdfLocation } from '@/lib/report/private-pdf'
+import {
+  assertValidPdfBytes,
+  MAX_REPORT_PDF_BYTES,
+  MIN_REPORT_PDF_BYTES,
+  readBoundedPdfResponse,
+} from '@/lib/report/pdf-bytes'
+import { GENERATE_PDF_PATH } from '@/lib/consultation/calculator-request'
+import { createSignedCalculatorPost } from '@/lib/consultation/calculator-request-auth.server'
 
 function getServiceSupabase() {
   return createServiceClient()
 }
 
 const PYTHON_API = process.env.NEXT_PUBLIC_API_URL || ''
-
 // v5.4.16 P1(Codex 真審):併發 lock map、防同 reportId 同時觸發兩次 PDF gen burn API
 const pdfGenInFlight = new Map<string, Promise<string>>()
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+async function hasCanonicalPrivatePdfObject(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  reportId: string,
+  planCode: string,
+  storedReference: unknown,
+): Promise<boolean> {
+  if (planCode !== 'C' && planCode !== 'G15') return false
+  const location = resolveStoredReportPdfLocation(
+    reportId,
+    storedReference,
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+  )
+  if (!location || location.bucket !== 'private-reports') return false
+
+  try {
+    const info = await supabase.storage.from(location.bucket).info(location.path)
+    if (info.error || !isRecord(info.data)) return false
+    if (
+      info.data.bucketId !== location.bucket
+      || info.data.name !== location.path
+      || info.data.contentType !== 'application/pdf'
+      || typeof info.data.size !== 'number'
+      || !Number.isSafeInteger(info.data.size)
+      || info.data.size < MIN_REPORT_PDF_BYTES
+      || info.data.size > MAX_REPORT_PDF_BYTES
+    ) {
+      return false
+    }
+
+    const downloaded = await supabase.storage.from(location.bucket).download(location.path)
+    if (downloaded.error || !(downloaded.data instanceof Blob)) return false
+    if (
+      downloaded.data.type.toLowerCase() !== 'application/pdf'
+      || downloaded.data.size !== info.data.size
+      || downloaded.data.size < MIN_REPORT_PDF_BYTES
+      || downloaded.data.size > MAX_REPORT_PDF_BYTES
+    ) {
+      return false
+    }
+    return Boolean(assertValidPdfBytes(new Uint8Array(await downloaded.data.arrayBuffer())))
+  } catch {
+    return false
+  }
+}
 
 
 // 與 steps.ts 對齊的 PDF 預處理（Markdown/emoji 清理）
@@ -95,16 +155,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '未授權:需 admin token / access_token / session_id 之一' }, { status: 401 })
     }
 
-    // 已存在 pdf_url 直接回傳
-    if (report.pdf_url) {
-      return NextResponse.json({ pdf_url: report.pdf_url, cached: true })
-    }
-
     if (report.status !== 'completed') {
       return NextResponse.json(
         { error: 'report not completed yet', status: report.status },
         { status: 409 },
       )
+    }
+
+    // C/G15 不信任單獨的 DB pointer：必須是正規 private reference，
+    // 且同一物件的 metadata 與 PDF magic 都完整，才可回傳 cached。
+    if (report.pdf_url) {
+      if (report.plan_code === 'C' || report.plan_code === 'G15') {
+        const cachedPrivatePdfAvailable = await hasCanonicalPrivatePdfObject(
+          supabase,
+          reportId,
+          report.plan_code,
+          report.pdf_url,
+        )
+        if (cachedPrivatePdfAvailable) {
+          return NextResponse.json({ pdf_available: true, cached: true })
+        }
+      } else {
+        return NextResponse.json({ pdf_url: report.pdf_url, cached: true })
+      }
     }
 
     // v5.4.16 P1(Codex 真審):in-process lock 防同 reportId 併發 burn API
@@ -119,6 +192,9 @@ export async function POST(req: NextRequest) {
             setTimeout(() => reject(new Error('wait existing PDF gen timeout')), 30_000),
           ),
         ])
+        if (report.plan_code === 'C' || report.plan_code === 'G15') {
+          return NextResponse.json({ pdf_available: Boolean(result), cached: false, waited: true })
+        }
         return NextResponse.json({ pdf_url: result, cached: false, waited: true })
       } catch {
         // 既存 in-flight failed/timeout、繼續自己跑(刪 stale entry)
@@ -155,22 +231,27 @@ export async function POST(req: NextRequest) {
       const timeout = setTimeout(() => controller.abort(), 90_000)
       let pdfRes: Response
       try {
-        pdfRes = await fetch(`${PYTHON_API}/api/generate-pdf`, {
+        const pdfPayload = {
+          report_id: reportId,
+          plan_code: planCode,
+          client_name: clientName,
+          plan_name: planName,
+          ai_content: pdfContent,
+          locale: (bd.locale as string) || 'zh-TW',
+          analyses_summary: [],
+          show_header_footer: true,
+          show_toc_page: true,
+          cover_style: 'compact',
+        }
+        const signedPdfRequest = createSignedCalculatorPost({
+          path: GENERATE_PDF_PATH,
+          payload: pdfPayload,
+        })
+        pdfRes = await fetch(`${PYTHON_API}${GENERATE_PDF_PATH}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: signedPdfRequest.headers,
           signal: controller.signal,
-          body: JSON.stringify({
-            report_id: reportId,
-            plan_code: planCode,
-            client_name: clientName,
-            plan_name: planName,
-            ai_content: pdfContent,
-            locale: (bd.locale as string) || 'zh-TW',
-            analyses_summary: [],
-            show_header_footer: true,
-            show_toc_page: true,
-            cover_style: 'compact',
-          }),
+          body: signedPdfRequest.body,
         })
       } finally {
         clearTimeout(timeout)
@@ -179,24 +260,57 @@ export async function POST(req: NextRequest) {
         const txt = await pdfRes.text().catch(() => '')
         throw new Error(`python pdf api failed HTTP ${pdfRes.status}: ${txt.slice(0, 300)}`)
       }
-      const pdfData = await pdfRes.json() as { pdf_base64?: string; file_size_kb?: number }
-      if (!pdfData.pdf_base64) throw new Error('pdf_base64 missing from python response')
-      const pdfBytes = Buffer.from(pdfData.pdf_base64, 'base64')
-      const storagePath = `${reportId}/report.pdf`
+      const pdfBytes = await readBoundedPdfResponse(pdfRes)
+      const generationId = crypto.randomUUID()
+      const storageTarget = getGeneratedReportPdfStorageTarget(planCode, reportId, generationId)
+      const storagePath = storageTarget.path
       const { error: uploadErr } = await supabase.storage
-        .from('reports')
-        .upload(storagePath, pdfBytes, { contentType: 'application/pdf', upsert: true })
+        .from(storageTarget.bucket)
+        .upload(storagePath, pdfBytes, { contentType: 'application/pdf', upsert: false })
       if (uploadErr) throw new Error(`supabase storage upload failed: ${uploadErr.message}`)
-      const { data: urlData } = supabase.storage.from('reports').getPublicUrl(storagePath)
-      const pdfUrl = urlData.publicUrl
-      await supabase.from('paid_reports').update({ pdf_url: pdfUrl }).eq('id', reportId)
-      return pdfUrl
+      const { data: urlData } = storageTarget.privateReference
+        ? { data: { publicUrl: storageTarget.privateReference } }
+        : supabase.storage.from(storageTarget.bucket).getPublicUrl(storagePath)
+      const publishedReference = urlData.publicUrl
+      let pointerUpdate = supabase
+        .from('paid_reports')
+        .update({ pdf_url: publishedReference })
+        .eq('id', reportId)
+        .eq('status', 'completed')
+        .is('deleted_at', null)
+      pointerUpdate = typeof report.pdf_url === 'string'
+        ? pointerUpdate.eq('pdf_url', report.pdf_url)
+        : pointerUpdate.is('pdf_url', null)
+      const { data: pointerRows, error: pointerUpdateError } = await pointerUpdate.select('id')
+      if (
+        pointerUpdateError
+        || !Array.isArray(pointerRows)
+      ) {
+        // An unknown database outcome may already have published this exact
+        // pointer, so deleting here would risk breaking the winning row.
+        throw new Error('paid_reports PDF pointer update outcome unknown')
+      }
+      if (pointerRows.length === 0) {
+        const cleanup = await supabase.storage.from(storageTarget.bucket).remove([storagePath])
+        if (cleanup.error) throw new Error('paid_reports PDF pointer CAS lost and cleanup failed')
+        throw new Error('paid_reports PDF pointer CAS lost')
+      }
+      if (pointerRows.length !== 1 || pointerRows[0]?.id !== reportId) {
+        // A malformed/multi-row receipt does not prove the CAS lost. Keep the
+        // immutable object for reconciliation rather than deleting bytes that
+        // may already be referenced by the report row.
+        throw new Error('paid_reports PDF pointer update receipt invalid')
+      }
+      return publishedReference
     })()
 
     // 註冊到 lock map(in-flight)、其他併發請求看到會等
     pdfGenInFlight.set(reportId, genPromise)
     try {
       const pdfUrl = await genPromise
+      if (planCode === 'C' || planCode === 'G15') {
+        return NextResponse.json({ pdf_available: Boolean(pdfUrl), cached: false })
+      }
       return NextResponse.json({ pdf_url: pdfUrl, cached: false })
     } finally {
       // 完成後從 map 移除(成功或失敗都移)

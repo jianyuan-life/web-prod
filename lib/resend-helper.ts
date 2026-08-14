@@ -29,6 +29,8 @@ export interface SendEmailParams {
   headers?: Record<string, string>
   /** T12b v5.10.370 新增 — 單次 attempt timeout(預設 30000ms、避免 Resend hang 拖垮 workflow) */
   timeoutMs?: number
+  /** Provider-side send-once key. Resend retains keys for 24 hours. */
+  idempotencyKey?: string
 }
 
 export interface SendEmailResult {
@@ -81,11 +83,21 @@ export async function sendEmailWithRetry(params: SendEmailParams): Promise<SendE
       if (params.headers) {
         (sendPayload as { headers?: Record<string, string> }).headers = params.headers
       }
-      const sendPromise = resend.emails.send(sendPayload)
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Resend API 超時(${timeoutMs}ms)`)), timeoutMs),
-      )
+      const sendOptions = params.idempotencyKey
+        ? { idempotencyKey: params.idempotencyKey }
+        : undefined
+      const sendPromise = resend.emails.send(sendPayload, sendOptions)
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () => reject(new Error(`Resend API 超時(${timeoutMs}ms)`)),
+          timeoutMs,
+        )
+      })
       const { data, error } = await Promise.race([sendPromise, timeoutPromise])
+        .finally(() => {
+          if (timeoutHandle) clearTimeout(timeoutHandle)
+        })
 
       if (error) {
         lastError = `${error.name || 'unknown'}: ${error.message || String(error)}`

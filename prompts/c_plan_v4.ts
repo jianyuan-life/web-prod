@@ -19,6 +19,16 @@
 // ============================================================
 
 import { ETHICS_RULES } from '@/workflows/generate-report/plan-prompts'
+import { buildConsultationRelationshipPrompt } from '@/lib/consultation/relationship-context'
+import { buildAgeContext } from './c_plan_v2'
+import {
+  buildCPromptPeriodInstruction,
+  buildUnknownBirthTimeInstruction,
+  buildV4AgeInstruction,
+  resolveCPromptPeriod,
+  type CPromptPeriod,
+  type CPromptPeriodContext,
+} from './c_plan_contract'
 
 // v4 只覆寫 buildCall1/2/3Prompt（漸進式人生說明書）、其餘通用邏輯全 re-export v2
 // （getAgeGroup / 禁詞 / userPrompt / appendix / 系統分組 / 摘要傳遞機制不變）
@@ -29,7 +39,7 @@ export {
 } from './c_plan_v2'
 
 // ── v4 共用核心護欄（每個 Call 都帶）──
-function v4CoreRules(locale?: string): string {
+function v4CoreRules(locale: string | undefined, period: CPromptPeriod, timeUnknown = false): string {
   const lang = locale === 'zh-CN' ? '簡體中文' : '繁體中文'
   return `你是鑒源命理平台的首席命理戰略顧問。客戶花 $89 要一份「人生使用說明書」——看清原廠設定、發揮最大效能。
 
@@ -44,7 +54,7 @@ function v4CoreRules(locale?: string): string {
 【🔴🔴🔴 正文 100% 白話鐵律（最高優先、2026-06-24 老闆明令、違反任一條 = 整份報廢）】
 - **全部正文段落**（L1 速覽 + 一二三四五主章節 + **專屬開運與防禦清單 + 未來五年關鍵節點 + 刻意練習 + 寫信**）= 100% 純白話人話、一針見血、**一個命理術語都不准出現**。開運/節點段尤其常漏、特別嚴查。
 - **絕對禁止在正文出現**（一律改寫成白話、或移進 L3）：八字四柱 / 天干地支 / 十神（比肩/七殺/食傷/印星…）/ 納音 / 格局名（偏印格等）/ 五行數值；紫微宮位 / 星曜（天府/破軍…）/ 四化 / 命主身主；西占星座 / 宮位 / 度數 / 相位 / 行星名；吠陀梵文（Yoga/Lagna/Exalted…）；生命靈數 / 命運數；人類圖類型 / 閘門 / 人生角色；塔羅牌名；易經卦名；**風水 / 擇日術語（本命年 / 安太歲 / 太歲 / 五黃大煞 / 二黑病符 / 三煞 / 補水補木 / 喜神方位 / 忌神 / 寅月卯月等月令干支）**；以及任何「系統名稱」（八字 / 紫微 / 西洋占星 / 吠陀 / 人類圖…）。
-- **開運/防禦/節點段寫法**：只給白話可執行資訊——「幸運色：深藍與銀白」「最旺月份：國曆 1 月、6 月」「盡量避開西北方做重大決定」「2026 是你需要穩住的關鍵年、別冒進」；命理的「為什麼」（喜神木、寅月、五黃大煞位…）一律進該段 L3 或直接省略、不露在正文。
+- **開運/防禦/節點段寫法**：只給白話可執行資訊——「幸運色：深藍與銀白」「最旺月份：國曆 1 月、6 月」「盡量避開西北方做重大決定」「${period.targetYear} 是你需要穩住的關鍵年、別冒進」；命理的「為什麼」（喜神木、寅月、五黃大煞位…）一律進該段 L3 或直接省略、不露在正文。
 - 「為什麼這樣判」的**所有命理依據、推算過程、術語、系統交叉，100% 收進該章「### 查看命理邏輯」L3 摺疊**、一個字都不准漏到正文。
 - 寫法：正文只給「你是什麼樣的人、會發生什麼、該怎麼做」的人話結論 + 比喻 + 具體場景；命理的「為什麼」全部沉到 L3。
   ❌ 正文：「因為你八字火土燥、缺水、偏印格，紫微天府坐命」
@@ -70,7 +80,14 @@ function v4CoreRules(locale?: string): string {
 
 【婚姻硬規則（v5.10.5）】依客戶「已婚/未婚/未提供」標示：已婚聚焦婚姻品質、禁「該找對象/桃花/適婚年遇真愛」；未婚聚焦擇偶桃花；未提供中性。
 
-【15 系統交叉 + 古籍真實性】
+${buildCPromptPeriodInstruction(period)}
+${buildUnknownBirthTimeInstruction(timeUnknown)}
+
+【排盤完整性與可引用範圍】
+- 後端以 15 套 calculator 輸出檢查完整性；完整性不等於可對客引用。
+- 標準情況最多 14 套可對客交叉；九星氣學目前為 held，禁止出現在客戶結論或拿來湊數。
+
+【14 套可對客系統交叉 + 古籍真實性】
 - 多系統交叉得同一結論才寫成定論、標明來自哪些系統。
 - 古籍引用必對題（八字結論引八字古籍、不掛奇門/擇日/風水偽古籍背書）、找不到對題依據寫「綜合命理判斷」、絕不偽引。
 
@@ -78,16 +95,21 @@ function v4CoreRules(locale?: string): string {
 
 【字數與專業密度（C 是 $89 旗艦全面命書、Gemini L4 審查 P0）】
 - 全文 12000-15000 字（C 不可像 D 問事砍到骨瘦如柴、$89 客戶要份量與深度、太薄會客訴不值）。
-- L3「### 查看命理邏輯」必須至少展示 2 個以上系統的交叉推導過程（範例：「[紫微] 命宮七殺 + [八字] 偏印奪食 → 交叉判定：中年易因輕信引財務危機」）、用硬核 L3 支撐 $89 專業溢價、展現 15 系統獨家專業度。
+- L3「### 查看命理邏輯」必須至少展示 2 個以上可引用系統的交叉推導過程；不得引用 held 系統或為湊數補造。
 - 端水大師語氣禁用（「一方面…另一方面」「或許」）、論斷給絕對傾向。
 
 語言：${lang}。直接從第一個章節標題開始、不寫 AI 前言。`
 }
 
 // ── Call 1：L1 人生速覽 + 一、原廠設定 + 二、競爭力財富 ──
-export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string, birthYear?: number): string {
-  void ageGroup; void clientNeed; void birthYear
-  return `${v4CoreRules(locale)}
+export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string, birthYear?: number, context: CPromptPeriodContext = {}): string {
+  const period = resolveCPromptPeriod(context)
+  const ageContext = birthYear ? buildAgeContext(birthYear, context) : undefined
+  return `${v4CoreRules(locale, period, context.timeUnknown === true)}
+
+${buildV4AgeInstruction(ageGroup)}
+${ageContext ? `【年齡基準】${period.asOf} 當日 ${ageContext.age} 歲；以下內容必須符合這個人生階段。` : ''}
+${clientNeed ? `【客戶最關心的問題】${clientNeed}\n第四章必須正面回答，不能改寫成泛泛的人生建議。` : '【客戶最關心的問題】未提供；第四章只能從既有資料找當下最重要且有依據的課題。'}
 
 ▌ Call 1 輸出結構（嚴格遵守漸進式 + 無 emoji）：
 
@@ -122,20 +144,23 @@ ${ETHICS_RULES}`
 }
 
 // ── Call 2：三、感情磁場 + 四、精準診斷書（D 模塊）──
-export function buildCall2Prompt(ageGroup: string, call1Summary: string, locale?: string, birthYear?: number): string {
-  void ageGroup; void birthYear
-  return `${v4CoreRules(locale)}
+export function buildCall2Prompt(ageGroup: string, call1Summary: string, locale?: string, birthYear?: number, context: CPromptPeriodContext = {}): string {
+  const period = resolveCPromptPeriod(context)
+  return `${v4CoreRules(locale, period, context.timeUnknown === true)}
+
+${buildV4AgeInstruction(ageGroup)}
+${buildConsultationRelationshipPrompt(context.relationshipStatus)}
 
 【接續前文摘要】${call1Summary}
 
 ▌ Call 2 輸出結構（漸進式 + 無 emoji、禁重複 Call 1 內容）：
 
-## 三、感情與人際磁場
+## 三、關係與人際互動
 （L2 白話、每段 ≤ 4 行）
-▸ **你容易吸引什麼人**：感情宿命模式、最適合的伴侶輪廓、長久相處機制。
-▸ **避開情緒消耗小人**：最容易消耗你的「小人」類型特徵、具體設界線方法。
+▸ **重要關係中的你**：依客戶提供的關係狀態寫溝通、信任與界線；未提供就保持中性。
+▸ **降低人際消耗**：說明容易卡住的互動情境，以及可執行的設界線方法。
 ### 查看命理邏輯
-（L3：夫妻宮 / 交友宮 / 金星等感情人際磁場判定依據）
+（L3：只用本次可引用的系統解釋本人互動傾向，不替未提供資料的他人下判斷）
 
 ## 四、精準診斷書
 （針對客戶最關心的需求進行 D 模塊深度客製、直擊痛點。若客戶未明確提問、聚焦其人生當前最關鍵課題）
@@ -152,9 +177,11 @@ ${ETHICS_RULES}`
 }
 
 // ── Call 3：五、五年戰略 + 刻意練習 + 寫給你的話 ──
-export function buildCall3Prompt(ageGroup: string, clientName: string, call1and2Summary: string, locale?: string, birthYear?: number): string {
-  void ageGroup; void birthYear
-  return `${v4CoreRules(locale)}
+export function buildCall3Prompt(ageGroup: string, clientName: string, call1and2Summary: string, locale?: string, birthYear?: number, context: CPromptPeriodContext = {}): string {
+  const period = resolveCPromptPeriod(context)
+  return `${v4CoreRules(locale, period, context.timeUnknown === true)}
+
+${buildV4AgeInstruction(ageGroup)}
 
 【接續前文摘要】${call1and2Summary}
 
@@ -175,8 +202,8 @@ export function buildCall3Prompt(ageGroup: string, clientName: string, call1and2
 
 ## 未來五年關鍵節點
 （時間軸清單、補藍圖時間維度）
-● 2026 年：（一句關鍵機會或危機）
-● 2027-2030：（逐年或合併、關鍵機會 / 危機點）
+● ${period.targetYear} 年：（一句關鍵機會或風險）
+● ${period.fiveYearRange}：（逐年寫出關鍵機會 / 風險點，不得超出資料邊界）
 
 ## 刻意練習
 （3 個日常立即可執行的微小行動、實質優化命局）
@@ -195,8 +222,13 @@ ${ETHICS_RULES}`
 //   主因「C v4 是多-Call、無單一 system prompt」。本函式把 3-Call 結構合成「單次輸出全 10 章」、
 //   給 fallback 也能吐乾淨 5 核心章、不再 v2 教科書。實測：Claude opus-4-6 真排盤 → 11618 字 / 10 章 / 0 逐系統章 / 0 emoji（_audit_ui/single_call_v4_out.txt）。
 // 與多-Call 差異：去掉「接續前文摘要 / 禁重複前文」跨-Call 指令、L1 只出一次、明確禁逐系統章 + 禁 v2 舊章名。
-export function buildSingleCallV4C(clientName: string, locale?: string): string {
-  return `${v4CoreRules(locale)}
+export function buildSingleCallV4C(clientName: string, locale?: string, context: CPromptPeriodContext = {}): string {
+  const period = resolveCPromptPeriod(context)
+  return `${v4CoreRules(locale, period, context.timeUnknown === true)}
+
+${context.ageGroup ? buildV4AgeInstruction(context.ageGroup) : ''}
+${context.clientNeed ? `【客戶最關心的問題】${context.clientNeed}\n第四章必須正面回答。` : ''}
+${buildConsultationRelationshipPrompt(context.relationshipStatus)}
 
 ▌ 完整報告結構（單次輸出全部、嚴格漸進式 + 無 emoji）：
 
@@ -228,12 +260,12 @@ export function buildSingleCallV4C(clientName: string, locale?: string): string 
 ### 查看命理邏輯
 （L3：格局、財星、祿存、大限流年等判定依據）
 
-## 三、感情與人際磁場
+## 三、關係與人際互動
 （L2 白話、每段 ≤ 4 行）
-▸ **你容易吸引什麼人**：感情宿命模式、最適合的伴侶輪廓、長久相處機制。
-▸ **避開情緒消耗小人**：最容易消耗你的「小人」類型特徵、具體設界線方法。
+▸ **重要關係中的你**：依已提供狀態寫溝通、信任與界線；未提供就保持中性。
+▸ **降低人際消耗**：說明容易卡住的互動情境，以及具體設界線方法。
 ### 查看命理邏輯
-（L3：夫妻宮 / 交友宮 / 金星等感情人際磁場判定依據）
+（L3：只分析本人，不替未提供資料的他人下判斷）
 
 ## 四、精準診斷書
 （針對客戶最關心的需求進行深度客製、直擊痛點。若客戶未明確提問、聚焦其人生當前最關鍵課題）
@@ -259,8 +291,8 @@ export function buildSingleCallV4C(clientName: string, locale?: string): string 
 
 ## 未來五年關鍵節點
 （時間軸清單）
-● 2026 年：（一句關鍵機會或危機）
-● 2027-2030：（逐年或合併、關鍵機會 / 危機點）
+● ${period.targetYear} 年：（一句關鍵機會或風險）
+● ${period.fiveYearRange}：（逐年寫出關鍵機會 / 風險點，不得超出資料邊界）
 
 ## 刻意練習
 （3 個日常立即可執行的微小行動、實質優化命局）
