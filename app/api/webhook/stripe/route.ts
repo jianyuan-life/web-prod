@@ -361,13 +361,41 @@ export async function POST(req: NextRequest) {
         })
         authorityData = authorityResponse.data
         authorityError = authorityResponse.error
-      } catch {
+      } catch (authorityException) {
+        console.error('[stripe-webhook][paid-authority] ledger authority transport failed', {
+          errorType: operationalErrorClass(authorityException),
+          sessionFingerprint: operationalFingerprint(session.id),
+        })
         return NextResponse.json({ error: 'Paid checkout authority unavailable' }, { status: 500 })
       }
+      const authorityErrorRecord = (authorityError && typeof authorityError === 'object'
+        ? authorityError
+        : null) as { code?: string; message?: string } | null
+      // migration 未套用 ⇒ reservation-era 訂單不可能存在（checkout 的 reserve/
+      // freeze/bind 依賴同一批 migration 的 RPC）。「函式不存在」因此可安全視為
+      // 「無 ledger」走 legacy 出貨並大聲告警；其他錯誤仍 fail closed——否則
+      // 部署先於 migration 的窗口內，所有 E3 與 legacy 方案的出貨會無聲 500。
+      const authorityFunctionMissing = Boolean(
+        authorityErrorRecord
+        && (
+          authorityErrorRecord.code === 'PGRST202'
+          || authorityErrorRecord.code === '42883'
+          || /could not find the function|does not exist/iu.test(String(authorityErrorRecord.message ?? ''))
+        ),
+      )
       const authorityRows = (Array.isArray(authorityData)
         ? authorityData
         : authorityData ? [authorityData] : []) as Array<Record<string, unknown>>
-      if (authorityError || authorityRows.length > 1) {
+      if (authorityFunctionMissing) {
+        console.error('[stripe-webhook][paid-authority] get_paid_checkout_order_authority missing — apply supabase migrations; session handled as legacy', {
+          sessionFingerprint: operationalFingerprint(session.id),
+        })
+      } else if (authorityError || authorityRows.length > 1) {
+        console.error('[stripe-webhook][paid-authority] ledger authority lookup failed', {
+          errorType: operationalErrorClass(authorityError),
+          rowCount: authorityRows.length,
+          sessionFingerprint: operationalFingerprint(session.id),
+        })
         return NextResponse.json({ error: 'Paid checkout authority unavailable' }, { status: 500 })
       }
       const authorityRow = authorityRows[0]
@@ -387,6 +415,10 @@ export async function POST(req: NextRequest) {
           || ledgerAmountCents <= 0
           || ledgerCurrency.length === 0
         ) {
+          console.error('[stripe-webhook][paid-authority] ledger row failed shape validation', {
+            ledgerStatus,
+            sessionFingerprint: operationalFingerprint(session.id),
+          })
           return NextResponse.json({ error: 'Paid checkout authority unavailable' }, { status: 500 })
         }
         hasPaidCheckoutOrder = true
@@ -411,6 +443,23 @@ export async function POST(req: NextRequest) {
     let paidCouponCode: string | null = null
     let paidPointsAmount = 0
     if (hasPaidCheckoutOrder) {
+      // G15 的同意消費授權（consent reservation / report id）只存在於 metadata，
+      // 不在 paid checkout ledger 內。metadata 被剝離時必須在動任何金錢等值授權
+      // 之前 fail closed——否則會變成「錢已扣、同意消費永遠 500、無隔離」的
+      // 不可自癒迴圈（反例審查 P1-3）。此時 reservation 保持 bound、分文未動，
+      // Stripe 重試安全。
+      if (
+        planCode === 'G15'
+        && (
+          !CHECKOUT_DRAFT_ID_RE.test(g15ReservationId)
+          || !CHECKOUT_DRAFT_ID_RE.test(g15ExpectedReportId)
+        )
+      ) {
+        console.error('[stripe-webhook][g15-consent] consent identity missing before money consumption', {
+          sessionFingerprint: operationalFingerprint(session.id),
+        })
+        return NextResponse.json({ error: 'Paid checkout identity unavailable' }, { status: 500 })
+      }
       // The event's own money fields must equal the frozen reservation before
       // any money-equivalent authority is consumed; the consume RPC re-checks
       // the same equality inside its transaction.
@@ -421,6 +470,9 @@ export async function POST(req: NextRequest) {
           || String(session.currency ?? '').toLowerCase() !== paidLedgerCurrency
         )
       ) {
+        console.error('[stripe-webhook][paid-authority] event money fields drifted from frozen reservation', {
+          sessionFingerprint: operationalFingerprint(session.id),
+        })
         return NextResponse.json({ error: 'Paid checkout transaction failed' }, { status: 500 })
       }
       let paidConsumptionData: unknown = null
@@ -851,6 +903,9 @@ export async function POST(req: NextRequest) {
         const originalAmount = (session.amount_subtotal || session.amount_total || 0) / 100
         const finalAmount = amount
         const couponDiscount = Math.max(0, originalAmount - finalAmount)
+        // paidPointsAmount 是「點數顆數」、此欄位語意是美元——目前相等成立
+        // 完全依賴全站 1 點 = $1 的兌換率（reserve RPC 的 points*100 cents 與
+        // checkout 的折抵計算同一假設）。改兌換率時這裡必須跟著換算。
         const pointsDiscount = hasPaidCheckoutOrder
           ? paidPointsAmount
           : Number(session.metadata?.points_discount_usd || 0)

@@ -506,6 +506,15 @@ function createState() {
         }
       }
       if (name === 'get_paid_checkout_order_authority') {
+        if (state.paidAuthorityMode === 'missing-function') {
+          return {
+            data: null,
+            error: {
+              code: 'PGRST202',
+              message: 'Could not find the function public.get_paid_checkout_order_authority(p_stripe_session_id) in the schema cache',
+            },
+          }
+        }
         const rows = [...state.paidReservations.values()]
           .filter((row) => row.stripe_session_id && row.stripe_session_id === args.p_stripe_session_id)
           .map((row) => ({
@@ -849,6 +858,7 @@ const validCBirthData = {
 }
 
 function resetState(seedReports = []) {
+  state.paidAuthorityMode = null
   state.drafts.clear()
   state.reports.clear()
   state.userPoints.clear()
@@ -1225,6 +1235,76 @@ test('bound paid Session remains ledger-authoritative when Stripe metadata is ab
 
   await assertWebhookConsumption({ stripeRequest, draft, expectedPlanCode: 'C' })
   assert.equal(reservation.status, 'consumed')
+})
+
+test('missing ledger RPC degrades to legacy handling with no authority 500 and no consumption', async () => {
+  resetState()
+  const checkoutResponse = await checkoutPost(checkoutRequest({
+    planCode: 'C',
+    birthData: validCBirthData,
+    totalPrice: 89,
+    locale: 'zh-TW',
+    userEmail: state.authUser.email,
+    pointsToUse: 10,
+    checkoutRequestKey: 'jyco_aeaeaeae-aeae-4eae-8eae-aeaeaeaeaeae',
+  }))
+  assert.equal(checkoutResponse.status, 200)
+  const stripeRequest = state.stripeRequests[0]
+  const producedMetadata = metadataFromParams(stripeRequest.params)
+  const reservation = state.paidReservations.get(producedMetadata.paid_checkout_request_key)
+  state.paidAuthorityMode = 'missing-function'
+  state.event = checkoutEventFromRequest(stripeRequest, {}, { total: 7900, subtotal: 8900 })
+
+  const response = await webhookPost(webhookRequest())
+  // migration 未套用 ⇒ reservation 訂單不可能存在；「函式不存在」必須走 legacy
+  // 而不是 authority 500(否則所有 E3/legacy 出貨在部署窗口內無聲中斷)。
+  // 這個 metadata 全剝的 C session 在 legacy 路徑因缺結構化資料而 fail closed,
+  // 但錯誤必須來自資料閘、且分文未消費。
+  assert.equal(response.status, 500)
+  assert.deepEqual(await response.json(), {
+    error: 'Structured checkout data unavailable; Stripe retry required',
+  })
+  assert.equal(reservation.status, 'bound')
+  assert.equal(state.checkoutPointsRpcCalls, 0)
+  assert.equal(
+    state.ledger.some(({ name }) => name === 'rpc:consume_paid_checkout_for_order'),
+    false,
+  )
+})
+
+test('bound G15 Session with stripped metadata fails closed before any money-equivalent consumption', async () => {
+  resetState([
+    completedCReport(G15_REPORT_A, '家庭成員甲', 1, 'F'),
+    completedCReport(G15_REPORT_B, '家庭成員乙', 2, 'M'),
+  ])
+  const selectedReportIds = [G15_REPORT_B, G15_REPORT_A]
+  const checkoutResponse = await checkoutPost(checkoutRequest({
+    planCode: 'G15',
+    birthData: validG15CheckoutBirthData(selectedReportIds),
+    totalPrice: 59,
+    locale: 'zh-TW',
+    userEmail: state.authUser.email,
+    pointsToUse: 5,
+  }))
+  assert.equal(checkoutResponse.status, 200)
+  const stripeRequest = state.stripeRequests[0]
+  const producedMetadata = metadataFromParams(stripeRequest.params)
+  const reservation = state.paidReservations.get(producedMetadata.paid_checkout_request_key)
+  const reportsBefore = state.reports.size
+  state.event = checkoutEventFromRequest(stripeRequest, {}, { total: 5400, subtotal: 5900 })
+
+  const response = await webhookPost(webhookRequest())
+  // G15 的同意授權只在 metadata;被剝離時必須在金錢消費之前 fail closed,
+  // 否則會「錢已扣、同意消費永遠 500、無隔離」(反例審查 P1-3)。
+  assert.equal(response.status, 500)
+  assert.deepEqual(await response.json(), { error: 'Paid checkout identity unavailable' })
+  assert.equal(reservation.status, 'bound')
+  assert.equal(state.checkoutPointsRpcCalls, 0)
+  assert.equal(state.reports.size, reportsBefore)
+  assert.equal(
+    state.ledger.some(({ name }) => name === 'rpc:consume_paid_checkout_for_order'),
+    false,
+  )
 })
 
 test('guest paid replay freezes the first normalized email intent and rejects the same key with another payer', async () => {
