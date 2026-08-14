@@ -43,6 +43,8 @@ const RULES = [
       '__tests__/36-e3-fixture-server.test.mjs', // 隔離 HTTP fixture contract 測試、只連 loopback
       '__tests__/41-consultation-checkout-aliases.test.mjs', // 以 fetch 驗 Route Handler wire-level redirect
       '__tests__/69-e3-navigation-probe.test.mjs', // Playwright 隔離 loopback fixture；raw fetch 是探針要觀測與封鎖的測試刺激，不是 production client。
+      '__tests__/133-g15-checkout-reservation-wire.test.mjs', // 命中的是 indexOf 排序斷言中的字串字面量、無任何 runtime fetch。
+      'app/api/g15-consents/action/route.ts', // 直呼 Stripe REST(session read + Idempotency-Key expire)；lib/api.ts 只封內部 route、外部 Stripe API 自帶冪等與錯誤語意。
     ],
   },
   {
