@@ -58,6 +58,7 @@ const PUBLIC_PATTERNS = [
   /\/csp-report\//,                        // 瀏覽器 CSP report sink
   /\/error-report\//,                      // 公開前端錯誤回報（middleware 限流）
   /\/health-check\//,                      // 公開健康檢查
+  /\/g15-consents\/action\/route\.ts$/,  // 高熵一次性 bearer token 的成年成員同意／撤回
   /\/r\/\[type\]\/\[id\]\/pdf\//,      // 舊版高熵 report id 私密下載
   /\/web-vitals\//,                        // 公開匿名效能 beacon
 ]
@@ -76,9 +77,11 @@ const CRON_PATTERNS = [
 const AUTH_PATTERNS = [
   /\/reports\/route\.ts$/,      // 用戶報告查詢
   /\/reports\/generate-pdf/,    // PDF 補生成(需 user 已購)v5.4.15 新增
+  /\/reports\/pdf\/route\.ts$/, // C/G15 私有 PDF：access token 或已驗簽 owner
   /\/reports\/update-birth-location/, // 補出生地(需 user 持有報告)v5.4.15 新增
   /family-members/,             // 家庭成員管理
   /checkout\/search-reports/,   // 搜尋已完成報告（G15用）
+  /\/g15-consents\/route\.ts$/, // G15 購買者邀請與逐位同意狀態輪詢
   /checkout\/verify-family/,    // 家族驗證
   /\/points\/transfer/,         // 積分贈與(需登入、Authorization header)v5.4.15 新增
   /\/referral\/register/,       // 推薦碼註冊(需 user 認證)v5.4.15 新增
@@ -161,7 +164,8 @@ test('需認證端點必須有 Authorization 或 auth 驗證', () => {
                     content.includes('loadConsultationReport') || // C/G15 loader 以 access token 查詢、完整契約 fail closed
                     content.includes('createConsultationPdfResponse') || // route 委派給私密 token loader + PDF fail-closed response
                     content.includes('createConsultationSessionResponse') || // same-origin POST + bearer DB validation + HttpOnly cookie
-                    content.includes('createLegacyConsultationPdfRedirect') // legacy bearer 經 DB 驗證後換成 tokenless session
+                    content.includes('createLegacyConsultationPdfRedirect') || // legacy bearer 經 DB 驗證後換成 tokenless session
+                    content.includes('createPrivateReportPdfResponse') // C/G15 row-bound private storage proxy
     if (!hasAuth) {
       unprotected.push(getRelativePath(file))
     }

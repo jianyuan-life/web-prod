@@ -319,6 +319,27 @@ await test('a complete consultation_report is returned without consulting legacy
   assert(!('content' in result), '新契約不得混入舊版正文')
 })
 
+await test('a canonical private-reports marker remains a reachable PDF signal', async () => {
+  const report = makeCompleteContract('C')
+  const privateMarker = 'private-reports/123e4567-e89b-42d3-a456-426614174000/report.pdf'
+  const result = await loadConsultationReport(ACCESS_TOKEN, async () => ({
+    data: {
+      plan_code: 'C',
+      status: 'completed',
+      access_token: ACCESS_TOKEN,
+      ai_content: null,
+      full_charts: null,
+      narrative_summary: null,
+      pdf_url: privateMarker,
+      report_result: { consultation_report: report },
+    },
+    error: null,
+  }))
+
+  assert(result.ok, '私有 PDF marker 不得讓已完成報告失去下載入口')
+  assertEqual(result.pdfUrl, privateMarker)
+})
+
 await test('an invalid consultation_report holds the whole row instead of falling back to ai_content', async () => {
   const result = await loadConsultationReport(ACCESS_TOKEN, async () => ({
     data: {

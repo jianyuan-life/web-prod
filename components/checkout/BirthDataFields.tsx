@@ -16,7 +16,7 @@ import {
   resolveConsultationUnknownTime,
 } from '@/lib/consultation/local-time-validity'
 import BirthTimeField from './BirthTimeField'
-import { type CheckoutFormState as FormState } from './types'
+import type { ConsultationCheckoutFormState as FormState } from '@/components/consultation/checkout-types'
 
 interface BirthDataFieldsProps {
   form: FormState

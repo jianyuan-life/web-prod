@@ -36,7 +36,10 @@ import {
   type ChumenjiTopResult,
 } from './steps'
 import { isChumenjiPlan } from '@/lib/plan-names'
-import { shouldUseConsultationReportV1 } from '@/lib/consultation/runtime-config'
+import {
+  hasConsultationOrderReleaseContract,
+  isConsultationGenerationKillSwitchEnabled,
+} from '@/lib/consultation/runtime-config'
 import {
   buildStructuredCReport,
   buildStructuredG15Report,
@@ -50,6 +53,51 @@ import {
   buildUntrustedClientQuestionBlock,
   normalizeConsultationClientQuestion,
 } from '@/lib/consultation/client-question'
+import {
+  operationalErrorClass,
+  operationalFingerprint,
+} from '@/lib/security/operational-telemetry'
+import type { GeneratedReportPdf } from '@/lib/report/pdf-storage'
+
+function reportLogContext(value: unknown): Record<string, string> {
+  const reportFingerprint = operationalFingerprint(value)
+  return reportFingerprint === 'unavailable' ? {} : { reportFingerprint }
+}
+
+function logWorkflowError(event: string, error: unknown): void {
+  console.error(event, { errorType: operationalErrorClass(error) })
+}
+
+function isReportWorkflowSkipResult(value: unknown): value is { skipped: true; reason: string } {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && 'skipped' in value
+    && (value as { skipped?: unknown }).skipped === true
+    && 'reason' in value
+    && typeof (value as { reason?: unknown }).reason === 'string',
+  )
+}
+
+async function stopAfterNonOwnedCompletion(
+  saveOutcome: Awaited<ReturnType<typeof saveReportToSupabase>>,
+) {
+  if (saveOutcome.outcome === 'completed_by_this_worker') return null
+
+  await closeProgressStream()
+  if (saveOutcome.outcome === 'lost_to_completed') {
+    return {
+      success: true as const,
+      skipped: true as const,
+      reason: 'completed_by_other_worker' as const,
+    }
+  }
+
+  return {
+    success: false as const,
+    error: 'REPORT_TERMINAL_STATE_BLOCKED' as const,
+  }
+}
 
 export async function generateReportWorkflow(reportId: string) {
   "use workflow";
@@ -62,15 +110,35 @@ export async function generateReportWorkflow(reportId: string) {
   try {
     record = await loadReportRecord(reportId)
   } catch (e) {
-    const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
-    await markReportFailed(reportId, `載入報告記錄失敗: ${errMsg.slice(0, 500)}`)
+    await markReportFailed(reportId, `LOAD_REPORT_RECORD_FAILED:${operationalErrorClass(e)}`)
     await closeProgressStream()
     return { success: false, error: '載入記錄失敗' }
   }
 
+  if (isReportWorkflowSkipResult(record)) {
+    console.info('[generate-report-workflow] benign duplicate skipped', reportLogContext(reportId))
+    await closeProgressStream()
+    return { success: true, skipped: true, reason: 'already_claimed' }
+  }
+
   const { birthData, planCode, accessToken, customerEmail, userId, createdAt } = record
-  // 單次 workflow 固定一次，避免長流程中環境變數改動造成同一份報告混用兩套格式。
-  const useConsultationV1 = shouldUseConsultationReportV1(planCode)
+  // 收單資格在 checkout 當下決定並寫入不可轉移的 order contract；後續
+  // fulfillment 不再重新讀 intake flag，避免客戶付款後因 env 漂移被擱置。
+  // 真正緊急停機只接受獨立 kill switch，且單次 workflow 固定一次。
+  const hasReleaseContract = hasConsultationOrderReleaseContract(planCode, birthData)
+  const generationKilled = isConsultationGenerationKillSwitchEnabled(planCode)
+  const useConsultationV1 = hasReleaseContract && !generationKilled
+
+  // C/G15 只允許 checkout 時已綁定的 consultation-report/v1 路徑。
+  // 缺持久契約或緊急 kill switch 都保留給人工處理，絕不回退 legacy。
+  if ((planCode === 'C' || planCode === 'G15') && !useConsultationV1) {
+    const holdReason = generationKilled
+      ? 'CONSULTATION_GENERATION_KILL_SWITCH'
+      : 'CONSULTATION_ORDER_RELEASE_CONTRACT_MISSING'
+    await markReportNeedsHumanReview(reportId, holdReason)
+    await closeProgressStream()
+    return { success: false, error: holdReason }
+  }
 
   // ── G15 家族藍圖：特殊流程（不排盤，直接讀取已有報告）──
   if (planCode === 'G15' && (birthData.plan_type === 'family_email' || birthData.plan_type === 'family_reports')) {
@@ -89,9 +157,13 @@ export async function generateReportWorkflow(reportId: string) {
       const memberNames = (birthData.member_names || []) as string[]
 
       const reportIds = (birthData.report_ids || []) as string[]
+      const consentAuthority = birthData.consent_authority as {
+        subject_user_ids_by_report?: Record<string, string>
+      } | undefined
       const familyReports = await loadFamilyReportsByIds(reportIds, memberNames, {
         userId,
         email: customerEmail,
+        subjectUserIdsByReport: consentAuthority?.subject_user_ids_by_report,
       })
 
       const familyNames = familyReports.map(r => r.name).join('、')
@@ -123,17 +195,31 @@ export async function generateReportWorkflow(reportId: string) {
           await closeProgressStream()
           return { success: false, error: 'G15 結構化內容需人工審核' }
         }
-        await saveReportToSupabase(
+        const structuredPdfUrl = await generatePDF(
+          reportId,
+          planCode,
+          familyBirthData,
+          structured.plainText,
+          structured.analysesSummary,
+        )
+        if (!structuredPdfUrl) {
+          await markReportFailed(reportId, 'PDF_GENERATION_FAILED')
+          await closeProgressStream()
+          return { success: false, error: 'G15 PDF 生成失敗' }
+        }
+        const saveOutcome = await saveReportToSupabase(
           reportId,
           structured.plainText,
           structured.aiModel,
           structured.analysesSummary,
-          null,
+          structuredPdfUrl,
           undefined,
           undefined,
           undefined,
           structured.report,
         )
+        const completionStop = await stopAfterNonOwnedCompletion(saveOutcome)
+        if (completionStop) return completionStop
         try {
           await sendReportEmail(
             reportId,
@@ -145,7 +231,7 @@ export async function generateReportWorkflow(reportId: string) {
             familyReports.length,
           )
         } catch (e) {
-          console.error('G15 結構化報告 Email 寄送失敗（報告已完成）:', e)
+          logWorkflowError('[generate-report-workflow] G15 structured email failed', e)
         }
         await closeProgressStream()
         return {
@@ -179,8 +265,8 @@ export async function generateReportWorkflow(reportId: string) {
           return { success: false, error: 'G15 品質硬門檻未通過，已轉人工審核' }
         }
       } catch (e) {
-        console.error('G15 品質閘門執行失敗:', e)
-        const gateError = e instanceof Error ? e.message : String(e)
+        logWorkflowError('[generate-report-workflow] G15 quality gate failed', e)
+        const gateError = operationalErrorClass(e)
         await markReportNeedsHumanReview(
           reportId,
           `G15 品質閘門執行失敗，無法證明報告可交付：${gateError.slice(0, 300)}`,
@@ -230,8 +316,8 @@ export async function generateReportWorkflow(reportId: string) {
           await notifyFiveLLMWarning(reportId, 'G15', review.fiveLLM.avg, review.fiveLLM.min, review.fiveLLM.scores, review.issues)
         }
       } catch (e) {
-        console.error('G15 AI 審核執行失敗:', e)
-        const reviewError = e instanceof Error ? e.message : String(e)
+        logWorkflowError('[generate-report-workflow] G15 independent review failed', e)
+        const reviewError = operationalErrorClass(e)
         await markReportNeedsHumanReview(
           reportId,
           `G15 獨立審查執行失敗，禁止自動交付：${reviewError.slice(0, 300)}`,
@@ -274,21 +360,30 @@ export async function generateReportWorkflow(reportId: string) {
       }
 
       // 生成 PDF
-      let pdfUrl: string | null = null
+      let pdfUrl: GeneratedReportPdf | null = null
       try {
         pdfUrl = await generatePDF(reportId, planCode, familyBirthData, reportContent, [])
       } catch (e) {
-        console.error('G15 PDF 生成失敗（不影響報告）:', e)
+        logWorkflowError('[generate-report-workflow] G15 PDF generation failed', e)
       }
 
       // 儲存到 Supabase
-      await saveReportToSupabase(reportId, reportContent, result.model, [], pdfUrl, null)
+      const saveOutcome = await saveReportToSupabase(
+        reportId,
+        reportContent,
+        result.model,
+        [],
+        pdfUrl,
+        null,
+      )
+      const completionStop = await stopAfterNonOwnedCompletion(saveOutcome)
+      if (completionStop) return completionStop
 
       // 寄送 Email
       try {
         await sendReportEmail(reportId, customerEmail, accessToken, familyBirthData, planCode, reportContent, familyReports.length)
       } catch (e) {
-        console.error('G15 Email 寄送失敗（報告已完成）:', e)
+        logWorkflowError('[generate-report-workflow] G15 email failed', e)
       }
 
       await closeProgressStream()
@@ -300,8 +395,7 @@ export async function generateReportWorkflow(reportId: string) {
         aiModel: result.model,
       }
     } catch (e) {
-      const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
-      await markReportNeedsHumanReview(reportId, `G15 家族藍圖無法安全自動生成: ${errMsg.slice(0, 500)}`)
+      await markReportNeedsHumanReview(reportId, `G15_GENERATION_FAILED:${operationalErrorClass(e)}`)
       await closeProgressStream()
       return { success: false, error: 'G15 已轉人工審核' }
     }
@@ -376,7 +470,7 @@ export async function generateReportWorkflow(reportId: string) {
           reportContent = validateReportAgainstData(reportContent, memberResults[i], memberBD)
         }
       } catch (e) {
-        console.error('R 方案 Post-generation QA 執行失敗（不阻塞）:', e)
+        logWorkflowError('[generate-report-workflow] R post-generation QA failed', e)
       }
 
       // 品質閘門
@@ -384,7 +478,10 @@ export async function generateReportWorkflow(reportId: string) {
       try {
         const qResult = await qualityGate(reportContent, 'R', memberResults.length)
         if (!qResult.passed) {
-          console.warn(`R 品質閘門警告: ${qResult.warnings.join('; ')}`)
+          console.warn('[generate-report-workflow] R quality warnings', {
+            warningCount: qResult.warnings.length,
+            warningFingerprint: operationalFingerprint(qResult.warnings),
+          })
           const hasCrossSys = qResult.hardFailures?.some(s => s.includes('[GLOBAL P0-CROSS-SYS]')) || false
           if (hasCrossSys) {
             const reasonMsg = `[跨系統幻想禁區命中、lesson #056、R 不可交付] ${qResult.hardFailures?.slice(0, 3).join('; ').slice(0, 400)}`
@@ -394,7 +491,7 @@ export async function generateReportWorkflow(reportId: string) {
           }
         }
       } catch (e) {
-        console.error('R 品質閘門執行失敗:', e)
+        logWorkflowError('[generate-report-workflow] R quality gate failed', e)
       }
 
       // AI 審核（5 LLM Post-Gen QA）
@@ -424,7 +521,7 @@ export async function generateReportWorkflow(reportId: string) {
           console.warn(`R AI 審核分數偏低: ${review.score}`)
         }
       } catch (e) {
-        console.error('R AI 審核失敗（不阻塞）:', e)
+        logWorkflowError('[generate-report-workflow] R AI review failed', e)
       }
 
       // 內容安全審查
@@ -435,10 +532,12 @@ export async function generateReportWorkflow(reportId: string) {
           otherClientNames: [],  // R 方案本來就是雙人合盤
         })
         if (modResult.blocked) {
-          console.warn(`R 內容審查被標記：${modResult.reason}（不阻塞交付，但已記錄）`)
+        console.warn('[generate-report-workflow] R content moderation flagged', {
+          reasonFingerprint: operationalFingerprint(modResult.reason),
+        })
         }
       } catch (e) {
-        console.error('R 內容審查失敗（不阻塞）:', e)
+        logWorkflowError('[generate-report-workflow] R content moderation failed', e)
       }
 
       // R 方案用 × 連接成員名字
@@ -446,21 +545,30 @@ export async function generateReportWorkflow(reportId: string) {
       const rBirthData = { ...birthData, name: memberNames }
 
       // 生成 PDF
-      let pdfUrl: string | null = null
+      let pdfUrl: GeneratedReportPdf | null = null
       try {
         pdfUrl = await generatePDF(reportId, planCode, rBirthData, reportContent, [])
       } catch (e) {
-        console.error('R PDF 生成失敗（不影響報告）:', e)
+        logWorkflowError('[generate-report-workflow] R PDF generation failed', e)
       }
 
       // 儲存到 Supabase
-      await saveReportToSupabase(reportId, reportContent, result.model, [], pdfUrl, null)
+      const saveOutcome = await saveReportToSupabase(
+        reportId,
+        reportContent,
+        result.model,
+        [],
+        pdfUrl,
+        null,
+      )
+      const completionStop = await stopAfterNonOwnedCompletion(saveOutcome)
+      if (completionStop) return completionStop
 
       // 寄送 Email
       try {
         await sendReportEmail(reportId, customerEmail, accessToken, rBirthData, planCode, reportContent, members.length)
       } catch (e) {
-        console.error('R Email 寄送失敗（報告已完成）:', e)
+        logWorkflowError('[generate-report-workflow] R email failed', e)
       }
 
       await closeProgressStream()
@@ -472,8 +580,7 @@ export async function generateReportWorkflow(reportId: string) {
         aiModel: result.model,
       }
     } catch (e) {
-      const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
-      await markReportFailed(reportId, `R 方案合否生成失敗: ${errMsg.slice(0, 500)}`)
+      await markReportFailed(reportId, `R_GENERATION_FAILED:${operationalErrorClass(e)}`)
       await closeProgressStream()
       return { success: false, error: 'R 生成失敗' }
     }
@@ -502,8 +609,7 @@ export async function generateReportWorkflow(reportId: string) {
         : rawCalcResult
     }
   } catch (e) {
-    const errMsg2 = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
-    await markReportFailed(reportId, `排盤計算失敗: ${errMsg2.slice(0, 500)}`)
+    await markReportFailed(reportId, `CALCULATOR_FAILED:${operationalErrorClass(e)}`)
     await closeProgressStream()
     return { success: false, error: '排盤計算失敗' }
   }
@@ -538,17 +644,31 @@ export async function generateReportWorkflow(reportId: string) {
         await closeProgressStream()
         return { success: false, error: 'C 結構化內容需人工審核' }
       }
-      await saveReportToSupabase(
+      const structuredPdfUrl = await generatePDF(
+        reportId,
+        planCode,
+        birthData,
+        structured.plainText,
+        structured.analysesSummary,
+      )
+      if (!structuredPdfUrl) {
+        await markReportFailed(reportId, 'PDF_GENERATION_FAILED')
+        await closeProgressStream()
+        return { success: false, error: 'C PDF 生成失敗' }
+      }
+      const saveOutcome = await saveReportToSupabase(
         reportId,
         structured.plainText,
         structured.aiModel,
         structured.analysesSummary,
-        null,
+        structuredPdfUrl,
         undefined,
         structured.fullCharts,
         undefined,
         structured.report,
       )
+      const completionStop = await stopAfterNonOwnedCompletion(saveOutcome)
+      if (completionStop) return completionStop
       try {
         await sendReportEmail(
           reportId,
@@ -560,7 +680,7 @@ export async function generateReportWorkflow(reportId: string) {
           structured.analysesSummary.length,
         )
       } catch (e) {
-        console.error('C 結構化報告 Email 寄送失敗（報告已完成）:', e)
+        logWorkflowError('[generate-report-workflow] C structured email failed', e)
       }
       await closeProgressStream()
       return {
@@ -572,8 +692,7 @@ export async function generateReportWorkflow(reportId: string) {
         consultationVersion: structured.report.schemaVersion,
       }
     } catch (e) {
-      const errMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
-      await markReportFailed(reportId, `C 結構化報告生成失敗: ${errMsg.slice(0, 500)}`)
+      await markReportFailed(reportId, `C_STRUCTURED_GENERATION_FAILED:${operationalErrorClass(e)}`)
       await closeProgressStream()
       return { success: false, error: 'C 結構化報告生成失敗' }
     }
@@ -623,7 +742,7 @@ export async function generateReportWorkflow(reportId: string) {
             }))
             console.log(`  → RAG 檢索 ${rules.length} 條規則`)
           } catch (ragErr) {
-            console.warn('  → RAG 檢索失敗，degraded to 0 rules:', ragErr)
+            logWorkflowError('[generate-report-workflow] RAG retrieval failed', ragErr)
           }
 
           const outcome = await runTeamPipeline({
@@ -647,7 +766,9 @@ export async function generateReportWorkflow(reportId: string) {
               `修訂 ${outcome.metrics.revisionRounds} 輪、$${outcome.metrics.totalCostUsd.toFixed(4)}`,
             )
           } else {
-            console.warn(`C 方案 Team Pipeline 未通過（${outcome.errorReason}），降級到舊 3-call 流程`)
+            console.warn('[generate-report-workflow] C team pipeline did not pass', {
+              reasonFingerprint: operationalFingerprint(outcome.errorReason),
+            })
             if (outcome.needsHumanReview) {
               try {
                 await notifyQualityGate(reportId, outcome.metrics.finalPeerReviewScore)
@@ -655,7 +776,7 @@ export async function generateReportWorkflow(reportId: string) {
             }
           }
         } catch (teamErr) {
-          console.error('C 方案 Team Pipeline 異常，降級到舊 3-call:', teamErr)
+          logWorkflowError('[generate-report-workflow] C team pipeline failed', teamErr)
         }
       }
 
@@ -706,7 +827,10 @@ export async function generateReportWorkflow(reportId: string) {
         console.log(`${planCode} 出門訣：呼叫引擎計算最佳時辰...`)
         chumenjiTop = await callChumenjiTop(planCode, birthData)
         if (chumenjiTop?.results?.length) {
-          console.log(`${planCode} 引擎 Top 結果: ${chumenjiTop.results.map(r => `${r.date} ${r.shichen}時 ${r.direction} ${r.score}分`).join(' | ')}`)
+          console.log('[generate-report-workflow] chumenji results ready', {
+            planCode,
+            resultCount: chumenjiTop.results.length,
+          })
         } else {
           console.warn(`${planCode} 引擎 Top 結果為空，AI 將自行判斷（降級模式）`)
         }
@@ -720,13 +844,8 @@ export async function generateReportWorkflow(reportId: string) {
       aiModelUsed = result.model
     }
   } catch (e) {
-    // Workflow 環境的錯誤可能不是標準 Error 實例，需要多種方式擷取
-    const errMsg = e instanceof Error ? e.message
-      : typeof e === 'string' ? e
-      : (e && typeof e === 'object' && 'message' in e) ? String((e as { message: unknown }).message)
-      : JSON.stringify(e) || '未知錯誤'
-    console.error('AI 生成失敗完整錯誤:', e)
-    await markReportFailed(reportId, `AI 生成失敗: ${errMsg.slice(0, 500)}`)
+    logWorkflowError('[generate-report-workflow] AI generation failed', e)
+    await markReportFailed(reportId, `AI_GENERATION_FAILED:${operationalErrorClass(e)}`)
     await closeProgressStream()
     return { success: false, error: 'AI 生成失敗' }
   }
@@ -745,20 +864,20 @@ export async function generateReportWorkflow(reportId: string) {
       planCode === 'C' ? calculatorBirthData : birthData,
     )
   } catch (e) {
-    const qaError = e instanceof Error ? e.message : String(e)
+    const qaError = operationalErrorClass(e)
     if (planCode === 'C') {
       const reason = `C 報告與排盤資料比對失敗: ${qaError.slice(0, 400)}`
       try {
         await markReportNeedsHumanReview(reportId, reason, undefined, reportContent, aiModelUsed)
       } catch (markErr) {
-        console.error('C Post-generation QA 標記人工審核失敗:', markErr)
+        logWorkflowError('[generate-report-workflow] C QA review transition failed', markErr)
         await markReportFailed(reportId, reason)
       }
       await closeProgressStream()
       return { success: false, error: 'C 報告資料比對失敗，已停止交付' }
     }
     // 保留其他方案的現有行為；E3 凍結路徑不變。
-    console.error('Post-generation QA 執行失敗（不阻塞）:', e)
+    logWorkflowError('[generate-report-workflow] post-generation QA failed', e)
   }
 
   // Step 3: 品質閘門 + Post-Gen 6 LLM 各司其職 QA Pipeline
@@ -812,17 +931,23 @@ export async function generateReportWorkflow(reportId: string) {
     try {
       gateResult = await qualityGate(reportContent, planCode, analyses.length, chumenjiTop, birthData)
     } catch (e) {
-      console.error('品質閘門執行失敗:', e)
+      logWorkflowError('[generate-report-workflow] quality gate failed', e)
       break
     }
     // v5.7.21:detailed log — 把每項 hardFailures / warnings 全部列出、防再「失敗 1 項」黑盒
     if (gateResult) {
       console.log(`[QualityGate Round ${roundNum}] 報告字數:${reportContent.length} / passed:${gateResult.passed} / hardFailures:${(gateResult.hardFailures || []).length} / softWarnings:${(gateResult.softWarnings || []).length}`)
       if (gateResult.hardFailures && gateResult.hardFailures.length > 0) {
-        gateResult.hardFailures.forEach((hf, i) => console.log(`  🔴 hardFailure[${i + 1}]: ${hf}`))
+        console.log('[generate-report-workflow] quality hard failures', {
+          count: gateResult.hardFailures.length,
+          fingerprint: operationalFingerprint(gateResult.hardFailures),
+        })
       }
       if (gateResult.softWarnings && gateResult.softWarnings.length > 0) {
-        gateResult.softWarnings.forEach((sw, i) => console.log(`  🟡 softWarning[${i + 1}]: ${sw}`))
+        console.log('[generate-report-workflow] quality soft warnings', {
+          count: gateResult.softWarnings.length,
+          fingerprint: operationalFingerprint(gateResult.softWarnings),
+        })
       }
     }
 
@@ -856,7 +981,10 @@ export async function generateReportWorkflow(reportId: string) {
         ? `6 LLM 各司其職全過（avg=${fiveLLMInfo.avg}, critical=${fiveLLMInfo.criticalErrors.length}）`
         : `Legacy Reviewer ${reviewerScore} 分`
       console.log(`品質閘門通過（第 ${roundNum} 次）: ${scoreLog}`)
-      if (softFails.length > 0) console.log(`軟警告（不影響通過）: ${softFails.join('; ')}`)
+      if (softFails.length > 0) console.log('[generate-report-workflow] quality soft failures', {
+        count: softFails.length,
+        fingerprint: operationalFingerprint(softFails),
+      })
       break
     }
 
@@ -874,7 +1002,11 @@ export async function generateReportWorkflow(reportId: string) {
       ...(fiveLLMFail ? [fiveLLMDesc] : []),
       ...(reviewerIssues.length > 0 ? [`Reviewer 問題: ${reviewerIssues.slice(0, 5).join('; ')}`] : []),
     ]
-    console.warn(`品質閘門失敗（第 ${roundNum} 次）: ${lastQualityIssues.join('; ')}`)
+    console.warn('[generate-report-workflow] quality gate did not pass', {
+      round: roundNum,
+      issueCount: lastQualityIssues.length,
+      issueFingerprint: operationalFingerprint(lastQualityIssues),
+    })
 
     // 5 LLM QA 即時告警（不等重試完才告警）
     if (fiveLLMInfo) {
@@ -892,7 +1024,7 @@ export async function generateReportWorkflow(reportId: string) {
           )
         }
       } catch (telErr) {
-        console.warn('Telegram 5 LLM 告警失敗（不阻塞）:', telErr)
+        logWorkflowError('[generate-report-workflow] QA Telegram alert failed', telErr)
       }
     }
 
@@ -931,7 +1063,7 @@ export async function generateReportWorkflow(reportId: string) {
       aiModelUsed = r1.model
       console.log(`C 方案重試第 ${qualityRetryCount} 次完成：${reportContent.length} 字`)
     } catch (retryErr) {
-      console.error(`C 方案重試失敗:`, retryErr)
+      logWorkflowError('[generate-report-workflow] C retry failed', retryErr)
       break
     }
   }
@@ -961,7 +1093,7 @@ export async function generateReportWorkflow(reportId: string) {
         )
       } catch { /* 不阻塞 */ }
     } catch (markErr) {
-      console.error('markReportNeedsHumanReview 失敗，fallback markReportFailed:', markErr)
+      logWorkflowError('[generate-report-workflow] human-review transition failed', markErr)
       await markReportFailed(reportId, reasonMsg)
     }
     await closeProgressStream()
@@ -987,7 +1119,11 @@ export async function generateReportWorkflow(reportId: string) {
         await closeProgressStream()
         return { success: false, error: `${planCode} 內容需人工審核` }
       }
-      console.warn(`內容審查發現 ${modResult.blacklistCount} 項違規（${planCode}）: ${modResult.reason}`)
+      console.warn('[generate-report-workflow] content moderation flagged', {
+        planCode,
+        blacklistCount: modResult.blacklistCount,
+        reasonFingerprint: operationalFingerprint(modResult.reason),
+      })
     }
   } catch (e) {
     if (planCode === 'C' || planCode === 'G15') {
@@ -1001,7 +1137,7 @@ export async function generateReportWorkflow(reportId: string) {
       await closeProgressStream()
       return { success: false, error: `${planCode} 內容審查未完整完成` }
     }
-    console.error('內容審查失敗（維持既有方案政策）:', e)
+    logWorkflowError('[generate-report-workflow] content moderation failed', e)
   }
 
   // Step 3.6: E1/E2/E3 出門訣 — 強制移除非奇門詞彙（AI prompt 禁止但偶爾仍偷用）
@@ -1048,7 +1184,7 @@ export async function generateReportWorkflow(reportId: string) {
       }
     } catch (e) {
       // 詞彙清洗失敗不阻塞 — 繼續用原本的 reportContent 交付
-      console.error(`${planCode} bannedTerms 清洗失敗（不阻塞）:`, e)
+      logWorkflowError('[generate-report-workflow] banned-term cleaning failed', e)
     }
   }
 
@@ -1215,7 +1351,7 @@ export async function generateReportWorkflow(reportId: string) {
           console.log(`${planCode} 吉時從 AI JSON 備用解析取得: ${top5Timings.length} 項`)
         }
       } catch (e) {
-        console.error('吉時 AI JSON 備用解析失敗:', e)
+        logWorkflowError('[generate-report-workflow] timing JSON parse failed', e)
       }
     }
 
@@ -1232,17 +1368,17 @@ export async function generateReportWorkflow(reportId: string) {
   }
   } catch (step4Err) {
     // v5.3.32：Step 4 整段失敗不阻塞交付
-    console.error('Step 4 吉時數據處理失敗（不阻塞）:', step4Err)
+    logWorkflowError('[generate-report-workflow] timing processing failed', step4Err)
   }
 
   // Step 5: 生成 PDF（v5.3.75：E3 月度訂閱不生成 PDF、深度綁定 web 策略）
-  let pdfUrl: string | null = null
+  let pdfUrl: GeneratedReportPdf | null = null
   if (planCode !== 'E3') {
     try {
       pdfUrl = await generatePDF(reportId, planCode, birthData, reportContent, analysesSummary)
     } catch (e) {
       // PDF 失敗不阻塞整體流程
-      console.error('PDF 生成失敗（不影響報告）:', e)
+      logWorkflowError('[generate-report-workflow] PDF generation failed', e)
     }
   } else {
     console.log('E3 月度訂閱：跳過 PDF 生成（v5.3.75 新策略）')
@@ -1253,7 +1389,7 @@ export async function generateReportWorkflow(reportId: string) {
   try {
     fullCharts = extractFullCharts(calcResult)
   } catch (fcErr) {
-    console.error('extractFullCharts 失敗（不阻塞、full_charts 略過）:', fcErr)
+    logWorkflowError('[generate-report-workflow] full charts extraction failed', fcErr)
   }
 
   // 報告重構 2026-06-23:敘事綜合萃取(命格原型/天賦/課題、Gemini 忠於原文、黃金驗證過)
@@ -1263,16 +1399,26 @@ export async function generateReportWorkflow(reportId: string) {
     try {
       narrative = await aiExtractNarrative(reportContent)
     } catch (nErr) {
-      console.error('aiExtractNarrative 失敗（不阻塞、narrative 略過）:', nErr)
+      logWorkflowError('[generate-report-workflow] narrative extraction failed', nErr)
     }
   }
 
   // Step 5: 儲存到 Supabase
   try {
-    await saveReportToSupabase(reportId, reportContent, aiModelUsed, analysesSummary, pdfUrl, top5Timings, fullCharts, narrative)
+    const saveOutcome = await saveReportToSupabase(
+      reportId,
+      reportContent,
+      aiModelUsed,
+      analysesSummary,
+      pdfUrl,
+      top5Timings,
+      fullCharts,
+      narrative,
+    )
+    const completionStop = await stopAfterNonOwnedCompletion(saveOutcome)
+    if (completionStop) return completionStop
   } catch (e) {
-    const errMsg3 = e instanceof Error ? e.message : typeof e === 'string' ? e : JSON.stringify(e) || '未知錯誤'
-    await markReportFailed(reportId, `儲存報告失敗: ${errMsg3.slice(0, 500)}`)
+    await markReportFailed(reportId, `REPORT_PERSISTENCE_FAILED:${operationalErrorClass(e)}`)
     await closeProgressStream()
     return { success: false, error: '儲存失敗' }
   }
@@ -1282,7 +1428,7 @@ export async function generateReportWorkflow(reportId: string) {
     await sendReportEmail(reportId, customerEmail, accessToken, birthData, planCode, reportContent, analyses.length)
   } catch (e) {
     // Email 失敗不影響報告完成狀態
-    console.error('Email 寄送失敗（報告已完成）:', e)
+    logWorkflowError('[generate-report-workflow] report email failed', e)
   }
 
   // 完成

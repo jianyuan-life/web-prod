@@ -18,7 +18,7 @@ const purchaseNotice = read('components', 'consultation', 'ConsultationPurchaseN
 const purchaseCopy = read('lib', 'checkout', 'consultation-purchase-notice.ts')
 const checkoutTrigger = read('components', 'consultation', 'ConsultationCheckoutTrigger.tsx')
 const g15Review = read('components', 'consultation', 'G15FinalReviewModal.tsx')
-const confirmation = read('components', 'checkout', 'ConfirmationModal.tsx')
+const confirmation = read('components', 'consultation', 'CFinalReviewModal.tsx')
 const coupon = read('components', 'checkout', 'CouponInput.tsx')
 const points = read('components', 'checkout', 'PointsRedeem.tsx')
 const birthFields = read('components', 'checkout', 'BirthDataFields.tsx')
@@ -48,12 +48,16 @@ test('consultation date boundary follows Hong Kong calendar time and explicitly 
   assert.match(birthFields, /以香港日期/u)
 })
 
-test('G15 consent expiration is visible, clears the checkbox, and can be accepted again', () => {
-  assert.match(checkoutHook, /G15_CONSENT_MAX_AGE_MS/u)
-  assert.match(checkoutHook, /setG15ConsentAcceptedAt\(''\)/u)
+test('G15 independent-consent status is visible and stale authority is cleared on invite-code changes', () => {
+  assert.match(checkoutHook, /clearG15ConsentAuthority/u)
+  assert.match(checkoutHook, /setG15ConsentSelectionId\(''\)/u)
+  assert.match(checkoutHook, /setG15ConsentExpiresAt\(''\)/u)
+  assert.match(checkoutHook, /每位成年成員必須提供不同的家族邀請碼/u)
+  assert.match(checkoutHook, /家族邀請碼已變更；請重新寄出逐位同意邀請/u)
+  assert.match(checkoutHook, /refreshG15ConsentStatus/u)
   assert.match(checkoutHook, /g15ConsentStatusMessage/u)
   assert.match(checkoutPage, /g15ConsentStatusMessage/u)
-  assert.match(checkoutPage, /30 分鐘/u)
+  assert.match(g15Review, /逐位同意/u)
   assert.doesNotMatch(checkoutPage, /若所選成員包含未成年人/u)
 })
 
@@ -97,7 +101,8 @@ test('disabled controls explain their state and city Escape dismisses only the r
     birthFields.match(/case 'Escape':[\s\S]*?break/u)?.[0] || '',
     /onCitySearch\(''\)/u,
   )
-  assert.match(checkoutPage, /重新建立可用的人生藍圖/u)
+  assert.match(checkoutPage, /完成以下項目後即可繼續/u)
+  assert.match(checkoutPage, /所有人顯示「已同意」前不會建立付款/u)
   assert.match(checkoutPage, /disabled:cursor-not-allowed/u)
 })
 

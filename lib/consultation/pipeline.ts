@@ -403,15 +403,20 @@ function buildTopicFactIds(
   plan: ConsultationPlan,
   factLedger: FactLedger,
 ): Record<string, FactId[]> {
-  const usable = factLedger.entries.filter((fact) => fact.evidenceClass !== 'held')
-  const anchors = usable.filter((fact) => fact.evidenceClass !== 'reflection_only')
-  if (anchors.length === 0) {
+  // Reflection tools remain in the delivered ledger for transparency, but
+  // they are never put into an authorable chapter context. Keeping them out of
+  // the prompt is stronger than asking a model not to cite them.
+  const claimable = factLedger.entries.filter((fact) =>
+    fact.evidenceClass !== 'held' &&
+    fact.evidenceClass !== 'reflection_only'
+  )
+  if (claimable.length === 0) {
     throw pipelineError('facts.no_anchor', 'factLedger.entries', '沒有可支撐客戶結論的 facts')
   }
-  const familyFactIds = anchors
+  const familyFactIds = claimable
     .filter((fact) => fact.kind === 'family_structure')
     .map((fact) => fact.factId)
-  const clientFacts = usable.filter((fact) =>
+  const clientFacts = claimable.filter((fact) =>
     fact.sourcePath === 'client_data'
     || fact.sourcePath === 'request.client_profile'
     || fact.sourcePath === 'request.time_confidence'
@@ -450,15 +455,15 @@ function buildTopicFactIds(
 
   return Object.fromEntries(Object.entries(systemsByTopic[plan]).map(([topic, systems]) => {
     const systemSet = new Set(systems)
-    const topicalFacts = usable.filter((fact) => systemSet.has(systemOf(fact)))
+    const topicalFacts = claimable.filter((fact) => systemSet.has(systemOf(fact)))
     const selected = [
       ...(plan === 'G15' ? familyFactIds : []),
       ...clientFacts.map((fact) => fact.factId),
       ...topicalFacts.map((fact) => fact.factId),
     ]
     const selectedAnchors = selected.filter((factId) => {
-      const fact = usable.find((entry) => entry.factId === factId)
-      return fact && fact.evidenceClass !== 'reflection_only'
+      const fact = claimable.find((entry) => entry.factId === factId)
+      return Boolean(fact)
     })
     if (selectedAnchors.length === 0) {
       throw pipelineError('topic.no_anchor', `topicFactIds.${topic}`, '主題缺少非反思型依據')
@@ -519,7 +524,13 @@ export async function generateConsultationReport(
     context.factLedger.entries.map((fact) => [fact.factId, fact.sourceId]),
   )
   const personIdsByFactId = Object.fromEntries(
-    context.factLedger.entries.map((fact) => [fact.factId, fact.personIds]),
+    context.factLedger.entries.map((fact) => [
+      fact.factId,
+      // A family-structure statement says who is in scope; it is not a chart
+      // belonging to every member and therefore cannot satisfy subject fact
+      // coverage for any individual claim.
+      fact.kind === 'family_structure' ? [] : fact.personIds,
+    ]),
   )
   const systemByFactId = Object.fromEntries(
     context.factLedger.entries.map((fact) => [
@@ -669,7 +680,9 @@ export async function generateConsultationReport(
     asOfDate: input.asOfDate,
     people: context.people,
     ageContexts: context.ageContexts,
-    facts: context.factLedger.entries.filter((fact) => fact.evidenceClass !== 'held'),
+    facts: context.factLedger.entries.filter((fact) =>
+      fact.evidenceClass !== 'held' && fact.evidenceClass !== 'reflection_only'
+    ),
     drafts,
   }
   let reviewReservation

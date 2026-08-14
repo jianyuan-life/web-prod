@@ -174,169 +174,68 @@ function CheckoutForm() {
           <form onSubmit={ctx.handleCheckout} className="checkout-form-card space-y-4" aria-labelledby="g15-form-heading">
             <div>
               <p className="checkout-order-kicker">家庭成員</p>
-              <h2 id="g15-form-heading" className="text-xl font-semibold text-cream">選擇家族成員報告</h2>
+              <h2 id="g15-form-heading" className="text-xl font-semibold text-cream">邀請家族成員授權報告</h2>
             </div>
             <div className="glass rounded-xl p-4 mb-2">
               <p className="text-sm text-text-muted leading-relaxed">
-                從已完成的「人生藍圖」報告中選擇家庭成員，系統會讀取各成員的命理資料進行家族互動分析。
+                每位成年成員須以自己帳號所擁有、已完成的「人生藍圖」加入，並親自登入同意本次使用。
                 <br />
-                <span className="text-gold">至少選擇 2 位，最多 8 位。</span>
+                <span className="text-gold">請輸入 2–8 組不同擁有者的「家族邀請碼」。</span>
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-text-muted/70">
+                成員可在「我的報告」複製家族邀請碼。邀請碼不會開啟報告內容；所有人同意前，購買者也看不到成員姓名或報告資料。
               </p>
             </div>
 
-            {/* 已選取的成員 */}
-            {ctx.g15Selected.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gold">已選成員（{ctx.g15Selected.length}）</p>
-                {ctx.g15Selected.map((member) => (
-                  <div key={member.reportId} className="glass rounded-xl p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-400 text-sm">&#10003;</span>
-                      <span className="text-white text-sm font-medium">{member.name}</span>
-                      {member.createdAt && (
-                        <span className="text-text-muted/50 text-xs">
-                          {new Date(member.createdAt).toLocaleDateString('zh-TW')}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => ctx.removeG15Report(member.reportId)}
-                      className="text-red-400 text-xs hover:text-red-300 transition-colors"
-                    >
-                      移除
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* 我的報告列表 */}
-            {ctx.g15MyLoading ? (
-              <div className="text-center text-text-muted text-sm py-4" role="status">正在載入您的報告…</div>
-            ) : ctx.g15LoadError ? (
-              <div className="checkout-form-error rounded-xl p-4 text-sm" role="alert">
-                <p>{ctx.g15LoadError}</p>
-                <button type="button" onClick={ctx.loadMyReports} className="mt-2 text-gold underline underline-offset-2">
-                  重新載入
-                </button>
-              </div>
-            ) : ctx.g15MyReports.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-text-muted">您帳號下的人生藍圖</p>
-                {ctx.g15MyReports
-                  .filter(r => !ctx.g15Selected.some(s => s.reportId === r.id))
-                  .map((report) => {
-                  const canAdd = report.eligible !== false && ctx.g15Selected.length < 8
-                  return (
-                  <div key={report.id} className="glass rounded-xl p-3 flex items-center justify-between gap-3 hover:border-gold/40 border border-transparent transition-colors">
-                    <div className="min-w-0">
-                      <span className="text-white text-sm">{report.name}</span>
-                      {report.createdAt && (
-                        <span className="text-text-muted/50 text-xs ml-2">
-                          {new Date(report.createdAt).toLocaleDateString('zh-TW')}
-                        </span>
-                      )}
-                      {report.eligible === false && report.eligibilityReason && (
-                        <p className="mt-1 text-xs leading-relaxed text-amber-300" role="status">{report.eligibilityReason}</p>
-                      )}
-                    </div>
-                    {report.eligible === false ? (
-                      <Link href="/life-blueprint" className="shrink-0 text-xs font-medium text-gold underline underline-offset-2 hover:text-gold/80">
-                        重新建立可用的人生藍圖
-                      </Link>
-                    ) : (
+            <div className="space-y-3" aria-label="家族邀請碼">
+              {ctx.g15ConsentAccessInputs.map((value, index) => (
+                <div key={`g15-invite-${index}`} className="glass rounded-xl p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <label htmlFor={`g15-invite-${index}`} className="text-sm font-medium text-cream">
+                      成員 {index + 1} 的家族邀請碼
+                    </label>
+                    {ctx.g15ConsentAccessInputs.length > 2 && (
                       <button
                         type="button"
-                        onClick={() => ctx.addG15Report(report)}
-                        disabled={!canAdd}
-                        aria-label={canAdd ? `加入 ${report.name}` : '已選滿 8 位家庭成員'}
-                        className="shrink-0 cursor-pointer text-xs text-gold transition-colors hover:text-gold/80 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => ctx.removeG15ConsentAccessInput(index)}
+                        className="text-xs text-red-300 hover:text-red-200"
+                        aria-label={`移除成員 ${index + 1}`}
                       >
-                        {canAdd ? '+ 加入' : '已達 8 人上限'}
+                        移除
                       </button>
                     )}
                   </div>
-                  )})}
-              </div>
-            ) : !ctx.g15MyLoading ? (
-              <div className="glass rounded-xl p-4 text-center">
-                <p className="text-text-muted text-sm">您的帳號下還沒有已完成的人生藍圖報告</p>
-                <Link href="/pricing" className="text-gold text-xs hover:underline mt-1 inline-block">
-                  前往購買人生藍圖
-                </Link>
-              </div>
-            ) : null}
-
-            {/* 在目前帳戶內依姓名篩選 */}
-            {ctx.g15Selected.length < 8 && (
-              <div className="space-y-2">
-                <label htmlFor="g15-report-search" className="text-sm font-medium text-text-muted">在此帳戶內依姓名篩選</label>
-                <p className="text-xs leading-relaxed text-text-muted/70">只會搜尋您目前登入帳戶中已完成的人生藍圖；不會搜尋其他人的帳戶。</p>
-                <div className="flex gap-2">
                   <input
-                    id="g15-report-search"
+                    id={`g15-invite-${index}`}
                     type="text"
-                    placeholder="輸入此帳戶人生藍圖中的姓名"
-                    value={ctx.g15SearchQuery}
-                    onChange={(e) => ctx.setG15SearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        ctx.searchG15Reports(ctx.g15SearchQuery)
-                      }
-                    }}
-                    className="flex-1 bg-dark-lighter border border-gold/20 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-text-muted/40 focus:outline-none focus:border-gold/60 transition-colors"
+                    autoComplete="off"
+                    value={value}
+                    onChange={(event) => ctx.updateG15ConsentAccessInput(index, event.target.value)}
+                    placeholder="由該成員在「我的報告」複製"
+                    className="mt-2 w-full rounded-lg border border-gold/20 bg-dark-lighter px-3 py-2.5 font-mono text-sm text-white placeholder:font-sans placeholder:text-text-muted/40 focus:border-gold/60 focus:outline-none"
                   />
-                  <button
-                    type="button"
-                    onClick={() => ctx.searchG15Reports(ctx.g15SearchQuery)}
-                    disabled={ctx.g15SearchLoading || !ctx.g15SearchQuery.trim()}
-                    className="px-4 py-2.5 bg-gold/20 text-gold rounded-lg text-sm hover:bg-gold/30 transition-colors disabled:opacity-40"
-                  >
-                    {ctx.g15SearchLoading ? '搜尋中…' : '搜尋'}
-                  </button>
                 </div>
+              ))}
+              {ctx.g15ConsentAccessInputs.length < 8 && (
+                <button
+                  type="button"
+                  onClick={ctx.addG15ConsentAccessInput}
+                  className="w-full rounded-xl border border-gold/30 py-3 text-sm text-gold transition-colors hover:bg-gold/10"
+                >
+                  + 加入第 {ctx.g15ConsentAccessInputs.length + 1} 位成員
+                </button>
+              )}
+            </div>
 
-                {/* 搜尋結果 */}
-                {ctx.g15SearchResults.length > 0 && (
-                  <div className="space-y-1.5">
-                    {ctx.g15SearchResults.map((report) => {
-                      const canAdd = report.eligible !== false && ctx.g15Selected.length < 8
-                      return (
-                      <div key={report.id} className="glass rounded-lg p-3 flex items-center justify-between gap-3 hover:border-gold/40 border border-transparent transition-colors">
-                        <div className="min-w-0">
-                          <span className="text-white text-sm">{report.name}</span>
-                          {report.emailHint && (
-                            <span className="text-text-muted/40 text-xs ml-2">{report.emailHint}</span>
-                          )}
-                          {report.eligible === false && report.eligibilityReason && (
-                            <p className="mt-1 text-xs leading-relaxed text-amber-300" role="status">{report.eligibilityReason}</p>
-                          )}
-                        </div>
-                        {report.eligible === false ? (
-                          <Link href="/life-blueprint" className="shrink-0 text-xs font-medium text-gold underline underline-offset-2 hover:text-gold/80">
-                            重新建立可用的人生藍圖
-                          </Link>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => ctx.addG15Report(report)}
-                            disabled={!canAdd}
-                            aria-label={canAdd ? `加入 ${report.name}` : '已選滿 8 位家庭成員'}
-                            className="shrink-0 cursor-pointer text-xs text-gold transition-colors hover:text-gold/80 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {canAdd ? '+ 加入' : '已達 8 人上限'}
-                          </button>
-                        )}
-                      </div>
-                    )})}
+            {ctx.g15Selected.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gold">全員同意後確認的成員（{ctx.g15Selected.length}）</p>
+                {ctx.g15Selected.map((member) => (
+                  <div key={member.reportId} className="glass rounded-xl p-3 flex items-center gap-2">
+                    <span className="text-green-400 text-sm" aria-hidden="true">&#10003;</span>
+                    <span className="text-white text-sm font-medium">{member.name}</span>
                   </div>
-                )}
-                {ctx.g15SearchAttempted && !ctx.g15SearchLoading && !ctx.g15SearchError && ctx.g15SearchResults.length === 0 && (
-                  <p className="text-text-muted/70 text-xs text-center py-2">此帳戶找不到相符且已完成的人生藍圖。</p>
-                )}
-                {ctx.g15SearchError && <p className="checkout-form-error text-xs" role="alert">{ctx.g15SearchError}</p>}
+                ))}
               </div>
             )}
 
@@ -382,28 +281,69 @@ function CheckoutForm() {
 
             {ctx.error && <p className="checkout-form-error text-sm" role="alert">{ctx.error}</p>}
 
-            <div className="rounded-xl border border-gold/20 bg-gold/[0.05] p-4 text-left">
-            <label className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={ctx.g15ConsentAccepted}
-                onChange={(event) => ctx.setG15ConsentAccepted(event.target.checked)}
-                className="mt-1 h-4 w-4 shrink-0 accent-[#d5ae62]"
-                aria-describedby="g15-consent-description g15-consent-status"
-              />
-              <span id="g15-consent-description" className="text-xs leading-relaxed text-text-muted/80">
-                我確認每位成年成員已明確同意本次分析。授權範圍包含讀取其人生藍圖與出生資料。
-                我了解只要增減成員就必須重新確認。
-              </span>
-            </label>
-            <p className="mt-3 pl-7 text-xs text-text-muted/80">
-              <Link href="/privacy" className="text-gold/90 underline underline-offset-2 hover:text-gold">查看隱私政策</Link>
-              （開啟連結不會替您勾選同意）。
-            </p>
-            <p id="g15-consent-status" className="mt-2 pl-7 text-xs leading-relaxed text-text-muted/80" role={ctx.g15ConsentStatusMessage.includes('超過') ? 'alert' : 'status'} aria-live="polite">
-              {ctx.g15ConsentStatusMessage || '勾選後保留 30 分鐘；到期或變更成員時，需要重新確認。'}
-            </p>
-            </div>
+            <section className="rounded-xl border border-gold/20 bg-gold/[0.05] p-4 text-left" aria-labelledby="g15-consent-heading">
+              <h3 id="g15-consent-heading" className="text-base font-semibold text-cream">每位成年成員獨立同意</h3>
+              <p className="mt-2 text-xs leading-relaxed text-text-muted/80">
+                系統只會寄到每份人生藍圖擁有者帳號的已確認 Email。成員必須登入同一個帳號，才可同意本次讀取其人生藍圖與出生資料。付款建立前可撤回；付款建立後本次授權已被訂單使用，請聯絡客服處理後續資料權利要求。
+              </p>
+              <div className="mt-4 space-y-3">
+                {ctx.g15ConsentMembers.map((member) => {
+                  const statusLabel = member.status === 'accepted'
+                    ? '已同意'
+                    : member.status === 'revoked'
+                      ? '已撤回'
+                      : member.status === 'expired'
+                        ? '已過期'
+                        : member.status === 'pending'
+                          ? '待同意'
+                          : '尚未寄送'
+                  const statusClass = member.status === 'accepted'
+                    ? 'border-green-400/30 bg-green-500/10 text-green-300'
+                    : member.status === 'revoked' || member.status === 'expired'
+                      ? 'border-red-400/30 bg-red-500/10 text-red-300'
+                      : 'border-amber-400/30 bg-amber-500/10 text-amber-300'
+                  return (
+                    <div key={member.reportId} className="rounded-lg border border-white/10 bg-black/10 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-white">{member.name}</span>
+                        <span className={`rounded-full border px-2 py-1 text-[11px] font-medium ${statusClass}`}>{statusLabel}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={ctx.sendG15ConsentInvitations}
+                  disabled={ctx.g15ConsentLoading || ctx.g15ConsentAccessInputs.length < 2 || ctx.g15ConsentAccessInputs.some((value) => value.trim().length < 24)}
+                  className="rounded-lg bg-gold px-4 py-2.5 text-sm font-semibold text-dark disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {ctx.g15ConsentLoading ? '處理中…' : ctx.g15ConsentSelectionId ? '重新寄送待同意邀請' : '寄出逐位同意邀請'}
+                </button>
+                {ctx.g15ConsentSelectionId && (
+                  <button
+                    type="button"
+                    onClick={() => ctx.refreshG15ConsentStatus()}
+                    disabled={ctx.g15ConsentLoading}
+                    className="rounded-lg border border-gold/30 px-4 py-2.5 text-sm font-medium text-gold disabled:opacity-50"
+                  >
+                    更新同意狀態
+                  </button>
+                )}
+              </div>
+              <p id="g15-consent-status" className="mt-3 text-xs leading-relaxed text-text-muted/80" role="status" aria-live="polite">
+                {ctx.g15ConsentStatusMessage || '填妥每位成年成員的家族邀請碼後寄出邀請；所有人顯示「已同意」前不會建立付款。'}
+              </p>
+              {ctx.g15ConsentExpiresAt && (
+                <p className="mt-1 text-[11px] text-text-muted/60">本輪邀請有效至 {new Date(ctx.g15ConsentExpiresAt).toLocaleString('zh-TW')}</p>
+              )}
+              {ctx.g15ConsentError && <p className="mt-2 text-xs text-red-300" role="alert">{ctx.g15ConsentError}</p>}
+              <p className="mt-3 text-[11px] leading-relaxed text-text-muted/60">
+                帳號與報告擁有權驗證不等於身分證明、實名驗證或 KYC。未滿 18 歲的報告目前不能加入，同一帳號也不能代表多位成員。{' '}
+                <Link href="/privacy" className="text-gold/90 underline underline-offset-2 hover:text-gold">查看隱私政策</Link>
+              </p>
+            </section>
 
             <CheckoutSecurityNote />
 
@@ -430,6 +370,7 @@ function CheckoutForm() {
           <G15FinalReviewModal
             show={ctx.showConfirmModal}
             members={ctx.g15Selected}
+            consentMembers={ctx.g15ConsentMembers}
             relationshipContext={ctx.g15RelationshipContext}
             consultationGoals={ctx.g15ConsultationGoals}
             totalPrice={ctx.totalPrice}

@@ -5,11 +5,13 @@ import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 
 import type { G15SelectedReport } from '@/components/checkout/types'
+import type { G15ConsentMemberState } from '@/components/consultation/checkout-types'
 import styles from './G15FinalReviewModal.module.css'
 
 type G15FinalReviewModalProps = {
   show: boolean
   members: G15SelectedReport[]
+  consentMembers: G15ConsentMemberState[]
   relationshipContext: string
   consultationGoals: string
   totalPrice: number
@@ -29,6 +31,7 @@ const FOCUSABLE = 'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1
 export default function G15FinalReviewModal({
   show,
   members,
+  consentMembers,
   relationshipContext,
   consultationGoals,
   totalPrice,
@@ -120,6 +123,7 @@ export default function G15FinalReviewModal({
                 <li key={member.reportId}>
                   <span>{String(index + 1).padStart(2, '0')}</span>
                   <strong>{member.name}</strong>
+                  <small>{consentMembers.find((consent) => consent.reportId === member.reportId)?.status === 'accepted' ? '逐位同意：已完成' : '逐位同意：待確認'}</small>
                   {member.createdAt ? <small>人生藍圖完成於 {new Date(member.createdAt).toLocaleDateString('zh-TW')}</small> : null}
                 </li>
               ))}

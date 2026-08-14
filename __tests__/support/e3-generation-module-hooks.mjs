@@ -46,7 +46,10 @@ const workflowStepsModule = `
     record('contentModerationStep', args)
     return state().moderationResult
   }
-  export async function saveReportToSupabase(...args) { record('saveReportToSupabase', args) }
+  export async function saveReportToSupabase(...args) {
+    record('saveReportToSupabase', args)
+    return { outcome: 'completed_by_this_worker' }
+  }
   export async function sendReportEmail(...args) { record('sendReportEmail', args) }
   export async function closeProgressStream(...args) { record('closeProgressStream', args) }
   export async function markReportFailed(...args) { record('markReportFailed', args) }

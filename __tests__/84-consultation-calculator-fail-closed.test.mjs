@@ -110,7 +110,7 @@ test('unknown birth time removes all time-dependent analyses and calculated clie
   const safe = consultationCalculatorEvidenceForGeneration(completeResult(), { time_unknown: true })
   assert.deepEqual(
     safe.analyses.map((analysis) => analysis.system),
-    ['數字能量學', '姓名學', '塔羅牌'],
+    ['數字能量學', '姓名學', '風水', '塔羅牌'],
   )
   assert.equal(safe.client_data.bazi, undefined)
   assert.equal(safe.client_data.yongshen, undefined)

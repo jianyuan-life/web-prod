@@ -4,6 +4,7 @@
 // 我們可以另外把 INP / LCP / CLS 寫到自己的 endpoint、long-term 留存
 
 import { isPrivateConsultationUrl, redactConsultationUrl } from '@/lib/security/private-route-redaction'
+import { hasAnalyticsConsent } from '@/lib/privacy/consent'
 
 export interface WebVitalMetric {
   id: string
@@ -25,6 +26,7 @@ export function reportWebVital(metric: WebVitalMetric) {
   if (typeof window === 'undefined') return
   if (process.env.NODE_ENV !== 'production') return
   if (isPrivateConsultationUrl(window.location.pathname)) return
+  if (!hasAnalyticsConsent(window.location.pathname)) return
 
   const payload = JSON.stringify({
     id: metric.id,
@@ -39,7 +41,7 @@ export function reportWebVital(metric: WebVitalMetric) {
 
   // 優先用 sendBeacon(可靠、頁面 unload 時也能送)
   try {
-    if (navigator.sendBeacon) {
+    if (navigator.sendBeacon && hasAnalyticsConsent(window.location.pathname)) {
       const blob = new Blob([payload], { type: 'application/json' })
       navigator.sendBeacon(ENDPOINT, blob)
       return
@@ -50,6 +52,7 @@ export function reportWebVital(metric: WebVitalMetric) {
 
   // Fallback:fetch + keepalive
   try {
+    if (!hasAnalyticsConsent(window.location.pathname)) return
     fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

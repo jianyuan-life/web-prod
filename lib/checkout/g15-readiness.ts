@@ -2,7 +2,7 @@ export type G15CheckoutReadinessInput = {
   selectedCount: number
   relationshipContext: string
   consultationGoals: string
-  consentAccepted: boolean
+  allMembersAccepted: boolean
 }
 
 export function getG15CheckoutBlockers(input: G15CheckoutReadinessInput): string[] {
@@ -14,6 +14,8 @@ export function getG15CheckoutBlockers(input: G15CheckoutReadinessInput): string
   if (input.consultationGoals.trim().length < 8) {
     blockers.push('請至少用 8 個字描述這次最想理解或改善的事。')
   }
-  if (!input.consentAccepted) blockers.push('請確認已取得每位成員的資料使用同意。')
+  if (!input.allMembersAccepted) {
+    blockers.push('請寄出逐位同意邀請，並等待每位成年成員完成同意。')
+  }
   return blockers
 }

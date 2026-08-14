@@ -22,7 +22,7 @@ test('G15 generation revalidates consent, explicit relationships, exact adult ag
   const steps = read('workflows/generate-report/steps.ts')
 
   assert.match(steps, /validateG15ConsultationContext\(familyContext\)/u)
-  assert.match(steps, /validateG15ConsentAttestation\([\s\S]{0,500}allowExpired:\s*true/u)
+  assert.match(steps, /validateG15PersistedConsentAuthority\([\s\S]{0,500}consent_selection_id/u)
   assert.match(steps, /buildAgeContext\([\s\S]{0,500}ageYears < 18/u)
   assert.match(steps, /createdAt[\s\S]{0,800}Asia\/Hong_Kong[\s\S]{0,800}targetYear/u)
   assert.match(steps, /statedRelationships[\s\S]{0,800}consultationGoals/u)
@@ -46,10 +46,20 @@ test('G15 hard quality failures and incomplete independent review stop before PD
   const g15 = workflow.slice(start, end)
   const legacy = g15.slice(g15.indexOf('const result = await aiGenerateG15'))
 
+  const assertFailsClosedAfterReviewMarker = (marker, errorText) => {
+    const markerIndex = legacy.indexOf(marker)
+    const reviewIndex = legacy.lastIndexOf('markReportNeedsHumanReview', markerIndex)
+    const returnIndex = legacy.indexOf(errorText, markerIndex)
+
+    assert.ok(markerIndex >= 0, `missing failure marker: ${marker}`)
+    assert.ok(reviewIndex >= 0 && reviewIndex < markerIndex, `${marker} must be recorded for human review`)
+    assert.ok(returnIndex > markerIndex, `${marker} must return a fail-closed result`)
+  }
+
   assert.match(g15, /qResult\.hardFailures\.length > 0[\s\S]{0,900}markReportNeedsHumanReview[\s\S]{0,500}return \{ success: false/u)
-  assert.match(g15, /G15 品質閘門執行失敗[\s\S]{0,900}markReportNeedsHumanReview[\s\S]{0,500}return \{ success: false/u)
+  assertFailsClosedAfterReviewMarker('G15 品質閘門執行失敗', "return { success: false, error: 'G15 品質審查未完整完成' }")
   assert.match(g15, /!review\.fiveLLM[\s\S]{0,300}review\.fiveLLM\.severity === 'red'[\s\S]{0,900}markReportNeedsHumanReview/u)
-  assert.match(g15, /G15 AI 審核執行失敗[\s\S]{0,900}markReportNeedsHumanReview[\s\S]{0,500}return \{ success: false/u)
+  assertFailsClosedAfterReviewMarker('G15 獨立審查執行失敗', "return { success: false, error: 'G15 獨立審查執行失敗' }")
   assert.ok(legacy.indexOf('qualityGate(') < legacy.indexOf('generatePDF('))
   assert.ok(legacy.indexOf('aiReviewReport(') < legacy.indexOf('saveReportToSupabase('))
   assert.ok(legacy.indexOf('aiReviewReport(') < legacy.indexOf('sendReportEmail('))

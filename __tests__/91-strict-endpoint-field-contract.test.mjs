@@ -82,7 +82,11 @@ test('有座標就一定送 timezone_offset —— 這正是當初被擋掉的�
 
 test('offset 為 0 不得被當成缺值丟掉', () => {
   const payload = buildCalculatorRequestPayload(
-    consultationBirthData({ timezone: 'Europe/London', timezone_offset: 0, latitude: 51.5, longitude: -0.12 }),
+    consultationBirthData({
+      month: 1, day: 15,
+      timezone: 'Europe/London', timezone_offset: 0,
+      latitude: 51.5, longitude: -0.12,
+    }),
     { consultationMode: true },
   )
   assert.equal(payload.timezone_offset, 0)
@@ -97,6 +101,11 @@ test('不支援的流派/ayanamsa 仍然要擋,放寬不等於什麼都收', () 
   assert.throws(
     () => buildCalculatorRequestPayload(
       consultationBirthData({ ayanamsa_type: 'sidereal' }), { consultationMode: true }),
+    RangeError,
+  )
+  assert.throws(
+    () => buildCalculatorRequestPayload(
+      consultationBirthData({ ayanamsa_type: 'raman' }), { consultationMode: true }),
     RangeError,
   )
 })

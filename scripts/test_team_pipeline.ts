@@ -4,16 +4,17 @@
 // 跑 2-3 組實測：呼叫 Python 排盤 API → RAG → 主筆 → 3 方審 → 修訂
 // 需要 .env.local 有：CLAUDE_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, QWEN_API_KEY,
 //                    DEEPSEEK_API_KEY, MOONSHOT_API_KEY, VOYAGE_API_KEY,
-//                    NEXT_PUBLIC_API_URL (Python 排盤), SUPABASE
+//                    NEXT_PUBLIC_API_URL (Python 排盤), SUPABASE,
+//                    CALCULATOR_ATTESTATION_SECRET, CALCULATOR_ATTESTATION_KEY_ID
+// 排盤 POST 對實際送出的 JSON bytes 做 HMAC；缺任一認證值即在 fetch 前停止。
 //
 // 執行：npx tsx scripts/test_team_pipeline.ts
 
 import dotenv from 'dotenv'
-import { runTeamPipeline } from '../lib/ai/pipeline'
-import { retrieveRulesFromChart } from '../lib/ai/rag'
-import { PLAN_SYSTEM_PROMPT } from '../workflows/generate-report/plan-prompts'
-
-dotenv.config({ path: '.env.local' })
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { LEGACY_CALCULATE_PATH } from '../lib/consultation/calculator-request.ts'
+import { createSignedCalculatorPost } from '../lib/consultation/calculator-request-auth.server.ts'
 
 interface TestCase {
   name: string
@@ -58,12 +59,26 @@ const TEST_CASES: TestCase[] = [
   },
 ]
 
-async function callPythonPaipan(birthData: TestCase['birthData']) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://jianyuan-api.fly.dev'
-  const res = await fetch(`${apiUrl}/api/calculate`, {
+export async function callPythonPaipan(
+  birthData: TestCase['birthData'],
+  options: {
+    apiUrl?: string
+    environment?: Record<string, string | undefined>
+    fetchImpl?: typeof fetch
+  } = {},
+) {
+  const environment = options.environment ?? process.env
+  const apiUrl = options.apiUrl ?? environment.NEXT_PUBLIC_API_URL ?? 'https://fortune-reports-api.fly.dev'
+  const fetchImpl = options.fetchImpl ?? fetch
+  const signed = createSignedCalculatorPost({
+    path: LEGACY_CALCULATE_PATH,
+    payload: birthData,
+    environment,
+  })
+  const res = await fetchImpl(`${apiUrl}${LEGACY_CALCULATE_PATH}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(birthData),
+    headers: signed.headers,
+    body: signed.body,
     signal: AbortSignal.timeout(120000),
   })
   if (!res.ok) throw new Error(`排盤 API 失敗: HTTP ${res.status}`)
@@ -89,6 +104,15 @@ async function runOne(tc: TestCase): Promise<{
   const reportId = `test-${Date.now()}-${tc.name.replace(/\W/g, '')}`
 
   try {
+    const [pipelineModule, ragModule, promptModule] = await Promise.all([
+      import('../lib/ai/pipeline/index.ts'),
+      import('../lib/ai/rag.ts'),
+      import('../workflows/generate-report/plan-prompts.ts'),
+    ])
+    const { runTeamPipeline } = pipelineModule
+    const { retrieveRulesFromChart } = ragModule
+    const { PLAN_SYSTEM_PROMPT } = promptModule
+
     // 1. 排盤
     console.log('1. 呼叫 Python 排盤 API...')
     const t1 = Date.now()
@@ -187,7 +211,14 @@ async function main() {
   console.log(`\n完整結果：${outPath}`)
 }
 
-main().catch(e => {
-  console.error('測試失敗：', e)
-  process.exit(1)
-})
+const invokedAsScript = process.argv[1]
+  ? pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url
+  : false
+
+if (invokedAsScript) {
+  dotenv.config({ path: '.env.local', quiet: true })
+  main().catch(e => {
+    console.error('測試失敗：', e)
+    process.exit(1)
+  })
+}

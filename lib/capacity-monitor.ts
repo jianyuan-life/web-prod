@@ -29,6 +29,16 @@ export interface CapacityDecision {
   threshold?: number
 }
 
+const CONSULTATION_CAPACITY_UNVERIFIED: CapacityDecision = {
+  allowed: false,
+  mode: 'capacity_unverified',
+  message: '目前無法確認報告處理容量，請稍後再試。',
+}
+
+function requiresVerifiedCapacity(planCode: string): boolean {
+  return planCode === 'C' || planCode === 'G15'
+}
+
 /**
  * 結帳前容量檢查
  * 調用位置：/api/checkout/route.ts 首行、/api/webhook/stripe/route.ts（可選）
@@ -56,7 +66,8 @@ export async function checkCapacity(planCode: string): Promise<CapacityDecision>
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!url || !key) {
-      // Supabase 未設定則直接放行（避免開發環境誤擋）
+      if (requiresVerifiedCapacity(planCode)) return CONSULTATION_CAPACITY_UNVERIFIED
+      // 保留非 C/G15 方案的既有行為。
       return { allowed: true, mode: CAPACITY_MODE }
     }
 
@@ -72,8 +83,9 @@ export async function checkCapacity(planCode: string): Promise<CapacityDecision>
       .is('deleted_at', null)
 
     if (error) {
-      // 查詢失敗則放行（不以監控機制反過來阻塞正常流量）
       console.warn('[capacity] Supabase query error:', error.message)
+      if (requiresVerifiedCapacity(planCode)) return CONSULTATION_CAPACITY_UNVERIFIED
+      // 保留非 C/G15 方案的既有行為。
       return { allowed: true, mode: CAPACITY_MODE }
     }
 
@@ -95,8 +107,9 @@ export async function checkCapacity(planCode: string): Promise<CapacityDecision>
       threshold: CAPACITY_THRESHOLD,
     }
   } catch (err) {
-    // 任何意外錯誤都放行（fail-open）
-    console.warn('[capacity] 檢查失敗，放行:', err)
+    console.warn('[capacity] 檢查失敗:', err instanceof Error ? err.name : 'UnknownError')
+    if (requiresVerifiedCapacity(planCode)) return CONSULTATION_CAPACITY_UNVERIFIED
+    // 保留非 C/G15 方案的既有 fail-open 行為。
     return { allowed: true, mode: CAPACITY_MODE }
   }
 }

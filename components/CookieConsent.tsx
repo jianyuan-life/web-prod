@@ -7,53 +7,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { isConsultationReaderPath } from '@/lib/consultation/routes'
-
-const STORAGE_KEY = 'jy_cookie_consent_v1'
-
-type ConsentPrefs = {
-  necessary: true // 必要 cookie 永遠 true、不可關
-  analytics: boolean
-  marketing: boolean
-  decided_at: string
-}
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void
-    dataLayer?: unknown[]
-  }
-}
-
-function applyConsent(prefs: ConsentPrefs) {
-  if (typeof window === 'undefined') return
-
-  // GA4 consent mode v2 update
-  if (window.gtag) {
-    window.gtag('consent', 'update', {
-      analytics_storage: prefs.analytics ? 'granted' : 'denied',
-      ad_storage: prefs.marketing ? 'granted' : 'denied',
-      ad_user_data: prefs.marketing ? 'granted' : 'denied',
-      ad_personalization: prefs.marketing ? 'granted' : 'denied',
-    })
-  }
-
-  // v5.6.10 (Codex L3 review fix):Meta Pixel 也 honor marketing opt-out
-  // 行銷拒絕時:停用 Meta Pixel autoConfig + 撤銷 advanced matching、不再送追蹤事件
-  // (Meta Pixel 一旦載入無法完全移除、但可關閉資料收集)
-  const fbq = (window as unknown as { fbq?: (...args: unknown[]) => void }).fbq
-  if (fbq) {
-    if (prefs.marketing) {
-      fbq('consent', 'grant')
-    } else {
-      fbq('consent', 'revoke')
-    }
-  }
-}
+import {
+  CONSENT_SETTINGS_EVENT,
+  readStoredConsent,
+  saveStoredConsent,
+  subscribeToConsent,
+  type ConsentSnapshot,
+} from '@/lib/privacy/consent'
 
 export default function CookieConsent() {
   const pathname = usePathname()
   const [show, setShow] = useState(false)
   const [showCustom, setShowCustom] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const firstActionRef = useRef<HTMLButtonElement>(null)
 
   // v5.10.183 P0 修(4 plans desktop UI Vision audit 共通發現):
@@ -73,13 +39,25 @@ export default function CookieConsent() {
   const [marketing, setMarketing] = useState(false)
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (!stored) {
-        setShow(true)
-      }
-    } catch {
+    const hydrate = (stored: ConsentSnapshot) => {
+      setAnalytics(stored.analytics)
+      setMarketing(stored.marketing)
+      if (!stored.decided) setShow(true)
+    }
+    const openSettings = () => {
+      const stored = readStoredConsent()
+      hydrate(stored)
+      setSaveError('')
+      setShowCustom(true)
       setShow(true)
+    }
+
+    hydrate(readStoredConsent())
+    const unsubscribe = subscribeToConsent(hydrate)
+    window.addEventListener(CONSENT_SETTINGS_EVENT, openSettings)
+    return () => {
+      unsubscribe()
+      window.removeEventListener(CONSENT_SETTINGS_EVENT, openSettings)
     }
   }, [])
 
@@ -89,21 +67,24 @@ export default function CookieConsent() {
     return () => window.cancelAnimationFrame(frame)
   }, [show, showCustom])
 
-  function save(prefs: Omit<ConsentPrefs, 'decided_at' | 'necessary'>) {
-    const full: ConsentPrefs = {
-      necessary: true,
-      analytics: prefs.analytics,
-      marketing: prefs.marketing,
-      decided_at: new Date().toISOString(),
+  function save(prefs: { analytics: boolean; marketing: boolean }) {
+    const persisted = saveStoredConsent(prefs)
+    if (
+      !persisted.decided
+      || persisted.analytics !== prefs.analytics
+      || persisted.marketing !== prefs.marketing
+    ) {
+      setAnalytics(persisted.analytics)
+      setMarketing(persisted.marketing)
+      setSaveError('偏好未能儲存，現有設定保持不變。')
+      setShow(true)
+      setShowCustom(true)
+      return
     }
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(full))
-    } catch {
-      /* localStorage blocked, 仍然 apply 本 session */
-    }
-    applyConsent(full)
-    window.dispatchEvent(new CustomEvent<ConsentPrefs>('jy:consent-updated', { detail: full }))
+
+    setSaveError('')
     setShow(false)
+    setShowCustom(false)
   }
 
   function acceptAll() {
@@ -226,6 +207,9 @@ export default function CookieConsent() {
                 儲存偏好
               </button>
             </div>
+            {saveError && (
+              <p className="jy-cookie__copy" role="status" aria-live="polite">{saveError}</p>
+            )}
           </div>
         )}
       </div>

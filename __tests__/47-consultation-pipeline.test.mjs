@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { makeNaturalConsultationParagraph } from './fixtures/natural-consultation-text.mjs'
+import { attachSyntheticConsultationProvenance } from './fixtures/synthetic-consultation-provenance.mjs'
 
 let pipeline
 let normalizer
@@ -22,11 +23,13 @@ function makeCalculatorFacts(personId, marker = '一', birthDate = '1990-01-01')
   const [year, month, day] = birthDate.split('-').map(Number)
   const requestPayload = calculatorRequest.buildCalculatorRequestPayload({
     name: `合成人物${marker}`, year, month, day, hour: 12, minute: 0,
-    gender: 'female', target_year: 2026, as_of: '2026-08-09',
+    gender: 'F', target_year: 2026, as_of: '2026-08-09',
+    latitude: 25.033, longitude: 121.5654, timezone: 'Asia/Taipei', timezone_offset: 8,
+    birth_city: 'Taipei', birth_country: 'TW',
     bazi_school: 'china_mainland', ayanamsa_type: 'lahiri',
   }, { consultationMode: true })
   const requestHash = calculatorRequest.hashCalculatorRequest(requestPayload)
-  return normalizer.normalizeCalculatorFacts({
+  const envelope = {
     personId,
     asOfDate: '2026-08-09',
     targetYear: 2026,
@@ -42,16 +45,26 @@ function makeCalculatorFacts(personId, marker = '一', birthDate = '1990-01-01')
     requestPayload,
     requestHash,
     response: {
+      normalized_input: structuredClone(requestPayload),
+      analysis_context: {
+        mode: 'consultation_v1', as_of: '2026-08-09', target_year: 2026,
+        birth_timezone: 'Asia/Taipei', reference_timezone: 'Asia/Hong_Kong',
+      },
       systems_count: normalizer.EXPECTED_CALCULATOR_SYSTEMS.length,
+      expected_systems_count: normalizer.EXPECTED_CALCULATOR_SYSTEMS.length,
       client_data: {
         name: `合成人物${marker}`, birth_date: `${birthDate} 12:00`, gender: '女',
         bazi: `甲子乙丑丙寅丁卯${marker}`, yongshen: `合成喜用木火${marker}`, dayun: `合成大運${marker}`,
         five_elements: { wood: 2, fire: 2, earth: 2, metal: 1, water: 1 },
         five_elements_simple: { wood: 2, fire: 2, earth: 2, metal: 1, water: 1 },
       },
-      analyses: normalizer.EXPECTED_CALCULATOR_SYSTEMS.map((system, index) => ({
-        system,
-        detail: [
+      analyses: normalizer.EXPECTED_CALCULATOR_SYSTEMS.map((system, index) =>
+        normalizer.CALCULATOR_SYSTEM_EVIDENCE_CLASS[system] === 'held'
+          ? { system, status: 'held', reason: 'authority_unverified', detail: null, score: null }
+          : ({
+            system,
+            status: 'success',
+            detail: [
           `${normalizer.CALCULATOR_SYSTEM_MARKERS[system].flatMap((term) => [`${term}來源`, `${term}盤面`, `${term}位置`, `${term}界線`, `${term}變化`]).join('、')}。`,
           `${system} 合成結果 ${marker}${index}，保留盤面位置、計算步驟、固定年度與可重新核對欄位。`,
           '盤面依序記錄天干地支、宮位星曜、五行強弱、生剋制化、年月日時、方向節奏、關係資源、壓力反應、學習工作、決策界線與行動觀察。',
@@ -62,10 +75,18 @@ function makeCalculatorFacts(personId, marker = '一', birthDate = '1990-01-01')
         good_points: [`可核對線索 ${marker}${index}`],
         improvements: [`改善方向 ${marker}${index}`],
         score: 60 + index,
-        sub_summary: `${system} 合成摘要 ${marker}`,
-      })),
+            sub_summary: `${system} 合成摘要 ${marker}`,
+          })),
+      successful_systems: normalizer.EXPECTED_CALCULATOR_SYSTEMS.filter((system) =>
+        normalizer.CALCULATOR_SYSTEM_EVIDENCE_CLASS[system] !== 'held'),
+      held_systems: normalizer.EXPECTED_CALCULATOR_SYSTEMS.filter((system) =>
+        normalizer.CALCULATOR_SYSTEM_EVIDENCE_CLASS[system] === 'held'),
+      failed_systems: [],
     },
-  })
+  }
+  return normalizer.normalizeCalculatorFacts(
+    attachSyntheticConsultationProvenance(envelope),
+  )
 }
 
 function makeAuthor() {
@@ -260,10 +281,13 @@ test('C 會依固定十主題分章，完成五萬字、年齡契約、facts、c
   assert.equal(tamperedValidation.ok, false)
   assert.ok(tamperedValidation.issues.some((issue) => issue.code === 'renderer.binding_mismatch'))
   assert.notDeepEqual(factsByTopic.get('core_pattern'), factsByTopic.get('money_resources'))
-  assert.ok(factsByTopic.get('stress_response').some((factId) => factId.includes('塔羅牌')))
+  assert.ok(factsByTopic.get('stress_response').every((factId) => !factId.includes('塔羅牌')))
   assert.ok(factsByTopic.get('work_learning').every((factId) => !factId.includes('塔羅牌')))
   assert.equal(reviewInput.asOfDate, '2026-08-09')
   assert.equal(reviewInput.ageContexts[0].stage, 'early_mid')
+  assert.ok(reviewInput.facts.every((fact) =>
+    fact.evidenceClass !== 'held' && fact.evidenceClass !== 'reflection_only',
+  ))
   assert.ok(report.factLedger.entries.some((fact) => fact.sourcePath === 'clientContext.relationshipStatus'))
   assert.ok(report.factLedger.entries.some((fact) => fact.sourcePath === 'clientContext.clientQuestion'))
   assert.ok(factsByTopic.get('core_pattern').includes('fact:client:question'))

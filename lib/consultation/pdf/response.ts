@@ -6,15 +6,25 @@ import {
   createConsultationPdfModel,
   type ConsultationPdfModel,
 } from './policy.ts'
+import { createPrivateReportPdfResponse } from '../../report/private-pdf.ts'
 
 export type ConsultationPdfResponseDependencies = {
   load?: (token: unknown) => Promise<ConsultationReportLoadResult>
   render?: (model: ConsultationPdfModel) => Promise<Uint8Array>
+  downloadLegacy?: (token: string) => Promise<Response>
 }
 
 async function defaultRender(model: ConsultationPdfModel): Promise<Uint8Array> {
   const { renderConsultationPdfModel } = await import('./render.ts')
   return renderConsultationPdfModel(model)
+}
+
+async function defaultLegacyDownload(token: string): Promise<Response> {
+  return createPrivateReportPdfResponse(new Request('https://jianyuan.invalid/internal/private-pdf', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ access_token: token }),
+  }))
 }
 
 function errorResponse(status: number): Response {
@@ -44,7 +54,14 @@ export async function createConsultationPdfResponse(
   }
 
   if (!loaded.ok) return errorResponse(statusForLoadFailure(loaded.code))
-  if (loaded.mode !== 'structured') return errorResponse(409)
+  if (loaded.mode === 'legacy_full_text') {
+    if (!loaded.pdfUrl || typeof token !== 'string') return errorResponse(409)
+    try {
+      return await (dependencies.downloadLegacy ?? defaultLegacyDownload)(token)
+    } catch {
+      return errorResponse(503)
+    }
+  }
 
   let model: ConsultationPdfModel
   try {

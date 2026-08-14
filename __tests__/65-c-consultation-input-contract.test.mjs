@@ -12,7 +12,7 @@ const root = process.cwd()
 const hook = readFileSync(join(root, 'hooks', 'useCheckoutForm.ts'), 'utf8')
 const birthFields = readFileSync(join(root, 'components', 'checkout', 'BirthDataFields.tsx'), 'utf8')
 const singleForm = readFileSync(join(root, 'components', 'checkout', 'SinglePersonForm.tsx'), 'utf8')
-const confirmation = readFileSync(join(root, 'components', 'checkout', 'ConfirmationModal.tsx'), 'utf8')
+const confirmation = readFileSync(join(root, 'components', 'consultation', 'CFinalReviewModal.tsx'), 'utf8')
 
 const noParam = () => null
 

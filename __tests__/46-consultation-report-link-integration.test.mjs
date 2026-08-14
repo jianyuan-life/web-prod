@@ -117,7 +117,7 @@ test('structured and legacy C/G15 retain a reachable PDF from reader and dashboa
     pdf_url: 'https://files.example.test/legacy-family.pdf',
     report_result: { schemaVersion: 'consultation-report/v1' },
   })
-  assert.equal(legacyHref, 'https://files.example.test/legacy-family.pdf')
+  assert.equal(legacyHref, undefined, '舊 C/G15 PDF 必須由授權 proxy 下載，不可回傳永久 public URL')
   assert.equal(calls.length, 1, '舊報告不能因誤讀頂層 schemaVersion 而送進結構化 renderer')
 
   assert.equal(resolve({

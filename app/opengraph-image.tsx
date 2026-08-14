@@ -3,9 +3,10 @@
 // v5.7.10:加中文字體注入(IA round 5 P0)
 import { ImageResponse } from 'next/og'
 import { getOGFonts } from '@/lib/og-font'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 export const runtime = 'edge'
-export const alt = '鑒源 JianYuan — 十四大命理系統精準分析'
+export const alt = PUBLIC_CLAIMS.site.imageAlt
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -96,7 +97,7 @@ export default async function Image() {
               marginBottom: 40,
             }}
           >
-            十四大命理系統 · 整合深度分析
+            {PUBLIC_CLAIMS.social.homeSubtitle}
           </div>
 
           {/* 4 大保證 chips */}
@@ -117,7 +118,7 @@ export default async function Image() {
                 alignItems: 'center',
               }}
             >
-              44,421+ 條古籍規則
+              {PUBLIC_CLAIMS.social.homeContextBadge}
             </div>
             <div
               style={{

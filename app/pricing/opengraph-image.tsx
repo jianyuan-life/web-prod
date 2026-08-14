@@ -2,6 +2,7 @@
 // v5.7.10:加中文字體注入(IA round 5 P0、Edge runtime 預設無中文 fallback)
 import { ImageResponse } from 'next/og'
 import { getOGFonts } from '@/lib/og-font'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 export const runtime = 'edge'
 export const alt = '方案與定價 · 鑒源 JianYuan'
@@ -10,7 +11,7 @@ export const contentType = 'image/png'
 
 // v5.10.467:方案陣容收斂為 3(2026-08-01 拍板、SSOT = lib/plan-names.ts VISIBLE_PLAN_CODES)
 const PLANS = [
-  { name: '人生藍圖', price: '$89', sub: '十四套系統交叉分析' },
+  { name: '人生藍圖', price: '$89', sub: PUBLIC_CLAIMS.social.pricingCSubtitle },
   { name: '家族藍圖', price: '$59', sub: '家庭互動分析' },
   { name: '月度精選', price: '$89', sub: '每月嚴選 8 個吉時' },
 ]
@@ -134,8 +135,8 @@ export default async function Image() {
             marginTop: 32,
           }}
         >
-          <span>✓ 14 套系統交叉</span>
-          <span>✓ 44,421+ 條古籍規則</span>
+          <span>✓ {PUBLIC_CLAIMS.social.pricingTrust}</span>
+          <span>✓ 平台失敗自動重試</span>
           <span>✓ 失敗自動重試</span>
           <span>✓ Stripe 加密付款</span>
         </div>

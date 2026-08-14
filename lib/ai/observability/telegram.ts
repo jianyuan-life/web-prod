@@ -14,7 +14,27 @@
 
 /* eslint-disable no-console */
 
+import {
+  operationalErrorClass,
+  operationalFingerprint,
+  operationalLabel,
+} from '../../security/operational-telemetry.ts'
+
 const TELEGRAM_API_BASE = 'https://api.telegram.org'
+const CURRENCIES = new Set(['CNY', 'USD'])
+const PLAN_CODES = new Set(['C', 'D', 'E1', 'E2', 'E3', 'E4', 'G15', 'R'])
+const PROVIDERS = new Set(['anthropic', 'claude', 'gemini', 'google', 'openai', 'stripe'])
+const REVIEWERS = new Set(['deepseek', 'gemini', 'gpt', 'kimi', 'qwen'])
+const WORKFLOW_STAGES = new Set([
+  'calculation',
+  'delivery',
+  'email',
+  'generation',
+  'payment',
+  'quality-gate',
+  'refund',
+  'workflow',
+])
 
 export type DailySummary = {
   /** 日期（YYYY-MM-DD）*/
@@ -48,7 +68,7 @@ async function sendTelegramMessage(text: string, opts: SendOptions = {}): Promis
 
   if (!token || !chatId) {
     console.warn('[telegram] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 未設定，跳過告警')
-    console.warn('[telegram:fallback]', text.slice(0, 500))
+    console.warn('[telegram:fallback]', { eventFingerprint: operationalFingerprint(text) })
     return false
   }
 
@@ -75,12 +95,15 @@ async function sendTelegramMessage(text: string, opts: SendOptions = {}): Promis
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')
-      console.warn(`[telegram] sendMessage ${res.status}: ${body.slice(0, 200)}`)
+      console.warn('[telegram] sendMessage failed', {
+        status: res.status,
+        responseFingerprint: operationalFingerprint(body),
+      })
       return false
     }
     return true
   } catch (err) {
-    console.warn('[telegram] sendMessage 失敗:', err)
+    console.warn('[telegram] sendMessage failed', { errorType: operationalErrorClass(err) })
     return false
   }
 }
@@ -99,6 +122,12 @@ function fmtUsd(n: number): string {
   return `$${n.toFixed(2)}`
 }
 
+function safeDate(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/u.test(value)
+    ? value
+    : `fingerprint:${operationalFingerprint(value)}`
+}
+
 // ── 公開 API ────────────────────────────────────────────────
 
 /**
@@ -107,8 +136,8 @@ function fmtUsd(n: number): string {
 export async function notifyFailed(reportId: string, reason: string): Promise<boolean> {
   const msg =
     `🚨 <b>報告生成失敗</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
-    `<b>失敗原因：</b>${esc(reason).slice(0, 500)}\n\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
+    `<b>錯誤類別：</b>${esc(operationalErrorClass(reason))}\n\n` +
     `<i>請到後台 /jamie 查看並重試</i>`
   return sendTelegramMessage(msg)
 }
@@ -134,7 +163,7 @@ export async function notifyHighCost(amount: number, threshold: number): Promise
 export async function notifyQualityGate(reportId: string, score: number): Promise<boolean> {
   const msg =
     `⚠️ <b>品質閘門 3 次失敗</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
     `<b>最後分數：</b>${score}\n\n` +
     `<i>AI 連續 3 次寫出不及格內容，已轉為待人工介入</i>`
   return sendTelegramMessage(msg)
@@ -155,7 +184,7 @@ export async function notifyDaily(summary: DailySummary): Promise<boolean> {
       `\n<b>熱門方案：</b>\n` +
       summary.topPlans
         .slice(0, 5)
-        .map((p, i) => `  ${i + 1}. ${esc(p.plan)} × ${p.count}`)
+        .map((p, i) => `  ${i + 1}. ${esc(operationalLabel(p.plan, PLAN_CODES))} × ${p.count}`)
         .join('\n')
   }
 
@@ -169,10 +198,12 @@ export async function notifyDaily(summary: DailySummary): Promise<boolean> {
       ? `<b>新增客戶：</b>${summary.newCustomers} 人\n`
       : ''
 
-  const notesText = summary.notes ? `\n<i>${esc(summary.notes)}</i>` : ''
+  const notesText = summary.notes
+    ? `\n<b>備註指紋：</b><code>${operationalFingerprint(summary.notes)}</code>`
+    : ''
 
   const msg =
-    `📊 <b>鑒源每日摘要 ${esc(summary.date)}</b>\n\n` +
+    `📊 <b>鑒源每日摘要 ${esc(safeDate(summary.date))}</b>\n\n` +
     `<b>報告總數：</b>${summary.totalReports}\n` +
     `<b>成功 / 失敗：</b>${summary.successReports} / ${summary.failedReports}（${successRate}%）\n` +
     `<b>AI 總成本：</b>${fmtUsd(summary.totalCostUsd)}\n` +
@@ -188,7 +219,11 @@ export async function notifyDaily(summary: DailySummary): Promise<boolean> {
  * 通用訊息（其他部門/腳本可直接用）
  */
 export async function notify(title: string, body: string): Promise<boolean> {
-  const msg = `<b>${esc(title)}</b>\n\n${esc(body)}`
+  const msg =
+    `<b>營運事件</b>\n` +
+    `<b>標題指紋：</b><code>${operationalFingerprint(title)}</code>\n\n` +
+    `<b>事件指紋：</b><code>${operationalFingerprint(body)}</code>\n` +
+    `<i>詳細資料請在受控後台查閱</i>`
   return sendTelegramMessage(msg)
 }
 
@@ -204,11 +239,12 @@ export async function notifyLLMBalanceLow(
   balance: number,
   currency: string = 'USD',
 ): Promise<boolean> {
-  const sym = currency === 'CNY' ? '¥' : '$'
+  const safeCurrency = operationalLabel(currency, CURRENCIES)
+  const sym = safeCurrency === 'CNY' ? '¥' : '$'
   const msg =
     `⚠️ <b>LLM 餘額不足</b>\n\n` +
-    `<b>Provider：</b>${esc(provider)}\n` +
-    `<b>目前餘額：</b>${sym}${balance.toFixed(2)} ${esc(currency)}\n` +
+    `<b>Provider：</b>${esc(operationalLabel(provider, PROVIDERS))}\n` +
+    `<b>目前餘額：</b>${sym}${balance.toFixed(2)} ${esc(safeCurrency)}\n` +
     `<b>建議：</b>儘快充值（閾值 $10）\n\n` +
     `<i>若繼續往下燒會切到 fallback provider，品質可能下降</i>`
   return sendTelegramMessage(msg)
@@ -222,11 +258,12 @@ export async function notifyLLMBalanceCritical(
   balance: number,
   currency: string = 'USD',
 ): Promise<boolean> {
-  const sym = currency === 'CNY' ? '¥' : '$'
+  const safeCurrency = operationalLabel(currency, CURRENCIES)
+  const sym = safeCurrency === 'CNY' ? '¥' : '$'
   const msg =
     `🔴 <b>LLM 餘額告急（緊急）</b>\n\n` +
-    `<b>Provider：</b>${esc(provider)}\n` +
-    `<b>目前餘額：</b>${sym}${balance.toFixed(2)} ${esc(currency)}\n` +
+    `<b>Provider：</b>${esc(operationalLabel(provider, PROVIDERS))}\n` +
+    `<b>目前餘額：</b>${sym}${balance.toFixed(2)} ${esc(safeCurrency)}\n` +
     `<b>狀態：</b>即將耗盡（閾值 $3）\n\n` +
     `<i>立刻充值！再過幾份報告就會 402 無法生成</i>`
   return sendTelegramMessage(msg)
@@ -243,9 +280,9 @@ export async function notifyStripeFailed(
   const amountText = typeof amount === 'number' ? `<b>金額：</b>${fmtUsd(amount)}\n` : ''
   const msg =
     `💳 <b>Stripe 付款失敗</b>\n\n` +
-    `<b>Session：</b><code>${esc(sessionId)}</code>\n` +
+    `<b>Session 指紋：</b><code>${operationalFingerprint(sessionId)}</code>\n` +
     amountText +
-    `<b>原因：</b>${esc(reason).slice(0, 400)}\n\n` +
+    `<b>錯誤類別：</b>${esc(operationalErrorClass(reason))}\n\n` +
     `<i>客戶可能在結帳流程卡住，請查看 Stripe Dashboard</i>`
   return sendTelegramMessage(msg)
 }
@@ -260,9 +297,9 @@ export async function notifyEmailFailed(
 ): Promise<boolean> {
   const msg =
     `📭 <b>Email 寄信失敗</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
-    `<b>收件人：</b>${esc(toEmail)}\n` +
-    `<b>失敗原因：</b>${esc(reason).slice(0, 400)}\n\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
+    `<b>收件人指紋：</b><code>${operationalFingerprint(toEmail)}</code>\n` +
+    `<b>錯誤類別：</b>${esc(operationalErrorClass(reason))}\n\n` +
     `<i>客戶將收不到報告通知，請手動補發</i>`
   return sendTelegramMessage(msg)
 }
@@ -275,10 +312,10 @@ export async function notifyReportStuck(
   minutes: number,
   clientName?: string,
 ): Promise<boolean> {
-  const nameText = clientName ? `<b>客戶：</b>${esc(clientName)}\n` : ''
+  const nameText = clientName ? `<b>客戶指紋：</b><code>${operationalFingerprint(clientName)}</code>\n` : ''
   const msg =
     `⏱ <b>報告生成卡住</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
     nameText +
     `<b>已卡住：</b>${minutes} 分鐘\n\n` +
     `<i>workflow 可能崩潰，建議到 /jamie/monitoring 查看並重試</i>`
@@ -300,11 +337,11 @@ export async function notifyModelDowngrade(
 ): Promise<boolean> {
   const msg =
     `🚨 <b>LLM Fallback 觸發（客戶報告品質下降）</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
-    `<b>方案：</b>${esc(planCode)}\n` +
-    `<b>預期模型：</b>${esc(expected)}\n` +
-    `<b>實際模型：</b>${esc(actual)}\n` +
-    `<b>降級原因：</b>${esc(reason).slice(0, 300)}\n\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
+    `<b>方案：</b>${esc(operationalLabel(planCode, PLAN_CODES))}\n` +
+    `<b>預期模型指紋：</b><code>${operationalFingerprint(expected)}</code>\n` +
+    `<b>實際模型指紋：</b><code>${operationalFingerprint(actual)}</code>\n` +
+    `<b>錯誤類別：</b>${esc(operationalErrorClass(reason))}\n\n` +
     `<i>客戶可能拿到劣化報告、人工介入評估 refund / 重生成</i>`
   return sendTelegramMessage(msg)
 }
@@ -336,11 +373,11 @@ export async function notifyLowRating(
   comment?: string,
 ): Promise<boolean> {
   const commentText = comment
-    ? `<b>留言：</b>${esc(comment).slice(0, 600)}\n`
+    ? `<b>留言指紋：</b><code>${operationalFingerprint(comment)}</code>\n`
     : ''
   const msg =
     `😞 <b>客戶低評價（${stars} 星）</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
     `<b>評分：</b>${'★'.repeat(stars)}${'☆'.repeat(Math.max(0, 5 - stars))}\n` +
     commentText +
     `\n<i>儘快跟客戶聯繫補救，避免退款或負評</i>`
@@ -355,12 +392,14 @@ export async function notifyWorkflowFailed(
   errorMsg: string,
   stage?: string,
 ): Promise<boolean> {
-  const stageText = stage ? `<b>階段：</b>${esc(stage)}\n` : ''
+  const stageText = stage
+    ? `<b>階段：</b>${esc(operationalLabel(stage, WORKFLOW_STAGES))}\n`
+    : ''
   const msg =
     `💥 <b>Workflow 崩潰</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
     stageText +
-    `<b>錯誤：</b>${esc(errorMsg).slice(0, 500)}\n\n` +
+    `<b>錯誤類別：</b>${esc(operationalErrorClass(errorMsg))}\n\n` +
     `<i>Workflow 異常退出，系統會自動重試最多 3 次</i>`
   return sendTelegramMessage(msg)
 }
@@ -389,15 +428,15 @@ export async function notifyFiveLLMWarning(
   issues: string[] = [],
 ): Promise<boolean> {
   const scoreLine = Object.entries(scores)
-    .map(([k, v]) => `  ${k.toUpperCase()}: ${v ?? '-'}`)
+    .map(([k, v]) => `  ${operationalLabel(k, REVIEWERS).toUpperCase()}: ${v ?? '-'}`)
     .join('\n')
   const issuesText = issues.length > 0
-    ? `\n<b>主要問題：</b>\n` + issues.slice(0, 5).map(i => `  • ${esc(i).slice(0, 120)}`).join('\n')
+    ? `\n<b>問題指紋：</b><code>${operationalFingerprint(issues)}</code>`
     : ''
   const msg =
     `🟡 <b>5 LLM QA 黃色警告</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
-    `<b>方案：</b>${esc(planCode)}\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
+    `<b>方案：</b>${esc(operationalLabel(planCode, PLAN_CODES))}\n` +
     `<b>平均分：</b>${avg}（門檻 93）\n` +
     `<b>最低分：</b>${min}（門檻 95）\n\n` +
     `<b>各 Reviewer 分數：</b>\n${scoreLine}` +
@@ -418,15 +457,15 @@ export async function notifyFiveLLMCritical(
   criticalErrors: string[] = [],
 ): Promise<boolean> {
   const scoreLine = Object.entries(scores)
-    .map(([k, v]) => `  ${k.toUpperCase()}: ${v ?? '-'}`)
+    .map(([k, v]) => `  ${operationalLabel(k, REVIEWERS).toUpperCase()}: ${v ?? '-'}`)
     .join('\n')
   const critText = criticalErrors.length > 0
-    ? `\n<b>致命錯誤：</b>\n` + criticalErrors.slice(0, 5).map(i => `  ⚠ ${esc(i).slice(0, 150)}`).join('\n')
+    ? `\n<b>錯誤指紋：</b><code>${operationalFingerprint(criticalErrors)}</code>`
     : ''
   const msg =
     `🔴 <b>5 LLM QA 紅色警報</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
-    `<b>方案：</b>${esc(planCode)}\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
+    `<b>方案：</b>${esc(operationalLabel(planCode, PLAN_CODES))}\n` +
     `<b>平均分：</b>${avg}（紅色門檻 85）\n` +
     `<b>最低分：</b>${min}\n\n` +
     `<b>各 Reviewer 分數：</b>\n${scoreLine}` +
@@ -468,11 +507,15 @@ export async function notifyAICostSingleCallExpensive(
   reportId: string | null,
   callStage: string | null,
 ): Promise<boolean> {
-  const reportLine = reportId ? `<b>Report：</b><code>${esc(reportId)}</code>\n` : ''
-  const stageLine = callStage ? `<b>階段：</b>${esc(callStage)}\n` : ''
+  const reportLine = reportId
+    ? `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n`
+    : ''
+  const stageLine = callStage
+    ? `<b>階段：</b>${esc(operationalLabel(callStage, WORKFLOW_STAGES))}\n`
+    : ''
   const msg =
     `🔴 <b>單筆 AI 呼叫超貴</b>\n\n` +
-    `<b>Model：</b><code>${esc(model)}</code>\n` +
+    `<b>Model 指紋：</b><code>${operationalFingerprint(model)}</code>\n` +
     `<b>單次花費：</b>${fmtUsd(cost)}\n` +
     reportLine +
     stageLine +
@@ -491,12 +534,12 @@ export async function notifyNeedsHumanReview(
   criticalErrors: string[] = [],
 ): Promise<boolean> {
   const critText = criticalErrors.length > 0
-    ? `\n<b>致命錯誤：</b>\n` + criticalErrors.slice(0, 5).map(i => `  ⚠ ${esc(i).slice(0, 150)}`).join('\n')
+    ? `\n<b>錯誤指紋：</b><code>${operationalFingerprint(criticalErrors)}</code>`
     : ''
   const msg =
     `🚨 <b>報告需人工介入</b>\n\n` +
-    `<b>Report ID：</b><code>${esc(reportId)}</code>\n` +
-    `<b>方案：</b>${esc(planCode)}\n` +
+    `<b>Report 指紋：</b><code>${operationalFingerprint(reportId)}</code>\n` +
+    `<b>方案：</b>${esc(operationalLabel(planCode, PLAN_CODES))}\n` +
     `<b>已重試次數：</b>${attempts}\n` +
     `<b>最後平均分：</b>${lastAvg}` +
     critText +

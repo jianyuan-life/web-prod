@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react'
 import { internalGet } from '@/lib/api'  // T10b v5.10.375(timeout + 429 silent fail)
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 type Variant = 'pricing' | 'checkout' | 'compact'
 
@@ -31,7 +32,7 @@ export default function TrustBar({ variant = 'pricing' }: { variant?: Variant })
           <RefundIcon /> 失敗自動重試
         </span>
         <span className="flex items-center gap-1">
-          <LockIcon /> SSL/TLS 1.3
+          <LockIcon /> {PUBLIC_CLAIMS.trust.transportSubtitle}
         </span>
         <span className="flex items-center gap-1">
           <StarIcon /> {userCountLabel} 用戶選擇
@@ -47,9 +48,9 @@ export default function TrustBar({ variant = 'pricing' }: { variant?: Variant })
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <TrustItem
             icon={<StarIcon />}
-            title="14 系統"
-            sub="交叉驗證"
-            tooltip="十四套東西方命理系統、三層加權架構、不是某位老師說"
+            title={PUBLIC_CLAIMS.trust.comparisonTitle}
+            sub={PUBLIC_CLAIMS.trust.comparisonSubtitle}
+            tooltip={PUBLIC_CLAIMS.trust.comparisonTooltip}
           />
           <TrustItem
             icon={<RefundIcon />}
@@ -65,16 +66,16 @@ export default function TrustBar({ variant = 'pricing' }: { variant?: Variant })
           />
           <TrustItem
             icon={<LockIcon />}
-            title="隱私保護"
-            sub="SSL/TLS 1.3 + AES-256"
-            tooltip="出生資料加密儲存於 Supabase AWS 新加坡區、符合 GDPR"
+            title={PUBLIC_CLAIMS.trust.transportTitle}
+            sub={PUBLIC_CLAIMS.trust.transportSubtitle}
+            tooltip={PUBLIC_CLAIMS.trust.transportTooltip}
           />
         </div>
         {variant === 'checkout' && (
           <p className="text-center text-[11px] text-text-muted mt-4 leading-[1.8]">
             付款由 <strong className="text-gold/80">Stripe</strong> 處理 ·
             支援 <strong className="text-gold/80">Visa / MasterCard / Apple Pay / Google Pay</strong> ·
-            報告為個人化數位商品、付款後即開始精密計算、依電子商品慣例不支援退款;生成失敗系統自動重試最多 3 次、若仍失敗客服協助補開新單
+            {PUBLIC_CLAIMS.trust.fulfillmentNotice}
           </p>
         )}
       </div>

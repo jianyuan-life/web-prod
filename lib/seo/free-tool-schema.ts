@@ -9,6 +9,8 @@
 // GA4 event / Meta Pixel / Email gate = 需 GA4/Pixel id + Supabase
 // free_tool_submissions 表(老闆/migration);本檔附事件常數供前端用。
 
+import { PUBLIC_CLAIMS } from '../public-claims.ts'
+
 export type FreeTool = 'bazi' | 'ziwei' | 'qimen'
 
 const META: Record<FreeTool, { name: string; h1: string; faqs: [string, string][] }> = {
@@ -16,10 +18,10 @@ const META: Record<FreeTool, { name: string; h1: string; faqs: [string, string][
     name: '免費八字排盤線上工具 含十神大運流年',
     h1: '免費八字排盤線上工具 含十神大運流年',
     faqs: [
-      ['八字排盤要準備什麼資料?', '出生年月日、時辰(可選不確定)、出生城市,系統自動換算真太陽時。'],
-      ['免費版和付費報告差在哪?', '免費版給排盤結果與基礎解讀;付費版用最多 14 套系統交叉、產出個人化深度報告。'],
+      ['八字排盤要準備什麼資料?', PUBLIC_CLAIMS.tools.baziInputFaq],
+      ['免費版和付費報告差在哪?', PUBLIC_CLAIMS.tools.paidDifferenceFaq],
       ['不知道出生時辰可以排嗎?', '可以,選「時辰不確定」,系統會以日柱為主提供可用解讀。'],
-      ['排盤結果準嗎?', '排盤為確定性演算法(萬年曆級);解讀由引擎生成,僅供自我覺察參考。'],
+      ['排盤結果準嗎?', PUBLIC_CLAIMS.tools.baziRepeatabilityFaq],
     ],
   },
   ziwei: {
@@ -29,7 +31,7 @@ const META: Record<FreeTool, { name: string; h1: string; faqs: [string, string][
       ['紫微命盤怎麼看?', '先看命宮主星定基調,再看財帛、官祿、夫妻等宮位的星曜組合。'],
       ['需要農曆還是國曆?', '輸入國曆即可,系統自動轉農曆並處理閏月。'],
       ['12 宮都會顯示嗎?', '是,含命/兄弟/夫妻/子女/財帛/疾厄/遷移/僕役/官祿/田宅/福德/父母。'],
-      ['和八字哪個準?', '兩者視角不同;鑒源付費報告會交叉多系統,降低單一系統偏誤。'],
+      ['和八字哪個準?', PUBLIC_CLAIMS.tools.ziweiComparisonFaq],
     ],
   },
   qimen: {
@@ -38,7 +40,7 @@ const META: Record<FreeTool, { name: string; h1: string; faqs: [string, string][
     faqs: [
       ['奇門遁甲排盤看什麼?', '看九宮的門/星/神/干組合,判斷此時此方的能量傾向。'],
       ['時家奇門是什麼?', '以「時辰」起局,適合擇時出行、行動決策(出門訣方案的核心)。'],
-      ['鑒源用哪派?', '對外統稱古法奇門遁甲;排盤經 20 組 Windada 交叉驗證。'],
+      ['鑒源用哪派?', PUBLIC_CLAIMS.tools.qimenSchoolFaq],
       ['免費版能擇吉嗎?', '免費版給單局排盤;擇吉(Top 吉時 + 補運)請見出門訣 E 系列方案。'],
     ],
   },

@@ -3,7 +3,10 @@ import {
   type G15SelectionValidationCode,
   type QueryG15SelectionReports,
 } from './validate-g15-selection.ts'
-import { validateG15ConsentAttestation } from './g15-consent.ts'
+import {
+  validateG15IndependentConsent,
+  type QueryG15IndependentConsent,
+} from './g15-independent-consent.ts'
 import { validateG15ConsultationContext } from './g15-context.ts'
 import { replayableConsultationBirthSettings } from '../consultation/birth-input-policy.ts'
 import { canonicalGregorianDate } from '../consultation/calendar-date.ts'
@@ -24,11 +27,14 @@ export interface PrepareCheckoutBirthDataInput {
   birthData: unknown
   /** Date-only checkout boundary. Callers normally omit this; tests inject it. */
   asOfDate?: string
+  /** Clock boundary for independent-consent expiry tests. Production callers omit it. */
+  nowMs?: number
   auth?: {
     userId?: unknown
     email?: unknown
   }
   queryReports: QueryG15SelectionReports
+  queryConsent?: QueryG15IndependentConsent
 }
 
 export interface PreparedCheckoutBirthData {
@@ -206,17 +212,23 @@ export async function prepareCheckoutBirthData(
   if (!Array.isArray(input.birthData.report_ids) || input.birthData.report_ids.some((id) => typeof id !== 'string')) {
     return { ok: false, code: 'INVALID_SELECTION', message: '家族藍圖的報告選擇格式不正確' }
   }
-  const hasAuth = (typeof input.auth?.userId === 'string' && input.auth.userId.trim()) ||
-    (typeof input.auth?.email === 'string' && input.auth.email.trim())
-  if (!hasAuth) return { ok: false, code: 'AUTH_REQUIRED', message: '請先登入再選擇家庭報告' }
+  const purchaserUserId = typeof input.auth?.userId === 'string'
+    ? input.auth.userId.trim().toLowerCase()
+    : ''
+  if (!purchaserUserId) {
+    return { ok: false, code: 'AUTH_REQUIRED', message: '請先登入再選擇家庭報告' }
+  }
 
   const rawReportIds = input.birthData.report_ids as string[]
-  const consent = validateG15ConsentAttestation({
-    attestation: input.birthData.consent_attestation,
-    reportIds: rawReportIds,
-  })
-  if (!consent.ok) {
-    return { ok: false, code: 'CONSENT_REQUIRED', message: consent.message }
+  const consentSelectionId = typeof input.birthData.consent_selection_id === 'string'
+    ? input.birthData.consent_selection_id.trim().toLowerCase()
+    : ''
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(consentSelectionId)) {
+    return {
+      ok: false,
+      code: 'CONSENT_REQUIRED',
+      message: '請先邀請每位成年成員，並等所有人逐一同意後再付款',
+    }
   }
 
   const context = validateG15ConsultationContext(input.birthData)
@@ -228,8 +240,50 @@ export async function prepareCheckoutBirthData(
     selectedReportIds: input.birthData.report_ids,
     auth: input.auth,
     queryReports: input.queryReports,
+    ownershipMode: 'independent-subjects',
   })
   if (!validation.ok) return validation
+
+  if (!input.queryConsent) {
+    return {
+      ok: false,
+      code: 'CONSENT_QUERY_FAILED',
+      message: '逐位成員同意服務暫時無法查驗，請稍後再試',
+    }
+  }
+  let consentRows: Awaited<ReturnType<QueryG15IndependentConsent>>
+  try {
+    consentRows = await input.queryConsent({
+      selectionId: consentSelectionId,
+      purchaserUserId,
+      reportIds: validation.reportIds,
+      subjectUserIds: validation.subjectUserIds,
+    })
+  } catch {
+    return {
+      ok: false,
+      code: 'CONSENT_QUERY_FAILED',
+      message: '逐位成員同意服務暫時無法查驗，請稍後再試',
+    }
+  }
+  if (consentRows.error || !Array.isArray(consentRows.receipts)) {
+    return {
+      ok: false,
+      code: 'CONSENT_QUERY_FAILED',
+      message: '逐位成員同意服務暫時無法查驗，請稍後再試',
+    }
+  }
+  const consent = validateG15IndependentConsent({
+    selection: consentRows.selection,
+    receipts: consentRows.receipts,
+    purchaserUserId,
+    reportIds: validation.reportIds,
+    subjectUserIds: validation.subjectUserIds,
+    nowMs: input.nowMs,
+  })
+  if (!consent.ok) {
+    return { ok: false, code: 'CONSENT_REQUIRED', message: consent.message }
+  }
 
   let asOfDate = ''
   try {
@@ -246,7 +300,18 @@ export async function prepareCheckoutBirthData(
       member_names: validation.memberNames,
       stated_relationships: context.context.statedRelationships,
       consultation_goals: context.context.consultationGoals,
-      consent_attestation: consent.attestation,
+      consent_selection_id: consent.authority.selectionId,
+      consent_authority: {
+        selection_id: consent.authority.selectionId,
+        policy_version: consent.authority.policyVersion,
+        purpose: consent.authority.purpose,
+        sharing_scope: consent.authority.sharingScope,
+        expires_at: consent.authority.expiresAt,
+        accepted_at_by_report: consent.authority.acceptedAtByReport,
+        subject_user_ids_by_report: Object.fromEntries(
+          validation.reportIds.map((reportId, index) => [reportId, validation.subjectUserIds[index]]),
+        ),
+      },
       as_of: asOfDate,
       target_year: Number(asOfDate.slice(0, 4)),
     },
@@ -258,6 +323,6 @@ export function getG15ValidationHttpStatus(
 ): 400 | 401 | 403 | 503 {
   if (code === 'AUTH_REQUIRED') return 401
   if (code === 'FORBIDDEN') return 403
-  if (code === 'QUERY_FAILED') return 503
+  if (code === 'QUERY_FAILED' || code === 'CONSENT_QUERY_FAILED') return 503
   return 400
 }

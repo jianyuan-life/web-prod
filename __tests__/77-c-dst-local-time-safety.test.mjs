@@ -34,13 +34,16 @@ test('ordinary local times remain unique', () => {
   }).status, 'unique')
 })
 
-test('unknown time rejects a calendar date that never existed locally', () => {
+test('unknown time requires the canonical local noon to exist', () => {
   assert.equal(resolveConsultationUnknownTime({
     year: 2011, month: 12, day: 30, timezone: 'Pacific/Apia',
   }).status, 'nonexistent')
   assert.equal(resolveConsultationUnknownTime({
     year: 1990, month: 1, day: 1, timezone: 'Asia/Taipei',
   }).status, 'unique')
+  assert.equal(resolveConsultationUnknownTime({
+    year: 2000, month: 1, day: 15, timezone: 'Africa/Khartoum',
+  }).status, 'nonexistent')
 })
 
 test('effective offset comes from the birth instant rather than a city base offset', () => {
@@ -117,6 +120,29 @@ test('C server rejects a stale city base offset and an impossible unknown-time d
   })
   assert.equal(skippedDate.ok, false)
   assert.match(skippedDate.message, /當地時制.*不存在/u)
+
+  const missingCanonicalNoon = await prepareCheckoutBirthData({
+    planCode: 'C',
+    birthData: cBirthData({
+      year: 2000,
+      month: 1,
+      day: 15,
+      time_unknown: true,
+      time_mode: 'unknown',
+      hour: 12,
+      minute: 0,
+      latitude: 15.5007,
+      longitude: 32.5599,
+      timezone: 'Africa/Khartoum',
+      timezone_offset: 2,
+      birth_city: 'Khartoum（Sudan）',
+      birth_country: 'SD',
+    }),
+    asOfDate: '2026-08-09',
+    queryReports: async () => ({ data: [], error: null }),
+  })
+  assert.equal(missingCanonicalNoon.ok, false)
+  assert.match(missingCanonicalNoon.message, /不存在/u)
 })
 
 test('C blocks ambiguous/nonexistent local times at UI and server while explaining the limitation', () => {

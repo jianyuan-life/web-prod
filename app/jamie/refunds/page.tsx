@@ -33,6 +33,63 @@ type Summary = {
   reason_breakdown: Record<string, { count: number; total_usd: number }>
 }
 
+type RefundReason = 'requested_by_customer' | 'duplicate' | 'fraudulent'
+
+type PendingRefundIntent = {
+  requestId: string
+  amount: string
+  reason: RefundReason
+  attempted: boolean
+}
+
+const REFUND_INTENT_STORAGE_KEY = 'jianyuan-admin-refund-intents-v1'
+const REFUND_REQUEST_ID_RE = /^[A-Za-z0-9_-]{8,64}$/
+
+function readPendingRefundIntents(): Record<string, PendingRefundIntent> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(REFUND_INTENT_STORAGE_KEY) || '{}')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function readPendingRefundIntent(reportId: string): PendingRefundIntent | null {
+  const pending = readPendingRefundIntents()[reportId]
+  if (
+    !pending
+    || !REFUND_REQUEST_ID_RE.test(pending.requestId)
+    || typeof pending.amount !== 'string'
+    || !['requested_by_customer', 'duplicate', 'fraudulent'].includes(pending.reason)
+    || typeof pending.attempted !== 'boolean'
+  ) return null
+  return pending
+}
+
+function writePendingRefundIntent(reportId: string, intent: PendingRefundIntent): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const pending = readPendingRefundIntents()
+    pending[reportId] = intent
+    window.sessionStorage.setItem(REFUND_INTENT_STORAGE_KEY, JSON.stringify(pending))
+    return true
+  } catch {
+    return false
+  }
+}
+
+function clearPendingRefundIntent(reportId: string) {
+  if (typeof window === 'undefined') return
+  try {
+    const pending = readPendingRefundIntents()
+    delete pending[reportId]
+    window.sessionStorage.setItem(REFUND_INTENT_STORAGE_KEY, JSON.stringify(pending))
+  } catch {
+    // Storage may be unavailable in hardened/private browser contexts.
+  }
+}
+
 const REASON_LABELS: Record<string, string> = {
   duplicate: '重複付款',
   fraudulent: '詐騙交易',
@@ -53,7 +110,10 @@ export default function RefundsPage() {
   // 退款表單
   const [refundTarget, setRefundTarget] = useState<RefundRow | null>(null)
   const [refundAmount, setRefundAmount] = useState('')
-  const [refundReason, setRefundReason] = useState<'requested_by_customer' | 'duplicate' | 'fraudulent'>('requested_by_customer')
+  const [refundReason, setRefundReason] = useState<RefundReason>('requested_by_customer')
+  const [refundRequestId, setRefundRequestId] = useState('')
+  const [refundAttempted, setRefundAttempted] = useState(false)
+  const [pendingRetryIds, setPendingRetryIds] = useState<Set<string>>(new Set())
   const [refundLoading, setRefundLoading] = useState(false)
   const [refundError, setRefundError] = useState('')
   // v5.10.280 P0(Codex 危險 action confirmation):必輸入精確 amount 才能 confirm
@@ -73,6 +133,14 @@ export default function RefundsPage() {
   }, [adminKey, status])
 
   useEffect(() => { fetchRows() }, [fetchRows])
+  useEffect(() => {
+    const pending = readPendingRefundIntents()
+    setPendingRetryIds(new Set(
+      Object.entries(pending)
+        .filter(([, intent]) => intent?.attempted === true)
+        .map(([reportId]) => reportId),
+    ))
+  }, [])
 
   const filtered = rows.filter(r => {
     if (!search) return true
@@ -84,16 +152,65 @@ export default function RefundsPage() {
       || (r.id || '').toLowerCase().includes(q)
   })
 
+  const openRefund = (target: RefundRow) => {
+    const pending = readPendingRefundIntent(target.id)
+    const remainingAmount = Math.max(
+      0,
+      Math.round((Number(target.amount_usd) - Number(target.refunded_amount_usd || 0)) * 100) / 100,
+    )
+    setRefundTarget(target)
+    setRefundAmount(pending?.amount || String(remainingAmount))
+    setRefundReason(pending?.reason || 'requested_by_customer')
+    setRefundRequestId(pending?.requestId || crypto.randomUUID())
+    setRefundAttempted(pending?.attempted || false)
+    setRefundTypedConfirm('')
+    setRefundError('')
+  }
+
+  const closeRefund = () => {
+    if (refundTarget && !refundAttempted) clearPendingRefundIntent(refundTarget.id)
+    setRefundTarget(null)
+    setRefundTypedConfirm('')
+    setRefundError('')
+  }
+
+  useEffect(() => {
+    if (!refundTarget || !REFUND_REQUEST_ID_RE.test(refundRequestId)) return
+    writePendingRefundIntent(refundTarget.id, {
+      requestId: refundRequestId,
+      amount: refundAmount,
+      reason: refundReason,
+      attempted: refundAttempted,
+    })
+  }, [refundTarget, refundRequestId, refundAmount, refundReason, refundAttempted])
+
   const handleRefund = async () => {
     if (!refundTarget) return
+    if (!REFUND_REQUEST_ID_RE.test(refundRequestId)) {
+      setRefundError('退款請求編號無法建立，請重新開啟退款視窗')
+      return
+    }
+    const persisted = writePendingRefundIntent(refundTarget.id, {
+      requestId: refundRequestId,
+      amount: refundAmount,
+      reason: refundReason,
+      attempted: true,
+    })
+    if (!persisted) {
+      setRefundError('瀏覽器無法安全保存退款請求編號；未送出退款')
+      return
+    }
     setRefundLoading(true)
+    setRefundAttempted(true)
+    setPendingRetryIds(current => new Set(current).add(refundTarget.id))
     setRefundError('')
     try {
       const body: Record<string, unknown> = {
         reportId: refundTarget.id,
         reason: refundReason,
+        request_id: refundRequestId,
+        amount: Number(refundAmount),
       }
-      if (refundAmount) body.amount = Number(refundAmount)
       const res = await adminFetch('/api/admin/refund', {
         adminKey,
         method: 'POST',
@@ -101,13 +218,37 @@ export default function RefundsPage() {
       })
       const data = await res.json()
       if (res.ok) {
+        clearPendingRefundIntent(refundTarget.id)
+        setPendingRetryIds(current => {
+          const next = new Set(current)
+          next.delete(refundTarget.id)
+          return next
+        })
         alert(`退款成功\n金額：$${data.refunded_amount_usd}\n推薦積分回收：${data.points_clawed_back}`)
         setRefundTarget(null)
         setRefundAmount('')
+        setRefundRequestId('')
+        setRefundAttempted(false)
         setRefundTypedConfirm('')
         fetchRows()
       } else {
         setRefundError(data.error || data.detail || '退款失敗')
+        if (res.status < 500) {
+          const nextRequestId = crypto.randomUUID()
+          setRefundAttempted(false)
+          setRefundRequestId(nextRequestId)
+          setPendingRetryIds(current => {
+            const next = new Set(current)
+            next.delete(refundTarget.id)
+            return next
+          })
+          writePendingRefundIntent(refundTarget.id, {
+            requestId: nextRequestId,
+            amount: refundAmount,
+            reason: refundReason,
+            attempted: false,
+          })
+        }
       }
     } catch (err) {
       setRefundError(err instanceof Error ? err.message : '網路錯誤')
@@ -183,7 +324,11 @@ export default function RefundsPage() {
             </thead>
             <tbody>
               {filtered.map(r => {
-                const isRefunded = !!r.refunded_at
+                const refundedAmount = Math.max(0, Number(r.refunded_amount_usd || 0))
+                const isFullyRefunded = r.status === 'refunded'
+                  || Math.round(refundedAmount * 100) >= Math.round(Number(r.amount_usd) * 100)
+                const hasRefund = refundedAmount > 0
+                const hasPendingRetry = pendingRetryIds.has(r.id)
                 return (
                   <Fragment key={r.id}>
                     <tr className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer"
@@ -195,13 +340,15 @@ export default function RefundsPage() {
                       <td className="px-4 py-3 text-amber-400">{PLAN_NAMES[r.plan_code] || r.plan_code}</td>
                       <td className="px-4 py-3 text-white">
                         ${r.amount_usd}
-                        {isRefunded && r.refunded_amount_usd !== null && (
+                        {hasRefund && (
                           <span className="text-[10px] text-red-400 ml-1">(已退 ${r.refunded_amount_usd})</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {isRefunded ? (
+                        {isFullyRefunded ? (
                           <span className="text-xs px-2 py-0.5 rounded-full text-red-400 bg-red-500/10">已退款</span>
+                        ) : hasRefund ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full text-amber-400 bg-amber-500/10">部分退款</span>
                         ) : r.status === 'completed' ? (
                           <span className="text-xs px-2 py-0.5 rounded-full text-green-400 bg-green-500/10">已完成</span>
                         ) : (
@@ -212,10 +359,10 @@ export default function RefundsPage() {
                         {new Date(r.created_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}
                       </td>
                       <td className="px-4 py-3">
-                        {!isRefunded ? (
-                          <button onClick={e => { e.stopPropagation(); setRefundTarget(r); setRefundAmount(''); setRefundError('') }}
+                        {!isFullyRefunded || hasPendingRetry ? (
+                          <button onClick={e => { e.stopPropagation(); openRefund(r) }}
                             className="px-2 py-1 bg-red-500/20 rounded text-xs text-red-400 hover:bg-red-500/30">
-                            退款
+                            {hasPendingRetry ? '重試對帳' : '退款'}
                           </button>
                         ) : (
                           <span className="text-[10px] text-gray-500">{r.refund_reason ? (REASON_LABELS[r.refund_reason] || r.refund_reason) : ''}</span>
@@ -249,7 +396,7 @@ export default function RefundsPage() {
       {/* 退款彈窗 */}
       {refundTarget && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-          onClick={() => !refundLoading && setRefundTarget(null)}>
+          onClick={() => !refundLoading && closeRefund()}>
           <div className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 max-w-md w-full"
             onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white mb-3">確認退款</h3>
@@ -259,15 +406,28 @@ export default function RefundsPage() {
               方案：<span className="text-amber-400">{PLAN_NAMES[refundTarget.plan_code] || refundTarget.plan_code}</span>
               <br />
               原金額：<span className="text-white">${refundTarget.amount_usd}</span>
+              {Number(refundTarget.refunded_amount_usd || 0) > 0 && (
+                <><br />已退款：<span className="text-red-400">${refundTarget.refunded_amount_usd}</span></>
+              )}
             </div>
 
-            <label className="block text-xs text-gray-400 mb-1">退款金額（USD，留空=全額退）</label>
-            <input type="number" step="0.01" placeholder={String(refundTarget.amount_usd)}
+            <div className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-200/80">
+              全額退款若涉及已使用的推薦積分，系統會在送交 Stripe 前停止，並要求人工清算；不會把未回收點數當作已處理。
+            </div>
+
+            <label className="block text-xs text-gray-400 mb-1">退款金額（USD，預設退回全部剩餘金額）</label>
+            <input type="number" step="0.01"
+              placeholder={String(Math.max(
+                0,
+                Math.round((Number(refundTarget.amount_usd) - Number(refundTarget.refunded_amount_usd || 0)) * 100) / 100,
+              ))}
               value={refundAmount} onChange={e => { setRefundAmount(e.target.value); setRefundTypedConfirm('') }}
+              disabled={refundAttempted}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white mb-3" />
 
             <label className="block text-xs text-gray-400 mb-1">退款理由</label>
             <select value={refundReason} onChange={e => setRefundReason(e.target.value as typeof refundReason)}
+              disabled={refundAttempted}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white mb-4">
               <option value="requested_by_customer">客戶要求</option>
               <option value="duplicate">重複付款</option>
@@ -276,7 +436,7 @@ export default function RefundsPage() {
 
             {/* v5.10.280 P0 typed confirmation(Codex audit 危險 action) */}
             {(() => {
-              const plannedAmount = refundAmount ? Number(refundAmount) : Number(refundTarget.amount_usd)
+              const plannedAmount = Number(refundAmount)
               const isValidAmount = !isNaN(plannedAmount) && plannedAmount > 0
               const expectedConfirm = isValidAmount ? `退款 $${plannedAmount.toFixed(2)}` : ''
               const canSubmit = isValidAmount && refundTypedConfirm === expectedConfirm
@@ -295,11 +455,14 @@ export default function RefundsPage() {
                     }`} />
 
                   {refundError && (
-                    <div className="mb-3 text-red-400 text-xs">{refundError}</div>
+                    <div className="mb-3 text-red-400 text-xs">
+                      {refundError}
+                      {refundAttempted && <div className="mt-1 text-gray-500">重試會沿用同一請求編號，避免重複退款。</div>}
+                    </div>
                   )}
 
                   <div className="flex gap-2">
-                    <button onClick={() => { setRefundTarget(null); setRefundTypedConfirm('') }} disabled={refundLoading}
+                    <button onClick={closeRefund} disabled={refundLoading}
                       className="flex-1 py-2 bg-white/5 text-gray-400 rounded-lg hover:bg-white/10 text-sm">
                       取消
                     </button>

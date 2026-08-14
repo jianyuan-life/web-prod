@@ -124,23 +124,11 @@ export function classifyConsultationLocalTime(
   }
 }
 
-/**
- * Unknown birth time still needs a real local calendar date. Some civil-time
- * changes skipped an entire date (for example Pacific/Apia 2011-12-30). We
- * probe several hours and retain one real instant only as an internal anchor;
- * it must never be presented as the person's birth time.
- */
+/** Unknown birth time is serialized as canonical 12:00 by the strict producer. */
 export function resolveConsultationUnknownTime(
   input: ConsultationLocalDateInput,
 ): ConsultationLocalTimeValidity {
-  for (const hour of [12, 6, 18, 0, 23]) {
-    const validity = classifyConsultationLocalTime({ ...input, hour, minute: 0 })
-    if (validity.status === 'invalid') return validity
-    if (validity.candidateEpochMs.length > 0) {
-      return { status: 'unique', candidateEpochMs: [validity.candidateEpochMs[0]] }
-    }
-  }
-  return { status: 'nonexistent', candidateEpochMs: [] }
+  return classifyConsultationLocalTime({ ...input, hour: 12, minute: 0 })
 }
 
 /** Return the IANA-zone offset at one already-resolved instant. */

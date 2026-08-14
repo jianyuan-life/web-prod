@@ -166,7 +166,10 @@ test('真 POST handler 對 Stripe 非 2xx 回應 fail closed 且不回傳 checko
   const json = await response.json()
 
   assertEqual(response.status, 500)
-  assertEqual(json.error, 'synthetic Stripe rejection (param: line_items)')
+  assertEqual(json.error, '目前無法建立付款頁，請稍後再試')
+  assertEqual(json.code, 'CHECKOUT_PROVIDER_UNAVAILABLE')
+  assertEqual(JSON.stringify(json).includes('synthetic Stripe rejection'), false)
+  assertEqual(JSON.stringify(json).includes('line_items'), false)
   assertEqual(typeof json.url, 'undefined')
   await new Promise((resolve) => setTimeout(resolve, 0))
   assertEqual(globalThis.__e3StripeFailureNotified, true)

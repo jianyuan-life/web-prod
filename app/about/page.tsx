@@ -1,6 +1,7 @@
 // v5.6.10 R4:關於我們獨立頁(IA Agent P0「nav 缺信任建立頁」+ SEO long-tail)
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 export const metadata: Metadata = {
   title: '關於鑒源 · 為什麼有這個平台',
@@ -19,9 +20,9 @@ export default function AboutPage() {
           回到源頭、看清本質
         </h1>
         <p className="text-text-muted text-base leading-relaxed">
-          鑒源命理平台不只是 14 套系統與 44,421+ 條規則——
+          {PUBLIC_CLAIMS.methodology.summary}
           <br className="hidden md:block" />
-          它是一個邏輯派金融從業者、自己尋找答案的故事。
+          {PUBLIC_CLAIMS.methodology.limits}
         </p>
       </section>
 
@@ -129,9 +130,9 @@ export default function AboutPage() {
                 <path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-cream mb-2">古籍為本</h3>
+            <h3 className="text-lg font-bold text-cream mb-2">資料與方法</h3>
             <p className="text-sm text-text-muted leading-relaxed">
-              44,421+ 條規則源自《滴天髓》《紫微斗數全書》《窮通寶鑑》等經典、絕非憑空推演。
+              {PUBLIC_CLAIMS.methodology.summary}
             </p>
           </div>
           <div className="glass rounded-2xl p-6 border border-gold/15 text-center">
@@ -140,9 +141,9 @@ export default function AboutPage() {
                 <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-cream mb-2">14 系統交叉</h3>
+            <h3 className="text-lg font-bold text-cream mb-2">並列不同角度</h3>
             <p className="text-sm text-text-muted leading-relaxed">
-              不是「某位老師說」、而是 14 套東西方系統的共識。三層加權架構確保結論經得起推敲。
+              {PUBLIC_CLAIMS.methodology.comparison}
             </p>
           </div>
           <div className="glass rounded-2xl p-6 border border-gold/15 text-center">

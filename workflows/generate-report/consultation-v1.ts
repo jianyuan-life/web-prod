@@ -20,7 +20,7 @@ import {
 import { readConsultationRuntimeReceipts } from '@/lib/consultation/runtime-config'
 import { createRendererInputBindingAttestation } from '@/lib/consultation/fresh-review'
 import { serializeCustomerVisibleText, type ConsultationReportContract, type PersonId } from '@/lib/consultation/report-contract'
-import { validateG15ConsentAttestation } from '@/lib/checkout/g15-consent'
+import { validateG15PersistedConsentAuthority } from '@/lib/checkout/g15-independent-consent'
 import { validateG15ConsultationContext } from '@/lib/checkout/g15-context'
 import type { VerifiedCalculatorResponse } from '@/lib/consultation/calculator-attestation'
 import { canonicalGregorianDate } from '@/lib/consultation/calendar-date'
@@ -229,13 +229,13 @@ export async function buildStructuredG15Report(input: {
 }): Promise<StructuredConsultationResult> {
   const receipts = readConsultationRuntimeReceipts()
   const asOfDate = consultationAsOfDate(input.createdAt)
-  const consent = validateG15ConsentAttestation({
-    attestation: input.birthData.consent_attestation,
+  const consent = validateG15PersistedConsentAuthority({
+    authority: input.birthData.consent_authority,
+    selectionId: input.birthData.consent_selection_id,
     reportIds: input.reportIds,
-    allowExpired: true,
   })
   if (!consent.ok) {
-    throw new Error('G15 缺少 checkout clickwrap 授權證據')
+    throw new Error('G15 缺少 checkout 已查驗的逐位成員同意證據')
   }
   const context = validateG15ConsultationContext(input.birthData)
   if (!context.ok) {

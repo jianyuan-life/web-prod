@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
+import { hasAnalyticsConsent, hasMarketingConsent } from '@/lib/privacy/consent'
 import { searchCities, searchLocations, type City, type LocationSearchResult } from '@/lib/cities'
 import { internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.376(timeout + 429 handling)
 import FamilyMemberPicker from '@/components/checkout/FamilyMemberPicker'
@@ -11,6 +12,7 @@ import type { SavedFamilyMember } from '@/components/FamilyMembersManager'
 import AIAnalysisCard from '@/components/AIAnalysisCard'
 import FreemiumPaywall from '@/components/FreemiumPaywall'
 import { buildFreeToolJsonLd } from '@/lib/seo/free-tool-schema'  // P5 SEO 三層 JSON-LD
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 const SHICHEN = [
   { label: '子時 (23:00-01:00)', value: 0 }, { label: '丑時 (01:00-03:00)', value: 2 },
@@ -423,8 +425,12 @@ export default function FreeToolPage() {
 
       await new Promise(r => setTimeout(r, 500))
       setResult(resultData as Result)
-      gtag.event('generate_lead', { event_category: 'free_tool', tool: 'bazi' })
-      fbpixel.trackEvent('Lead', { content_name: '免費命理速算' })
+      if (hasAnalyticsConsent()) {
+        gtag.event('generate_lead', { event_category: 'free_tool', tool: 'bazi' })
+      }
+      if (hasMarketingConsent()) {
+        fbpixel.trackEvent('Lead', { content_name: '免費命理速算' })
+      }
     } catch (err: unknown) {
       clearInterval(stepInterval)
       if (err instanceof RateLimitError) {
@@ -520,7 +526,7 @@ export default function FreeToolPage() {
             <div className="jy-tool-details__body">
               <p><strong>八字的由來：</strong>八字命理（又稱四柱推命）源自中國古代天文曆法，歷經長期發展。唐代李虛中以年柱為主建立雛形，宋代徐子平改以日柱為核心，奠定現代八字學的基礎。八字以出生的年、月、日、時四柱天干地支共八個字，整理一個人的先天格局與後天週期。</p>
               <p><strong>核心原理：</strong>理論基礎是陰陽五行的生剋制化。透過分析日主與其他七個字的關係，推導十神，再結合大運和流年的變化，形成性格、事業、關係與財務等面向的傳統詮釋。</p>
-              <p><strong>鑑源的做法：</strong>系統使用萬年曆排盤，支援農曆／國曆輸入，並可依出生地經度校正真太陽時。免費結果先呈現五行分佈、十神關係與大運流年的基礎資訊。</p>
+              <p><strong>鑑源的做法與限制：</strong>{PUBLIC_CLAIMS.tools.bazi}</p>
             </div>
           </details>
         </div>
@@ -652,7 +658,7 @@ export default function FreeToolPage() {
                 {form.timeMode==='unknown' && (
                   <p className="text-xs text-text-muted/70 leading-relaxed">
                     系統將以午時（12:00）作為預設進行分析。生肖、數字能量、姓名學等不受影響，但八字時柱、上升星座等會有偏差。
-                    <span className="text-gold/70">建議向父母或出生醫院確認出生時間，可獲得更精準的分析。</span>
+                    <span className="text-gold/70">建議向父母或出生醫院確認出生時間，以減少時間不確定造成的差異。</span>
                   </p>
                 )}
                 {form.timeMode==='shichen' && (
@@ -740,7 +746,7 @@ export default function FreeToolPage() {
               </>
 
               <p className="jy-tool-privacy-note">
-                送出後，姓名與出生資料會用於排盤及 AI 輔助解讀。請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
+                {PUBLIC_CLAIMS.privacy.freeToolAnalytics} 請先閱讀 <Link href="/privacy">資料使用與隱私政策</Link>。
               </p>
 
               {/* v5.10.459 CTA 修(3 家視覺 LLM 共識):「請填寫完整資料」是狀態描述非行動呼籲;
@@ -793,7 +799,7 @@ export default function FreeToolPage() {
                   <p className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">&#9888;</span><span>未提供出生時間，以午時（12:00）預設。八字時柱、上升星座等可能有偏差。</span></p>
                 )}
                 {result.is_fallback && (
-                  <p className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">&#9432;</span><span>此為速算結果（精確度約 95%），完整精確排盤請查看付費報告</span></p>
+                  <p className="flex items-start gap-2"><span className="text-amber-400 mt-0.5">&#9432;</span><span>此為簡化的速算結果；部分欄位可能未包含完整曆法與流派設定，請連同上方限制一起閱讀。</span></p>
                 )}
               </div>
             )}
@@ -1283,11 +1289,11 @@ export default function FreeToolPage() {
 
             {/* 速算提示 */}
             <p className="text-center text-xs text-text-muted/50 leading-relaxed">
-              以上為日主速算概覽，完整報告將根據您的完整命盤做 14 系統個人化深度分析
+              以上為日主速算概覽。{PUBLIC_CLAIMS.methodology.summary} {PUBLIC_CLAIMS.methodology.limits}
             </p>
 
             {/* v5.4.17 P0 freemium paywall(Gemini+Codex 共識「準但不完整」)*/}
-            <FreemiumPaywall systemName="八字" clientName={form.name} checkoutQuery={`name=${encodeURIComponent(form.name)}&year=${form.year}&month=${form.month}&day=${form.day}&hour=${form.timeMode === 'exact' ? form.exactHour : form.hour}&gender=${form.gender}&calendarType=${form.calendarType}`} />
+            <FreemiumPaywall systemName="八字" clientName={form.name} />
 
           </div>
         )}

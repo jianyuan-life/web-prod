@@ -10,6 +10,13 @@ import type { CalculatorEndpointPath } from './calculator-request.ts'
 export const CALCULATOR_ATTESTATION_VERSION = 'jianyuan.fly.response.v1'
 export const CALCULATOR_ATTESTATION_ALGORITHM = 'HMAC-SHA256'
 export const CALCULATOR_ATTESTATION_NONCE_HEADER = 'X-Jianyuan-Attestation-Nonce'
+export const CALCULATOR_REQUEST_AUTH_VERSION = 'jianyuan.fly.request.v1'
+export const CALCULATOR_REQUEST_AUTH_HEADERS = {
+  version: 'X-Jianyuan-Request-Version',
+  keyId: 'X-Jianyuan-Request-Key-Id',
+  issuedAt: 'X-Jianyuan-Request-Issued-At',
+  signature: 'X-Jianyuan-Request-Signature',
+} as const
 
 export const CALCULATOR_ATTESTATION_HEADERS = {
   version: 'X-Jianyuan-Attestation-Version',
@@ -34,6 +41,10 @@ const SIGNING_FIELDS = [
 ] as const
 const HEX_SHA256 = /^[0-9a-f]{64}$/u
 const NONCE = /^[A-Za-z0-9_-]{22,128}$/u
+const REQUEST_SIGNING_FIELDS = [
+  'version', 'key_id', 'issued_at', 'nonce', 'method', 'path', 'request_hash',
+] as const
+const REQUEST_KEY_DERIVATION_CONTEXT = 'jianyuan.fly.request.v1'
 
 export type CalculatorAttestationHeaders = Record<keyof typeof CALCULATOR_ATTESTATION_HEADERS, string>
 
@@ -113,8 +124,72 @@ function signingMessage(fields: CalculatorAttestationHeaders): Uint8Array {
   return framed
 }
 
+function framedMessage(
+  names: readonly string[],
+  fields: Record<string, string>,
+): Uint8Array {
+  const encoder = new TextEncoder()
+  const chunks: Uint8Array[] = []
+  let length = 0
+  for (const name of names) {
+    const value = encoder.encode(fields[name])
+    const prefix = encoder.encode(`${name}=${value.length}:`)
+    const newline = encoder.encode('\n')
+    chunks.push(prefix, value, newline)
+    length += prefix.length + value.length + newline.length
+  }
+  const framed = new Uint8Array(length)
+  let offset = 0
+  for (const chunk of chunks) {
+    framed.set(chunk, offset)
+    offset += chunk.length
+  }
+  return framed
+}
+
 export function createCalculatorAttestationNonce(): string {
   return randomBytes(24).toString('base64url')
+}
+
+export function createCalculatorRequestAuthenticationHeaders(input: {
+  requestBody: Uint8Array | string
+  method: 'POST'
+  path: CalculatorEndpointPath
+  nonce: string
+  secret: string
+  keyId: string
+  issuedAt?: number
+}): Record<string, string> {
+  if (!NONCE.test(input.nonce)) throw new CalculatorAttestationError('request.nonce.invalid')
+  if (bytes(input.secret).length < 32) throw new CalculatorAttestationError('request.secret.invalid')
+  if (!input.keyId || !/^[!-~]{1,240}$/u.test(input.keyId)) {
+    throw new CalculatorAttestationError('request.key_id.invalid')
+  }
+  const issuedAt = input.issuedAt ?? Math.floor(Date.now() / 1000)
+  if (!Number.isInteger(issuedAt) || issuedAt < 0) {
+    throw new CalculatorAttestationError('request.issued_at.invalid')
+  }
+  const fields: Record<string, string> = {
+    version: CALCULATOR_REQUEST_AUTH_VERSION,
+    key_id: input.keyId,
+    issued_at: String(issuedAt),
+    nonce: input.nonce,
+    method: input.method,
+    path: input.path,
+    request_hash: sha256Hex(input.requestBody),
+  }
+  const requestKey = createHmac('sha256', input.secret)
+    .update(REQUEST_KEY_DERIVATION_CONTEXT)
+    .digest()
+  const signature = createHmac('sha256', requestKey)
+    .update(framedMessage(REQUEST_SIGNING_FIELDS, fields))
+    .digest('hex')
+  return {
+    [CALCULATOR_REQUEST_AUTH_HEADERS.version]: fields.version,
+    [CALCULATOR_REQUEST_AUTH_HEADERS.keyId]: fields.key_id,
+    [CALCULATOR_REQUEST_AUTH_HEADERS.issuedAt]: fields.issued_at,
+    [CALCULATOR_REQUEST_AUTH_HEADERS.signature]: signature,
+  }
 }
 
 export function verifyCalculatorResponseAttestation<T extends object>(input: {

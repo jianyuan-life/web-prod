@@ -12,7 +12,6 @@ type ReportModule = {
 interface Props {
   systemName: string
   clientName?: string
-  checkoutQuery?: string
 }
 
 const REPORT_MODULES: ReportModule[] = [
@@ -48,10 +47,9 @@ const REPORT_MODULES: ReportModule[] = [
   },
 ]
 
-export default function FreemiumPaywall({ systemName, clientName, checkoutQuery = '' }: Props) {
+export default function FreemiumPaywall({ systemName, clientName }: Props) {
   const [openModule, setOpenModule] = useState<number | null>(null)
   const [showCompare, setShowCompare] = useState(false)
-  const checkoutUrl = '/checkout?plan=C' + (checkoutQuery ? '&' + checkoutQuery : '')
   const heading = clientName ? `${clientName}，速算已完成` : '速算已完成'
 
   return (
@@ -101,7 +99,7 @@ export default function FreemiumPaywall({ systemName, clientName, checkoutQuery 
           <strong>US$89</strong>
           <small>付款前仍可核對方案、出生資料與應付金額</small>
         </div>
-        <Link href={checkoutUrl} className="jy-button jy-button--primary">
+        <Link href="/checkout?plan=C" className="jy-button jy-button--primary">
           查看人生藍圖方案
         </Link>
       </div>

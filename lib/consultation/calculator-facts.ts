@@ -8,6 +8,7 @@ import {
   CALCULATOR_ATTESTATION_VERSION,
   type VerifiedCalculatorResponse,
 } from './calculator-attestation.ts'
+import { sha256HexSync } from './sha256.ts'
 
 export const CALCULATOR_RESPONSE_CONTRACT_VERSION = 'fly-calculator-response/v1'
 
@@ -28,6 +29,14 @@ export const EXPECTED_CALCULATOR_SYSTEMS = [
   '生物節律',
   '九星氣學',
 ] as const
+
+// The strict transport carries 15 independently named technical slots so a
+// missing or duplicated producer result cannot hide behind a marketing count.
+// Only 14 are customer-facing in the current product contract: Nine Star is
+// retained as a held audit slot until its authority corpus is independently
+// validated. Neither number means "15 verified authorities".
+export const CALCULATOR_TECHNICAL_SLOT_COUNT = EXPECTED_CALCULATOR_SYSTEMS.length
+export const CALCULATOR_CUSTOMER_FACING_SYSTEM_COUNT = 14 as const
 
 export const CALCULATOR_SYSTEM_EVIDENCE_CLASS: Record<
   (typeof EXPECTED_CALCULATOR_SYSTEMS)[number],
@@ -61,7 +70,6 @@ export const BIRTH_TIME_DEPENDENT_SYSTEMS = new Set<string>([
   '生肖運勢',
   '古典占星',
   '易經',
-  '風水',
   '人類圖',
   '奇門遁甲',
   '生物節律',
@@ -111,8 +119,17 @@ export type CalculatorAnalysis = {
 
 export type CalculatorResponse = {
   systems_count?: unknown
+  expected_systems_count?: unknown
+  normalized_input?: unknown
+  analysis_context?: unknown
   client_data?: unknown
   analyses?: unknown
+  successful_systems?: unknown
+  held_systems?: unknown
+  failed_systems?: unknown
+  coverage?: unknown
+  provenance_registry?: unknown
+  provenance_registry_sha256?: unknown
 }
 
 export type CalculatorFactsEnvelope = {
@@ -154,6 +171,13 @@ export type NormalizedCalculatorFacts = {
     timeUnknown: boolean
     hour: number | null
     minute: number | null
+  }
+  provenanceRegistry: {
+    sha256: string
+    definitionSha256: string
+    technicalSlotCount: number
+    publicOfferSystemCount: number
+    countSemantics: string
   }
   sourceManifest: SourceManifestEntry[]
   factLedger: FactLedger
@@ -216,6 +240,95 @@ function isIsoDate(value: unknown): value is string {
 
 function isHash(value: unknown): value is string {
   return typeof value === 'string' && /^sha256:[0-9a-f]{64}$/u.test(value)
+}
+
+function canonicalRegistryValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalRegistryValue)
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((key) => [key, canonicalRegistryValue(value[key])]),
+    )
+  }
+  return value
+}
+
+function provenanceRegistrySha256(value: Record<string, unknown>): string {
+  return sha256HexSync(JSON.stringify(canonicalRegistryValue(value)))
+}
+
+function isSubstantiveProvenanceText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 &&
+    !/^(?:UNVERIFIED|UNKNOWN|TBD)$/iu.test(value.trim())
+}
+
+function isNonEmptyProvenanceText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function isSha256(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{64}$/u.test(value)
+}
+
+function hasInvalidProvenanceEntry(
+  registry: Record<string, unknown>,
+  envelope: CalculatorFactsEnvelope,
+): boolean {
+  if (!Array.isArray(registry.systems)) return true
+  const ruleIds: string[] = []
+  for (const item of registry.systems) {
+    if (!isRecord(item)) return true
+    const sourceEditionValid = item.source_edition === null ||
+      isSubstantiveProvenanceText(item.source_edition)
+    const sourceLocatorValid = item.source_locator === null ||
+      isSubstantiveProvenanceText(item.source_locator)
+    const claimAuthorityExcludes = Array.isArray(item.claim_authority_excludes)
+      ? item.claim_authority_excludes
+      : []
+    const excludesValid = Array.isArray(item.claim_authority_excludes) &&
+      claimAuthorityExcludes.every(isSubstantiveProvenanceText) &&
+      new Set(claimAuthorityExcludes).size === claimAuthorityExcludes.length
+    if (
+      !isSubstantiveProvenanceText(item.system) ||
+      !isSubstantiveProvenanceText(item.rule_id) ||
+      !isNonEmptyProvenanceText(item.school) ||
+      !sourceEditionValid ||
+      !sourceLocatorValid ||
+      !(item.source_evidence_sha256 === null || isSha256(item.source_evidence_sha256)) ||
+      !['VERIFIED', 'UNVERIFIED'].includes(String(item.verification_status)) ||
+      !isSubstantiveProvenanceText(item.public_offer_role) ||
+      !['deliver', 'hold'].includes(String(item.delivery_policy)) ||
+      !isSubstantiveProvenanceText(item.implementation_locator) ||
+      !isSubstantiveProvenanceText(item.claim_authority_scope) ||
+      !excludesValid ||
+      typeof item.calculation_commit !== 'string' ||
+      !/^[0-9a-f]{40}$/u.test(item.calculation_commit) ||
+      item.runtime_bundle !== envelope.calculatorBundleVersion ||
+      (item.verification_status === 'VERIFIED' &&
+        (!isSubstantiveProvenanceText(item.source_edition) ||
+          !isSubstantiveProvenanceText(item.source_locator) ||
+          !isSha256(item.source_evidence_sha256))) ||
+      (item.system === '八字四柱' && item.school !== envelope.requestPayload.bazi_school) ||
+      (item.system === '吠陀占星' && item.school !== `${envelope.requestPayload.ayanamsa_type}_only`) ||
+      (item.system === '九星氣學' && (
+        item.verification_status !== 'UNVERIFIED' ||
+        item.source_edition !== null ||
+        item.source_locator !== null ||
+        item.source_evidence_sha256 !== null ||
+        item.public_offer_role !== 'supplementary_not_in_public_14' ||
+        item.delivery_policy !== 'hold' ||
+        item.claim_authority_scope !== 'none_until_verified'
+      )) ||
+      (item.system !== '九星氣學' && (
+        item.verification_status !== 'VERIFIED' ||
+        item.public_offer_role !== 'core_public_14' ||
+        item.delivery_policy !== 'deliver'
+      )) ||
+      (item.system === '古典占星' &&
+        !claimAuthorityExcludes.includes('九星氣學'))
+    ) return true
+    ruleIds.push(item.rule_id)
+  }
+  return new Set(ruleIds).size !== ruleIds.length
 }
 
 function safeSystemId(system: string): string {
@@ -360,6 +473,213 @@ function normalizedGender(value: unknown): 'male' | 'female' | 'other' | '' {
   return ''
 }
 
+const STRICT_NORMALIZED_INPUT_FIELDS = [
+  'name', 'year', 'month', 'day', 'hour', 'minute', 'gender',
+  'latitude', 'longitude', 'timezone', 'timezone_offset',
+  'birth_city', 'birth_country', 'calendar_type', 'lunar_leap',
+  'time_unknown', 'time_mode', 'as_of', 'bazi_school',
+  'ayanamsa_type', 'fold', 'target_year',
+] as const
+
+const STRICT_REQUIRED_REQUEST_FIELDS = [
+  'name', 'year', 'month', 'day', 'hour', 'gender',
+  'latitude', 'longitude', 'timezone', 'calendar_type', 'lunar_leap',
+  'time_unknown', 'time_mode', 'as_of', 'bazi_school',
+  'ayanamsa_type', 'fold', 'target_year',
+] as const
+
+function equalPrimitive(left: unknown, right: unknown): boolean {
+  return (left === right) || (left === null && right === undefined) || (left === undefined && right === null)
+}
+
+function validateNormalizedInputEcho(envelope: CalculatorFactsEnvelope): CalculatorFactsIssue[] {
+  const normalized = envelope.response?.normalized_input
+  if (!isRecord(normalized)) {
+    return [{
+      code: 'response.normalized_input_missing',
+      path: 'response.normalized_input',
+      message: 'Fly 回應缺少 strict model 實際採用的 normalized_input',
+    }]
+  }
+  const issues: CalculatorFactsIssue[] = []
+  const allowed = new Set<string>(STRICT_NORMALIZED_INPUT_FIELDS)
+  const responseKeys = Object.keys(normalized)
+  if (
+    responseKeys.length !== STRICT_NORMALIZED_INPUT_FIELDS.length ||
+    responseKeys.some((key) => !allowed.has(key)) ||
+    STRICT_NORMALIZED_INPUT_FIELDS.some((key) => !Object.hasOwn(normalized, key))
+  ) {
+    issues.push({
+      code: 'request_response.normalized_input_schema_mismatch',
+      path: 'response.normalized_input',
+      message: 'normalized_input 欄位集合與版本化 strict request model 不一致',
+    })
+  }
+  if (STRICT_REQUIRED_REQUEST_FIELDS.some((key) => !Object.hasOwn(envelope.requestPayload, key))) {
+    issues.push({
+      code: 'request_payload.required_field_missing',
+      path: 'requestPayload',
+      message: '實際送出的 strict request 缺少必填欄位',
+    })
+  }
+  const mismatch = STRICT_NORMALIZED_INPUT_FIELDS.some((key) => {
+    const expected = Object.hasOwn(envelope.requestPayload, key) ? envelope.requestPayload[key] : null
+    return !equalPrimitive(normalized[key], expected)
+  })
+  if (mismatch) {
+    issues.push({
+      code: 'request_response.normalized_input_mismatch',
+      path: 'response.normalized_input',
+      message: 'Fly 回應的 normalized_input 不是本次驗章 request 的同一份輸入',
+    })
+  }
+  return issues
+}
+
+function validateAnalysisContext(envelope: CalculatorFactsEnvelope): CalculatorFactsIssue[] {
+  const context = envelope.response?.analysis_context
+  if (!isRecord(context)) {
+    return [{
+      code: 'response.analysis_context_missing',
+      path: 'response.analysis_context',
+      message: 'Fly 回應缺少 immutable analysis_context',
+    }]
+  }
+  const expected = {
+    mode: 'consultation_v1',
+    as_of: envelope.asOfDate,
+    target_year: envelope.targetYear,
+    birth_timezone: envelope.requestPayload.timezone,
+    reference_timezone: 'Asia/Hong_Kong',
+  }
+  if (
+    Object.keys(context).length !== Object.keys(expected).length ||
+    Object.entries(expected).some(([key, value]) => context[key] !== value)
+  ) {
+    return [{
+      code: 'request_response.analysis_context_mismatch',
+      path: 'response.analysis_context',
+      message: 'Fly 回應的 as_of、target_year 或時區 context 與本次 request 不一致',
+    }]
+  }
+  return []
+}
+
+function orderedStringList(value: unknown): string[] | null {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+    ? value as string[]
+    : null
+}
+
+function sameUniqueStringSet(left: string[], right: string[]): boolean {
+  return new Set(left).size === left.length &&
+    new Set(right).size === right.length &&
+    left.length === right.length &&
+    left.every((entry) => right.includes(entry))
+}
+
+function validateSystemLedger(envelope: CalculatorFactsEnvelope): CalculatorFactsIssue[] {
+  const analyses = Array.isArray(envelope.response?.analyses) ? envelope.response.analyses : []
+  const successful = orderedStringList(envelope.response?.successful_systems)
+  const held = orderedStringList(envelope.response?.held_systems)
+  const failed = orderedStringList(envelope.response?.failed_systems)
+  const derivedSuccessful = analyses.flatMap((entry) =>
+    isRecord(entry) && entry.status === 'success' && typeof entry.system === 'string' ? [entry.system] : [],
+  )
+  const derivedHeld = analyses.flatMap((entry) =>
+    isHeldCalculatorSlot(entry) && typeof entry.system === 'string' ? [entry.system] : [],
+  )
+  const policyHeld = EXPECTED_CALCULATOR_SYSTEMS.filter((system) =>
+    CALCULATOR_SYSTEM_EVIDENCE_CLASS[system] === 'held' ||
+    (envelope.requestPayload.time_unknown === true && BIRTH_TIME_DEPENDENT_SYSTEMS.has(system)),
+  )
+  const everySlotHasKnownState = analyses.every((entry) =>
+    isRecord(entry) && (entry.status === 'success' || isHeldCalculatorSlot(entry)),
+  )
+  const mismatch = !successful || !held || !failed || failed.length !== 0 ||
+    envelope.response.expected_systems_count !== CALCULATOR_TECHNICAL_SLOT_COUNT ||
+    !everySlotHasKnownState ||
+    !sameUniqueStringSet(successful, derivedSuccessful) ||
+    !sameUniqueStringSet(held, derivedHeld) ||
+    !sameUniqueStringSet(held, policyHeld) ||
+    !sameUniqueStringSet([...successful, ...held], [...EXPECTED_CALCULATOR_SYSTEMS])
+  return mismatch ? [{
+    code: 'response.system_ledger_mismatch',
+    path: 'response.successful_systems,response.held_systems,response.failed_systems',
+    message: '15 個技術槽的 success、held、failed 三態台帳與 analyses 不一致',
+  }] : []
+}
+
+function validateCoverage(envelope: CalculatorFactsEnvelope): CalculatorFactsIssue[] {
+  const coverage = envelope.response?.coverage
+  const analyses = Array.isArray(envelope.response?.analyses) ? envelope.response.analyses : []
+  const successfulSlots = analyses.filter((entry) => isRecord(entry) && entry.status === 'success').length
+  const heldSlots = analyses.filter(isHeldCalculatorSlot).length
+  const failedSlots = analyses.filter((entry) => isRecord(entry) && entry.status === 'failed').length
+  if (
+    !isRecord(coverage) ||
+    coverage.expected_slots !== CALCULATOR_TECHNICAL_SLOT_COUNT ||
+    coverage.covered_slots !== analyses.length ||
+    coverage.successful_slots !== successfulSlots ||
+    coverage.held_slots !== heldSlots ||
+    coverage.failed_slots !== failedSlots ||
+    coverage.is_complete !== (
+      analyses.length === CALCULATOR_TECHNICAL_SLOT_COUNT && failedSlots === 0
+    )
+  ) {
+    return [{
+      code: 'response.coverage_mismatch',
+      path: 'response.coverage',
+      message: '排盤 coverage 與 15 個技術槽的三態台帳不一致',
+    }]
+  }
+  return []
+}
+
+function validatePerSlotProvenance(envelope: CalculatorFactsEnvelope): CalculatorFactsIssue[] {
+  const registry = envelope.response?.provenance_registry
+  const analyses = Array.isArray(envelope.response?.analyses) ? envelope.response.analyses : []
+  if (!isRecord(registry) || !Array.isArray(registry.systems)) return []
+  const bySystem = new Map(
+    registry.systems.flatMap((entry) =>
+      isRecord(entry) && typeof entry.system === 'string' ? [[entry.system, entry]] : [],
+    ),
+  )
+  const mismatchIndex = analyses.findIndex((analysis) => {
+    if (!isRecord(analysis) || typeof analysis.system !== 'string') return true
+    const expected = bySystem.get(analysis.system)
+    return !expected || !isRecord(analysis.provenance) ||
+      JSON.stringify(canonicalRegistryValue(analysis.provenance)) !==
+        JSON.stringify(canonicalRegistryValue(expected))
+  })
+  return mismatchIndex >= 0 ? [{
+    code: 'analysis.provenance_mismatch',
+    path: `response.analyses.${mismatchIndex}.provenance`,
+    message: 'analysis 槽位未攜帶該系統完全相同的 runtime-bound 權威譜系',
+  }] : []
+}
+
+function validateAuthorityHolds(envelope: CalculatorFactsEnvelope): CalculatorFactsIssue[] {
+  const registry = envelope.response?.provenance_registry
+  const analyses = Array.isArray(envelope.response?.analyses) ? envelope.response.analyses : []
+  if (!isRecord(registry) || !Array.isArray(registry.systems)) return []
+  const heldSystems = new Set(registry.systems.flatMap((entry) =>
+    isRecord(entry) && entry.delivery_policy === 'hold' && typeof entry.system === 'string'
+      ? [entry.system]
+      : [],
+  ))
+  const mismatchIndex = analyses.findIndex((analysis) =>
+    isRecord(analysis) && typeof analysis.system === 'string' &&
+      heldSystems.has(analysis.system) &&
+      (!isHeldCalculatorSlot(analysis) || analysis.reason !== 'authority_unverified'),
+  )
+  return mismatchIndex >= 0 ? [{
+    code: 'analysis.authority_hold_mismatch',
+    path: `response.analyses.${mismatchIndex}`,
+    message: '權威尚未驗證的系統必須以 authority_unverified held 槽交付',
+  }] : []
+}
+
 function requestResponseBindingIssues(envelope: CalculatorFactsEnvelope): CalculatorFactsIssue[] {
   const issues: CalculatorFactsIssue[] = []
   if (!isRecord(envelope.requestPayload)) {
@@ -374,6 +694,12 @@ function requestResponseBindingIssues(envelope: CalculatorFactsEnvelope): Calcul
   if (envelope.requestPayload.target_year !== envelope.targetYear) {
     issues.push({ code: 'request_response.target_year_mismatch', path: 'requestPayload.target_year', message: 'request 的目標年與 facts envelope 不一致' })
   }
+  issues.push(...validateNormalizedInputEcho(envelope))
+  issues.push(...validateAnalysisContext(envelope))
+  issues.push(...validateSystemLedger(envelope))
+  issues.push(...validateCoverage(envelope))
+  issues.push(...validatePerSlotProvenance(envelope))
+  issues.push(...validateAuthorityHolds(envelope))
   const clientData = envelope.response?.client_data
   if (!isRecord(clientData)) return issues
   if (normalizedIdentityText(clientData.name) !== normalizedIdentityText(envelope.requestPayload.name)) {
@@ -465,6 +791,65 @@ function validateEnvelope(envelope: CalculatorFactsEnvelope): CalculatorFactsIss
   }
   if (!isRecord(envelope?.response)) {
     return [...issues, { code: 'response.invalid', path: 'response', message: 'Fly 回應不是物件' }]
+  }
+  if (!isRecord(envelope.response.provenance_registry)) {
+    issues.push({
+      code: 'response.provenance_registry_missing',
+      path: 'response.provenance_registry',
+      message: 'Fly 回應缺少逐系統權威譜系登錄表',
+    })
+  } else if (
+    typeof envelope.response.provenance_registry_sha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(envelope.response.provenance_registry_sha256) ||
+    provenanceRegistrySha256(envelope.response.provenance_registry) !==
+      envelope.response.provenance_registry_sha256
+  ) {
+    issues.push({
+      code: 'response.provenance_registry_hash_mismatch',
+      path: 'response.provenance_registry_sha256',
+      message: '逐系統權威譜系登錄表與其 SHA-256 身分不一致',
+    })
+  } else if (
+    typeof envelope.response.provenance_registry.definition_sha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(envelope.response.provenance_registry.definition_sha256)
+  ) {
+    issues.push({
+      code: 'response.provenance_registry_definition_invalid',
+      path: 'response.provenance_registry.definition_sha256',
+      message: '權威譜系定義缺少有效的 release-pinned SHA-256',
+    })
+  } else if (
+    envelope.response.provenance_registry.schema_version !== 'jianyuan.provenance.registry.v1' ||
+    envelope.response.provenance_registry.technical_slot_count !== CALCULATOR_TECHNICAL_SLOT_COUNT ||
+    envelope.response.provenance_registry.public_offer_system_count !== CALCULATOR_CUSTOMER_FACING_SYSTEM_COUNT ||
+    envelope.response.provenance_registry.count_semantics !== 'inventory_only_not_correctness_evidence'
+  ) {
+    issues.push({
+      code: 'response.provenance_registry_contract_mismatch',
+      path: 'response.provenance_registry',
+      message: '權威譜系登錄表未正確區分 15 個技術槽與 14 套公開方案',
+    })
+  } else if (
+    !Array.isArray(envelope.response.provenance_registry.systems) ||
+    envelope.response.provenance_registry.systems.length !== CALCULATOR_TECHNICAL_SLOT_COUNT ||
+    envelope.response.provenance_registry.systems.some((entry, index) =>
+      !isRecord(entry) || entry.system !== EXPECTED_CALCULATOR_SYSTEMS[index]
+    )
+  ) {
+    issues.push({
+      code: 'response.provenance_registry_system_set_mismatch',
+      path: 'response.provenance_registry.systems',
+      message: '權威譜系登錄表未逐一覆蓋版本化的 15 個技術槽',
+    })
+  } else if (hasInvalidProvenanceEntry(
+    envelope.response.provenance_registry,
+    envelope,
+  )) {
+    issues.push({
+      code: 'response.provenance_registry_entry_invalid',
+      path: 'response.provenance_registry.systems',
+      message: '權威譜系欄位缺失、來源真實性狀態矛盾或 runtime 身分不一致',
+    })
   }
   issues.push(...requestResponseBindingIssues(envelope))
   if (envelope.response.systems_count !== EXPECTED_CALCULATOR_SYSTEMS.length) {
@@ -568,6 +953,10 @@ export function normalizeCalculatorFacts(
     client_data: Record<string, unknown>
     analyses: CalculatorAnalysis[]
   }
+  const provenanceRegistry = envelope.response.provenance_registry as Record<string, unknown>
+  const provenanceBySystem = new Map(
+    (provenanceRegistry.systems as Record<string, unknown>[]).map((entry) => [String(entry.system), entry]),
+  )
   const analysesBySystem = new Map(
     response.analyses.map((analysis) => [String(analysis.system), analysis]),
   )
@@ -646,6 +1035,7 @@ export function normalizeCalculatorFacts(
 
   for (const system of EXPECTED_CALCULATOR_SYSTEMS) {
     const analysis = analysesBySystem.get(system)!
+    const provenance = provenanceBySystem.get(system)!
     const annualSensitive = ANNUAL_SENSITIVE_SYSTEMS.has(system)
     const sourceId = `source:calculator:${personNamespace}:${safeSystemId(system)}` as const
     const factId = `fact:calculator:${personNamespace}:${safeSystemId(system)}` as const
@@ -688,6 +1078,10 @@ export function normalizeCalculatorFacts(
           : evidenceClass === 'held'
             ? '來源譜系與算法尚待獨立驗證，本版不得用來支撐客戶結論'
             : '屬於該傳統系統的詮釋層，不可冒充可科學驗證的客觀事實或其他系統的推導依據',
+        ...(provenance.verification_status === 'UNVERIFIED' ||
+          provenance.source_edition === null || provenance.source_locator === null
+          ? ['來源版本或定位為 UNVERIFIED；只可標示為傳統詮釋，不得宣稱權威引文或已核對原典']
+          : []),
       ],
     })
   }
@@ -708,6 +1102,13 @@ export function normalizeCalculatorFacts(
       timeUnknown: envelope.requestPayload.time_unknown === true,
       hour: envelope.requestPayload.time_unknown === true ? null : Number(envelope.requestPayload.hour),
       minute: envelope.requestPayload.time_unknown === true ? null : Number(envelope.requestPayload.minute ?? 0),
+    },
+    provenanceRegistry: {
+      sha256: String(envelope.response.provenance_registry_sha256),
+      definitionSha256: String(provenanceRegistry.definition_sha256),
+      technicalSlotCount: Number(provenanceRegistry.technical_slot_count),
+      publicOfferSystemCount: Number(provenanceRegistry.public_offer_system_count),
+      countSemantics: String(provenanceRegistry.count_semantics),
     },
     sourceManifest,
     factLedger: {

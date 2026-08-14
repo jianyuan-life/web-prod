@@ -9,6 +9,7 @@ import TimeBlockPicker from './TimeBlockPicker'
 import ThemePicker from './ThemePicker'
 import CustomerNote from './CustomerNote'
 import ConfirmationModal from './ConfirmationModal'
+import CFinalReviewModal from '@/components/consultation/CFinalReviewModal'
 import CheckoutSecurityNote from './CheckoutSecurityNote'
 import { isChumenjiPlan } from '@/lib/plan-names'
 import { validateGregorianDate } from '@/lib/consultation/gregorian-date'
@@ -17,7 +18,8 @@ import {
   getConsultationAge,
   isConsultationBirthDateInFuture,
 } from '@/lib/checkout/consultation-input-contract'
-import { D_TOPICS, E1_EVENT_TYPES, type CheckoutFormState as FormState } from './types'
+import { D_TOPICS, E1_EVENT_TYPES } from './types'
+import type { ConsultationCheckoutFormState as FormState } from '@/components/consultation/checkout-types'
 
 interface SinglePersonFormProps {
   planCode: string
@@ -450,26 +452,44 @@ export default function SinglePersonForm({
       </button>
 
       {/* 資料確認彈窗 */}
-      <ConfirmationModal
-        show={showConfirmModal}
-        onClose={onCloseConfirmModal}
-        onConfirm={onConfirmCheckout}
-        planCode={planCode}
-        form={form}
-        timeMode={timeMode}
-        loading={loading}
-        e1EndDate={e1EndDate}
-        e1EventType={e1EventType}
-        e1HasExactTime={e1HasExactTime}
-        eSelectedBlocks={eSelectedBlocks}
-        customerNote={customerNote}
-        finalPrice={finalPrice}
-        totalPrice={totalPrice}
-        pointsUsed={pointsUsed}
-        pointsDiscount={pointsDiscount}
-        onPointsChange={onPointsChange}
-        couponApplied={couponApplied}
-      />
+      {planCode === 'C' ? (
+        <CFinalReviewModal
+          show={showConfirmModal}
+          onClose={onCloseConfirmModal}
+          onConfirm={onConfirmCheckout}
+          form={form}
+          timeMode={timeMode}
+          loading={loading}
+          customerNote={customerNote}
+          finalPrice={finalPrice}
+          totalPrice={totalPrice}
+          pointsUsed={pointsUsed}
+          pointsDiscount={pointsDiscount}
+          onPointsChange={onPointsChange}
+          couponApplied={couponApplied}
+        />
+      ) : (
+        <ConfirmationModal
+          show={showConfirmModal}
+          onClose={onCloseConfirmModal}
+          onConfirm={onConfirmCheckout}
+          planCode={planCode}
+          form={form}
+          timeMode={timeMode}
+          loading={loading}
+          e1EndDate={e1EndDate}
+          e1EventType={e1EventType}
+          e1HasExactTime={e1HasExactTime}
+          eSelectedBlocks={eSelectedBlocks}
+          customerNote={customerNote}
+          finalPrice={finalPrice}
+          totalPrice={totalPrice}
+          pointsUsed={pointsUsed}
+          pointsDiscount={pointsDiscount}
+          onPointsChange={onPointsChange}
+          couponApplied={couponApplied}
+        />
+      )}
     </form>
   )
 }

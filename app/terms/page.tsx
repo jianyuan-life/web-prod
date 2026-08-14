@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 export const metadata: Metadata = {
   title: '使用條款',  // root layout template 會補「| 鑒源 JianYuan」、此處只寫純標題避免品牌名重複
-  description: '鑒源（JianYuan）使用條款：使用本服務即表示您同意以下條款，命理分析僅供參考，不構成任何醫療、投資或法律建議。',
+  description: PUBLIC_CLAIMS.terms.description,
   alternates: { canonical: 'https://jianyuan.life/terms' },
   robots: { index: true, follow: true },
 }
@@ -15,11 +16,11 @@ export default function TermsPage() {
         <p><strong>最後更新：</strong>2026年3月31日</p>
 
         <h2 className="text-xl font-semibold text-white">1. 服務描述</h2>
-        <p>鑒源系統是一個整合東西方十四大命理系統的命理分析平台。本服務提供的所有分析結果<strong>僅供參考和娛樂用途</strong>，不構成任何醫療、投資、法律或其他專業建議。</p>
+        <p>{PUBLIC_CLAIMS.terms.service}</p>
 
         <h2 className="text-xl font-semibold text-white">2. 用戶責任</h2>
         <ul className="list-disc pl-5 space-y-1">
-          <li>提供真實準確的出生資料以獲得最佳分析結果</li>
+          <li>{PUBLIC_CLAIMS.terms.inputResponsibility}</li>
           <li>不得將報告用於非法目的</li>
           <li>不得嘗試逆向工程或破解系統</li>
           <li>不得轉售或商業性分發報告內容</li>
@@ -30,14 +31,14 @@ export default function TermsPage() {
 
         <h2 className="text-xl font-semibold text-white">4. 免責聲明</h2>
         <ul className="list-disc pl-5 space-y-1">
-          <li>命理分析基於傳統理論和科技化精算，不保證100%準確</li>
+          <li>{PUBLIC_CLAIMS.terms.limits}</li>
           <li>本服務不能預測未來、治療疾病或保證投資回報</li>
           <li>用戶應自行判斷是否採納報告中的建議</li>
           <li>健康問題請諮詢醫生，投資決策請諮詢專業理財顧問</li>
         </ul>
 
         <h2 className="text-xl font-semibold text-white">5. 服務保證</h2>
-        <p>鑒源報告為個人化數位商品、付款後即開始精密計算(14 套命理系統運算 + AI 整合)、依國際電子商品慣例<strong className="text-gold">不支援退款</strong>。為維護所有客戶的服務品質、我們提供以下保證:</p>
+        <p>{PUBLIC_CLAIMS.terms.fulfillment}依本頁所列條件<strong className="text-gold">不支援退款</strong>；以下情況仍有對應處理方式：</p>
         <ul className="list-disc pl-5 space-y-1">
           <li><strong>生成失敗自動重試:</strong>系統自動重試最多 3 次、若仍失敗 24 小時內客服協助補開新單</li>
           <li><strong>內容明顯錯誤:</strong>(如出生資料解讀錯誤)免費重新生成、不再扣款</li>

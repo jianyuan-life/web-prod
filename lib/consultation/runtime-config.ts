@@ -12,12 +12,80 @@ export class ConsultationRuntimeConfigError extends Error {
 
 type RuntimeEnvironment = Record<string, string | undefined>
 
+export const CONSULTATION_REPORT_V1_ORDER_CONTRACT = 'consultation-report/v1' as const
+
+type ConsultationPlanCode = 'C' | 'G15'
+type ConsultationReleaseBinding = {
+  schema: typeof CONSULTATION_REPORT_V1_ORDER_CONTRACT
+  plan_code: ConsultationPlanCode
+}
+
+function isConsultationPlanCode(planCode: string): planCode is ConsultationPlanCode {
+  return planCode === 'C' || planCode === 'G15'
+}
+
 export function shouldUseConsultationReportV1(
   planCode: string,
   environment: RuntimeEnvironment = process.env,
 ): planCode is 'C' | 'G15' {
-  if (planCode !== 'C' && planCode !== 'G15') return false
-  return environment[`USE_CONSULTATION_REPORT_V1_${planCode}`] === 'true'
+  if (planCode === 'C') return environment.USE_CONSULTATION_REPORT_V1_C === 'true'
+  if (planCode === 'G15') return environment.USE_CONSULTATION_REPORT_V1_G15 === 'true'
+  return false
+}
+
+/**
+ * Bind the implementation contract at checkout time. The checkout route calls
+ * this only after authenticating/rebuilding the customer input, then persists
+ * the returned object in checkout_drafts. Client input alone is never trusted
+ * as a release decision.
+ */
+export function bindConsultationOrderReleaseContract(
+  planCode: string,
+  birthData: unknown,
+): Record<string, unknown> {
+  if (
+    !isConsultationPlanCode(planCode)
+    || !birthData
+    || typeof birthData !== 'object'
+    || Array.isArray(birthData)
+  ) {
+    throw new ConsultationRuntimeConfigError(['CONSULTATION_ORDER_RELEASE_CONTRACT'])
+  }
+  return {
+    ...(birthData as Record<string, unknown>),
+    consultation_release_contract: {
+      schema: CONSULTATION_REPORT_V1_ORDER_CONTRACT,
+      plan_code: planCode,
+    } satisfies ConsultationReleaseBinding,
+  }
+}
+
+export function hasConsultationOrderReleaseContract(
+  planCode: string,
+  birthData: unknown,
+): planCode is ConsultationPlanCode {
+  if (
+    !isConsultationPlanCode(planCode)
+    || !birthData
+    || typeof birthData !== 'object'
+    || Array.isArray(birthData)
+  ) return false
+  const binding = (birthData as Record<string, unknown>).consultation_release_contract
+  if (!binding || typeof binding !== 'object' || Array.isArray(binding)) return false
+  const candidate = binding as Record<string, unknown>
+  return candidate.schema === CONSULTATION_REPORT_V1_ORDER_CONTRACT
+    && candidate.plan_code === planCode
+}
+
+/** Intake flags stop only new checkout. A separate explicit kill switch is
+ * required to stop fulfillment of already-paid, contract-bound orders. */
+export function isConsultationGenerationKillSwitchEnabled(
+  planCode: string,
+  environment: RuntimeEnvironment = process.env,
+): boolean {
+  if (planCode === 'C') return environment.CONSULTATION_REPORT_V1_KILL_SWITCH_C === 'true'
+  if (planCode === 'G15') return environment.CONSULTATION_REPORT_V1_KILL_SWITCH_G15 === 'true'
+  return false
 }
 
 function isSha256(value: unknown): value is `sha256:${string}` {
@@ -53,6 +121,7 @@ export function readConsultationRuntimeReceipts(
   calculatorBundleVersion: string
   calculatorCodeSha256: string
   calculatorAttestationKeyId: string
+  telemetryFingerprintKeyId: string
   freshReviewHash: `sha256:${string}`
   rendererInputBindingHash: `sha256:${string}`
 } {
@@ -63,18 +132,29 @@ export function readConsultationRuntimeReceipts(
   const calculatorCodeSha256 = environment.CALCULATOR_ATTESTATION_CODE_SHA256?.trim() ?? ''
   const calculatorAttestationKeyId = environment.CALCULATOR_ATTESTATION_KEY_ID?.trim() ?? ''
   const calculatorAttestationSecret = environment.CALCULATOR_ATTESTATION_SECRET ?? ''
+  const telemetryFingerprintSecret = environment.TELEMETRY_FINGERPRINT_SECRET ?? ''
+  const telemetryFingerprintKeyId = environment.TELEMETRY_FINGERPRINT_KEY_ID?.trim() ?? ''
   const consultationSessionSecret = environment.CONSULTATION_SESSION_SECRET ?? ''
   const reportCookieSecret = environment.REPORT_COOKIE_SECRET ?? ''
   if (!isCalculatorReleaseReceipt(calculatorBundleVersion)) missing.push('CALCULATOR_BUNDLE_VERSION')
   if (!/^[0-9a-f]{64}$/u.test(calculatorCodeSha256)) missing.push('CALCULATOR_ATTESTATION_CODE_SHA256')
   if (!isPublicIdentifier(calculatorAttestationKeyId)) missing.push('CALCULATOR_ATTESTATION_KEY_ID')
   if (new TextEncoder().encode(calculatorAttestationSecret).length < 32) missing.push('CALCULATOR_ATTESTATION_SECRET')
+  if (new TextEncoder().encode(telemetryFingerprintSecret).length < 32) missing.push('TELEMETRY_FINGERPRINT_SECRET')
+  if (!/^[A-Za-z0-9_-]{1,16}$/u.test(telemetryFingerprintKeyId)) missing.push('TELEMETRY_FINGERPRINT_KEY_ID')
   if (
     !isValidConsultationSessionSecret(consultationSessionSecret) ||
     consultationSessionSecret === calculatorAttestationSecret ||
     (reportCookieSecret.length > 0 && consultationSessionSecret === reportCookieSecret)
   ) {
     missing.push('CONSULTATION_SESSION_SECRET')
+  }
+  if (
+    telemetryFingerprintSecret === calculatorAttestationSecret ||
+    telemetryFingerprintSecret === consultationSessionSecret ||
+    telemetryFingerprintSecret === reportCookieSecret
+  ) {
+    missing.push('TELEMETRY_FINGERPRINT_SECRET')
   }
   if (!isSha256(freshReviewHash)) missing.push('CONSULTATION_V1_FRESH_REVIEW_SHA256')
   if (!isSha256(rendererInputBindingHash)) missing.push('CONSULTATION_V1_RENDERER_INPUT_BINDING_SHA256')
@@ -83,6 +163,7 @@ export function readConsultationRuntimeReceipts(
     calculatorBundleVersion,
     calculatorCodeSha256,
     calculatorAttestationKeyId,
+    telemetryFingerprintKeyId,
     freshReviewHash: freshReviewHash as `sha256:${string}`,
     rendererInputBindingHash: rendererInputBindingHash as `sha256:${string}`,
   }

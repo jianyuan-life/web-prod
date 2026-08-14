@@ -1077,7 +1077,20 @@ test('snapshot 必須綁定 scope x/y、viewport/full-shell 與 Navbar/Footer/ma
     "['navbar', page.locator('.jy-navbar').first()]",
     "['footer', page.locator('.jy-footer').first()]",
     "['main', page.locator('main').first()]",
+    'captureControlActivationContract',
+    'activationContract',
+    'reversible-toggle',
+    'navigation-delegated',
+    'captureE3NavigationContract',
+    'armE3NavigationGuard',
+    'observeE3NavigationOutcome',
+    'real-click-per-actionable-anchor',
+    'documentIndex',
+    'intent.ariaPressed !== null',
+    'restoredSha256',
+    'E3 互動探針無法還原原始狀態',
   ]) assert(script.includes(required), `snapshot/behavior contract 缺少 ${required}`)
+  assert(!script.includes('dispatchEvent(new MouseEvent'), '導航證據不得由 synthetic dispatchEvent 自行製造')
 
   const png = testPng({ fill: 93 })
   const baseline = snapshotForPng(png, {
@@ -1085,9 +1098,41 @@ test('snapshot 必須綁定 scope x/y、viewport/full-shell 與 Navbar/Footer/ma
     viewportContract: { width: 390, height: 844, scrollX: 0, scrollY: 100 },
     fullShellSha256: '3'.repeat(64),
     behavior: {
+      navigation: {
+        schema: 'e3-navigation-surface/v1',
+        activation: 'real-click-per-actionable-anchor',
+        observations: [{
+          region: 'navbar',
+          documentIndex: 1,
+          observation: {
+            schema: 'e3-navigation-probe/v2',
+            activation: 'real-click',
+            outcome: { kind: 'guarded-navigation' },
+          },
+        }],
+      },
       modes: [{
         reducedMotion: 'reduce',
-        interactionContract: [{ region: 'navbar', present: true, controls: [{ name: '定價' }] }],
+        interactionContract: [{
+          region: 'navbar',
+          present: true,
+          controls: [{
+            name: '選單',
+            activationContract: {
+              kind: 'reversible-toggle',
+              beforeSha256: '5'.repeat(64),
+              afterSha256: '6'.repeat(64),
+              restoredSha256: '5'.repeat(64),
+            },
+          }, {
+            name: '定價',
+            activationContract: {
+              kind: 'navigation-delegated',
+              activated: false,
+              reason: 'real-click-observed-on-disposable-page',
+            },
+          }],
+        }],
       }],
     },
   })
@@ -1097,6 +1142,12 @@ test('snapshot 必須綁定 scope x/y、viewport/full-shell 與 Navbar/Footer/ma
     (snapshot) => { snapshot.viewportContract.height += 1 },
     (snapshot) => { snapshot.fullShellSha256 = '4'.repeat(64) },
     (snapshot) => { snapshot.behavior.modes[0].interactionContract[0].controls[0].name = '首頁' },
+    (snapshot) => {
+      snapshot.behavior.modes[0].interactionContract[0].controls[0].activationContract.afterSha256 = '7'.repeat(64)
+    },
+    (snapshot) => {
+      snapshot.behavior.navigation.observations[0].observation.outcome.kind = 'inert'
+    },
   ]) {
     const candidate = structuredClone(baseline)
     mutate(candidate)

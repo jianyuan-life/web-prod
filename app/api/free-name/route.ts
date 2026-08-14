@@ -373,17 +373,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 記錄用戶分析（去重）
-    if (fullName && year && month && day) {
-      const analyticsSupabase = createServiceClient()
-      analyticsSupabase.from('user_analytics').upsert({
-        name: fullName, birth_year: year, birth_month: month, birth_day: day, source: 'free-name',
-      }, { onConflict: 'name,birth_year,birth_month,birth_day' }).then(() => {}, () => {})
-    }
-
-    // 記錄免費工具使用
+    // 記錄匿名免費工具使用量
     const supabaseTrack = createServiceClient()
-    supabaseTrack.from('free_tool_usage').insert({ client_name: `name_${originalFullName}`, birth_year: year || null, gender: gender || null, has_ai_result: true }).then(() => {}, () => {})
+    supabaseTrack.from('free_tool_usage').insert({ client_name: 'free-name', birth_year: null, gender: null, has_ai_result: !!aiAnalysis }).then(() => {}, () => {})
 
     return NextResponse.json({
       fullName: originalFullName,

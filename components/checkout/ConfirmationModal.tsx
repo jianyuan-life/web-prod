@@ -30,13 +30,7 @@ interface ConfirmationModalProps {
     hour: string
     minute: string
     gender: string
-    marital_status: string
-    guardian_name: string
-    guardian_relationship: string
-    guardian_consent: boolean
     birthCity: string
-    timezone: string
-    countryCode: string
     calendarType: 'solar' | 'lunar'
   }
   timeMode: 'unknown' | 'shichen' | 'exact'
@@ -115,18 +109,7 @@ export default function ConfirmationModal({
 
   const getGenderDisplay = () => form.gender === 'M' ? '男' : '女'
   const getCalendarDisplay = () => form.calendarType === 'solar' ? '國曆' : '農曆'
-  const getRelationshipDisplay = () => ({
-    single: '單身',
-    partnered: '穩定交往或有伴侶',
-    married: '已婚',
-    separated: '分居',
-    divorced: '離婚',
-    widowed: '喪偶',
-    not_applicable: '不適用',
-    prefer_not_to_say: '不願回答',
-    unmarried: '未婚',
-  }[form.marital_status] || '未提供')
-  const originalPrice = totalPrice ?? finalPrice ?? 0
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* 背景遮罩 */}
@@ -148,9 +131,9 @@ export default function ConfirmationModal({
         onKeyDown={handleDialogKeyDown}
         className="checkout-dialog relative glass rounded-2xl p-5 sm:p-6 max-w-md w-full border border-gold/20 shadow-2xl"
       >
-        <p className="checkout-order-kicker text-center">{planCode === 'C' ? '付款前確認' : 'Final review'}</p>
+        <p className="checkout-order-kicker text-center">Final review</p>
         <h3 id="checkout-confirm-title" className="text-lg font-bold text-gold text-center mb-4">
-          {planCode === 'C' ? '最後核對人生藍圖資料' : '請確認您的出生資料'}
+          請確認您的出生資料
         </h3>
 
         <div className="space-y-3 mb-5">
@@ -178,22 +161,6 @@ export default function ConfirmationModal({
             <span className="text-text-muted text-sm">出生地區</span>
             <span className="text-white font-medium">{form.birthCity}</span>
           </div>
-          {planCode === 'C' && (
-            <>
-              <div className="flex justify-between items-center gap-4 py-2 border-b border-white/10">
-                <span className="text-text-muted text-sm">目前關係狀態</span>
-                <span className="text-white font-medium text-right">{getRelationshipDisplay()}</span>
-              </div>
-              <div className="py-2 border-b border-white/10">
-                <span className="text-text-muted text-sm block">這次最想理解或改善的事</span>
-                <span className="text-white text-sm mt-1 block whitespace-pre-wrap">{customerNote?.trim() || '未另外填寫'}</span>
-              </div>
-              <div className="py-2 border-b border-white/10">
-                <span className="text-text-muted text-sm block">出生地計算設定</span>
-                <span className="text-white text-sm mt-1 block">{form.timezone} · {form.countryCode}</span>
-              </div>
-            </>
-          )}
 
           {/* E1 專屬：事件類型+日期+時間+可配合時辰+事件描述 */}
           {/* v5.3.93 修正：E2 不走這裡(E2 單月 1 盤、不需事件日期) */}
@@ -254,11 +221,7 @@ export default function ConfirmationModal({
         {/* 警告提示 */}
         <div className="bg-gold/10 border border-gold/20 rounded-xl p-3 mb-5">
           <p id="checkout-confirm-description" className="text-xs text-gold/90 leading-relaxed text-center">
-            {planCode === 'C'
-              ? finalPrice === 0
-                ? '出生資料一旦提交將用於排盤計算。本次無須刷卡；確認後會直接建立報告。'
-                : '出生資料一旦提交將用於排盤計算；確認後才會前往 Stripe 付款。'
-              : '出生資料一旦提交將用於排盤計算，請務必確認正確。'}
+            出生資料一旦提交將用於排盤計算，請務必確認正確。
           </p>
         </div>
 
@@ -270,39 +233,15 @@ export default function ConfirmationModal({
           onPointsChange={onPointsChange}
           hasCoupon={!!couponApplied}
           planCode={planCode}
-          consultationMode={planCode === 'C'}
         />
 
-        {/* 金額明細 */}
-        {finalPrice !== undefined && planCode === 'C' ? (
-          <div className="mb-4 space-y-2 rounded-lg px-3 py-3" style={{ background: 'rgba(201,168,76,0.08)' }} aria-label="付款金額明細">
-            <div className="flex items-center justify-between gap-4 text-sm">
-              <span className="text-text-muted">方案原價</span>
-              <span className="text-cream">USD {originalPrice}</span>
-            </div>
-            {couponApplied && (
-              <div className="flex items-center justify-between gap-4 text-sm">
-                <span className="text-text-muted">優惠碼折抵（{couponApplied.code}）</span>
-                <span className="text-cream">− USD {couponApplied.discountAmount}</span>
-              </div>
-            )}
-            {(pointsDiscount || 0) > 0 && (
-              <div className="flex items-center justify-between gap-4 text-sm">
-                <span className="text-text-muted">積分折抵（{pointsUsed || 0} 點）</span>
-                <span className="text-cream">− USD {pointsDiscount}</span>
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-4 border-t border-gold/15 pt-2">
-              <span className="text-sm font-semibold text-text-muted">本次實付</span>
-              <span className="text-xl font-bold text-gold">USD {finalPrice}</span>
-            </div>
-          </div>
-        ) : finalPrice !== undefined ? (
+        {/* 應付金額 */}
+        {finalPrice !== undefined && (
           <div className="flex justify-between items-center mb-4 px-2 py-2 rounded-lg" style={{ background: 'rgba(201,168,76,0.08)' }}>
             <span className="text-sm text-text-muted">一次性應付金額</span>
             <span className="text-xl font-bold text-gold">USD {finalPrice}</span>
           </div>
-        ) : null}
+        )}
 
         {/* 按鈕 */}
         <div className="flex gap-3">
@@ -330,16 +269,13 @@ export default function ConfirmationModal({
 }
 
 // 嵌入確認彈窗的積分折抵元件
-function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsChange, hasCoupon, planCode, consultationMode }: {
+function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsChange, hasCoupon, planCode }: {
   totalPrice: number; pointsUsed: number; pointsDiscount: number;
-  onPointsChange?: (pts: number, discount: number) => void; hasCoupon: boolean; planCode: string; consultationMode: boolean;
+  onPointsChange?: (pts: number, discount: number) => void; hasCoupon: boolean; planCode: string;
 }) {
   const [balance, setBalance] = useState(0)
   const [loadingPts, setLoadingPts] = useState(true)
   const [inputVal, setInputVal] = useState(pointsUsed > 0 ? String(pointsUsed) : '')
-  const [validating, setValidating] = useState(false)
-  const [error, setError] = useState('')
-  const pointsRequestInFlight = useRef(false)
 
   useEffect(() => {
     async function loadBalance() {
@@ -362,17 +298,8 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
   const maxPoints = Math.min(balance, totalPrice)
 
   const applyPoints = async () => {
-    if (consultationMode && (validating || pointsRequestInFlight.current)) return
     const pts = parseInt(inputVal)
-    if (!pts || pts <= 0 || pts > maxPoints) {
-      if (consultationMode) setError(`請輸入 1 至 ${maxPoints} 點。`)
-      return
-    }
-    if (consultationMode) {
-      pointsRequestInFlight.current = true
-      setValidating(true)
-      setError('')
-    }
+    if (!pts || pts <= 0 || pts > maxPoints) return
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
@@ -382,17 +309,8 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
       }, { authToken: token }) as { success?: boolean; pointsUsed?: number; discountAmount?: number }
       if (data.success && onPointsChange && typeof data.pointsUsed === 'number') {
         onPointsChange(data.pointsUsed, data.discountAmount ?? 0)
-      } else if (consultationMode) {
-        setError('積分暫時無法套用，請稍後再試。')
       }
-    } catch {
-      if (consultationMode) setError('積分暫時無法套用，請稍後再試。')
-    } finally {
-      if (consultationMode) {
-        pointsRequestInFlight.current = false
-        setValidating(false)
-      }
-    }
+    } catch { /* ignore、含 RateLimitError、ConfirmationModal 不顯示 retry UI */ }
   }
 
   const removePoints = () => {
@@ -401,7 +319,7 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
   }
 
   return (
-    <div className="mb-4 rounded-xl p-3" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.15)' }} aria-busy={consultationMode ? validating : undefined}>
+    <div className="mb-4 rounded-xl p-3" style={{ background: 'rgba(106,176,76,0.06)', border: '1px solid rgba(106,176,76,0.15)' }}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-green-300">積分折抵</span>
         <span className="text-[10px] text-green-400/60">可用 {balance} 點（1 點 = USD 1）</span>
@@ -414,16 +332,15 @@ function ModalPointsRedeem({ totalPrice, pointsUsed, pointsDiscount, onPointsCha
       ) : (
         <div className="flex gap-2">
           <label htmlFor="modal-points-input" className="sr-only">要折抵的積分點數</label>
-          <input id="modal-points-input" inputMode="numeric" value={inputVal} disabled={consultationMode ? validating : undefined} onChange={e => { setInputVal(e.target.value.replace(/\D/g, '')); if (consultationMode) setError('') }}
+          <input id="modal-points-input" inputMode="numeric" value={inputVal} onChange={e => setInputVal(e.target.value.replace(/\D/g, ''))}
             placeholder={`最多 ${maxPoints} 點`}
             className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:border-green-500/40 focus:outline-none" />
-          <button type="button" onClick={applyPoints} disabled={!inputVal || (consultationMode && validating)}
+          <button type="button" onClick={applyPoints} disabled={!inputVal}
             className="px-3 py-1.5 bg-green-500/80 text-white text-xs font-semibold rounded-lg hover:bg-green-500 disabled:opacity-40 transition-colors">
-            {consultationMode && validating ? '確認中…' : '折抵'}
+            折抵
           </button>
         </div>
       )}
-      {consultationMode && error && <p className="mt-2 text-xs text-red-300" role="alert">{error}</p>}
     </div>
   )
 }

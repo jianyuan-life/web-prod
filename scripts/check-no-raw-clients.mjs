@@ -42,6 +42,7 @@ const RULES = [
       'scripts/e3-freeze-audit.mjs',        // Playwright 隔離 fixture server；只連 loopback、非 app runtime
       '__tests__/36-e3-fixture-server.test.mjs', // 隔離 HTTP fixture contract 測試、只連 loopback
       '__tests__/41-consultation-checkout-aliases.test.mjs', // 以 fetch 驗 Route Handler wire-level redirect
+      '__tests__/69-e3-navigation-probe.test.mjs', // Playwright 隔離 loopback fixture；raw fetch 是探針要觀測與封鎖的測試刺激，不是 production client。
     ],
   },
   {

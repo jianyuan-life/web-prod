@@ -96,6 +96,9 @@ export async function GET(req: NextRequest) {
       csp_violation_report: 'enabled', // /api/csp-report
       health_check: 'enabled', // /api/health-check
       sentry: process.env.SENTRY_DSN ? 'enabled' : 'stub',
+      telemetry_fingerprint: new TextEncoder().encode(process.env.TELEMETRY_FINGERPRINT_SECRET || '').length >= 32
+        ? 'hmac-enabled'
+        : 'correlation-disabled',
       otel: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ? 'enabled' : 'stub',
     },
     security_headers: {

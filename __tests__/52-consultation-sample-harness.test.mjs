@@ -1,18 +1,48 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createHash } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
 let samples
 let cli
+let teamPipeline
 let loadError
 try {
   samples = await import('../scripts/consultation-samples/index.mjs')
   cli = await import('../scripts/consultation-samples/cli.mjs')
+  teamPipeline = await import('../scripts/test_team_pipeline.ts')
 } catch (error) {
   loadError = error
+}
+
+const AUTH_ENVIRONMENT = Object.freeze({
+  CALCULATOR_ATTESTATION_SECRET: 'test-only-legacy-caller-secret-material-32-bytes',
+  CALCULATOR_ATTESTATION_KEY_ID: 'test-primary',
+})
+
+function expectedRequestSignature({ body, path, headers }) {
+  const fields = {
+    version: 'jianyuan.fly.request.v1',
+    key_id: headers['X-Jianyuan-Request-Key-Id'],
+    issued_at: headers['X-Jianyuan-Request-Issued-At'],
+    nonce: headers['X-Jianyuan-Attestation-Nonce'],
+    method: 'POST',
+    path,
+    request_hash: createHash('sha256').update(body, 'utf8').digest('hex'),
+  }
+  const framed = [
+    'version', 'key_id', 'issued_at', 'nonce', 'method', 'path', 'request_hash',
+  ].map((name) => {
+    const value = fields[name]
+    return `${name}=${Buffer.byteLength(value, 'utf8')}:${value}\n`
+  }).join('')
+  const requestKey = createHmac('sha256', AUTH_ENVIRONMENT.CALCULATOR_ATTESTATION_SECRET)
+    .update('jianyuan.fly.request.v1')
+    .digest()
+  return createHmac('sha256', requestKey).update(framed, 'utf8').digest('hex')
 }
 
 test('dry-run 固定三位授權樣本與 2026-08-08 context，且不呼叫 Fly、不落地', async () => {
@@ -91,10 +121,19 @@ test('execute 只讀 Fly 三次並輸出 request/response hash 綁定的 3C+1G15
       dryRun: false,
       outputRoot,
       requestedPlans: ['C', 'G15'],
+      environment: AUTH_ENVIRONMENT,
       fetchImpl: async (url, init) => {
         assert.equal(url, 'https://fortune-reports-api.fly.dev/api/calculate')
         assert.equal(init.method, 'POST')
-        assert.deepEqual(init.headers, { 'Content-Type': 'application/json' })
+        assert.equal(init.headers['Content-Type'], 'application/json')
+        assert.equal(init.headers['X-Jianyuan-Request-Version'], 'jianyuan.fly.request.v1')
+        assert.equal(init.headers['X-Jianyuan-Request-Key-Id'], 'test-primary')
+        assert.match(init.headers['X-Jianyuan-Request-Issued-At'], /^\d+$/u)
+        assert.match(init.headers['X-Jianyuan-Attestation-Nonce'], /^[A-Za-z0-9_-]{22,128}$/u)
+        assert.equal(
+          init.headers['X-Jianyuan-Request-Signature'],
+          expectedRequestSignature({ body: init.body, path: '/api/calculate', headers: init.headers }),
+        )
         const payload = JSON.parse(init.body)
         seenPayloads.push(payload)
         return new Response(JSON.stringify({
@@ -151,6 +190,188 @@ test('execute 只讀 Fly 三次並輸出 request/response hash 綁定的 3C+1G15
   }
 })
 
+test('Team Pipeline calculator caller signs the one JSON body it sends', async () => {
+  assert.ok(teamPipeline, `Team Pipeline harness 無法載入: ${loadError?.message || 'unknown error'}`)
+  const birthData = {
+    name: '合成樣本',
+    year: 1990,
+    month: 10,
+    day: 12,
+    hour: 20,
+    minute: 0,
+    gender: 'M',
+  }
+  let fetchCount = 0
+  await teamPipeline.callPythonPaipan(birthData, {
+    apiUrl: 'https://fortune-reports-api.fly.dev',
+    environment: AUTH_ENVIRONMENT,
+    fetchImpl: async (url, init) => {
+      fetchCount += 1
+      assert.equal(url, 'https://fortune-reports-api.fly.dev/api/calculate')
+      assert.equal(init.body, JSON.stringify(birthData))
+      assert.equal(init.headers['X-Jianyuan-Request-Version'], 'jianyuan.fly.request.v1')
+      assert.equal(init.headers['X-Jianyuan-Request-Key-Id'], 'test-primary')
+      assert.equal(
+        init.headers['X-Jianyuan-Request-Signature'],
+        expectedRequestSignature({ body: init.body, path: '/api/calculate', headers: init.headers }),
+      )
+      return new Response(JSON.stringify({ synthetic: true }), { status: 200 })
+    },
+  })
+  assert.equal(fetchCount, 1)
+})
+
+test('Python legacy caller signs the exact compact UTF-8 JSON bytes without printing its secret', () => {
+  const payload = { name: '合成樣本', nested: { value: 7 }, flag: true }
+  const secret = AUTH_ENVIRONMENT.CALCULATOR_ATTESTATION_SECRET
+  const probe = [
+    'import json, sys',
+    "sys.path.insert(0, 'scripts')",
+    'from calculator_request_auth import create_signed_calculator_post',
+    `payload = json.loads(${JSON.stringify(JSON.stringify(payload))})`,
+    "signed = create_signed_calculator_post('/api/generate-pdf', payload, nonce='abcdefghijklmnopqrstuv', issued_at=1786200000)",
+    "print(json.dumps({'body': signed.body, 'headers': signed.headers}, ensure_ascii=False, separators=(',', ':'))) ",
+  ].join('\n')
+  const result = spawnSync('py', ['-3.12', '-c', probe], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...AUTH_ENVIRONMENT,
+      PYTHONUTF8: '1',
+      PYTHONIOENCODING: 'utf-8',
+    },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(`${result.stdout}${result.stderr}`.includes(secret), false)
+  const signed = JSON.parse(result.stdout)
+  assert.equal(signed.body, JSON.stringify(payload))
+  assert.equal(signed.headers['X-Jianyuan-Request-Key-Id'], 'test-primary')
+  assert.equal(
+    signed.headers['X-Jianyuan-Request-Signature'],
+    expectedRequestSignature({
+      body: signed.body,
+      path: '/api/generate-pdf',
+      headers: signed.headers,
+    }),
+  )
+})
+
+test('P0 PDF repair sends the signed Python body without requests re-serialization', () => {
+  const secret = AUTH_ENVIRONMENT.CALCULATOR_ATTESTATION_SECRET
+  const probe = [
+    'import json, sys',
+    "sys.path.insert(0, 'scripts')",
+    'import batch_fix_p0_reports as batch',
+    'captured = {}',
+    'class FakeResponse:',
+    '    ok = True',
+    '    status_code = 200',
+    '    text = ""',
+    '    def json(self):',
+    "        return {'pdf_base64': 'QQ==', 'file_size_kb': 1}",
+    'def fake_post(url, **kwargs):',
+    "    captured.update({'url': url, **kwargs})",
+    '    return FakeResponse()',
+    'batch.requests.post = fake_post',
+    'batch.upload_pdf_to_storage = lambda report_id, pdf_bytes: None',
+    "report = {'id': 'synthetic-report', 'plan_code': 'E1', 'client_name': '合成樣本', 'pdf_url': None, 'report_result': {'ai_content': '甲' * 240, 'analyses_summary': []}, 'birth_data': {'locale': 'zh-TW'}}",
+    'batch.fix_missing_pdfs([report], True)',
+    "body = captured.get('data')",
+    "if isinstance(body, bytes): body = body.decode('utf-8')",
+    "print('PROBE=' + json.dumps({'body': body, 'headers': captured.get('headers'), 'used_json': 'json' in captured}, ensure_ascii=False, separators=(',', ':')))",
+  ].join('\n')
+  const result = spawnSync('py', ['-3.12', '-c', probe], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...AUTH_ENVIRONMENT,
+      SUPABASE_URL: 'https://synthetic.invalid',
+      SUPABASE_SERVICE_ROLE_KEY: 'synthetic-service-role-key',
+      PYTHONUTF8: '1',
+      PYTHONIOENCODING: 'utf-8',
+    },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(`${result.stdout}${result.stderr}`.includes(secret), false)
+  const probeLine = result.stdout.split(/\r?\n/u).find((line) => line.startsWith('PROBE='))
+  assert.ok(probeLine, result.stdout)
+  const signed = JSON.parse(probeLine.slice('PROBE='.length))
+  assert.equal(signed.used_json, false)
+  assert.equal(typeof signed.body, 'string')
+  assert.equal(signed.headers['X-Jianyuan-Request-Key-Id'], 'test-primary')
+  assert.equal(
+    signed.headers['X-Jianyuan-Request-Signature'],
+    expectedRequestSignature({
+      body: signed.body,
+      path: '/api/generate-pdf',
+      headers: signed.headers,
+    }),
+  )
+})
+
+test('all three ops callers fail closed before transport and never expose a configured secret', async () => {
+  const outputRoot = await mkdtemp(path.join(os.tmpdir(), 'jianyuan-sample-auth-fail-'))
+  const secret = AUTH_ENVIRONMENT.CALCULATOR_ATTESTATION_SECRET
+  const incompleteEnvironment = {
+    CALCULATOR_ATTESTATION_SECRET: secret,
+    CALCULATOR_ATTESTATION_KEY_ID: '',
+  }
+  let sampleFetchCount = 0
+  let teamFetchCount = 0
+  try {
+    await assert.rejects(
+      () => samples.runSampleHarness({
+        dryRun: false,
+        outputRoot,
+        environment: incompleteEnvironment,
+        fetchImpl: async () => {
+          sampleFetchCount += 1
+          throw new Error('sample transport must not run')
+        },
+      }),
+      (error) => !error.message.includes(secret) && /key.?id|key_id/iu.test(error.message),
+    )
+    await assert.rejects(
+      () => teamPipeline.callPythonPaipan({
+        name: '合成樣本', year: 1990, month: 10, day: 12,
+        hour: 20, minute: 0, gender: 'M',
+      }, {
+        environment: incompleteEnvironment,
+        fetchImpl: async () => {
+          teamFetchCount += 1
+          throw new Error('team transport must not run')
+        },
+      }),
+      (error) => !error.message.includes(secret) && /key.?id|key_id/iu.test(error.message),
+    )
+    assert.equal(sampleFetchCount, 0)
+    assert.equal(teamFetchCount, 0)
+
+    const childEnvironment = {
+      ...process.env,
+      SUPABASE_URL: 'https://synthetic.invalid',
+      SUPABASE_SERVICE_ROLE_KEY: 'synthetic-service-role-key',
+      CALCULATOR_ATTESTATION_SECRET: secret,
+      CALCULATOR_ATTESTATION_KEY_ID: '',
+      PYTHONUTF8: '1',
+      PYTHONIOENCODING: 'utf-8',
+    }
+    const python = spawnSync(
+      'py',
+      ['-3.12', 'scripts/batch_fix_p0_reports.py', '--apply', '--only', 'pdf'],
+      { cwd: process.cwd(), encoding: 'utf8', env: childEnvironment },
+    )
+    assert.notEqual(python.status, 0)
+    assert.match(`${python.stdout}${python.stderr}`, /key id is missing or invalid/iu)
+    assert.equal(`${python.stdout}${python.stderr}`.includes(secret), false)
+    assert.doesNotMatch(python.stdout, /撈取所有 completed 報告/u)
+  } finally {
+    await rm(outputRoot, { recursive: true, force: true })
+  }
+})
+
 test('resume 僅重用完整且 hash 一致的 replay；被竄改時 fail closed 而不重新打 Fly', async () => {
   const outputRoot = await mkdtemp(path.join(os.tmpdir(), 'jianyuan-sample-resume-'))
   let fetchCount = 0
@@ -164,7 +385,12 @@ test('resume 僅重用完整且 hash 一致的 replay；被竄改時 fail closed
     }), { status: 200 })
   }
   try {
-    await samples.runSampleHarness({ dryRun: false, outputRoot, fetchImpl: fakeFetch })
+    await samples.runSampleHarness({
+      dryRun: false,
+      outputRoot,
+      fetchImpl: fakeFetch,
+      environment: AUTH_ENVIRONMENT,
+    })
     assert.equal(fetchCount, 3)
 
     const resumed = await samples.runSampleHarness({
@@ -212,6 +438,7 @@ test('中斷後 resume 會重用已完成的人物，只抓缺少的兩人並完
       () => samples.runSampleHarness({
         dryRun: false,
         outputRoot,
+        environment: AUTH_ENVIRONMENT,
         fetchImpl: async (_url, init) => {
           firstRunCalls += 1
           if (firstRunCalls === 2) throw new Error('synthetic interruption')
@@ -227,6 +454,7 @@ test('中斷後 resume 會重用已完成的人物，只抓缺少的兩人並完
       dryRun: false,
       resume: true,
       outputRoot,
+      environment: AUTH_ENVIRONMENT,
       fetchImpl: async (_url, init) => {
         resumeCalls += 1
         return responseFor(JSON.parse(init.body))
@@ -248,6 +476,7 @@ test('Fly 即使回 15 列，只要系統重複或含失敗列也不得建立 re
       () => samples.runSampleHarness({
         dryRun: false,
         outputRoot,
+        environment: AUTH_ENVIRONMENT,
         fetchImpl: async () => new Response(JSON.stringify({
           systems_count: 15,
           client_data: { synthetic: true },

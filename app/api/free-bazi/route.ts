@@ -344,24 +344,9 @@ export async function POST(req: NextRequest) {
       '蛇': '2026丙午年，屬蛇者六合太歲（巳午），運勢極為順遂。事業上有重大晉升或轉職機會，貴人運極強。財運豐收，是近年最好的理財年份。感情和諧美滿。今年適合做重大人生決定。',
     }
 
-    // 記錄用戶分析（去重，fire-and-forget）
-    if (name && inputYear && inputMonth && inputDay) {
-      const analyticsSupabase = createServiceClient()
-      analyticsSupabase.from('user_analytics').upsert({
-        name,
-        birth_year: inputYear,
-        birth_month: inputMonth,
-        birth_day: inputDay,
-        source: 'free',
-      }, { onConflict: 'name,birth_year,birth_month,birth_day' }).then(
-        () => {},
-        () => {},
-      )
-    }
-
-    // 記錄免費工具使用（不阻塞回應）
+    // 記錄匿名免費工具使用量（不阻塞回應）
     const supabaseTrack = createServiceClient()
-    supabaseTrack.from('free_tool_usage').insert({ client_name: `bazi_${year}/${month}/${day}`, birth_year: year, gender, has_ai_result: Object.keys(aiSections).length > 0 }).then(() => {}, () => {})
+    supabaseTrack.from('free_tool_usage').insert({ client_name: 'free-bazi', birth_year: null, gender: null, has_ai_result: Object.keys(aiSections).length > 0 }).then(() => {}, () => {})
 
     return NextResponse.json({
       ...bazi,

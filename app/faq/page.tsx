@@ -1,6 +1,7 @@
 // v5.6.10 R4:常見問題獨立頁(IA Agent P0、SEO long-tail、補對「鑒源退款」「鑒源跟某某不同」query)
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { PUBLIC_CLAIMS } from '@/lib/public-claims'
 
 export const metadata: Metadata = {
   title: '常見問題 FAQ',
@@ -19,18 +20,16 @@ const SECTIONS: Section[] = [
         q: '鑒源的命理分析準確嗎？',
         a: (
           <>
-            排盤計算使用確定性算法(壽星天文曆 / Swiss Ephemeris / Lahiri Ayanamsa)、結果可重複驗證。
-            分析解讀基於 44,421+ 條源自《滴天髓》《紫微斗數全書》《窮通寶鑑》《奇門遁甲統宗》等經典古籍提煉的專業規則、
-            由 Claude Opus AI 整合成個人化報告。鑒源最多用 14 套系統交叉分析——當多數系統得出相同結論時、可信度遠高於單一系統的判斷。
+            {PUBLIC_CLAIMS.methodology.summary} {PUBLIC_CLAIMS.methodology.comparison}{' '}
+            {PUBLIC_CLAIMS.methodology.limits}
           </>
         ),
       },
       {
-        q: '14 套系統會不會互相矛盾？',
+        q: '不同方法的看法不一致時怎麼處理？',
         a: (
           <>
-            不同系統觀察的角度不同、偶有差異屬正常。這正是鑒源的核心價值——三層加權架構進行交叉驗證、取各系統共識作為最終結論。
-            單一系統只有一個觀點、14 套系統交叉驗證才能得到更全面、更可靠的結論。
+            {PUBLIC_CLAIMS.methodology.comparison} 報告會保留差異與資料限制，不把多數意見寫成確定答案。
           </>
         ),
       },
@@ -47,28 +46,13 @@ const SECTIONS: Section[] = [
       {
         q: '為什麼晚上 23:00 後出生我看到的日期是隔天？(早子時 vs 夜子時)',
         a: (
-          <>
-            鑒源八字採「<strong className="text-gold">早子時</strong>」派(子時 23:00-01:00 全屬隔天日柱)、
-            這是清代《滴天髓》、《窮通寶鑑》、《三命通會》主流派別。
-            <br />
-            另有「夜子時」派把 23:00-00:00 算當天、00:00-01:00 算隔天(分兩段)、屬子平派分支。
-            <br />
-            若您過去算過的命書屬「夜子時」派(部分日本 / 韓國占星師採用)、日柱可能跟鑒源差一天、屬正常派別差異、不是計算錯誤。
-            如有疑問可聯繫客服說明。
-          </>
+          <>{PUBLIC_CLAIMS.tools.baziDayBoundaryFaq}</>
         ),
       },
       {
         q: '海外出生(非台灣)的客戶怎麼處理時區?',
         a: (
-          <>
-            鑒源 v5.10.356 起、海外客戶(birth_country 非 TW)<strong className="text-gold">必須提供出生地經度</strong>,
-            才能精確計算「真太陽時」(地球公轉與時區中心經度差導致的實際太陽位置時差)。
-            <br />
-            未提供經度的海外客戶會被攔截、避免 silent 退化用台北 121.5°E 預設值(誤差可達 ±60 分鐘、可能導致八字時柱錯誤)。
-            <br />
-            台灣客戶不需特別填、預設用台北 121.5°E(誤差 ≤ 2 分鐘、可接受)。
-          </>
+          <>{PUBLIC_CLAIMS.tools.birthLocationFaq}</>
         ),
       },
       {
@@ -94,7 +78,7 @@ const SECTIONS: Section[] = [
         a: (
           <>
             付款全程由 <strong className="text-gold">Stripe</strong> 處理(全球 PCI-DSS Level 1 認證)、信用卡資訊不經過鑒源伺服器。
-            支援 Visa / MasterCard / Apple Pay / Google Pay。網站使用 SSL/TLS 1.3 + AES-256 加密。
+            支援 Visa / MasterCard / Apple Pay / Google Pay，網站以 HTTPS 提供服務。
           </>
         ),
       },
@@ -102,7 +86,7 @@ const SECTIONS: Section[] = [
         q: '可以退款嗎？',
         a: (
           <>
-            <strong className="text-gold">鑒源報告為個人化數位商品、付款後即開始精密計算、依國際電子商品慣例不支援退款。</strong>
+            <strong className="text-gold">{PUBLIC_CLAIMS.trust.fulfillmentNotice}</strong>
             為維護所有客戶服務品質、我們提供以下保證:生成失敗自動重試 3 次、若仍失敗 24 小時內客服協助補開;
             內容明顯錯誤(如出生資料解讀錯誤)免費重新生成。詳見<Link href="/terms" className="text-gold underline">使用條款第 5 條</Link>。
           </>
@@ -129,8 +113,8 @@ const SECTIONS: Section[] = [
         q: '我的出生資料會被公開嗎？',
         a: (
           <>
-            不會。出生資料(姓名 / 生日 / 出生地)僅用於生成您的報告、加密儲存於 Supabase AWS 新加坡區、不對外公開。
-            報告連結為 UUID token、僅持有 token 的人可閱讀。詳見 <Link href="/privacy" className="text-gold underline">隱私政策</Link>。
+            出生資料會用於排盤、報告、客服及你同意的分析用途，不會放在公開頁面。
+            報告連結可供持有連結的人閱讀，請勿轉傳給不信任的人。詳見 <Link href="/privacy" className="text-gold underline">隱私政策</Link>。
           </>
         ),
       },
@@ -138,17 +122,16 @@ const SECTIONS: Section[] = [
         q: '可以刪除帳號嗎？',
         a: (
           <>
-            可以。寄信至 support@jianyuan.life 標題「刪除帳號」、我們在 7 個工作日內確認、30 天內完成刪除。
-            符合 GDPR Art.17(被遺忘權)與 CCPA 規範。
+            {PUBLIC_CLAIMS.privacy.requestScope} 請寄信至 support@jianyuan.life，主旨註明「刪除帳號」。
           </>
         ),
       },
       {
-        q: 'GDPR / CCPA 規範如何符合？',
+        q: '如何提出 GDPR 或加州隱私要求？',
         a: (
           <>
-            鑒源依 GDPR / CCPA 標準處理個人資料、Cookie 使用 Google Consent Mode v2 預設拒絕分析與行銷。
-            詳見 <Link href="/privacy" className="text-gold underline">隱私政策第 7-9 條</Link>。
+            {PUBLIC_CLAIMS.privacy.gdprTiming} {PUBLIC_CLAIMS.privacy.ccpaApplicability}{' '}
+            詳見 <Link href="/privacy" className="text-gold underline">隱私政策</Link>。
           </>
         ),
       },
@@ -159,7 +142,7 @@ const SECTIONS: Section[] = [
     questions: [
       {
         q: '報告多久可以收到？',
-        a: <>付費後系統會自動排盤 + 14 套命理系統運算 + AI 整合、約 30-60 分鐘完成。完成後 email 通知 + 可在 dashboard「我的報告」查看。</>,
+        a: <>{PUBLIC_CLAIMS.methodology.summary} 付費後由系統排盤並以 AI 輔助整理，通常約 30-60 分鐘完成；完成後會寄送 email，也可在 dashboard「我的報告」查看。</>,
       },
       {
         q: '報告生成失敗會怎樣？',

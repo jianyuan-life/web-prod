@@ -10,10 +10,11 @@ import {
 import { consultationFallbackDecision } from '../lib/consultation/fallback-policy.ts'
 import { prepareCheckoutBirthData } from '../lib/checkout/prepare-checkout-birth-data.ts'
 import {
-  G15_AUTHORITY_BASIS,
-  G15_CONSENT_POLICY_VERSION,
-  hashG15SelectedReportIds,
-} from '../lib/checkout/g15-consent.ts'
+  G15_CONSENT_PURPOSE,
+  G15_CONSENT_SHARING_SCOPE,
+  G15_INDEPENDENT_CONSENT_POLICY_VERSION,
+  hashG15ConsentReportIds,
+} from '../lib/checkout/g15-independent-consent.ts'
 
 const root = process.cwd()
 
@@ -75,7 +76,10 @@ test('G15 checkout persists the same immutable consultation period', async () =>
   const reportA = '11111111-1111-4111-8111-111111111111'
   const reportB = '22222222-2222-4222-8222-222222222222'
   const ownerId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  const subjectBId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+  const selectionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
   const consentAt = new Date().toISOString()
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   const result = await prepareCheckoutBirthData({
     planCode: 'G15',
     asOfDate: '2026-08-09',
@@ -85,20 +89,42 @@ test('G15 checkout persists the same immutable consultation period', async () =>
       report_ids: [reportA, reportB],
       stated_relationships: ['何宣逸與何紀萳為手足'],
       consultation_goals: ['理解家人決策時如何降低誤會'],
-      consent_attestation: {
-        accepted: true,
-        policy_version: G15_CONSENT_POLICY_VERSION,
-        accepted_at: consentAt,
-        selected_report_ids_hash: hashG15SelectedReportIds([reportA, reportB]),
-        authority_basis: G15_AUTHORITY_BASIS,
-        minor_guardian_authority_confirmed: true,
-      },
+      consent_selection_id: selectionId,
     },
     queryReports: async () => ({
       data: [
         { id: reportA, client_name: '何宣逸', plan_code: 'C', status: 'completed', deleted_at: null, user_id: ownerId, customer_email: 'owner@example.com', birth_data: validCInput({ name: '何宣逸' }) },
-        { id: reportB, client_name: '何紀萳', plan_code: 'C', status: 'completed', deleted_at: null, user_id: ownerId, customer_email: 'owner@example.com', birth_data: validCInput({ name: '何紀萳', year: 1992 }) },
+        { id: reportB, client_name: '何紀萳', plan_code: 'C', status: 'completed', deleted_at: null, user_id: subjectBId, customer_email: 'subject-b@example.com', birth_data: validCInput({ name: '何紀萳', year: 1992 }) },
       ],
+      error: null,
+    }),
+    queryConsent: async () => ({
+      selection: {
+        id: selectionId,
+        purchaser_user_id: ownerId,
+        selected_report_ids: [reportA, reportB],
+        selected_report_ids_hash: hashG15ConsentReportIds([reportA, reportB]),
+        policy_version: G15_INDEPENDENT_CONSENT_POLICY_VERSION,
+        purpose: G15_CONSENT_PURPOSE,
+        sharing_scope: G15_CONSENT_SHARING_SCOPE,
+        expires_at: expiresAt,
+        superseded_at: null,
+        consumed_at: null,
+        consumed_stripe_session_id: null,
+        consumed_report_id: null,
+      },
+      receipts: [reportA, reportB].map((reportId, index) => ({
+        selection_id: selectionId,
+        subject_report_id: reportId,
+        subject_user_id: index === 0 ? ownerId : subjectBId,
+        subject_email_hmac: `hmac-sha256:${String(index + 1).repeat(64)}`,
+        status: 'accepted',
+        accepted_at: consentAt,
+        revoked_at: null,
+        expires_at: expiresAt,
+        accept_token_hash: null,
+        revoke_token_hash: `sha256:${String(index + 3).repeat(64)}`,
+      })),
       error: null,
     }),
   })

@@ -36,6 +36,7 @@ export interface ValidateG15SelectionInput {
     email?: unknown
   }
   queryReports: QueryG15SelectionReports
+  ownershipMode?: 'purchaser-owned' | 'independent-subjects'
 }
 
 export interface ValidG15Selection {
@@ -43,6 +44,7 @@ export interface ValidG15Selection {
   reportIds: string[]
   memberNames: string[]
   personFingerprints: string[]
+  subjectUserIds: string[]
 }
 
 export type G15SelectionValidationCode =
@@ -53,6 +55,7 @@ export type G15SelectionValidationCode =
   | 'INELIGIBLE_REPORT'
   | 'DUPLICATE_PERSON'
   | 'CONSENT_REQUIRED'
+  | 'CONSENT_QUERY_FAILED'
   | 'FORBIDDEN'
 
 export interface InvalidG15Selection {
@@ -335,7 +338,8 @@ export async function validateG15Selection(
   ) {
     return reject('REPORT_MISMATCH', '找不到可用的完整報告選擇')
   }
-  if (queryResult.data.some((row) => {
+  const ownershipMode = input.ownershipMode ?? 'purchaser-owned'
+  if (ownershipMode === 'purchaser-owned' && queryResult.data.some((row) => {
     const rowUserId = row.user_id?.trim().toLowerCase() ?? ''
     const rowEmail = row.customer_email?.trim().toLowerCase() ?? ''
     const sameUser = Boolean(authenticatedUserId && rowUserId === authenticatedUserId)
@@ -345,6 +349,15 @@ export async function validateG15Selection(
     return !sameUser && !sameLegacyPurchaserEmail
   })) {
     return reject('FORBIDDEN', '無權使用選取的報告')
+  }
+  if (ownershipMode === 'independent-subjects') {
+    const subjectUserIds = queryResult.data.map((row) => row.user_id?.trim().toLowerCase() ?? '')
+    if (
+      subjectUserIds.some((userId) => !UUID_PATTERN.test(userId) || userId === NIL_UUID)
+      || new Set(subjectUserIds).size !== subjectUserIds.length
+    ) {
+      return reject('INVALID_SELECTION', '每位成年成員必須擁有獨立且可驗證的帳號報告')
+    }
   }
   if (queryResult.data.some((row) => !g15ReportEligibility(row).eligible)) {
     return reject('INELIGIBLE_REPORT', '選取的報告無法用於家族藍圖')
@@ -362,5 +375,6 @@ export async function validateG15Selection(
     reportIds,
     memberNames: reports.map((row) => row.client_name?.trim() ?? ''),
     personFingerprints,
+    subjectUserIds: reports.map((row) => row.user_id?.trim().toLowerCase() ?? ''),
   }
 }

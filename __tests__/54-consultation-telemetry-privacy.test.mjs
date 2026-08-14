@@ -32,6 +32,39 @@ test('legacy E3 and all non-consultation routes remain byte-for-byte unchanged',
   }
 })
 
+test('private route detection canonicalizes encoded, escaped, HTML, and mixed-case bearer paths', () => {
+  const token = 'MixedCaseBearer_123'
+  const privateVariants = [
+    `/CONSULTATION/${token}?utm=secret#chapter`,
+    `%2Fconsultation%2F${token}%3Futm%3Dsecret%23chapter`,
+    `%252Fconsultation%252F${token}%253Futm%253Dsecret`,
+    `%25252Fconsultation%25252F${token}%25253Futm%25253Dsecret`,
+    `/public/../consultation/${token}?utm=secret`,
+    `/public/%2e%2e/consultation/${token}?utm=secret`,
+    `/consultation%2F${token}?utm=secret`,
+    `\\/consultation\\/${token}?utm=secret`,
+    `&#x2F;consultation&#47;${token}?utm=secret`,
+    `https%3A%2F%2Fjianyuan.life%2Fconsultation%2F${token}%3Futm%3Dsecret`,
+  ]
+
+  for (const value of privateVariants) {
+    assert.equal(isPrivateConsultationUrl(value), true, value)
+    const redacted = redactConsultationUrl(value)
+    assert.notEqual(redacted, value, value)
+    assert.doesNotMatch(redacted, new RegExp(token, 'u'), value)
+    assert.doesNotMatch(redacted, /[?#]/u, value)
+  }
+
+  for (const value of [
+    '/report/e3-token?next=%2Fconsultation%2Fnot-a-path',
+    '/pricing?plan=E3#consultation',
+    'https://jianyuan.life/report/e3-token?chapter=timings',
+  ]) {
+    assert.equal(isPrivateConsultationUrl(value), false, value)
+    assert.equal(redactConsultationUrl(value), value, value)
+  }
+})
+
 test('embedded private links are removed from every executable error telemetry sink payload', () => {
   const token = 'secret-token-123'
   const absolute = `https://jianyuan.life/consultation/${token}?chapter=family`
