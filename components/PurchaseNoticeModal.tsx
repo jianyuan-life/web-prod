@@ -148,6 +148,9 @@ const PLAN_SPECIFIC_NOTICE: Record<PlanCode, { title: string; items: string[]; t
 
 export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: PurchaseNoticeProps) {
   const [agreed, setAgreed] = useState(false)
+  // v5.10.482 付款漏斗修:未勾同意時「前往付款」原本是 disabled 死按鈕、點了零回饋
+  // (老闆實測「點付款沒反應」的其中一個斷點)。改為可點擊 + 明確提示要先勾選。
+  const [showAgreeHint, setShowAgreeHint] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [e2Window, setE2Window] = useState<E2ExecWindow | null>(null)
   const [e2Loading, setE2Loading] = useState(false)
@@ -328,7 +331,7 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
             <input
               type="checkbox"
               checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
+              onChange={(e) => { setAgreed(e.target.checked); if (e.target.checked) setShowAgreeHint(false) }}
               className="mt-0.5 w-5 h-5 rounded border-gold/40 bg-transparent focus:ring-gold/50 focus:ring-2 shrink-0 cursor-pointer"
             />
             <span className="text-xs text-text leading-[1.7]">
@@ -347,7 +350,15 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
         </div>
 
         {/* 底部 sticky 按鈕區（永遠可見、確保手機可點） */}
-        <div className="flex gap-3 px-5 sm:px-8 pt-3 pb-5 sm:pb-6 border-t border-gold/10 bg-[rgba(10,14,26,0.8)] shrink-0" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+        <div className="px-5 sm:px-8 pt-3 pb-5 sm:pb-6 border-t border-gold/10 bg-[rgba(10,14,26,0.8)] shrink-0" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
+          {showAgreeHint && (!agreed || (planCode === 'E2' && e2Loading)) && (
+            <p className="text-xs text-red-300 mb-2" role="alert">
+              {!agreed
+                ? '請先勾選上方「我已閱讀並理解」同意方塊、再前往付款。'
+                : '正在精算本月晦日執行時段、請稍候幾秒再前往付款。'}
+            </p>
+          )}
+          <div className="flex gap-3">
           {onCancel && (
             <button
               onClick={onCancel}
@@ -357,16 +368,24 @@ export default function PurchaseNoticeModal({ planCode, onConfirm, onCancel }: P
             </button>
           )}
           <button
-            onClick={onConfirm}
-            disabled={!agreed || (planCode === 'E2' && e2Loading)}
+            onClick={() => {
+              // 可點擊但守門:未勾同意/晦日精算中 → 給明確提示、不再無聲吞點擊
+              if (!agreed || (planCode === 'E2' && e2Loading)) {
+                setShowAgreeHint(true)
+                return
+              }
+              onConfirm()
+            }}
+            aria-disabled={!agreed || (planCode === 'E2' && e2Loading)}
             className={`flex-1 min-h-[48px] rounded-xl text-sm font-semibold transition-all ${
               agreed && !(planCode === 'E2' && e2Loading)
                 ? 'bg-gold text-dark btn-glow cursor-pointer'
-                : 'bg-white/5 text-text-muted/40 cursor-not-allowed'
+                : 'bg-white/5 text-text-muted/40 cursor-pointer'
             }`}
           >
             {planCode === 'E2' && e2Loading ? '精算晦日中…' : '前往付款'}
           </button>
+          </div>
         </div>
       </div>
     </div>,

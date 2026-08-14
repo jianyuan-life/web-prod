@@ -12,18 +12,43 @@ interface PricingButtonProps {
 }
 
 export default function PricingButton({ code, popular, seasonal, locked }: PricingButtonProps) {
-  const [loggedIn, setLoggedIn] = useState(false)
+  // v5.10.482 付款漏斗修:三態 auth('checking' 起始)取代布林 false 起始。
+  // 舊版 loggedIn 初始 false + getUser() 非同步 → 頁面載入後數秒內點擊、
+  // 已登入客戶被當訪客丟去 /auth/login(且無 redirect 參數、登入後落 dashboard)
+  // = 2026-08-14 老闆實測「點付款跳不到付款頁面」的根因。
+  const [authState, setAuthState] = useState<'checking' | 'in' | 'out'>('checking')
+  const [authWaiting, setAuthWaiting] = useState(false)
   const [showNotice, setShowNotice] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setLoggedIn(!!data.user))
+    let alive = true
+    supabase.auth.getUser()
+      .then(({ data }) => { if (alive) setAuthState(data.user ? 'in' : 'out') })
+      .catch(() => { if (alive) setAuthState('out') })
+    return () => { alive = false }
   }, [])
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (seasonal) return
-    if (!loggedIn) {
-      sessionStorage.setItem('pending_plan', code)
-      window.location.href = '/auth/login'
+    if (authWaiting) return  // 等待判定期間吞連點、防重複打 auth API
+    let state = authState
+    if (state === 'checking') {
+      // 點擊時 auth 尚未判定 → 當場等判定完成、不搶跑誤導去登入頁
+      setAuthWaiting(true)
+      try {
+        const { data } = await supabase.auth.getUser()
+        state = data.user ? 'in' : 'out'
+      } catch {
+        state = 'out'
+      }
+      setAuthState(state)
+      setAuthWaiting(false)
+    }
+    if (state === 'out') {
+      // 隱私模式/WebView 可能禁 storage、失敗也必須照常導去登入頁
+      try { sessionStorage.setItem('pending_plan', code) } catch { /* storage 被拒不擋導航 */ }
+      // 帶 redirect:登入完成直接回到該方案結帳頁、購買意圖不再蒸發
+      window.location.href = `/auth/login?redirect=${encodeURIComponent(`/checkout?plan=${code}`)}`
       return
     }
     // 已登入：先顯示購買須知 Modal
@@ -57,7 +82,8 @@ export default function PricingButton({ code, popular, seasonal, locked }: Prici
     <>
       <button
         onClick={handleClick}
-        disabled={seasonal}
+        disabled={seasonal || authWaiting}
+        aria-busy={authWaiting}
         className={`w-full text-center min-h-[44px] py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer ${
           popular ? 'bg-gold text-dark btn-glow' :
           seasonal ? 'bg-white/5 text-text-muted/40 cursor-not-allowed' :

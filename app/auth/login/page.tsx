@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -16,6 +16,24 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPwd, setShowPwd] = useState(false)
+
+  // v5.10.482 付款漏斗修:已登入者不該再看到登入表單。
+  // 定價按鈕 auth 競態可能把已登入客戶送來這裡;直接依 redirect 放行、
+  // 避免客戶重新登入後落在 dashboard、永遠到不了結帳頁。
+  // 必須用 getUser()(伺服器驗證)而非 getSession()(只看本地):
+  // 本地 session 看似有效但伺服器已撤銷時、getSession 放行會與 checkout 的
+  // getUser 守門互踢、形成 login ↔ checkout redirect 迴圈。
+  useEffect(() => {
+    let alive = true
+    supabase.auth.getUser()
+      .then(({ data }) => {
+        if (alive && data.user) window.location.replace(safeRedirect)
+      })
+      .catch(() => { /* 判定失敗就照常顯示登入表單 */ })
+    return () => { alive = false }
+    // safeRedirect 由 URL 參數導出、掛載時已定
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
