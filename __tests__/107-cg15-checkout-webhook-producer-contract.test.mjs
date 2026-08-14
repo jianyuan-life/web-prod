@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import path from 'node:path'
 import test, { after } from 'node:test'
@@ -1270,6 +1270,35 @@ test('missing ledger RPC degrades to legacy handling with no authority 500 and n
     state.ledger.some(({ name }) => name === 'rpc:consume_paid_checkout_for_order'),
     false,
   )
+})
+
+test('all paid-checkout RPCs stay in one atomic migration so the missing-RPC legacy degradation stays safe', () => {
+  // webhook 的「函式不存在 → legacy」降級,安全性完全依賴
+  // 「authority 缺席 ⇒ reserve 必也缺席 ⇒ 不可能有 reservation 訂單」。
+  // 這只在七個 RPC 與 ledger 表同屬一個 BEGIN/COMMIT 原子 migration 時成立;
+  // 拆檔或單獨 hotfix DROP/CREATE 都會讓降級把真實 ledger 訂單誤當 legacy。
+  const migrationSource = readFileSync(
+    path.join(root, 'supabase', 'migrations', '20260813051200_paid_checkout_coupon_reservation.sql'),
+    'utf8',
+  )
+  assert.match(migrationSource, /^BEGIN;/u)
+  assert.match(migrationSource, /COMMIT;\s*$/u)
+  for (const functionName of [
+    'reserve_paid_checkout_value',
+    'freeze_paid_checkout_session',
+    'bind_paid_checkout_session',
+    'get_paid_checkout_order_authority',
+    'consume_paid_checkout_for_order',
+    'release_paid_checkout_reservation',
+    'abandon_paid_checkout_before_provider',
+  ]) {
+    assert.match(
+      migrationSource,
+      new RegExp(`CREATE FUNCTION public\\.${functionName}\\(`, 'u'),
+      `${functionName} 必須與其餘 paid-checkout RPC 同居一個原子 migration`,
+    )
+  }
+  assert.match(migrationSource, /CREATE TABLE IF NOT EXISTS public\.paid_checkout_reservations/u)
 })
 
 test('bound G15 Session with stripped metadata fails closed before any money-equivalent consumption', async () => {

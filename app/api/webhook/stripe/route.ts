@@ -375,6 +375,11 @@ export async function POST(req: NextRequest) {
       // freeze/bind 依賴同一批 migration 的 RPC）。「函式不存在」因此可安全視為
       // 「無 ledger」走 legacy 出貨並大聲告警；其他錯誤仍 fail closed——否則
       // 部署先於 migration 的窗口內，所有 E3 與 legacy 方案的出貨會無聲 500。
+      //
+      // 前提：七個 paid-checkout RPC 與 ledger 表必須同屬 20260813051200 這
+      // 一個原子 migration（BEGIN/COMMIT 同檔）。拆檔或對單一函式 hotfix 式
+      // DROP/CREATE 會讓「authority 缺席 ⇒ reserve 也缺席」不再成立，此降級
+      // 即會把已保留額度的訂單誤當 legacy——test 107 以靜態釘測試鎖此共存性。
       const authorityFunctionMissing = Boolean(
         authorityErrorRecord
         && (
