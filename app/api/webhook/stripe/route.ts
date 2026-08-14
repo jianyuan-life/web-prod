@@ -1210,7 +1210,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!usesCheckoutPointsOnce) {
+    // A reservation-era order's points were already consumed atomically by the
+    // ledger RPC; its producer also deletes points metadata before freezing the
+    // provider body. The extra guard keeps that invariant even against mutated
+    // Stripe metadata.
+    if (!usesCheckoutPointsOnce && !hasPaidCheckoutOrder) {
     // === 點數折抵扣除（付款成功才真正扣）— 原子操作版 ===
     try {
       const pointsUsed = parseInt(session.metadata?.points_used || '0')
