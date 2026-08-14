@@ -51,8 +51,11 @@ test('PricingButton routes only C and G15 through the shared consultation trigge
 })
 
 test('legacy E-series purchase notice remains byte-for-byte unchanged', () => {
+  // Hash the LF-canonical bytes (the form git stores) so a CRLF working copy
+  // on Windows and an LF checkout on CI both compare against one constant.
+  const canonical = legacyModalBytes.toString('utf8').replaceAll('\r\n', '\n')
   assert.equal(
-    createHash('sha256').update(legacyModalBytes).digest('hex').toUpperCase(),
-    '996F35B0ECDAECB549DA21EBD9FC826A58168D890D624FF6380B3BEA9D5E58BE',
+    createHash('sha256').update(canonical, 'utf8').digest('hex').toUpperCase(),
+    '9961240B8019643A3771AEB0564D89ED41F551FCA0512E7E7651D3B3DAE6E450',
   )
 })

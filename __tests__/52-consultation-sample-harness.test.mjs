@@ -23,6 +23,10 @@ const AUTH_ENVIRONMENT = Object.freeze({
   CALCULATOR_ATTESTATION_KEY_ID: 'test-primary',
 })
 
+// Windows 用 py launcher 鎖 3.12；Linux/macOS runner 沒有 py，改走 python3。
+const PYTHON_COMMAND = process.platform === 'win32' ? 'py' : 'python3'
+const PYTHON_PREFIX_ARGS = process.platform === 'win32' ? ['-3.12'] : []
+
 function expectedRequestSignature({ body, path, headers }) {
   const fields = {
     version: 'jianyuan.fly.request.v1',
@@ -232,7 +236,7 @@ test('Python legacy caller signs the exact compact UTF-8 JSON bytes without prin
     "signed = create_signed_calculator_post('/api/generate-pdf', payload, nonce='abcdefghijklmnopqrstuv', issued_at=1786200000)",
     "print(json.dumps({'body': signed.body, 'headers': signed.headers}, ensure_ascii=False, separators=(',', ':'))) ",
   ].join('\n')
-  const result = spawnSync('py', ['-3.12', '-c', probe], {
+  const result = spawnSync(PYTHON_COMMAND, [...PYTHON_PREFIX_ARGS, '-c', probe], {
     cwd: process.cwd(),
     encoding: 'utf8',
     env: {
@@ -281,7 +285,7 @@ test('P0 PDF repair sends the signed Python body without requests re-serializati
     "if isinstance(body, bytes): body = body.decode('utf-8')",
     "print('PROBE=' + json.dumps({'body': body, 'headers': captured.get('headers'), 'used_json': 'json' in captured}, ensure_ascii=False, separators=(',', ':')))",
   ].join('\n')
-  const result = spawnSync('py', ['-3.12', '-c', probe], {
+  const result = spawnSync(PYTHON_COMMAND, [...PYTHON_PREFIX_ARGS, '-c', probe], {
     cwd: process.cwd(),
     encoding: 'utf8',
     env: {
@@ -359,8 +363,8 @@ test('all three ops callers fail closed before transport and never expose a conf
       PYTHONIOENCODING: 'utf-8',
     }
     const python = spawnSync(
-      'py',
-      ['-3.12', 'scripts/batch_fix_p0_reports.py', '--apply', '--only', 'pdf'],
+      PYTHON_COMMAND,
+      [...PYTHON_PREFIX_ARGS, 'scripts/batch_fix_p0_reports.py', '--apply', '--only', 'pdf'],
       { cwd: process.cwd(), encoding: 'utf8', env: childEnvironment },
     )
     assert.notEqual(python.status, 0)

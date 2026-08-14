@@ -11,7 +11,8 @@
     "audit:visual": "node scripts/visual-commercial-audit.mjs",
     "eval:reports": "py -3.12 scripts/eval_report_faithfulness.py",
     "check:no-raw-clients": "node scripts/check-no-raw-clients.mjs",
-    "pre-deploy": "npm run type-check && npm run check:no-raw-clients && npm run build"
+    "check:crossrepo": "node --test __tests__/local/07b-fortune-schema-crossrepo.mjs",
+    "pre-deploy": "npm run type-check && npm run check:no-raw-clients && npm run check:crossrepo && npm run build"
   },
   "dependencies": {
     "@next/bundle-analyzer": "^16.2.6",

@@ -55,12 +55,20 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
+      - name: Provision release-test runtime (Playwright module + Python requests)
+        run: |
+          # 69-e3-navigation-probe 需要 playwright 模組；瀏覽器用 runner 內建
+          # Google Chrome（CHROME_PATH），不下載 playwright 瀏覽器。
+          npm install --no-save playwright
+          # 52-consultation-sample-harness 會以 python3 跑 scripts/ 下的營運腳本
+          python3 -m pip install --quiet requests
       - name: Run tests
         env:
           REFUND_MIGRATION_PG_RUNTIME: '1'
           SECURITY_MIGRATION_PG_RUNTIME: '1'
           G15_CONSENT_PG_RUNTIME: '1'
           FREE_CHECKOUT_PG_RUNTIME: '1'
+          CHROME_PATH: /usr/bin/google-chrome
         run: node __tests__/run-tests.mjs --release
       - name: Build
         env:
