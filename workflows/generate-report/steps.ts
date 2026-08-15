@@ -1526,7 +1526,7 @@ async function claudeStreamingCall(
     isFlagEnabled('FF_AI_PROMPT_CACHE') ||
     (reportId != null && canaryIds.includes(reportId))
   const claudeHeaders: Record<string, string> = {
-    'x-api-key': getNextClaudeKey(),
+    'x-api-key': '',  // 每次嘗試由下方 failover 迴圈填入
     'anthropic-version': '2023-06-01',
     'content-type': 'application/json',
   }
@@ -1538,32 +1538,54 @@ async function claudeStreamingCall(
     ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }]
     : systemPrompt
 
-  let res: Response
-  try {
-    res = await fetch(CLAUDE_API, {
-      method: 'POST',
-      headers: claudeHeaders,
-      // v5.3.9：Claude Opus 4.7 不接受 temperature 參數（API 400: deprecated for this model）
-      body: JSON.stringify({
-        model: 'claude-opus-4-6',
-        max_tokens: maxTokens,
-        stream: true,
-        messages: [{ role: 'user', content: actualUserPrompt }],
-        system: systemField,
-      }),
-      signal: controller.signal,
-    })
-  } catch (e) {
-    clearTimeout(timeout)
-    if (e instanceof Error && e.name === 'AbortError') {
-      throw new RetryableError('Claude API 連線超時（900秒）', { retryAfter: '15s' })
+  // v5.10.482 帳務 failover:production 配多把 key(設計即「每個 key 來自不同帳號」)、
+  // 但原邏輯帳務錯誤直接 FatalError、備用 key 從未被試過(2026-08-15 實測
+  // Claude API 400 credit balance too low 一發即殺整份報告)。
+  // 修法:402、或 400 帶 credit/billing 字樣 → 就地換下一把 key 重試;
+  // 全池都帳務失效才 FatalError。非帳務錯誤行為與原版完全一致。
+  const claudeKeyPoolSize = Math.max(1, getClaudeApiKeys().length)
+  let billingFailures = 0
+  let res!: Response
+  for (;;) {
+    claudeHeaders['x-api-key'] = getNextClaudeKey()
+    try {
+      res = await fetch(CLAUDE_API, {
+        method: 'POST',
+        headers: claudeHeaders,
+        // v5.3.9：Claude Opus 4.7 不接受 temperature 參數（API 400: deprecated for this model）
+        body: JSON.stringify({
+          model: 'claude-opus-4-6',
+          max_tokens: maxTokens,
+          stream: true,
+          messages: [{ role: 'user', content: actualUserPrompt }],
+          system: systemField,
+        }),
+        signal: controller.signal,
+      })
+    } catch (e) {
+      clearTimeout(timeout)
+      if (e instanceof Error && e.name === 'AbortError') {
+        throw new RetryableError('Claude API 連線超時（900秒）', { retryAfter: '15s' })
+      }
+      throw e
     }
-    throw e
-  }
 
-  if (!res.ok) {
-    clearTimeout(timeout)
+    if (res.ok) break
+
     const errText = await res.text()
+    const isBillingError =
+      res.status === 402 ||
+      (res.status === 400 && /credit balance|billing|purchase credits/i.test(errText))
+    if (isBillingError) {
+      billingFailures++
+      if (billingFailures < claudeKeyPoolSize) {
+        console.warn(`Claude API key 帳務失效（${res.status}）、換下一把重試（${billingFailures}/${claudeKeyPoolSize}）`)
+        continue
+      }
+      clearTimeout(timeout)
+      throw new FatalError(`Claude API 帳務不足：${claudeKeyPoolSize} 把 key 全部餘額耗盡、請到 console.anthropic.com 充值。${errText.slice(0, 200)}`)
+    }
+    clearTimeout(timeout)
     if (res.status === 429) {
       // 指數退避 + 隨機抖動：防止 1000 人同時重試造成 429 瀑布
       // 解析 Anthropic 的 retry-after header（如果有的話）
@@ -1576,9 +1598,6 @@ async function claudeStreamingCall(
     if (res.status === 529) {
       const jitter529 = Math.floor(Math.random() * 60) + 90 // 90-150 秒隨機
       throw new RetryableError(`Claude API 529 過載，${jitter529}s 後重試`, { retryAfter: `${jitter529}s` })
-    }
-    if (res.status === 402) {
-      throw new FatalError(`Claude API 402 額度不足：請到 console.anthropic.com 充值。${errText.slice(0, 200)}`)
     }
     if (res.status >= 500) {
       const jitter5xx = Math.floor(Math.random() * 15) + 15 // 15-30 秒隨機
