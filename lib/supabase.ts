@@ -49,20 +49,40 @@ try {
   _defaultClient = null
 }
 
+// fallback Proxy 只在 sandbox 類環境生效。兩個硬性設計:
+// 1. 只有白名單的真實 API 屬性才觸發建構 — runtime 對 export 的探測
+//    (await 的 then 檢查、symbol probe、序列化)一律回 undefined、零副作用。
+//    production 實測教訓:任意屬性存取即建構、會被 sandbox 的探測誤觸、
+//    GoTrueClient autoRefresh 的 setInterval 直接炸 workflow
+//    (wrun_01M02JPDVH38HG1NNWYB1ABMP9)。
+// 2. 真的要用時、以關閉 autoRefresh/persist/detectSessionInUrl 的設定建構 —
+//    sandbox 內沒有互動 session、也絕不允許建構期偷跑 setInterval。
+const SUPABASE_REAL_PROPS = new Set([
+  'auth', 'from', 'rpc', 'schema', 'storage', 'functions',
+  'realtime', 'channel', 'getChannels', 'removeChannel', 'removeAllChannels',
+])
+
+function buildSandboxClient(): SupabaseClient {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  })
+}
+
 export const supabase: SupabaseClient =
   _defaultClient ??
   (new Proxy({} as SupabaseClient, {
     get(_target, prop, _receiver) {
-      if (!_defaultClient) _defaultClient = buildDefaultClient()
-      const client = _defaultClient as unknown as Record<string | symbol, unknown>
+      if (typeof prop !== 'string' || !SUPABASE_REAL_PROPS.has(prop)) return undefined
+      if (!_defaultClient) _defaultClient = buildSandboxClient()
+      const client = _defaultClient as unknown as Record<string, unknown>
       const value = client[prop]
       return typeof value === 'function'
         ? (value as (...args: unknown[]) => unknown).bind(_defaultClient)
         : value
     },
     has(_target, prop) {
-      if (!_defaultClient) _defaultClient = buildDefaultClient()
-      return prop in (_defaultClient as object)
+      // 不建構、只回答;探測不得有副作用
+      return typeof prop === 'string' && SUPABASE_REAL_PROPS.has(prop)
     },
   }) as SupabaseClient)
 
