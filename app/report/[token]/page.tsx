@@ -4258,15 +4258,19 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                       <span className="font-medium">🔮 奇門依據{report.plan_code === 'E1' ? '（為什麼這個時間能加乘）' : ''}</span>
                     </summary>
                     <div className="px-4 py-3 rounded-lg space-y-1" style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid rgba(197,150,58,0.5)' }}>
-                      {/* 結構化欄位：值符/值使/八神/臨宮 — 來自 Python 排盤引擎 deterministic 輸出 */}
+                      {/* 結構化欄位：九星/八門/八神/臨宮/局 — 來自 Python 排盤引擎 deterministic 輸出
+                          v5.10.482 標籤修正（2026-08-16 老闆實測抓錯）：timing.star/door 是「臨宮的九星/八門」、
+                          不是全局值符/值使（值符隨旬首、如陰遁4局辛亥時值符=天英落坎一、與臨宮震三的天柱無關）。
+                          舊標籤「值符/值使」是命理事實錯誤、懂盤的客戶一眼識破 → 改標「九星/八門」。
+                          另補 timing.ju 局數行（引擎已傳、原本只在 AI 文字出現、AI 寫錯局無從對照）。 */}
                       {timing.star && (
                         <div className="text-text-muted/90 text-sm leading-7">
-                          <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 值符</span>：{timing.star}
+                          <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 九星</span>：{timing.star}
                         </div>
                       )}
                       {timing.door && (
                         <div className="text-text-muted/90 text-sm leading-7">
-                          <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 值使</span>：{timing.door}
+                          <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 八門</span>：{timing.door}
                         </div>
                       )}
                       {timing.shen && (
@@ -4283,6 +4287,11 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                           </div>
                         )
                       })()}
+                      {timing.ju && (
+                        <div className="text-text-muted/90 text-sm leading-7">
+                          <span style={{ color: '#c9a84c', fontWeight: 600 }}>• 局</span>：{timing.ju}
+                        </div>
+                      )}
                       {/* AI 詮釋殘留段落（保留格局/年命宮/主題能量等 AI 詮釋）
                           v5.7.23 修：逐欄條件刪 — 只在結構化欄位有值時才刪 reason 對應 label，避免結構化空+reason 也被刪 = 空白（Codex P1）
                           regex 涵蓋變體：bullet/數字編號/markdown 粗體/中文星門後綴/全形冒號 */}
@@ -4292,6 +4301,9 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                           const labels: Array<[string, boolean]> = [
                             ['值符', Boolean(timing.star)],
                             ['值使', Boolean(timing.door)],
+                            // v5.10.482:結構化標籤改九星/八門後、AI 若寫同名行也一併剝除
+                            ['九星', Boolean(timing.star)],
+                            ['八門', Boolean(timing.door)],
                             ['八神', Boolean(timing.shen)],
                             ['臨宮', Boolean(timing.gong)],
                           ]

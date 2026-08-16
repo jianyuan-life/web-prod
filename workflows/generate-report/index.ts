@@ -1027,12 +1027,48 @@ export async function generateReportWorkflow(reportId: string) {
 
     // v5.3.74 P0：從 AI markdown 抽取每張卡片的「坐這個盤對你」bullets、塞進 plain_advantage + plain_purpose
     // 修報告頁 parsing 吞掉 AI 白話優勢的 bug（body 只 3952 字、AI 實際寫 6500+ 字）
+    //
+    // v5.10.482 對位根治（2026-08-16 老闆實測兩張卡盤面/解釋張冠李戴）：
+    //   舊版 cards.forEach((cardContent, idx) => top5Timings[idx]...) 是「索引 zip」——
+    //   引擎陣列＝分數序、AI 輸出＝週次序（v5.10.412 已註明 score 序跨週交錯）、
+    //   兩序不同 → AI 的 bullets 與奇門依據(格局/年命宮/局數)被綁到別的時辰卡上。
+    //   這正是 v5.7.23 lesson #060「38/72 timing 錯位」的殘餘病灶：當年只把
+    //   值符/值使/八神/臨宮 4 欄改引擎直出、bullets 與 reason 覆蓋仍走 idx。
+    //   修法＝錨點配對：主錨用卡內 TOP1_JSON 的 date+time_start（引擎欄位同名可比）、
+    //   備錨用標頭「第 N 週 TOP X」對 timing.week＋週內序。配不到＝丟棄該區塊、
+    //   保留 Python reason（fail-safe：寧缺勿錯）。
     if (planCode === 'E3' && reportContent) {
       // 用「## 第 N 週 TOP X」切 8 個卡片區塊
       const cardSections = reportContent.split(/(?=^## 第\s*\d+\s*週\s*TOP\s*\d+[|｜])/m)
       const cards = cardSections.filter(s => /^## 第\s*\d+\s*週\s*TOP\s*\d+[|｜]/.test(s))
-      cards.forEach((cardContent, idx) => {
-        if (idx >= top5Timings!.length) return
+      let anchorMatched = 0
+      let anchorDropped = 0
+      for (const cardContent of cards) {
+        // 主錨：卡內 JSON 的 date + time_start
+        let target: Record<string, unknown> | undefined
+        const jsonMatch = cardContent.match(/===TOP1_JSON_START===([\s\S]*?)===TOP1_JSON_END===/)
+        if (jsonMatch) {
+          try {
+            const cj = JSON.parse(jsonMatch[1].replace(/```json|```/g, '').trim()) as { date?: string; time_start?: string }
+            if (cj.date && cj.time_start) {
+              target = top5Timings!.find(t => t.date === cj.date && t.time_start === cj.time_start)
+            }
+          } catch { /* JSON 壞掉走備錨 */ }
+        }
+        // 備錨：標頭 第 N 週 TOP X ↔ timing.week + 週內順位（引擎週內為分數序＝TOP 序）
+        if (!target) {
+          const hm = cardContent.match(/^## 第\s*(\d+)\s*週\s*TOP\s*(\d+)/)
+          if (hm) {
+            const weekGroup = top5Timings!.filter(t => Number(t.week) === Number(hm[1]))
+            target = weekGroup[Number(hm[2]) - 1]
+          }
+        }
+        if (!target) {
+          anchorDropped++
+          console.warn(`${planCode} AI 卡片區塊無法錨定到引擎時辰（丟棄、保留 Python reason）：${cardContent.slice(0, 60)}`)
+          continue
+        }
+        anchorMatched++
         // 抓「## 坐這個盤對你...輔助」或「### 坐這個盤對你...輔助」後到 <details> 之前的 bullets
         const advMatch = cardContent.match(/(?:^|\n)##?#?\s*(?:✨\s*)?坐這個盤對你[「『]\S+[」』]的輔助[^\n]*\n([\s\S]*?)(?=\n<details|\n##?#?\s|\Z)/)
         if (advMatch) {
@@ -1044,8 +1080,8 @@ export async function generateReportWorkflow(reportId: string) {
             .map(l => l.replace(/^[-•·]\s*/, '').replace(/^\*\*([^*]+)\*\*\s*[：:]\s*/, '$1：'))
             .filter(Boolean)
           if (bullets.length > 0) {
-            top5Timings![idx].plain_purpose = bullets
-            top5Timings![idx].plain_advantage = bullets.join('\n')
+            target.plain_purpose = bullets
+            target.plain_advantage = bullets.join('\n')
           }
         }
         // 抓 <details>...奇門依據...</details> 的內容覆蓋 Python reason（AI 寫的分行版更清楚）
@@ -1058,10 +1094,10 @@ export async function generateReportWorkflow(reportId: string) {
             .replace(/\s+-\s+\*\*/g, '\n- **')  // ' - **' → '\n- **'
             .replace(/^\n+/, '')                // 去掉開頭多餘換行
             .replace(/\n{3,}/g, '\n\n')         // 壓縮多餘空行
-          top5Timings![idx].reason = detailsContent.slice(0, 800)
+          target.reason = detailsContent.slice(0, 800)
         }
-      })
-      console.log(`${planCode} 白話優勢從 AI markdown 補齊：${top5Timings.filter(t => (t.plain_purpose as string[]).length > 0).length}/${top5Timings.length} 張`)
+      }
+      console.log(`${planCode} 白話優勢錨點配對：命中 ${anchorMatched} 張、丟棄 ${anchorDropped} 張、有 bullets ${top5Timings.filter(t => (t.plain_purpose as string[]).length > 0).length}/${top5Timings.length} 張`)
     }
   }
 

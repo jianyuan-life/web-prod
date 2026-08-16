@@ -1770,7 +1770,7 @@ ${PSYCHOLOGY_RULES}
 <details>
 <summary>🔮 奇門依據（點擊展開）</summary>
 
-🚫 **絕對禁止**寫「值符:XXX」「值使:XXX」「八神:XXX」「臨宮:XXX」這 4 行（v5.7.23 修：值符星/值使門/八神/臨宮宮位 4 項已由前端從 deterministic 排盤引擎結構化欄位 timing.star/door/shen/gong 渲染，AI 重複寫會：① 浪費 token ② attention 飄移 8 個 timing 對掉，造成 38/72 timing 錯位 P0 bug，鐵證 lesson #060）。
+🚫 **絕對禁止**寫「值符:XXX」「值使:XXX」「九星:XXX」「八門:XXX」「八神:XXX」「臨宮:XXX」「局:XXX」這幾行（v5.7.23 修＋v5.10.482 補：臨宮九星/八門/八神/臨宮/局數已由前端從 deterministic 排盤引擎結構化欄位 timing.star/door/shen/gong/ju 渲染，AI 重複寫會：① 浪費 token ② attention 飄移 8 個 timing 對掉，造成 38/72 timing 錯位 P0 bug，鐵證 lesson #060）。格局行也不得自行標註局數（陰遁/陽遁 N 局）——局數以引擎欄位為準。
 
 只寫以下 3 項主觀詮釋（AI 強項）：
 
