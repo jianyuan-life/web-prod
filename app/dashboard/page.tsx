@@ -670,7 +670,8 @@ function DashboardContent() {
                   </div>
                   <div>
                     <dt>付款紀錄</dt>
-                    <dd>${Number(r.amount_usd).toFixed(2)} USD</dd>
+                    {/* v5.10.482:欄位缺值時顯示 — 而非 $NaN USD(防禦、API 已補欄位) */}
+                    <dd>{Number.isFinite(Number(r.amount_usd)) ? `$${Number(r.amount_usd).toFixed(2)} USD` : '—'}</dd>
                   </div>
                   <div>
                     <dt>建立日期</dt>

@@ -61,7 +61,9 @@ export async function GET(req: NextRequest) {
     // QA Agent L1 finding 2/2:同 session 對多筆 report 用 .order().limit(1) 防 maybeSingle null + console 噪音
     const { data: oneReport, error: oneErr } = await supabase
       .from('paid_reports')
-      .select('id, plan_code, status, created_at, access_token, generation_progress, retry_count, error_message, self_update_count')
+      // v5.10.482:補 amount_usd(付款者本人可見自己付了多少、非跨客敏感欄位)
+      //   — 缺它時 dashboard「付款紀錄」渲染成 $NaN USD(2026-08-16 實測)
+      .select('id, plan_code, status, created_at, access_token, generation_progress, retry_count, error_message, self_update_count, amount_usd')
       .eq('stripe_session_id', sessionId)
       .order('created_at', { ascending: false })
       .limit(1)
