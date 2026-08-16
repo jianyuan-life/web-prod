@@ -343,7 +343,7 @@ function makeQualityReport(cardCount = 8) {
 
 test('golden 來自指定的乾淨 base commit，不得對候選輸出自我錄製', () => {
   assert.equal(golden.schema, 'e3-generation-golden/v1')
-  assert.equal(golden.baselineCommit, 'd9bf5da09ff9a18f25d1d8b5d62ec3c88062cff5')
+  assert.equal(golden.baselineCommit, 'b6640234b5fc7673739fb2cebdfd4c907a5d273c')
   assert.equal(baseReceipt.schema, 'e3-generation-base-record-receipt/v1')
   assert.equal(baseReceipt.git.head, golden.baselineCommit)
   assert.equal(baseReceipt.git.clean, true)

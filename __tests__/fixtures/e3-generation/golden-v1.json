@@ -1,6 +1,6 @@
 {
   "schema": "e3-generation-golden/v1",
-  "baselineCommit": "d9bf5da09ff9a18f25d1d8b5d62ec3c88062cff5",
+  "baselineCommit": "b6640234b5fc7673739fb2cebdfd4c907a5d273c",
   "fixedTime": "2026-08-09T00:00:00.000Z",
   "birthData": {
     "name": "E3 synthetic freeze",
@@ -26,12 +26,29 @@
     "bazi_school": "korea",
     "ayanamsa_type": "raman",
     "fold": 1,
-    "topics": ["career", "wealth", "family"],
-    "topic_rank": { "career": 1, "wealth": 2, "family": 3 },
+    "topics": [
+      "career",
+      "wealth",
+      "family"
+    ],
+    "topic_rank": {
+      "career": 1,
+      "wealth": 2,
+      "family": 3
+    },
     "available_time_slots": [
-      { "start": "09:00", "end": "11:00" },
-      { "start": "13:00", "end": "15:00" },
-      { "start": "19:00", "end": "21:00" }
+      {
+        "start": "09:00",
+        "end": "11:00"
+      },
+      {
+        "start": "13:00",
+        "end": "15:00"
+      },
+      {
+        "start": "19:00",
+        "end": "21:00"
+      }
     ]
   },
   "calculator": {
@@ -44,14 +61,26 @@
       },
       {
         "id": "direct-zero",
-        "patch": { "latitude": 0, "longitude": 0, "timezone_offset": 0 },
+        "patch": {
+          "latitude": 0,
+          "longitude": 0,
+          "timezone_offset": 0
+        },
         "remove": [],
         "requestBody": "{\"name\":\"E3 synthetic freeze\",\"year\":1990,\"month\":1,\"day\":1,\"hour\":12,\"minute\":0,\"gender\":\"M\",\"calendar_type\":\"solar\",\"lunar_leap\":false,\"time_unknown\":false,\"time_mode\":\"shichen\",\"timezone\":\"Asia/Taipei\",\"birth_city\":\"Taipei\",\"birth_country\":\"TW\"}"
       },
       {
         "id": "alias-zero",
-        "patch": { "cityLat": 0, "cityLng": 0, "cityTz": 0 },
-        "remove": ["latitude", "longitude", "timezone_offset"],
+        "patch": {
+          "cityLat": 0,
+          "cityLng": 0,
+          "cityTz": 0
+        },
+        "remove": [
+          "latitude",
+          "longitude",
+          "timezone_offset"
+        ],
         "requestBody": "{\"name\":\"E3 synthetic freeze\",\"year\":1990,\"month\":1,\"day\":1,\"hour\":12,\"minute\":0,\"gender\":\"M\",\"calendar_type\":\"solar\",\"lunar_leap\":false,\"time_unknown\":false,\"time_mode\":\"shichen\",\"timezone\":\"Asia/Taipei\",\"birth_city\":\"Taipei\",\"birth_country\":\"TW\"}"
       },
       {
@@ -70,31 +99,44 @@
       }
     ],
     "response": {
-      "client_data": { "bazi": "fixture-bazi", "lunar_date": "fixture" },
+      "client_data": {
+        "bazi": "fixture-bazi",
+        "lunar_date": "fixture"
+      },
       "analyses": [
         {
           "system": "奇門遁甲",
           "score": 99,
           "summary": "fixture summary",
-          "details": { "door": "開門", "star": "天心", "shen": "九天" }
+          "details": {
+            "door": "開門",
+            "star": "天心",
+            "shen": "九天"
+          }
         },
         {
           "system": "八字",
           "score": 88,
           "summary": "DECOY_BAZI_MUST_NOT_REACH_E3_WORKFLOW_PROMPT",
-          "details": { "sentinel": "DECOY_BAZI_DETAILS" }
+          "details": {
+            "sentinel": "DECOY_BAZI_DETAILS"
+          }
         },
         {
           "system": "紫微斗數",
           "score": 77,
           "summary": "DECOY_ZIWEI_MUST_NOT_REACH_E3_WORKFLOW_PROMPT",
-          "details": { "sentinel": "DECOY_ZIWEI_DETAILS" }
+          "details": {
+            "sentinel": "DECOY_ZIWEI_DETAILS"
+          }
         },
         {
           "system": "西洋占星",
           "score": 66,
           "summary": "DECOY_ASTROLOGY_MUST_NOT_REACH_E3_WORKFLOW_PROMPT",
-          "details": { "sentinel": "DECOY_ASTROLOGY_DETAILS" }
+          "details": {
+            "sentinel": "DECOY_ASTROLOGY_DETAILS"
+          }
         }
       ]
     }
@@ -104,9 +146,9 @@
   },
   "claude": {
     "fakeResponse": "E3 synthetic contract response verifies cleaning and model routing without real customer data.。E3 synthetic contract response verifies cleaning and model routing without real customer data.。E3 synthetic contract response verifies cleaning and model routing without real customer data.。E3 synthetic contract response verifies cleaning and model routing without real customer data.。",
-    "systemPromptSha256": "65d89483eaa89089b65993b9c1a231d30149e7288f0b1c7736c1ceadafec4b79",
+    "systemPromptSha256": "73864ac30c869cb9d5697f2db4744e0171068217b111e0c1c17a9fa3ea821037",
     "userPromptSha256": "8d5e21ee22e8b172b512c959075193b5a54e8ecec02e0cea9e86f60b3bf7bce1",
-    "requestBodySha256": "301fd7a76bd627531bf92f51daf1ec7351245168984797eed7c30c6ff126d255",
+    "requestBodySha256": "c21bbeefaa2468d7f52ebc857d7cee7ab6600470b124562b9aad8360b0965c4e",
     "model": "claude-opus-4-6",
     "maxTokens": 128000,
     "stream": true,

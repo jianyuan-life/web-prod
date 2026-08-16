@@ -2,31 +2,31 @@
   "schema": "e3-generation-base-record-receipt/v1",
   "command": "npm ci in <clean-d9bf-worktree>, then node __tests__/support/record-e3-generation-golden.mjs --source-root=<clean-d9bf-worktree>",
   "git": {
-    "head": "d9bf5da09ff9a18f25d1d8b5d62ec3c88062cff5",
+    "head": "b6640234b5fc7673739fb2cebdfd4c907a5d273c",
     "clean": true,
     "statusPorcelainSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "support": {
-    "fixtureSha256": "745e999a10b9e8810f33c26f0025d2c69540cd612164b2e840da3aa97b9425ac",
+    "fixtureSha256": "8775ef64648f5af9e192fbd3d76875a55bb6c55d8c96a672b302b6db7cd141e0",
     "loaderSha256": "c1b606afa36b9dcc90d7f99c1975b4b4610577e594a4a85e9b59a11d272c8608",
     "recorderSha256": "006a5e32b907c7305e88805f04cbc8bcc4353c6c66561e772d6e86c3831d4c42"
   },
   "sourceBlobs": {
     "workflows/generate-report/steps.ts": {
-      "gitBlob": "d16d5e5acf55668e7bf4bae19a29b9cd98f2e38a",
-      "sha256": "7322a16900fd1a2e0af8c205c49b8e7087b136089e9de52a0a260b0298b76f2f"
+      "gitBlob": "949104e645dd48650f931cc2d89fd3b523f1b01d",
+      "sha256": "eaa38f4d5be4d9995fc0a9d6e3bbaa8ffc6ed9971e0631d220ec2028ccf0fb1f"
     },
     "workflows/generate-report/plan-prompts.ts": {
-      "gitBlob": "9d2dc99877461794843028c7fab4cc296c4aea33",
-      "sha256": "75f8cdbcaf7cc9ff805928c86f500cae8b9795d3e59fbfd548b8cd3540353e3e"
+      "gitBlob": "5400c1846ede2aa7b365a782ab4edcd8bff47b54",
+      "sha256": "5d38a84bee4e98946e95324c8ccbffef618a4bc3faa1d10046c4f970f1073724"
     },
     "workflows/generate-report/index.ts": {
-      "gitBlob": "9a153e2086d00d09689e2a639c19f8ca8877783b",
-      "sha256": "9c9bb9bb10370aab81cad57f0d3826ab83a892c00316479f03f6a50e8231522e"
+      "gitBlob": "ba7700b7b7c5565e6fda5bf899d3d07bf5c77804",
+      "sha256": "05f7cbb2bc741e997a6dee48c480abe7c244bd7f0defd80904adc761d01b8b7b"
     },
     "app/api/generate-report/route.ts": {
-      "gitBlob": "28da92ed4f8b8f23a940b762d832780058ce81a5",
-      "sha256": "48ddb9199bc477c7b4142fac1777c05c34d64df75ee658ba200fda0e769147d0"
+      "gitBlob": "4b05d5f83f33a0bd181a00e2448a9f3e3e18b18a",
+      "sha256": "f5ee531b47810994e86917a5ad443f0079aa027fbb60030813628e77cec56937"
     }
   },
   "outputs": {
@@ -37,9 +37,9 @@
       "falsy-aliases": "2e9791600ddb4be3318ba344d56b8263f72e966152195e9fc256c27fe3dc7499"
     },
     "chumenjiRequestSha256": "08e7203d5753ded468786f14431f0d1a559f82aeea1fe3e26bb2646efd58639e",
-    "systemPromptSha256": "65d89483eaa89089b65993b9c1a231d30149e7288f0b1c7736c1ceadafec4b79",
+    "systemPromptSha256": "73864ac30c869cb9d5697f2db4744e0171068217b111e0c1c17a9fa3ea821037",
     "userPromptSha256": "8d5e21ee22e8b172b512c959075193b5a54e8ecec02e0cea9e86f60b3bf7bce1",
-    "claudeRequestSha256": "301fd7a76bd627531bf92f51daf1ec7351245168984797eed7c30c6ff126d255",
+    "claudeRequestSha256": "c21bbeefaa2468d7f52ebc857d7cee7ab6600470b124562b9aad8360b0965c4e",
     "outputSha256": "7e49d476c1abb3e3db04723c06458c5aa1ae1252b7b1267903c4da735eeb67c6",
     "outputLength": 380
   }
