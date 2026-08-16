@@ -166,4 +166,8 @@ test('[違規-多重] 報告同時出現多類違規應全部命中', () => {
   assert(cats.has('extreme_fortune'), '應命中 extreme_fortune')
 })
 
+// v5.10.485 勸阻語境降級的測試在 __tests__/126-blacklist-negation-context.test.mjs
+// —— 那組直接 import 真正的 lib/content-moderation/blacklist.ts。本檔是 mock 重寫版、
+// 測不到真模組的行為(與 v5.10.483 投影事故同型盲區),不再往這裡加案例。
+
 done()

@@ -32,6 +32,14 @@ export interface BlacklistItem {
   severity: ModerationSeverity
   /** 觸發理由（寫進 log 給 admin 看） */
   reason: string
+  /**
+   * v5.10.485:是否允許「勸阻語境降級」。逐 pattern opt-in、預設關閉——
+   * 只開在「報告以警語形式提及」屬常態文型的承諾/誘導類 pattern
+   * (切勿借錢投資/沒有穩賺不賠/不要相信保證治癒/不要自行停藥)。
+   * 自傷、勸阻就醫、歧視、暴力等 pattern 一律不得開啟:
+   * 「切勿跳樓」也必須進人工把關(L4 Gemini 反例 57979d97 第 2 點)。
+   */
+  negationGuard?: boolean
 }
 
 // ────────────────────────────────────────────────────────────
@@ -95,18 +103,18 @@ const POLITICS: BlacklistItem[] = [
 //    命理不能替代就醫，不能保證治癒
 // ────────────────────────────────────────────────────────────
 const MEDICAL: BlacklistItem[] = [
-  { pattern: /保證治癒|一定能好|一定會好|絕對治好/, category: 'medical', severity: 'block', reason: '醫療過度承諾' },
+  { pattern: /保證治癒|一定能好|一定會好|絕對治好/, category: 'medical', severity: 'block', reason: '醫療過度承諾', negationGuard: true },
   { pattern: /能治癌|可治癌|治療癌症|治好癌症/, category: 'medical', severity: 'block', reason: '醫療不實承諾' },
   { pattern: /不用看醫生|不用就醫|不需看醫/, category: 'medical', severity: 'block', reason: '勸阻就醫' },
   { pattern: /替代(醫療|治療|就醫)/, category: 'medical', severity: 'block', reason: '勸阻就醫' },
-  { pattern: /停藥|停止服藥|不要吃藥/, category: 'medical', severity: 'block', reason: '勸阻服藥' },
+  { pattern: /停藥|停止服藥|不要吃藥/, category: 'medical', severity: 'block', reason: '勸阻服藥', negationGuard: true },
   { pattern: /(?:停止|停用|中斷|自行調整).{0,14}(?:醫師|醫生).{0,10}(?:開立|處方|藥物)/, category: 'medical', severity: 'block', reason: '要求自行中止醫囑' },
   { pattern: /單靠.{0,12}(?:命盤|命理|八字|星盤).{0,14}(?:恢復|康復|痊癒|治好)/, category: 'medical', severity: 'block', reason: '以命理取代醫療' },
   { pattern: /絕症必(癒|好)|絕症可治/, category: 'medical', severity: 'block', reason: '醫療不實承諾' },
   { pattern: /命理治病|命盤治療|八字治病/, category: 'medical', severity: 'block', reason: '命理不能替代治療' },
   { pattern: /包(治|好|癒)/, category: 'medical', severity: 'block', reason: '醫療不實承諾' },
   { pattern: /神奇療效|靈丹妙藥/, category: 'medical', severity: 'warn', reason: '醫療誇大' },
-  { pattern: /(保證|一定|絕對).{0,5}(治好|痊癒|康復|不復發)/, category: 'medical', severity: 'block', reason: '醫療過度承諾' },
+  { pattern: /(保證|一定|絕對).{0,5}(治好|痊癒|康復|不復發)/, category: 'medical', severity: 'block', reason: '醫療過度承諾', negationGuard: true },
   { pattern: /必定(痊癒|康復|好轉)/, category: 'medical', severity: 'block', reason: '醫療過度承諾' },
   { pattern: /戒斷.*(保證|一定|絕對)/, category: 'medical', severity: 'warn', reason: '醫療承諾' },
   { pattern: /跳樓|上吊|自縊|割腕|自盡|自殘/, category: 'medical', severity: 'block', reason: '自傷內容' },
@@ -122,7 +130,7 @@ const MEDICAL: BlacklistItem[] = [
 //    命理不能保證財富，不能給投資建議
 // ────────────────────────────────────────────────────────────
 const INVESTMENT: BlacklistItem[] = [
-  { pattern: /穩賺不賠|保證獲利|保證賺錢|保證盈利/, category: 'investment', severity: 'block', reason: '投資過度承諾' },
+  { pattern: /穩賺不賠|保證獲利|保證賺錢|保證盈利/, category: 'investment', severity: 'block', reason: '投資過度承諾', negationGuard: true },
   { pattern: /必漲|必跌|保證.{0,3}漲|保證.{0,3}跌/, category: 'investment', severity: 'block', reason: '投資預測承諾' },
   { pattern: /零風險|無風險.*投資/, category: 'investment', severity: 'block', reason: '投資風險不實' },
   { pattern: /(一定|絕對|肯定).{0,5}(賺|獲利|盈利|發財)/, category: 'investment', severity: 'block', reason: '投資過度承諾' },
@@ -130,11 +138,11 @@ const INVESTMENT: BlacklistItem[] = [
   { pattern: /內線消息|老鼠倉|黑馬股/, category: 'investment', severity: 'block', reason: '違規投資術語' },
   { pattern: /(買|投資|持有).{0,5}(股票|加密貨幣|虛擬貨幣|期貨|外匯).{0,10}(必|保證|一定).{0,3}(賺|漲)/, category: 'investment', severity: 'block', reason: '具體投資建議' },
   { pattern: /比特幣必漲|以太坊必漲|.{1,6}幣必漲/, category: 'investment', severity: 'block', reason: '加密貨幣預測' },
-  { pattern: /(購買|投入)全部(身家|財產|積蓄)/, category: 'investment', severity: 'block', reason: '勸誘 all-in' },
-  { pattern: /(?:全部|所有).{0,8}(?:資產|資金|積蓄).{0,12}(?:集中|投入|買入)/, category: 'investment', severity: 'block', reason: '勸誘集中全部資產' },
+  { pattern: /(購買|投入)全部(身家|財產|積蓄)/, category: 'investment', severity: 'block', reason: '勸誘 all-in', negationGuard: true },
+  { pattern: /(?:全部|所有).{0,8}(?:資產|資金|積蓄).{0,12}(?:集中|投入|買入)/, category: 'investment', severity: 'block', reason: '勸誘集中全部資產', negationGuard: true },
   { pattern: /(?:翻身|致富).{0,10}(?:唯一道路|唯一方法|唯一選擇)/, category: 'investment', severity: 'block', reason: '把投機寫成唯一道路' },
-  { pattern: /借錢(投資|買股|炒作)/, category: 'investment', severity: 'block', reason: '勸誘借貸投資' },
-  { pattern: /槓桿.{0,5}(到底|放大到最大)/, category: 'investment', severity: 'block', reason: '勸誘高槓桿' },
+  { pattern: /借錢(投資|買股|炒作)/, category: 'investment', severity: 'block', reason: '勸誘借貸投資', negationGuard: true },
+  { pattern: /槓桿.{0,5}(到底|放大到最大)/, category: 'investment', severity: 'block', reason: '勸誘高槓桿', negationGuard: true },
   { pattern: /買.{1,10}必然(發財|致富)/, category: 'investment', severity: 'block', reason: '投資過度承諾' },
   { pattern: /包.{1,3}(發財|致富|中獎|中大獎)/, category: 'investment', severity: 'block', reason: '投資過度承諾' },
   { pattern: /十倍股|百倍股|千倍幣/, category: 'investment', severity: 'warn', reason: '投機誇大' },
@@ -313,6 +321,49 @@ export interface BlacklistHit {
   snippet: string      // 上下文片段（用於 admin 審查）
 }
 
+// v5.10.485:勸阻語境降級。命理報告的理財/健康警語(「切勿借錢投資」「世上沒有
+// 穩賺不賠的投資」「不要相信保證治癒的偏方」)是給客戶的保護性建議、不是誘導,
+// 但黑名單逐字比對無語境判斷,production 實測正常 C 報告被「借錢投資」規則攔進
+// 人工把關。設計(L4 Gemini 反例 57979d97 兩輪收斂):
+// - 逐 pattern opt-in(item.negationGuard),自傷/勸阻就醫/歧視/暴力永不降級。
+// - 否定詞與命中之間至多 2 字、不得含標點/空白/「不」/「比」/「更」
+//   (擋「不要猶豫,借錢投資」「不得不借錢投資」「沒有比借錢投資更好」)。
+// - 反轉動詞出現在間隔=誘導(「不要錯過/害怕/猶豫借錢投資」),不得降級。
+// - 「別」排除性別/特別等詞尾、「忌」排除顧忌。
+// - 間隔仍排除空白:AI 中文正文極少句中空格,遇空白寧可維持 block(往攔的方向錯)。
+// 只降級不刪除:降為 warn 後 admin 仍看得到 snippet,但不再擋交付。
+// 深度防禦:同文本另有 Haiku 政策層(investment-promise/medical-promise >=0.6
+// 即擋 C/G15),regex 層降級錯放的誘導句仍會被語意層攔下。
+const NEGATION_TOKENS = [
+  '不要', '不可', '不得', '不能', '切勿', '勿', '避免', '不宜', '不建議',
+  '警惕', '提防', '小心', '戒除', '忌', '別', '沒有', '不存在',
+] as const
+const REVERSAL_GAP_WORDS = new Set([
+  '錯過', '錯失', '放棄', '害怕', '猶豫', '遲疑', '忘記', '拒絕', '排斥', '抗拒', '低估', '小看',
+])
+const GAP_FORBIDDEN = /[，。、;；:：!！?？\s不比更]/u
+
+function isAdvisedAgainstContext(
+  item: BlacklistItem,
+  cleaned: string,
+  matchIndex: number,
+): boolean {
+  if (item.negationGuard !== true || item.severity !== 'block') return false
+  const before = cleaned.slice(Math.max(0, matchIndex - 8), matchIndex)
+  for (const neg of NEGATION_TOKENS) {
+    const at = before.lastIndexOf(neg)
+    if (at === -1) continue
+    const gap = before.slice(at + neg.length)
+    if (gap.length > 2) continue
+    if (GAP_FORBIDDEN.test(gap)) continue
+    if (REVERSAL_GAP_WORDS.has(gap)) continue
+    if (neg === '忌' && before.slice(0, at).endsWith('顧')) continue
+    if (neg === '別' && /[性特級分區差告識判類個]$/u.test(before.slice(0, at))) continue
+    return true
+  }
+  return false
+}
+
 export function scanBlacklist(content: string): BlacklistHit[] {
   const hits: BlacklistHit[] = []
   // 必須對原文掃描。目前黑名單均以完整高風險句式為 pattern，
@@ -324,10 +375,11 @@ export function scanBlacklist(content: string): BlacklistHit[] {
     if (typeof pattern === 'string') {
       const idx = cleaned.indexOf(pattern)
       if (idx !== -1) {
+        const advisedAgainst = isAdvisedAgainstContext(item, cleaned, idx)
         hits.push({
           category: item.category,
-          severity: item.severity,
-          reason: item.reason,
+          severity: advisedAgainst ? 'warn' : item.severity,
+          reason: advisedAgainst ? `${item.reason}（勸阻語境降級）` : item.reason,
           pattern,
           matchedText: pattern,
           snippet: extractSnippet(cleaned, idx, pattern.length),
@@ -339,10 +391,11 @@ export function scanBlacklist(content: string): BlacklistHit[] {
       let match: RegExpExecArray | null
       let safetyCounter = 0
       while ((match = re.exec(cleaned)) !== null && safetyCounter < 50) {
+        const advisedAgainst = isAdvisedAgainstContext(item, cleaned, match.index)
         hits.push({
           category: item.category,
-          severity: item.severity,
-          reason: item.reason,
+          severity: advisedAgainst ? 'warn' : item.severity,
+          reason: advisedAgainst ? `${item.reason}（勸阻語境降級）` : item.reason,
           pattern: pattern.source,
           matchedText: match[0],
           snippet: extractSnippet(cleaned, match.index, match[0].length),
