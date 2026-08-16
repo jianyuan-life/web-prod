@@ -3,8 +3,13 @@ import { validateConsultationReportContract } from './report-contract.ts'
 import type { ConsultationReportContract } from './report-contract'
 import { validateAccessToken } from '../security/token-validator.ts'
 
+// v5.10.483 P0:投影只能選 paid_reports 真實存在的欄位。ai_content/full_charts/
+// narrative_summary 從來不是 top-level 欄位(26 個 migration 無一新增;產生管線
+// 全部巢狀寫在 report_result 內、見 workflows/generate-report/steps.ts saveReport)。
+// 原投影選了不存在欄位 → PostgREST 42703 → 每一個 C/G15 報告開啟一律 503
+// (production 實測:連不存在的 token 都回 503、v5.10.461 apology_sent_at 同型事故)。
 export const CONSULTATION_REPORT_PROJECTION =
-  'plan_code,status,access_token,ai_content,full_charts,narrative_summary,report_result,pdf_url' as const
+  'plan_code,status,access_token,report_result,pdf_url' as const
 
 type QueryResult = {
   data: unknown
@@ -43,12 +48,18 @@ export type ConsultationReportLoadResult =
       pdfUrl: string | null
       provenance: {
         source: 'paid_reports'
-        contentField: 'ai_content' | 'report_result.ai_content'
+        contentField: 'ai_content' | 'report_result' | 'report_result.ai_content'
       }
-      asOf: {
-        status: 'unknown'
-        value: null
-      }
+      asOf:
+        | {
+            status: 'known'
+            value: string
+            sourceField: 'report_result.asOfDate'
+          }
+        | {
+            status: 'unknown'
+            value: null
+          }
     }
   | {
       ok: false
@@ -144,16 +155,28 @@ export async function loadConsultationReport(
     }
   }
 
+  // v5.10.483:paid_reports 沒有 top-level ai_content/full_charts/narrative_summary
+  // 欄位——三者都巢狀在 report_result 內(產生管線 saveReport 寫入),一律取巢狀值。
+  // asOfDate 一併透傳,讓 normalize 的 invalid_as_of 防線與 asOf 判定真正生效
+  // (L4 Gemini 反例 783bef2b:原本重組物件把 asOfDate 丟掉、防線變死碼);
+  // 字串形式的 report_result 原樣透傳,保留 normalize 的字串備援路徑。
   const nestedLegacyText = reportResult?.ai_content
   const normalized = normalizeLegacyReport({
     plan_code: row.plan_code,
     status: row.status,
     access_token: row.access_token,
-    full_charts: row.full_charts,
-    narrative_summary: row.narrative_summary,
-    report_result: isRecord(reportResult) && typeof nestedLegacyText === 'string'
-      ? { ai_content: nestedLegacyText }
-      : null,
+    full_charts: reportResult?.full_charts,
+    narrative_summary: reportResult?.narrative_summary,
+    report_result: typeof row.report_result === 'string'
+      ? row.report_result
+      : isRecord(reportResult) && typeof nestedLegacyText === 'string'
+        ? {
+            ai_content: nestedLegacyText,
+            ...(Object.prototype.hasOwnProperty.call(reportResult, 'asOfDate')
+              ? { asOfDate: reportResult.asOfDate }
+              : {}),
+          }
+        : null,
   })
   if (!normalized.ok) return { ok: false, code: 'legacy_hold' }
 
@@ -167,11 +190,8 @@ export async function loadConsultationReport(
     pdfUrl,
     provenance: {
       source: normalized.provenance.source,
-      contentField: 'report_result.ai_content',
+      contentField: normalized.provenance.contentField,
     },
-    asOf: {
-      status: 'unknown',
-      value: null,
-    },
+    asOf: normalized.asOf,
   }
 }

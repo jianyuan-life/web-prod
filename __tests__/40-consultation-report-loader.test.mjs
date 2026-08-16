@@ -345,7 +345,26 @@ await test('an invalid consultation_report holds the whole row instead of fallin
   assert(!('report' in result), 'HOLD 結果不得暴露半成品契約')
 })
 
-await test('legacy mode reads only report_result.ai_content and never creates facts or an as-of date', async () => {
+await test('the projection only names real paid_reports columns', () => {
+  // v5.10.483 P0 回歸鎖:paid_reports 沒有 top-level ai_content/full_charts/
+  // narrative_summary。原投影選了不存在欄位 → PostgREST 42703 → 所有 C/G15
+  // 報告開啟一律 503(2026-08-17 production 實測、老闆報告打不開)。
+  // 三者一律取 report_result 巢狀值;要改這條字串必先有 migration 證據。
+  assertEqual(
+    CONSULTATION_REPORT_PROJECTION,
+    'plan_code,status,access_token,report_result,pdf_url',
+  )
+  for (const phantom of ['ai_content', 'full_charts', 'narrative_summary']) {
+    assert(
+      !CONSULTATION_REPORT_PROJECTION.split(',').includes(phantom),
+      `投影不得選不存在的 top-level 欄位 ${phantom}`,
+    )
+  }
+})
+
+await test('legacy mode reads report_result nested fields exactly as production stores them', async () => {
+  // fixture 形狀 = production saveReport 實際寫入(全部巢狀在 report_result)
+  // + 修正後投影實際回傳的欄位,無任何 top-level ai_content/full_charts。
   const storedCharts = { source: 'calculator-output' }
   const storedNarrative = { source: 'saved-summary' }
   const originalText = '# 第一章\n\n這是資料庫保存的原文。'
@@ -354,15 +373,16 @@ await test('legacy mode reads only report_result.ai_content and never creates fa
       plan_code: 'G15',
       status: 'completed',
       access_token: ACCESS_TOKEN,
-      ai_content: '頂層文字不屬於新閱讀器的 legacy 來源',
-      full_charts: storedCharts,
-      narrative_summary: storedNarrative,
       pdf_url: 'https://files.example.test/legacy.pdf?signature=fixture',
       report_result: {
+        report_id: 'fixture-report-id',
+        systems_count: 15,
+        ai_model: 'fixture-model',
+        ai_tokens: 42,
         ai_content: originalText,
         asOfDate: '2026-08-09',
-        full_charts: { ignored: true },
-        narrative_summary: { ignored: true },
+        full_charts: storedCharts,
+        narrative_summary: storedNarrative,
       },
     },
     error: null,
@@ -372,13 +392,64 @@ await test('legacy mode reads only report_result.ai_content and never creates fa
   assertEqual(result.mode, 'legacy_full_text')
   assertEqual(result.plan, 'G15')
   assertEqual(result.content, originalText)
-  assert(result.fullCharts === storedCharts, '命盤資料只能來自明確投影的頂層欄位')
-  assert(result.narrativeSummary === storedNarrative, '摘要資料只能來自明確投影的頂層欄位')
+  assert(result.fullCharts === storedCharts, '命盤資料取自 report_result.full_charts 巢狀值')
+  assert(result.narrativeSummary === storedNarrative, '摘要資料取自 report_result.narrative_summary 巢狀值')
   assertEqual(result.pdfUrl, 'https://files.example.test/legacy.pdf?signature=fixture')
   assertEqual(result.provenance.contentField, 'report_result.ai_content')
-  assertEqual(result.asOf.status, 'unknown')
+  // L4 Gemini 反例 783bef2b:asOfDate 必須透傳給 normalize、不得默默退化 unknown
+  assertEqual(result.asOf.status, 'known')
+  assertEqual(result.asOf.value, '2026-08-09')
   assert(!('facts' in result), 'loader 不得替舊版正文建立事實')
   assert(!('accessToken' in result), '閱讀模型不得回傳 access token')
+})
+
+await test('a report_result without asOfDate stays honestly unknown', async () => {
+  const result = await loadConsultationReport(ACCESS_TOKEN, async () => ({
+    data: {
+      plan_code: 'C',
+      status: 'completed',
+      access_token: ACCESS_TOKEN,
+      pdf_url: null,
+      report_result: { ai_content: '# 章\n\n正文。' },
+    },
+    error: null,
+  }))
+  assert(result.ok, '無 asOfDate 的正常舊報告應可讀')
+  assertEqual(result.asOf.status, 'unknown')
+  assertEqual(result.asOf.value, null)
+})
+
+await test('a malformed asOfDate holds the row instead of being silently dropped', async () => {
+  // L4 Gemini 反例 783bef2b:原本重組物件把 asOfDate 丟掉,invalid_as_of 防線是死碼
+  const result = await loadConsultationReport(ACCESS_TOKEN, async () => ({
+    data: {
+      plan_code: 'C',
+      status: 'completed',
+      access_token: ACCESS_TOKEN,
+      pdf_url: null,
+      report_result: { ai_content: '# 章\n\n正文。', asOfDate: '2026-13-99' },
+    },
+    error: null,
+  }))
+  assert(!result.ok, '非法 asOfDate 必須 HOLD、不得默默當 unknown 放行')
+  assertEqual(result.code, 'legacy_hold')
+})
+
+await test('a string report_result still resolves through the normalize string fallback', async () => {
+  const result = await loadConsultationReport(ACCESS_TOKEN, async () => ({
+    data: {
+      plan_code: 'C',
+      status: 'completed',
+      access_token: ACCESS_TOKEN,
+      pdf_url: null,
+      report_result: '整段以字串保存的舊版報告全文。',
+    },
+    error: null,
+  }))
+  assert(result.ok, '字串形式的 report_result 應走 normalize 字串備援')
+  assertEqual(result.mode, 'legacy_full_text')
+  assertEqual(result.content, '整段以字串保存的舊版報告全文。')
+  assertEqual(result.provenance.contentField, 'report_result')
 })
 
 await test('query failures, token mismatches, unsupported plans, and plan mismatches all fail closed', async () => {
