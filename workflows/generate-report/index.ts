@@ -1043,24 +1043,40 @@ export async function generateReportWorkflow(reportId: string) {
       const cards = cardSections.filter(s => /^## 第\s*\d+\s*週\s*TOP\s*\d+[|｜]/.test(s))
       let anchorMatched = 0
       let anchorDropped = 0
+      // Gemini 反例修:AI 可能漏補零(2026-8-5/8:00)、嚴格字串比對會誤失配 → 正規化後再比
+      const normDate = (s: unknown): string =>
+        String(s ?? '').trim().replace(/^(\d{4})-(\d{1,2})-(\d{1,2})$/, (_, y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
+      const normTime = (s: unknown): string => {
+        const m = String(s ?? '').trim().match(/^(\d{1,2}):(\d{2})/)
+        return m ? `${m[1].padStart(2, '0')}:${m[2]}` : ''
+      }
+      // Gemini 反例修:同鍵多卡時 find() 會重複覆寫同一 timing → 已配對者不得再被認領
+      const consumed = new Set<Record<string, unknown>>()
       for (const cardContent of cards) {
         // 主錨：卡內 JSON 的 date + time_start
         let target: Record<string, unknown> | undefined
+        let cjDate = ''
         const jsonMatch = cardContent.match(/===TOP1_JSON_START===([\s\S]*?)===TOP1_JSON_END===/)
         if (jsonMatch) {
           try {
             const cj = JSON.parse(jsonMatch[1].replace(/```json|```/g, '').trim()) as { date?: string; time_start?: string }
+            cjDate = normDate(cj.date)
             if (cj.date && cj.time_start) {
-              target = top5Timings!.find(t => t.date === cj.date && t.time_start === cj.time_start)
+              const wantTime = normTime(cj.time_start)
+              target = top5Timings!.find(t => !consumed.has(t) && normDate(t.date) === cjDate && normTime(t.time_start) === wantTime)
             }
           } catch { /* JSON 壞掉走備錨 */ }
         }
         // 備錨：標頭 第 N 週 TOP X ↔ timing.week + 週內順位（引擎週內為分數序＝TOP 序）
+        // Gemini 反例修:備錨屬位置推定、若卡內 JSON 有日期且與推定 timing 不符 → 拒配丟棄(寧缺勿錯)
         if (!target) {
           const hm = cardContent.match(/^## 第\s*(\d+)\s*週\s*TOP\s*(\d+)/)
           if (hm) {
             const weekGroup = top5Timings!.filter(t => Number(t.week) === Number(hm[1]))
-            target = weekGroup[Number(hm[2]) - 1]
+            const candidate = weekGroup[Number(hm[2]) - 1]
+            if (candidate && !consumed.has(candidate) && (!cjDate || normDate(candidate.date) === cjDate)) {
+              target = candidate
+            }
           }
         }
         if (!target) {
@@ -1068,6 +1084,7 @@ export async function generateReportWorkflow(reportId: string) {
           console.warn(`${planCode} AI 卡片區塊無法錨定到引擎時辰（丟棄、保留 Python reason）：${cardContent.slice(0, 60)}`)
           continue
         }
+        consumed.add(target)
         anchorMatched++
         // 抓「## 坐這個盤對你...輔助」或「### 坐這個盤對你...輔助」後到 <details> 之前的 bullets
         const advMatch = cardContent.match(/(?:^|\n)##?#?\s*(?:✨\s*)?坐這個盤對你[「『]\S+[」』]的輔助[^\n]*\n([\s\S]*?)(?=\n<details|\n##?#?\s|\Z)/)
