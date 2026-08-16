@@ -266,18 +266,25 @@ export function resolveTzNameFromBirthCity(birthCity: string): string {
   if (!raw) return ''
   // 格式常見「台北（台灣）」/「香港（香港）」/ 純「香港」
   const cityPart = raw.replace(/[（(].*?[）)]/g, '').trim()
-  const countryPart = (raw.match(/[（(](.*?)[）)]/) || [])[1] || ''
-  // 1) 快速選單城市精確比對
-  const exact = CITIES.find(c => c.name === cityPart || c.name_s === cityPart)
-  if (exact) return exact.tzName
-  // 2) 全球庫比對
+  const countryPart = ((raw.match(/[（(](.*?)[）)]/) || [])[1] || '').trim()
+  // Gemini 反例修(同名城市不同國=無聲錯配):有國別註記時、比對必須同時吻合國別;
+  // 無國別註記時、若候選命中多個「不同時區」→ 視為歧義、回空(fail closed)。
+  const matchName = (c: City): boolean =>
+    c.name === cityPart || c.name_s === cityPart || c.name_en.toLowerCase() === cityPart.toLowerCase()
+  const nameMatches: City[] = []
   if (cityPart) {
-    const global = searchCitiesTz(cityPart, 3).map(adaptCityTz)
-      .find(c => c.name === cityPart || c.name_s === cityPart || c.name_en.toLowerCase() === cityPart.toLowerCase())
-    if (global) return global.tzName
+    nameMatches.push(...CITIES.filter(matchName))
+    nameMatches.push(...searchCitiesTz(cityPart, 8).map(adaptCityTz).filter(matchName))
   }
-  // 3) 單時區國家名(城市欄直接存國名的舊資料)
-  if (COUNTRY_IANA[cityPart]) return COUNTRY_IANA[cityPart]
+  const candidates = countryPart ? nameMatches.filter(c => c.country === countryPart) : nameMatches
+  const distinctTz = [...new Set(candidates.map(c => c.tzName).filter(Boolean))]
+  if (distinctTz.length === 1) return distinctTz[0]
+  if (distinctTz.length > 1) return ''  // 同名多時區、不猜
+  // 已知城市但與括號國別矛盾(如「台北（日本）」)→ 資料髒、不猜、fail closed
+  if (nameMatches.length > 0 && countryPart) return ''
+  // 單時區國家名(城市欄直接存國名的舊資料);國別註記與國名衝突時不採
+  if (COUNTRY_IANA[cityPart] && (!countryPart || countryPart === cityPart)) return COUNTRY_IANA[cityPart]
+  // 城市查無、但括號國別為單時區國家 → 國家時區必然正確(單時區國任一城市同時區)
   if (countryPart && COUNTRY_IANA[countryPart]) return COUNTRY_IANA[countryPart]
   return ''
 }

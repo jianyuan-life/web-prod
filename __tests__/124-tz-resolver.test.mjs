@@ -25,6 +25,9 @@ check('台北(台灣)', resolveTzNameFromBirthCity('台北(台灣)'), 'Asia/Taip
 // fail closed:解不出=空字串、不得默默給預設
 check('空字串', resolveTzNameFromBirthCity(''), '')
 check('無法辨識地名', resolveTzNameFromBirthCity('不存在的某個地方'), '')
+// L4 Gemini 反例(receipt 86b8aab9):同名跨國/國別矛盾不得盲猜
+check('已知城市配矛盾國別(台北（日本）)', resolveTzNameFromBirthCity('台北（日本）'), '')
+check('未收錄城市+單時區國別註記(小鎮（日本）)', resolveTzNameFromBirthCity('小鎮（日本）'), 'Asia/Tokyo')
 
 console.log(`\n  tz-resolver: ${passed} passed / ${failed} failed`)
 if (failed > 0) process.exit(1)

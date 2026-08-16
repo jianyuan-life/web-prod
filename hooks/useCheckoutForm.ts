@@ -521,10 +521,14 @@ export function useCheckoutForm() {
     }
 
     // v5.10.482 P0 防禦(2026-08-16 老闆實測:家人導入缺 IANA 時區、付款被伺服器 400 擋):
-    // 送出前最後一道補齊 — 任何資料來源(手填/家人導入/URL 參數/舊資料)只要選了出生地區、
-    // 就從地區字串反解 IANA 時區;C/G15 仍解不出時給明確中文指引、不讓客戶撞晦澀的伺服器錯誤。
+    // 送出前最後一道補齊 — 資料來源(家人導入/URL 參數/舊資料)有座標但缺 tzName 時、
+    // 從地區字串反解 IANA 時區;C 仍解不出時給明確中文指引、不讓客戶撞晦澀的伺服器錯誤。
+    // 邊界(L4 Gemini 反例裁定):
+    // - 只在 cityLat 有值時反解 — 手改過城市欄未重選的情況 handleCitySearch 已把
+    //   cityLat 歸零、會先被既有「請選擇出生地區」擋下、不會走到這裡被盲猜
+    // - G15 表單無出生地區欄(走 report_ids)、R 成員各自有欄位、皆不適用此路徑
     let resolvedTimezone = form.timezone
-    if (!resolvedTimezone && form.birthCity && !['G15', 'R'].includes(planCode)) {
+    if (!resolvedTimezone && form.birthCity && form.cityLat !== 0 && !['G15', 'R'].includes(planCode)) {
       resolvedTimezone = resolveTzNameFromBirthCity(form.birthCity)
       if (resolvedTimezone) setForm(f => ({ ...f, timezone: resolvedTimezone }))
     }

@@ -460,8 +460,10 @@ async function callOpenAIModeration(content: string): Promise<AiModerationResult
 // 原本嚴格 JSON.parse 直接 throw → contentModerationStep 整步失敗 → index.ts
 // fail-closed 把每一份 C/G15 報告都轉人工把關(2026-08-16 production 實測
 // 21:59:47/22:31:16 兩發「Claude Haiku 未回傳純 JSON」、兩筆 C 全滯留)。
-// 修法:剝 fence + 抽第一個平衡 JSON 物件;抽出後仍走 parseStrictScores
-// 嚴格 schema 驗證 — 分數格式不對照樣 throw、fail-closed 語意不變。
+// 修法:只容忍「fence 包裹」這一種格式噪音(production 實測的實際失敗型態);
+// 剝 fence 後仍必須是完整純 JSON、否則照樣 throw。
+// 不做子字串物件抽取 — L4 Gemini 反例(receipt 86b8aab9)證明貪婪抽取會把
+// 「拒評訊息裡的無害範例 JSON」誤當真實評分 = moderation bypass、絕不允許。
 // export 供合約測試鎖行為。
 export function parseClaudeModerationJson(text: string): unknown {
   const cleanedText = String(text ?? '').trim()
@@ -471,13 +473,7 @@ export function parseClaudeModerationJson(text: string): unknown {
   try {
     return JSON.parse(cleanedText)
   } catch {
-    const objectMatch = cleanedText.match(/\{[\s\S]*\}/)
-    if (!objectMatch) throw new Error('Claude Haiku 未回傳純 JSON')
-    try {
-      return JSON.parse(objectMatch[0])
-    } catch {
-      throw new Error('Claude Haiku 未回傳純 JSON')
-    }
+    throw new Error('Claude Haiku 未回傳純 JSON')
   }
 }
 
