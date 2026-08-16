@@ -455,6 +455,32 @@ async function callOpenAIModeration(content: string): Promise<AiModerationResult
 // Claude Haiku 產品政策層
 // 請 Haiku 判斷 9 個固定類別，回傳 0~1 分數
 // ────────────────────────────────────────────────────────────
+
+// v5.10.482 P0 修:Haiku 常把 JSON 包在 ```json fence 或前後加說明文字、
+// 原本嚴格 JSON.parse 直接 throw → contentModerationStep 整步失敗 → index.ts
+// fail-closed 把每一份 C/G15 報告都轉人工把關(2026-08-16 production 實測
+// 21:59:47/22:31:16 兩發「Claude Haiku 未回傳純 JSON」、兩筆 C 全滯留)。
+// 修法:剝 fence + 抽第一個平衡 JSON 物件;抽出後仍走 parseStrictScores
+// 嚴格 schema 驗證 — 分數格式不對照樣 throw、fail-closed 語意不變。
+// export 供合約測試鎖行為。
+export function parseClaudeModerationJson(text: string): unknown {
+  const cleanedText = String(text ?? '').trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim()
+  try {
+    return JSON.parse(cleanedText)
+  } catch {
+    const objectMatch = cleanedText.match(/\{[\s\S]*\}/)
+    if (!objectMatch) throw new Error('Claude Haiku 未回傳純 JSON')
+    try {
+      return JSON.parse(objectMatch[0])
+    } catch {
+      throw new Error('Claude Haiku 未回傳純 JSON')
+    }
+  }
+}
+
 async function callClaudeHaiku(content: string): Promise<AiModerationResult> {
   const apiKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY!
 
@@ -514,12 +540,7 @@ async function callClaudeHaiku(content: string): Promise<AiModerationResult> {
   if (typeof text !== 'string' || text.trim().length === 0) {
     throw new Error('Claude Haiku 未回傳合法 JSON')
   }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text.trim())
-  } catch {
-    throw new Error('Claude Haiku 未回傳純 JSON')
-  }
+  const parsed = parseClaudeModerationJson(text)
   const scores = parseStrictScores(parsed, CLAUDE_SCORE_CATEGORIES, 'Claude Haiku')
 
   const blocked = Object.values(scores).some(s => typeof s === 'number' && s >= HARD_THRESHOLD)

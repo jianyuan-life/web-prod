@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { type City, type LocationSearchResult, type Country } from '@/lib/cities'
+import { resolveTzNameFromBirthCity, type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import HistoricalFigures from '@/components/HistoricalFigures'
 import FamilyMemberPicker from './FamilyMemberPicker'
 import BirthDataFields from './BirthDataFields'
@@ -127,6 +127,9 @@ export default function SinglePersonForm({
           cityLat: m.city_lat,
           cityLng: m.city_lng,
           cityTz: m.city_tz,
+          // v5.10.482 P0 修:家人資料未存 IANA 時區、C/G15 伺服器驗證必擋
+          // (2026-08-16 老闆實測「請確認…時區資料完整後再付款」)→ 從出生地區字串反解
+          timezone: resolveTzNameFromBirthCity(m.birth_city) || f.timezone,
           calendarType: (m.calendar_type as 'solar' | 'lunar') || 'solar',
           lunarLeap: m.lunar_leap || false,
         }))

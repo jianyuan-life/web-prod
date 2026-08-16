@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { internalGet, internalPost, RateLimitError } from '@/lib/api'  // T10b v5.10.372(429 友好顯示 + timeout)
 import * as gtag from '@/lib/gtag'
 import * as fbpixel from '@/lib/fbpixel'
-import { searchCities, searchLocations, type City, type LocationSearchResult, type Country } from '@/lib/cities'
+import { resolveTzNameFromBirthCity, searchCities, searchLocations, type City, type LocationSearchResult, type Country } from '@/lib/cities'
 import {
   PLANS, D_TOPICS, TIME_BLOCKS,
   newMember, type FamilyMember,
@@ -520,6 +520,20 @@ export function useCheckoutForm() {
       }
     }
 
+    // v5.10.482 P0 防禦(2026-08-16 老闆實測:家人導入缺 IANA 時區、付款被伺服器 400 擋):
+    // 送出前最後一道補齊 — 任何資料來源(手填/家人導入/URL 參數/舊資料)只要選了出生地區、
+    // 就從地區字串反解 IANA 時區;C/G15 仍解不出時給明確中文指引、不讓客戶撞晦澀的伺服器錯誤。
+    let resolvedTimezone = form.timezone
+    if (!resolvedTimezone && form.birthCity && !['G15', 'R'].includes(planCode)) {
+      resolvedTimezone = resolveTzNameFromBirthCity(form.birthCity)
+      if (resolvedTimezone) setForm(f => ({ ...f, timezone: resolvedTimezone }))
+    }
+    if (planCode === 'C' && !resolvedTimezone) {
+      setError('出生地區缺少時區資料：請清除「出生地區」欄位、重新輸入並從下拉清單點選城市後再付款')
+      setLoading(false)
+      return
+    }
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let birthData: Record<string, any> = {}
@@ -562,7 +576,7 @@ export function useCheckoutForm() {
           longitude: form.cityLng || undefined,
           timezone_offset: form.cityTz,
           // Sprint 3 國際化：傳 IANA 時區 + 國家碼給後端（Python BirthInput 用來算 DST）
-          timezone: form.timezone || undefined,
+          timezone: resolvedTimezone || undefined,
           birth_country: form.countryCode || undefined,
           birth_city: form.birthCity || undefined,
           calendar_type: form.calendarType,

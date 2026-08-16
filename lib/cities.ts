@@ -9,7 +9,7 @@ import {
   CITIES_WITH_TZ,
   searchCitiesTz,
   type CityTz,
-} from './cities-with-tz'
+} from './cities-with-tz.ts'
 
 export interface City {
   name: string      // 繁體中文名
@@ -244,4 +244,40 @@ export function searchCities(query: string): City[] {
     .map(adaptCityTz)
     .filter(c => !seen.has(`${c.name_en}|${c.country}`))
   return [...fromLocal, ...fromGlobal].slice(0, 10)
+}
+
+// ── v5.10.482:從既有出生地區字串反解 IANA 時區 ──
+// 背景:C/G15 伺服器驗證(consultation 合併後)要求有效 IANA timezone;
+// 但「家人一鍵導入」等舊資料路徑只存 city 名與經緯度/偏移、沒存 tzName →
+// 客戶點付款被 400 擋(2026-08-16 老闆實測:何宥諄+香港)。
+// 此函式讓舊資料路徑能就地補上 tzName;解不出時回空字串、由呼叫端明確處理
+// (fail closed、不默默塞 Asia/Taipei)。
+const COUNTRY_IANA: Record<string, string> = {
+  '台灣': 'Asia/Taipei', '香港': 'Asia/Hong_Kong', '中國': 'Asia/Shanghai',
+  '新加坡': 'Asia/Singapore', '馬來西亞': 'Asia/Kuala_Lumpur', '日本': 'Asia/Tokyo',
+  '韓國': 'Asia/Seoul', '泰國': 'Asia/Bangkok', '越南': 'Asia/Ho_Chi_Minh',
+  '菲律賓': 'Asia/Manila', '英國': 'Europe/London', '法國': 'Europe/Paris',
+  '德國': 'Europe/Berlin', '印度': 'Asia/Kolkata', '紐西蘭': 'Pacific/Auckland',
+  '澳門': 'Asia/Macau', '阿聯酋': 'Asia/Dubai',
+}
+
+export function resolveTzNameFromBirthCity(birthCity: string): string {
+  const raw = String(birthCity || '').trim()
+  if (!raw) return ''
+  // 格式常見「台北（台灣）」/「香港（香港）」/ 純「香港」
+  const cityPart = raw.replace(/[（(].*?[）)]/g, '').trim()
+  const countryPart = (raw.match(/[（(](.*?)[）)]/) || [])[1] || ''
+  // 1) 快速選單城市精確比對
+  const exact = CITIES.find(c => c.name === cityPart || c.name_s === cityPart)
+  if (exact) return exact.tzName
+  // 2) 全球庫比對
+  if (cityPart) {
+    const global = searchCitiesTz(cityPart, 3).map(adaptCityTz)
+      .find(c => c.name === cityPart || c.name_s === cityPart || c.name_en.toLowerCase() === cityPart.toLowerCase())
+    if (global) return global.tzName
+  }
+  // 3) 單時區國家名(城市欄直接存國名的舊資料)
+  if (COUNTRY_IANA[cityPart]) return COUNTRY_IANA[cityPart]
+  if (countryPart && COUNTRY_IANA[countryPart]) return COUNTRY_IANA[countryPart]
+  return ''
 }
