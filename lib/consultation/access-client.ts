@@ -2,6 +2,7 @@ import { validateAccessToken } from '../security/token-validator.ts'
 import {
   buildConsultationPdfSessionRoute,
   buildConsultationReaderRoute,
+  buildLegacyReportRoute,
   isValidConsultationSessionHandle,
 } from './routes.ts'
 
@@ -68,7 +69,17 @@ export async function exchangeConsultationFragment(
       body: JSON.stringify(pdfIntent ? { token, intent: 'pdf' } : { token }),
     })
     if (!response.ok) return { ok: false, code: 'exchange_failed' }
-    const body = await response.json() as { next?: unknown; session?: unknown }
+    const body = await response.json() as { next?: unknown; session?: unknown; legacy?: unknown }
+    // v5.10.486:傳統版報告放行到正式閱讀頁。fail-closed:只認 legacy === true
+    // 且 next 與 client 端以自持 token 重算的路徑逐字元全等;導航一律用
+    // client 自算值,絕不使用伺服器回傳字串(杜絕 open redirect)。
+    if (body.legacy === true) {
+      // pdf intent 也接受放行:正式閱讀頁有自己的 PDF 入口,優雅降級勝過死按鈕
+      const expectedRoute = buildLegacyReportRoute(token)
+      if (body.next !== expectedRoute) return { ok: false, code: 'exchange_failed' }
+      dependencies.location.replace(expectedRoute)
+      return { ok: true }
+    }
     if (!isValidConsultationSessionHandle(body.session)) {
       return { ok: false, code: 'exchange_failed' }
     }

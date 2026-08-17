@@ -88,6 +88,14 @@ export function buildConsultationAccessRoute(
   return `${CONSULTATION_ACCESS_ROUTE}#token=${encodedToken}${intent === 'pdf' ? '&intent=pdf' : ''}`
 }
 
+// v5.10.486:傳統版(legacy_full_text)報告經安全確認後直接放行到正式閱讀頁
+// /report/<token>——那裡才有完整的命格卡/表格/摺疊渲染(多年迭代、老闆認可版面)。
+// 新閱讀器 /consultation/view 的 legacy 模式會把 markdown 表格攤成豎線純文字、
+// 摺疊區全展開,且以「舊版報告」框架呈現剛生成的新報告(2026-08-17 老闆實測指正)。
+export function buildLegacyReportRoute(token: string): string {
+  return `/report/${encodeConsultationToken(token)}`
+}
+
 export function buildCheckoutRoute(planCode: string): string {
   if (isConsultationPlan(planCode)) return CONSULTATION_CHECKOUT_ROUTES[planCode]
   return `/checkout?plan=${encodeURIComponent(planCode)}`

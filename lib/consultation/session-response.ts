@@ -11,6 +11,7 @@ import {
 import {
   buildConsultationPdfSessionRoute,
   buildConsultationReaderRoute,
+  buildLegacyReportRoute,
 } from './routes.ts'
 
 const MAX_SESSION_REQUEST_BYTES = 2_048
@@ -108,6 +109,26 @@ export async function createConsultationSessionResponse(
   }
   if (!loaded.ok) {
     return jsonResponse(failureStatus(loaded), { error: 'session_unavailable' })
+  }
+  // v5.10.486:傳統版報告驗證通過後直接放行到正式閱讀頁 /report/<token>,
+  // 不鑄造 session、不進 /consultation/view(其 legacy 模式表格攤平、
+  // 以「舊版報告」框架呈現新報告;正式閱讀頁才是老闆認可版面)。
+  // pdf intent 同樣放行(L4 Gemini 反例 878e27bc F3:buildPdfRoute 對無存檔
+  // pdf_url 的傳統版會產出 intent=pdf 連結、原 409 = 客戶點按鈕直接噴錯;
+  // 放行後由正式閱讀頁自己的 PDF 按鈕接手,優雅降級)。
+  // token 已通過 loadConsultationReport 全套驗證(格式/存在/completed/C|G15),
+  // 回傳路徑由 buildLegacyReportRoute 重新驗證編碼,client 端再做全等核對。
+  if (loaded.mode === 'legacy_full_text') {
+    try {
+      const headers = privateHeaders()
+      headers.set('Content-Type', 'application/json; charset=utf-8')
+      return new Response(
+        JSON.stringify({ next: buildLegacyReportRoute(token), legacy: true }),
+        { status: 200, headers },
+      )
+    } catch {
+      return jsonResponse(503, { error: 'session_unavailable' })
+    }
   }
   if (intent === 'pdf' && loaded.mode !== 'structured') {
     return jsonResponse(409, { error: 'session_unavailable' })

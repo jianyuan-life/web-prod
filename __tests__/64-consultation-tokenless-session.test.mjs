@@ -59,17 +59,15 @@ test('the same-origin session endpoint validates the report before issuing an Ht
     body: JSON.stringify({ token: TOKEN }),
   })
   const response = await createConsultationSessionResponse(request, {
+    // v5.10.486:session cookie 只為結構化報告鑄造;傳統版走 legacy 放行(見下一測試)
     load: async (token) => {
       loadedToken = token
       return {
         ok: true,
-        mode: 'legacy_full_text',
+        mode: 'structured',
         plan: 'C',
-        content: 'private report',
-        fullCharts: null,
-        narrativeSummary: null,
-        provenance: { source: 'paid_reports', contentField: 'report_result.ai_content' },
-        asOf: { status: 'unknown', value: null },
+        report: {},
+        pdfUrl: null,
       }
     },
     createHandle: () => SESSION_A,
@@ -95,6 +93,102 @@ test('the same-origin session endpoint validates the report before issuing an Ht
   assert.match(setCookie, /SameSite=Strict/iu)
   assert.equal(setCookie.includes(TOKEN), false)
   assert.match(response.headers.get('cache-control') || '', /no-store/iu)
+})
+
+test('a legacy report exchange releases straight to the canonical /report reader without minting a session', async () => {
+  // v5.10.486:傳統版報告在 /consultation/view 會被以「舊版原文」框架呈現、
+  // 表格攤成純文字(2026-08-17 老闆實測指正版面邏輯錯誤)——驗證通過後
+  // 直接放行到正式閱讀頁,不鑄 session、不落 cookie。
+  let sealCount = 0
+  let handleCount = 0
+  const response = await createConsultationSessionResponse(new Request(
+    'https://jianyuan.life/api/consultation/session',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://jianyuan.life' },
+      body: JSON.stringify({ token: TOKEN }),
+    },
+  ), {
+    load: async () => ({
+      ok: true,
+      mode: 'legacy_full_text',
+      plan: 'C',
+      content: 'private report',
+      fullCharts: null,
+      narrativeSummary: null,
+      pdfUrl: null,
+      provenance: { source: 'paid_reports', contentField: 'report_result.ai_content' },
+      asOf: { status: 'unknown', value: null },
+    }),
+    createHandle: () => { handleCount += 1; return SESSION_A },
+    seal: async () => { sealCount += 1; return 'v1.authenticated-ciphertext' },
+  })
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), {
+    next: `/report/${encodeURIComponent(TOKEN)}`,
+    legacy: true,
+  })
+  assert.equal(response.headers.get('set-cookie'), null)
+  assert.equal(handleCount, 0, '傳統版不得鑄造 session handle')
+  assert.equal(sealCount, 0, '傳統版不得加密 session')
+  assert.match(response.headers.get('cache-control') || '', /no-store/iu)
+})
+
+test('the client only follows a legacy release to the exact self-computed /report path', async () => {
+  // fail-closed:導航一律用 client 端以自持 token 重算的路徑;
+  // 伺服器回傳的 next 只用來全等核對,不一致即 exchange_failed。
+  const cases = [
+    { next: `/report/${encodeURIComponent(TOKEN)}`, expectOk: true },
+    { next: `/report/${encodeURIComponent(TOKEN_B)}`, expectOk: false },
+    { next: 'https://evil.example/report/x', expectOk: false },
+    { next: `/report/${encodeURIComponent(TOKEN)}/../../admin`, expectOk: false },
+    { next: 42, expectOk: false },
+  ]
+  for (const { next, expectOk } of cases) {
+    const events = []
+    const result = await exchangeConsultationFragment({
+      location: {
+        hash: `#token=${encodeURIComponent(TOKEN)}`,
+        pathname: '/consultation/access',
+        search: '',
+        replace: (value) => events.push(value),
+      },
+      history: { replaceState: () => {} },
+      fetch: async () => new Response(JSON.stringify({ next, legacy: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    })
+    if (expectOk) {
+      assert.deepEqual(result, { ok: true })
+      assert.deepEqual(events, [`/report/${encodeURIComponent(TOKEN)}`])
+    } else {
+      assert.deepEqual(result, { ok: false, code: 'exchange_failed' })
+      assert.deepEqual(events, [], '不一致的 legacy next 不得導航')
+    }
+  }
+})
+
+test('a pdf-intent exchange accepts a legacy release and lands on the canonical reader', async () => {
+  // L4 Gemini 反例 878e27bc F3:無存檔 pdf_url 的傳統版會產出 intent=pdf 連結,
+  // 拒收=客戶點「下載 PDF」直接噴錯;改放行到正式閱讀頁由其 PDF 入口接手。
+  const events = []
+  const result = await exchangeConsultationFragment({
+    location: {
+      hash: `#token=${encodeURIComponent(TOKEN)}&intent=pdf`,
+      pathname: '/consultation/access',
+      search: '',
+      replace: (value) => events.push(value),
+    },
+    history: { replaceState: () => {} },
+    fetch: async () => new Response(
+      JSON.stringify({ next: `/report/${encodeURIComponent(TOKEN)}`, legacy: true }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ),
+  })
+  assert.deepEqual(result, { ok: true })
+  assert.deepEqual(events, [`/report/${encodeURIComponent(TOKEN)}`])
 })
 
 test('the browser erases the fragment before exchanging it and navigates only to a selector-bound reader path', async () => {
@@ -397,7 +491,13 @@ test('a legacy text report cannot mint a session for the structured tokenless PD
     },
   })
 
-  assert.equal(response.status, 409)
+  // v5.10.486:pdf intent + 傳統版不再 409(死按鈕),改同樣放行到正式閱讀頁;
+  // 核心不變式維持:絕不為傳統版鑄造 session、不落 cookie。
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), {
+    next: `/report/${encodeURIComponent(TOKEN)}`,
+    legacy: true,
+  })
   assert.equal(sealCount, 0)
   assert.equal(response.headers.has('set-cookie'), false)
 })
