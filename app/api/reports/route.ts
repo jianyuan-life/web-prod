@@ -63,7 +63,9 @@ export async function GET(req: NextRequest) {
       .from('paid_reports')
       // v5.10.482:補 amount_usd(付款者本人可見自己付了多少、非跨客敏感欄位)
       //   — 缺它時 dashboard「付款紀錄」渲染成 $NaN USD(2026-08-16 實測)
-      .select('id, plan_code, status, created_at, access_token, generation_progress, retry_count, error_message, self_update_count, amount_usd')
+      // v5.10.487:補 client_name(報告卡印章=姓名首字、缺它時付款後畫面永遠
+      //   顯示「?」破圖佔位;付款者本人的姓名、同級非跨客欄位。2026-08-17 走查)
+      .select('id, plan_code, status, created_at, access_token, generation_progress, retry_count, error_message, self_update_count, amount_usd, client_name')
       .eq('stripe_session_id', sessionId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -73,9 +75,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: oneErr.message, authSource: querySource }, { status: 500 })
     }
     console.info(`[reports] stripe-session source=${querySource} found=${oneReport ? 1 : 0}`)
+    // v5.10.487(L4 Gemini bdf36213):此路徑只需姓名首字當卡片印章,不送全名——
+    //   session_id 可能殘留在瀏覽器歷史/截圖,持有者不應換到付款者全名(v5.10.193 同精神)。
+    //   Array.from 取首字避免 surrogate pair 截斷;前端 r.client_name[0] 邏輯不變。
+    const minimized = oneReport
+      ? {
+          ...oneReport,
+          client_name: typeof oneReport.client_name === 'string' && oneReport.client_name.length > 0
+            ? Array.from(oneReport.client_name)[0]
+            : null,
+        }
+      : null
     return NextResponse.json({
-      reports: oneReport ? [oneReport] : [],
-      _debug: { source: querySource, count: oneReport ? 1 : 0 },
+      reports: minimized ? [minimized] : [],
+      _debug: { source: querySource, count: minimized ? 1 : 0 },
     })
   }
 

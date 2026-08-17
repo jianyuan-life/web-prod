@@ -51,7 +51,12 @@ export default function ConsultIntro({
   }
 
   return (
-    <section className="glass rounded-2xl p-6 md:p-8 mb-8" style={{ border: '1px solid rgba(201,168,76,0.25)' }} aria-labelledby="consult-intro-heading">
+    // v5.10.487:.glass 跟主題走,亮色主題下變奶油底、而 checkout-presentation.css
+    // 把 text-cream 強制映射成淡米色 #f4efe5(深色卷宗面設計)→ 淡字奶油底=整卡隱形
+    // (2026-08-17 登入走查實測,production computed color 取證)。改用與其他表單卡
+    // 同語言的 .checkout-form-card 深色面板;圓角/內距/邊框全交給該 class 統一
+    // (L4 Gemini bdf36213:rounded-2xl/p-6 與 class 內寫死值特異性競爭、inline border 冗餘)。
+    <section className="checkout-form-card mb-8" aria-labelledby="consult-intro-heading">
       {/* 顧問頭像列 */}
       <div className="flex items-center gap-3 mb-5">
         <div className="w-10 h-10 rounded-full bg-gold/15 border border-gold/30 flex items-center justify-center text-gold font-bold" aria-hidden>鑒</div>
