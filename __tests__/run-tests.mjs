@@ -4,7 +4,7 @@
 
 import { readdirSync } from 'fs'
 import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
+import { fileURLToPath, pathToFileURL } from 'url'
 import { fork } from 'child_process'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -39,7 +39,14 @@ console.log(`${'='.repeat(60)}\n`)
 for (const file of testFiles) {
   const filePath = join(__dirname, file)
   const result = await new Promise((resolve) => {
-    const child = fork(filePath, [], { stdio: 'pipe', env: { ...process.env, NODE_NO_WARNINGS: '1' } })
+    // v5.10.492:alias hook 讓測試能直接載入用 '@/' 別名與無副檔名相對匯入的
+    //   production 模組(prompts/*)。純解析映射、不改來源碼;對既有測試無影響。
+    const child = fork(filePath, [], {
+      stdio: 'pipe',
+      // Windows:必須傳 file:// URL,裸路徑的磁碟機字母會被當成 URL scheme(ERR_UNSUPPORTED_ESM_URL_SCHEME)
+      execArgv: ['--experimental-strip-types', '--import', pathToFileURL(join(__dirname, 'helpers', 'alias-hooks.mjs')).href],
+      env: { ...process.env, NODE_NO_WARNINGS: '1' },
+    })
     let stdout = ''
     let stderr = ''
     child.stdout?.on('data', d => { stdout += d; process.stdout.write(d) })

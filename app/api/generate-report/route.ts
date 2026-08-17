@@ -713,7 +713,9 @@ ${analyses.length}套系統排盤完整數據：
           return buildSingleCallV6C(birthData.name || '客戶', cAge, birthData.marital_status)
         }
         return isV4('C')
-          ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale)
+          // v5.10.492:補傳年齡層——fallback 原本不帶,未成年客戶走 fallback 時
+          //   會拿到成人骨架(與 workflow 主路徑不一致、lesson #163 脫節家族同型)
+          ? buildSingleCallV4C(birthData.name || '客戶', birthData.locale, getAgeGroup(birthData.year))
           : localizePrompt(PLAN_SYSTEM_PROMPT[planCode] || PLAN_SYSTEM_PROMPT['C'], birthData.locale)
       }
 
