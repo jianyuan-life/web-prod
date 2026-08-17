@@ -392,6 +392,22 @@
   opacity: 1;
 }
 
+/* v5.10.490:本面釘死深色,globals.css 的 [data-theme="light"] select 全域變體
+   (#FFFBF2 奶油底,v5.10.459 為亮色頁面而設)不適用於此面——亮色主題下
+   月/日/時辰下拉與輸入框變奶油塊、與深色卷宗嚴重不搭(2026-08-17 走查實拍)。
+   以較高特異性把本面內的原生控件鎖回深色。 */
+[data-theme="light"] .checkout-shell select,
+[data-theme="light"] .checkout-shell option,
+.checkout-shell select,
+.checkout-shell option {
+  background-color: #1a1a2e;
+  color: #e8eaf0;
+}
+[data-theme="light"] .checkout-shell :is(input:not([type="checkbox"]):not([type="radio"]), textarea) {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--checkout-copy);
+}
+
 .checkout-shell :is(input, select, textarea, button, a):focus-visible {
   outline: 2px solid var(--checkout-brass);
   outline-offset: 3px;
