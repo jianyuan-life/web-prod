@@ -8,6 +8,7 @@ import pkg from '../../../package.json'
 //   sanitize 改 passthrough 等本次穩定後改用 sanitize-html（純 JS 無 jsdom）補回。
 import ReportClientButtons from './ReportClientButtons'
 import { buildPdfDownloadUrl, buildPdfDownloadFilename } from '@/lib/pdf-download'
+import { publicSystemCount } from '@/lib/report-systems'  // v5.10.495:對外 14 套 SSOT
 import ReportTracker from './ReportTracker'
 import ReportFeedback from '@/components/ReportFeedback'
 // v5.10.430 ShareCard 已砍(反人性分享命盤)
@@ -2905,7 +2906,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
         {showLegacyOverviewModules && !isChumenji && analysesSummary.length >= 3 && (() => {
           // v5.10.461:cap 14(對外清零 15→14 鐵律 v5.3.95;測試報告實測 badge 吐「15 套交叉」=
           // 南洋 filter 漏接舊命名變體、與 legacy 命盤一覽卡 Math.min(14,·) 同規格對齊)
-          const systemCrossCount = Math.min(14, analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length)
+          const systemCrossCount = publicSystemCount(analysesSummary)
           return (
             <div className="rounded-2xl px-6 py-5 mb-4" style={{
               background: 'linear-gradient(135deg, rgba(197,150,58,0.15), rgba(26,42,74,0.4))',
@@ -3052,7 +3053,7 @@ export default async function ReportPage({ params }: { params: Promise<{ token: 
                 </div>
                 {sysCount > 0 && (
                   <div className="text-[11px] text-cream/60">
-                    <span className="text-gold font-bold">{Math.min(14, analysesSummary.filter((s: { system: string }) => !['南洋術數','南洋数术','南洋'].includes(s.system)).length)}</span> 套系統交叉
+                    <span className="text-gold font-bold">{publicSystemCount(analysesSummary)}</span> 套系統交叉
                   </div>
                 )}
               </div>

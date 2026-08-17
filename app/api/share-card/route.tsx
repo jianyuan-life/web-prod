@@ -5,6 +5,7 @@
 import { ImageResponse } from 'next/og'
 import { loadChineseFont } from '@/lib/og-font'
 import { PLAN_NAMES } from '@/lib/plan-names'
+import { publicSystems } from '@/lib/report-systems'  // v5.10.495:對外 14 套 SSOT
 import { createServiceClient } from '@/lib/supabase'  // T7b v5.10.371(Sprint 8 migration、memoized singleton)
 
 export const runtime = 'edge'
@@ -50,7 +51,8 @@ export async function GET(req: Request) {
         clientName = (data.client_name || '我的命格').toString().slice(0, 12)
         const summary = (data.report_result as { analyses_summary?: { system: string; score: number }[] } | null)?.analyses_summary
         if (Array.isArray(summary) && summary.length > 0) {
-          const filtered = summary.filter((s) => s && s.system && !['南洋術數', '南洋数术'].includes(s.system))
+          // v5.10.495:改吃 SSOT(前綴比對涵蓋命名變體;分享卡對外同樣不列南洋)
+          const filtered = publicSystems(summary)
           if (filtered.length > 0) {
             const peak = filtered.reduce((m, d) => (d.score > m.score ? d : m), filtered[0])
             topSystem = peak.system

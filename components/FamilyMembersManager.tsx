@@ -123,7 +123,20 @@ export default function FamilyMembersManager() {
         </div>
       ) : members.length === 0 ? (
         <div className="glass rounded-xl p-8 text-center">
-          <div className="text-3xl mb-3" style={{ fontFamily: 'var(--font-sans)' }}>&#128106;</div>
+          {/* v5.10.495:emoji 家庭圖示與品牌視覺不一致(登入走查)。改品牌金線圈 + 中文字符,
+              與 dashboard 其他區塊(「方」出門訣、「鑒」顧問頭像)同一套語彙。 */}
+          <div
+            className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full text-base font-semibold"
+            style={{
+              color: 'var(--color-gold)',
+              border: '1px solid color-mix(in srgb, var(--color-gold) 35%, transparent)',
+              background: 'color-mix(in srgb, var(--color-gold) 8%, transparent)',
+              fontFamily: 'var(--font-serif, var(--font-sans))',
+            }}
+            aria-hidden="true"
+          >
+            親
+          </div>
           <p className="text-text-muted text-sm mb-3">還沒有儲存任何家人資料</p>
           <p className="text-text-muted/60 text-xs">新增後，結帳時可以直接選擇，不用每次重新輸入</p>
         </div>

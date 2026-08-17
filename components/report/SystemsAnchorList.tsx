@@ -8,6 +8,8 @@
  * Desktop 側(>= 768px)由 SystemsRadar 主導、本元件隱藏
  */
 
+import { publicSystems } from '@/lib/report-systems'
+
 interface Analysis {
   system: string
   score: number
@@ -40,10 +42,9 @@ export default function SystemsAnchorList({ analyses = [] }: Props) {
   // v5.10.128 P0 修(L4 Gemini Vision F1 C 何紀萳 mobile ch00「西洋占星 0 分 / 需加強 25%」visual broken):
   //   score=0 通常是 missing data(缺生時 / raw_data 欄位空)、不該 render 成「需加強 25%」尷尬 label
   //   修:filter 掉 score=0 / score<30 的系統(視為 missing、不顯示)
-  const filtered = analyses.filter(a =>
-    !['南洋術數', '南洋数术', '南洋'].includes(a.system) &&
-    a.score > 30  // 排除 0 / 低於 30 的 missing-data 系統
-  )
+  // v5.10.495:改吃 SSOT(前綴比對涵蓋南洋命名變體、cap 14)——原完全比對漏接
+  //   「南洋命理」等變體 → 標題寫 14、右側數字吐 15 自相矛盾(實單 2b3cb069)。
+  const filtered = publicSystems(analyses, 30)
   if (filtered.length < 3) return null
 
   return (
@@ -54,16 +55,16 @@ export default function SystemsAnchorList({ analyses = [] }: Props) {
         border: '1px solid rgba(122,159,207,0.25)',
       }}
       role="navigation"
-      aria-label="14 套系統快速跳轉"
+      aria-label={`${filtered.length} 套系統快速跳轉`}
     >
       <div className="flex items-center justify-between mb-3">
+        {/* v5.10.495:數字一律取實際顯示筆數(單一數字源、不再標題寫死 14 + 右側另算) */}
         <div className="text-[11px] tracking-[3px] font-semibold" style={{ color: 'rgba(122,159,207,0.85)' }}>
-          14 套系統 · 點擊跳詳解
+          {filtered.length} 套系統 · 點擊跳詳解
         </div>
-        <span className="text-text-muted/45 text-[9px]">{filtered.length} 套</span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {filtered.slice(0, 14).map((a) => {
+        {filtered.map((a) => {
           const bm = getBenchmark(a.score)
           const insight = getInsight(a.system, a.score)
           return (

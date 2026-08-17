@@ -6,6 +6,7 @@
 // 引擎:recharts(已裝、~16KB tree-shaken)
 
 import { useEffect, useState } from 'react'
+import { publicSystems } from '@/lib/report-systems'
 import {
   Radar,
   RadarChart,
@@ -46,10 +47,8 @@ export default function SystemsRadar({
   if (!data || data.length === 0) return null
 
   // 對齊 v5.3.95「對外清零南洋術數、十四套對齊」共識(IA Agent 5 家共識)
-  // 資料源 analyses_summary 實際含 15 個系統(含南洋術數)、過濾掉對齊對外宣傳
-  const EXCLUDE_SYSTEMS = new Set(['南洋術數', '南洋数术', '南洋'])
-  const chartData = data
-    .filter((d) => d && d.system && !EXCLUDE_SYSTEMS.has(d.system))
+  // v5.10.495:改吃 lib/report-systems SSOT(前綴比對涵蓋命名變體 + cap 14)
+  const chartData = publicSystems(data)
     .map((d) => ({
       system: d.system,
       score: Math.max(0, Math.min(100, Number(d.score) || 0)),
