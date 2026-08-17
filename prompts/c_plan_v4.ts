@@ -24,9 +24,11 @@ import { ETHICS_RULES } from '@/workflows/generate-report/plan-prompts'
 // （getAgeGroup / 禁詞 / userPrompt / appendix / 系統分組 / 摘要傳遞機制不變）
 export {
   extractCall1Summary, extractCall1And2Summary,
-  getAgeGroup, FORBIDDEN_WORDS_BY_STAGE,
+  getAgeGroup, FORBIDDEN_WORDS_BY_STAGE, AGE_INSTRUCTIONS,
   buildUserPrompt, buildAppendix, SYSTEM_GROUPS,
 } from './c_plan_v2'
+// re-export 不進本模組作用域,注入用另 import(v5.10.491 年齡適配接線)
+import { AGE_INSTRUCTIONS } from './c_plan_v2'
 
 // ── v4 共用核心護欄（每個 Call 都帶）──
 function v4CoreRules(locale?: string): string {
@@ -84,10 +86,50 @@ function v4CoreRules(locale?: string): string {
 語言：${lang}。直接從第一個章節標題開始、不寫 AI 前言。`
 }
 
+// ── v5.10.491:年齡適配接線 ──
+// v4 原以 void ageGroup 丟棄年齡層 → 3 歲客戶拿成人版報告(production 實單
+// 驗證:32-41 歲收穫期/婚姻 45 次/投資 38 次)。注入 v2 AGE_INSTRUCTIONS
+// (單一來源)+ v4 骨架的未成年章節轉譯。轉譯後標題刻意保留 quality gate 錨字
+// (競爭力/人際磁場/戰略推演、steps.ts L3113-3119 hard patterns),gate 免改。
+const V4_MINOR_CHAPTER_MAP: Record<string, string> = {
+  toddler: `
+▌ 兒童版章節轉譯（標題照此輸出、內容隨之轉向，其餘骨架與分層規則不變）：
+- 「二、核心競爭力與財富路徑」→「二、核心競爭力與天賦學習路徑」：寫天賦種子、
+  學習方式、才藝方向；不寫變現/破財/財富躍遷/職場。
+- 「三、感情與人際磁場」→「三、同儕與家人人際磁場」：寫同儕相處、手足與父母
+  互動；不寫伴侶/感情宿命；「小人」改寫為「容易受哪類同伴影響」。
+- 「四、精準診斷書」：直接回應父母填寫的需求（沙盤推演改為教養選擇題，
+  如「先深耕語言 vs 先廣泛嘗試才藝」）。
+- 「五、未來五年戰略推演」→「五、成長戰略推演」：只推演孩子未來五年的成長
+  階段（學齡前→入學適應），一律不超過 18 歲；「未來五年關鍵節點」逐年寫
+  孩子年齡對應的發展重點。
+- 「專屬開運與防禦清單」「刻意練習」：全部改為父母可執行的教養與照護行動。
+- 「寫給○○的話」：寫給父母（稱「您」），孩子以名字或「孩子」第三人稱。`,
+  child: `
+▌ 學齡兒童版章節轉譯（標題照此輸出、內容隨之轉向）：
+- 「二、核心競爭力與財富路徑」→「二、核心競爭力與學習路徑」：學業方向、
+  天賦深耕；不寫變現/破財/職場。
+- 「三、感情與人際磁場」→「三、同儕與家人人際磁場」：同學相處、師長緣、
+  家人互動；不寫伴侶/感情宿命。
+- 「四、精準診斷書」：直接回應父母填寫的需求。
+- 「五、未來五年戰略推演」→「五、成長戰略推演」：推演至 22 歲前的求學階段。
+- 開運/刻意練習：改為父母與孩子可共同執行的行動。
+- 「寫給○○的話」：寫給父母為主、可附一小段寫給孩子的白話鼓勵。`,
+  teen: `
+▌ 青少年版章節調整（標題不變、內容轉向）：
+- 「二、核心競爭力與財富路徑」：聚焦學業策略與未來職業初探；不寫投資理財/創業評估。
+- 「三、感情與人際磁場」：可淺談感情觀（引導型），不寫桃花運/「幾歲遇到對的人」/婚姻。
+- 「五、未來五年戰略推演」：推演至大學/入社會初期為止。`,
+}
+function v4AgeBlock(ageGroup: string): string {
+  if (ageGroup !== 'toddler' && ageGroup !== 'child' && ageGroup !== 'teen') return ''
+  return `\n${AGE_INSTRUCTIONS[ageGroup] ?? ''}\n${V4_MINOR_CHAPTER_MAP[ageGroup] ?? ''}\n`
+}
+
 // ── Call 1：L1 人生速覽 + 一、原廠設定 + 二、競爭力財富 ──
 export function buildCall1Prompt(ageGroup: string, clientNeed?: string, locale?: string, birthYear?: number): string {
-  void ageGroup; void clientNeed; void birthYear
-  return `${v4CoreRules(locale)}
+  void clientNeed; void birthYear
+  return `${v4CoreRules(locale)}${v4AgeBlock(ageGroup)}
 
 ▌ Call 1 輸出結構（嚴格遵守漸進式 + 無 emoji）：
 
@@ -123,8 +165,8 @@ ${ETHICS_RULES}`
 
 // ── Call 2：三、感情磁場 + 四、精準診斷書（D 模塊）──
 export function buildCall2Prompt(ageGroup: string, call1Summary: string, locale?: string, birthYear?: number): string {
-  void ageGroup; void birthYear
-  return `${v4CoreRules(locale)}
+  void birthYear
+  return `${v4CoreRules(locale)}${v4AgeBlock(ageGroup)}
 
 【接續前文摘要】${call1Summary}
 
@@ -153,8 +195,8 @@ ${ETHICS_RULES}`
 
 // ── Call 3：五、五年戰略 + 刻意練習 + 寫給你的話 ──
 export function buildCall3Prompt(ageGroup: string, clientName: string, call1and2Summary: string, locale?: string, birthYear?: number): string {
-  void ageGroup; void birthYear
-  return `${v4CoreRules(locale)}
+  void birthYear
+  return `${v4CoreRules(locale)}${v4AgeBlock(ageGroup)}
 
 【接續前文摘要】${call1and2Summary}
 

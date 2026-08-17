@@ -702,7 +702,7 @@ export function computeCurrentYearGanzhi(date: Date = new Date()): string {
 }
 
 // ── 年齡分層的寫作指引 ──
-const AGE_INSTRUCTIONS: Record<string, string> = {
+export const AGE_INSTRUCTIONS: Record<string, string> = {  // v5.10.491:對齊 v2 模組簽名(steps _cPick typeof _cV2)
   toddler: `【寫作對象：父母｜幼兒 0-6 歲】
 報告標題格式：「○○○ 人生藍圖（兒童專版）」
 - 用「您的孩子」「寶寶」稱呼孩子，用「您」稱呼父母

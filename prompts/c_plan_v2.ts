@@ -380,7 +380,9 @@ export function computeCurrentYearGanzhi(date: Date = new Date()): string {
 }
 
 // ── 年齡分層的寫作指引 ──
-const AGE_INSTRUCTIONS: Record<string, string> = {
+// v5.10.491:export 供 c_plan_v4(production 現行路徑)注入——v4 原以 void ageGroup
+// 丟棄年齡層,3 歲客戶拿到成人版報告(2026-08-17 production 實單驗證抓到)。
+export const AGE_INSTRUCTIONS: Record<string, string> = {
   toddler: `【寫作對象：父母｜幼兒 0-6 歲】
 報告標題格式：「○○○ 人生藍圖（兒童專版）」
 - 用「您的孩子」「寶寶」稱呼孩子，用「您」稱呼父母
