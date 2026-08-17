@@ -104,7 +104,21 @@ function v4AgeKind(ageGroup: string): V4AgeKind {
 function v4AgeBlock(ageGroup: string): string {
   const kind = v4AgeKind(ageGroup)
   if (kind === 'adult') return ''
-  return `\n${AGE_INSTRUCTIONS[ageGroup] ?? ''}\n`
+  // v5.10.493(production 兒童實單 4e2885b5 目錄實測):
+  //  ① AGE_INSTRUCTIONS 的「聚焦」清單被模型當成新章節清單、Call 1 自行寫出
+  //     一~八章,與 Call 2/3 的章節撞號(目錄出現兩組 三/四/五/八)。
+  //  ② 生命靈數 pinnacle / 人類圖等 Tier 3 系統在 L3 依據段照列成人期年齡區間
+  //     (35-43 歲峰 6、44-52 歲…),繞過章節層的年齡上限。
+  return `\n${AGE_INSTRUCTIONS[ageGroup] ?? ''}
+
+【本 Call 章節硬規則（未成年版、優先於其他敘述）】
+- 嚴格只輸出「本 Call 輸出結構」列出的 ## 章節，照原編號與標題輸出；
+  禁止新增章節、禁止自行改編號、禁止把上方「聚焦」項目各開一個 ## 章
+  （聚焦項目一律融進指定章節的正文與 L3）。
+- 系統依據（含生命靈數週期、人類圖、占星行運等）若原生帶有成年後的年齡區間，
+  一律改寫為「成年後」「中年階段」等概括說法，正文與 L3 都不得出現
+  19 歲以後的具體年齡或年齡區間數字。
+`
 }
 
 // ── Call 1：L1 人生速覽 + 一、原廠設定 + 二、競爭力財富 ──

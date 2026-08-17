@@ -67,6 +67,26 @@ for (const stage of ['toddler', 'child']) {
   })
 }
 
+// v5.10.493:production 兒童實單 4e2885b5 目錄實測抓到的兩個缺陷
+for (const stage of ['toddler', 'child']) {
+  const all = [
+    buildCall1Prompt(stage, '健康、讀書開智慧'),
+    buildCall2Prompt(stage, '（摘要）'),
+    buildCall3Prompt(stage, '小明', '（摘要）'),
+  ].join('\n')
+
+  check(`${stage}:帶「禁新增章節/禁改編號」硬規則(防章節撞號)`, () => {
+    assert(all.includes('禁止新增章節'), '缺禁新增章節規則')
+    assert(all.includes('禁止自行改編號'), '缺禁改編號規則')
+    assert(all.includes('各開一個 ## 章'), '缺「聚焦項目不得各自開章」規則')
+  })
+
+  check(`${stage}:帶「系統依據不得列成年年齡區間」規則`, () => {
+    assert(all.includes('成年後') && all.includes('年齡區間'), '缺系統依據年齡改寫規則')
+    assert(all.includes('生命靈數週期') || all.includes('人類圖'), '應點名 Tier 3 系統')
+  })
+}
+
 check('teen:不寫桃花/婚姻但保留成人章名', () => {
   const all = [
     buildCall1Prompt('teen'),
