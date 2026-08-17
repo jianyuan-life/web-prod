@@ -1,4 +1,9 @@
 .checkout-shell {
+  /* v5.10.489:本面是刻意釘死深色的卷宗面,原生表單控件(select/date/input)
+     必須跟著走深色——否則亮色主題下 html color-scheme: light 會讓瀏覽器把
+     月/日/時辰下拉與優惠碼輸入畫成淺色底,配上元件寫死的 text-white=近隱形
+     (2026-08-17 登入走查亮色實拍抓到)。 */
+  color-scheme: dark;
   --checkout-ink: #07101c;
   --checkout-panel: rgba(10, 24, 40, 0.9);
   --checkout-panel-soft: rgba(16, 32, 49, 0.72);
